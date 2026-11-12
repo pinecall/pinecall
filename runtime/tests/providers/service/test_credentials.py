@@ -3,22 +3,18 @@
 import os
 import secrets
 
-import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from runtime.enums import Stage
 from runtime.kit.crypto import Vault
 from runtime.postgres import BoxSession
-from runtime.providers.service import credentials, plugins
+from runtime.providers.service import credentials
 from tests.conftest import make_tenant
+from tests.fakes import acme
 
 
 # A vendor of this test alone: the box's acme key is every other test's.
-async def _keyed(
-    sessions: async_sessionmaker[AsyncSession], monkeypatch: pytest.MonkeyPatch
-) -> tuple[str, Vault, str, str]:
-    vendor, vault = f"rotated-{secrets.token_hex(4)}", Vault(os.environ["PINECALL_VAULT_KEY"])
-    monkeypatch.setitem(plugins.list_vendors(), vendor, plugins.Vendor(vendor, frozenset(Stage)))
+async def _keyed(sessions: async_sessionmaker[AsyncSession]) -> tuple[str, Vault, str, str]:
+    vendor, vault = acme.install(f"rotated-{secrets.token_hex(4)}"), Vault(os.environ["PINECALL_VAULT_KEY"])
     copying, bringing = await make_tenant(sessions), await make_tenant(sessions)
     async with sessions.begin() as session:
         await credentials.put_box_credentials(BoxSession(session), vault, vendor, "the-old-key")
@@ -28,9 +24,9 @@ async def _keyed(
 
 
 async def test_a_rotated_box_key_takes_an_orgs_copy_of_it_along_and_leaves_a_key_the_org_brought(
-    sessions: async_sessionmaker[AsyncSession], monkeypatch: pytest.MonkeyPatch
+    sessions: async_sessionmaker[AsyncSession],
 ) -> None:
-    vendor, vault, copying, bringing = await _keyed(sessions, monkeypatch)
+    vendor, vault, copying, bringing = await _keyed(sessions)
     async with sessions.begin() as session:
         await credentials.put_box_credentials(BoxSession(session), vault, vendor, "the-new-key")
     async with sessions.begin() as session:
@@ -41,9 +37,9 @@ async def test_a_rotated_box_key_takes_an_orgs_copy_of_it_along_and_leaves_a_key
 
 
 async def test_a_dropped_box_key_takes_an_orgs_copy_of_it_along_and_leaves_a_key_the_org_brought(
-    sessions: async_sessionmaker[AsyncSession], monkeypatch: pytest.MonkeyPatch
+    sessions: async_sessionmaker[AsyncSession],
 ) -> None:
-    vendor, vault, copying, bringing = await _keyed(sessions, monkeypatch)
+    vendor, vault, copying, bringing = await _keyed(sessions)
     async with sessions.begin() as session:
         await credentials.drop_box_key(BoxSession(session), vault, vendor)
     async with sessions.begin() as session:

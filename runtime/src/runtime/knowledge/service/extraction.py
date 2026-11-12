@@ -10,7 +10,6 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Literal
 
-import httpx
 from livekit.agents import llm
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -20,7 +19,7 @@ from runtime.enums import Channel
 from runtime.kit.crypto import Vault
 from runtime.kit.text import a_list, a_mapping
 from runtime.knowledge.service import memory
-from runtime.knowledge.service.embedder import embedder_of
+from runtime.knowledge.service.embedder import FindEmbedder
 from runtime.knowledge.service.language import UNDECIDED, detect_language
 from runtime.knowledge.service.memory import NAMES_A_FACT, OP_NAMES, WRITES, Op, OpName, Taught, fold_text
 from runtime.providers import service as providers
@@ -173,7 +172,7 @@ def hear_call(
 async def remember(
     sessions: async_sessionmaker[AsyncSession],
     vault: Vault,
-    http: httpx.AsyncClient,
+    find_embedder: FindEmbedder,
     scope: Scope,
     declaration: Declaration,
     heard: Heard,
@@ -181,7 +180,7 @@ async def remember(
     """What one call taught, asked of the agent's model once, admitted, embedded and written as one."""
     started = time.perf_counter()
     async with sessions.begin() as session:
-        embedder = await embedder_of(session, vault, http)
+        embedder = await find_embedder(session)
         if embedder is None:
             return None
         await memory.admit_fact(session, scope)

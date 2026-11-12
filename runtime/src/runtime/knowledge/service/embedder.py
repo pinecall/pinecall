@@ -25,6 +25,9 @@ from runtime.providers.stage import Credentials
 logger = logging.getLogger(__name__)
 
 type Sleep = Callable[[float], Awaitable[None]]
+# What finds the embedder a lookup or a hang-up runs on, in the transaction it reads the call's limits
+# in: the box's (`box_embedder`), the providers row read each time; a test hands its own.
+type FindEmbedder = Callable[[AsyncSession], Awaitable["Embedder | None"]]
 type Vector = list[float]
 
 # The contextual endpoint counts a window's chunks together against a 32 768-token context; the
@@ -375,6 +378,15 @@ class Embedder:
 # 2026-11 the gateway built the one its calls used once, as it started, and kept it: a box that started
 # with no embedder and was given one pushed at once and no call searched or remembered until the gateway
 # was restarted, and a row edited to another model made every lookup refuse the bases pushed since.
+def box_embedder(vault: Vault, http: httpx.AsyncClient) -> FindEmbedder:
+    """The box's embedder, as the providers row names it at the moment it is asked for."""
+
+    async def find(session: AsyncSession) -> Embedder | None:
+        return await embedder_of(session, vault, http)
+
+    return find
+
+
 async def embedder_of(session: AsyncSession, vault: Vault, http: httpx.AsyncClient) -> Embedder | None:
     """The embedder the providers row names, on the box's key for its vendor; None when it names none."""
     catalog = await providers.get_catalog(session)

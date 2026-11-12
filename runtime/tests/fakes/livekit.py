@@ -5,10 +5,12 @@ import base64
 import hashlib
 import time
 from collections.abc import Mapping
-from typing import override
+from typing import Any, override
 
 import numpy as np
 from livekit import api, rtc
+from livekit.agents import AgentSession
+from livekit.agents.types import NOT_GIVEN, NotGivenOr
 from livekit.agents.voice.background_audio import (
     AudioConfig,
     AudioSource,
@@ -401,6 +403,20 @@ class Player(BackgroundAudioPlayer):
         super().__init__()
         self.played: list[tuple[str, bool]] = []
         self.handles: list[PlayHandle] = []
+
+    @override
+    async def start(
+        self,
+        *,
+        room: rtc.Room,
+        agent_session: NotGivenOr[AgentSession[Any]] = NOT_GIVEN,
+        track_publish_options: NotGivenOr[rtc.TrackPublishOptions] = NOT_GIVEN,
+    ) -> None:
+        """Publish nothing: the room is a test's."""
+
+    @override
+    async def aclose(self) -> None:
+        """Nothing was published to take back."""
 
     @override
     def play(self, audio: AudioSource | AudioConfig | list[AudioConfig], *, loop: bool = False) -> PlayHandle:

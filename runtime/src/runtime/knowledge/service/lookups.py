@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Protocol
 
-import httpx
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from runtime.actor import Scope
@@ -15,10 +14,9 @@ from runtime.agents.declaration import Declaration
 from runtime.billing import service as billing
 from runtime.enums import Channel
 from runtime.exceptions import ServiceUnavailable, UpstreamError
-from runtime.kit.crypto import Vault
 from runtime.kit.text import JsonObject
 from runtime.knowledge.service import memory, search
-from runtime.knowledge.service.embedder import Embedder, embedder_of
+from runtime.knowledge.service.embedder import Embedder, FindEmbedder
 from runtime.postgres import DatabaseError
 from runtime.wire.base import Entry
 from runtime.wire.events import DocsSources, ErrorEvent, MemoryOps
@@ -89,8 +87,7 @@ class _Tool:
 # edited, applies from the next turn, and no connection waits on the embedder.
 async def look_up(
     sessions: async_sessionmaker[AsyncSession],
-    vault: Vault,
-    http: httpx.AsyncClient,
+    find_embedder: FindEmbedder,
     call: LookupCall,
     request: LookupRequest,
 ) -> Answer:
@@ -100,7 +97,7 @@ async def look_up(
     try:
         async with sessions.begin() as session:
             quotas = await billing.get_quotas(session, call.scope.org, call.scope.env)
-            embedder = await embedder_of(session, vault, http) if tool.may_run(call, quotas) else None
+            embedder = await find_embedder(session) if tool.may_run(call, quotas) else None
         if embedder is None:
             return tool.nothing
         return await tool.run(sessions, embedder, call, request, started)

@@ -135,7 +135,9 @@ async def remember(live: LiveParts, closing: Closing, entries: list[Entry]) -> k
     budget = live.settings.remember_budget_s or REMEMBER_BUDGET_S
     try:
         async with asyncio.timeout(budget):
-            written = await knowledge.remember(live.sessions, live.vault, live.http, scope, declaration, heard)
+            written = await knowledge.remember(
+                live.sessions, live.vault, knowledge.box_embedder(live.vault, live.http), scope, declaration, heard
+            )
     except QuotaExceeded as refused:
         async with live.sessions.begin() as own:
             await live.alerting.credits_exhausted(own, scope, closing.agent, refused)

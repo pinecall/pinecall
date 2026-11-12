@@ -35,5 +35,5 @@ async def look_up(
         now=live.now,
     )
     asked = knowledge.LookupRequest(tool=tool, input=arguments, speech_id=speech)
-    answer = await knowledge.look_up(live.sessions, live.vault, live.http, call, asked)
+    answer = await knowledge.look_up(live.sessions, knowledge.box_embedder(live.vault, live.http), call, asked)
     return Found(answer.dump(), (time.perf_counter() - started) * 1000)

@@ -1,63 +1,88 @@
-"""The SIP rebuild: an org it cannot admit is refused alone, and only what is owed is tried again until whole."""
+"""The SIP rebuild: an org its LiveKit refuses is refused alone, and only what is owed is tried again until whole."""
 
-from typing import cast
+import os
+from collections.abc import AsyncIterator
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from runtime.enums import Channel, Env
 from runtime.kit.crypto import Vault
-from runtime.livekit import Servers
+from runtime.telephony.repository import RouteRepository, RouteToWrite
 from runtime.telephony.service import rebuild
-from runtime.telephony.service.carrier import SipNames
-from runtime.telephony.service.rebuild import NotWhole, Owed, Rebuilt
+from runtime.telephony.service.rebuild import NotWhole, Owed
+from tests.conftest import Tenant, make_tenant, needs_the_database
+from tests.fakes.livekit import Server, per_world
+from tests.telephony.conftest import NAMES, a_number
 
-NO_SESSION = cast(AsyncSession, None)
-NO_VAULT = cast(Vault, None)
-NO_SERVERS: Servers = {}
-NAMES = SipNames(domain="box.test", sip_domains={})
+pytestmark = needs_the_database
+
+VAULT = Vault(os.environ["PINECALL_VAULT_KEY"])
+
+
+async def routed(sessions: async_sessionmaker[AsyncSession], tenant: Tenant, env: Env) -> str:
+    """A phone number of the tenant's in the env, as the table keeps it; the number."""
+    number = a_number()
+    async with sessions.begin() as session:
+        await RouteRepository(session).put(
+            RouteToWrite(org=tenant.org, number=number, agent="agenda", channel=Channel.phone, env=env)
+        )
+    return number
+
+
+async def rebuilt(
+    sessions: async_sessionmaker[AsyncSession], servers: dict[Env, Server], owed: Owed
+) -> rebuild.Rebuilt:
+    """One pass of the rebuild over what is owed, in one transaction as the loop runs it."""
+    async with sessions.begin() as session:
+        return await rebuild.rebuild(session, VAULT, servers, NAMES, owed)
+
+
+def admitted(server: Server, number: str) -> bool:
+    """Whether a trunk of that LiveKit admits the number."""
+    return any(number in trunk.numbers for trunk in server.dialled.trunks.values())
 
 
 @pytest.fixture
-def asked(monkeypatch: pytest.MonkeyPatch) -> list[str]:
-    """The orgs a pass readmits, in order; org_a's numbers raise, the others' stand two each."""
-    readmitted: list[str] = []
-
-    async def orgs(_session: AsyncSession) -> list[str]:
-        return ["org_a", "org_b", "org_c"]
-
-    async def readmit(_session: AsyncSession, _vault: Vault, _servers: Servers, org: str) -> int:
-        readmitted.append(org)
-        if org == "org_a":
-            raise ValueError("1 validation error for CarrierAccount")
-        return 2
-
-    async def hand_overs(*_: object) -> bool:
-        raise RuntimeError("the sandbox's SFU said nothing sensible")
-
-    monkeypatch.setattr(rebuild, "list_orgs_with_phones", orgs)
-    monkeypatch.setattr(rebuild, "readmit", readmit)
-    monkeypatch.setattr(rebuild.hand_over, "admit_hand_overs", hand_overs)
-    return readmitted
+async def servers() -> AsyncIterator[dict[Env, Server]]:
+    """Each env's own LiveKit, empty, as after Redis was emptied; closed after."""
+    opened = per_world()
+    yield opened
+    for server in opened.values():
+        await server.aclose()
 
 
 # An org whose numbers raised anything but an SFU error ended the rebuild, and every org after it went
 # unadmitted; the retry that waits for the SFU caught four classes and ended on any other.
-async def test_an_org_whose_numbers_cannot_be_admitted_is_refused_alone(asked: list[str]) -> None:
-    rebuilt = await rebuild.rebuild(NO_SESSION, NO_VAULT, NO_SERVERS, NAMES, Owed())
-    assert rebuilt == Rebuilt(numbers=4, refused=["org_a"], hand_over=False)
-    assert asked == ["org_a", "org_b", "org_c"]
+async def test_an_org_its_livekit_refuses_is_refused_alone_and_the_next_is_admitted(
+    sessions: async_sessionmaker[AsyncSession], servers: dict[Env, Server]
+) -> None:
+    starting, answering = await make_tenant(sessions), await make_tenant(sessions)
+    refused = await routed(sessions, starting, Env.sandbox)
+    number = await routed(sessions, answering, Env.production)
+    # The sandbox's LiveKit is still starting: the first thing asked of it is refused.
+    servers[Env.sandbox].dialled.starting = 1
+    passed = await rebuilt(sessions, servers, Owed(orgs=[starting.org, answering.org]))
+    assert (passed.numbers, passed.refused) == (1, [starting.org])
+    assert admitted(servers[Env.production], number)
+    assert not admitted(servers[Env.sandbox], refused)
 
 
 # Until 2026-11 a pass that left one org refused rebuilt every org of the box again, once a minute.
-async def test_a_pass_that_left_an_org_refused_owes_that_org_alone_until_it_stands(asked: list[str]) -> None:
-    owed = Owed()
+async def test_a_pass_that_left_an_org_refused_owes_that_org_alone_until_it_stands(
+    sessions: async_sessionmaker[AsyncSession], servers: dict[Env, Server]
+) -> None:
+    starting, answering = await make_tenant(sessions), await make_tenant(sessions)
+    number = await routed(sessions, starting, Env.sandbox)
+    await routed(sessions, answering, Env.production)
+    owed = Owed(orgs=[starting.org, answering.org])
     assert not owed.nothing
+    servers[Env.sandbox].dialled.starting = 1
     with pytest.raises(NotWhole):
-        owed.settle(await rebuild.rebuild(NO_SESSION, NO_VAULT, NO_SERVERS, NAMES, owed))
-    assert owed.orgs == ["org_a"]
-    asked.clear()
-    with pytest.raises(NotWhole):
-        owed.settle(await rebuild.rebuild(NO_SESSION, NO_VAULT, NO_SERVERS, NAMES, owed))
-    assert asked == ["org_a"]
-    owed.settle(Rebuilt(numbers=2, refused=[]))
+        owed.settle(await rebuilt(sessions, servers, owed))
+    assert owed.orgs == [starting.org]
+    again = await rebuilt(sessions, servers, owed)
+    assert (again.numbers, again.refused) == (1, [])
+    owed.settle(again)
     assert owed.nothing
+    assert admitted(servers[Env.sandbox], number)

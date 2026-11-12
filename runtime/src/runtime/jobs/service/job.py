@@ -10,6 +10,7 @@ from pathlib import Path
 
 from livekit import api, rtc
 from livekit.agents import JobContext, llm
+from livekit.agents.voice.background_audio import BackgroundAudioPlayer
 
 from runtime.agents.declaration import Declaration, Greeting, Idle
 from runtime.calls.projection import Audience, project_entry, project_state
@@ -274,7 +275,7 @@ async def set_up_spoken(
     call = session.Call(context, declaration, link, audio, _history_of(link))
     room = _room_of(ctx, call, link)
     clip = await find_hold_clip(warmed.gateway, route.agent, arrived.scope, held)
-    melody = None if clip is None else session.HoldMusic(clip, ctx.room, held.after_s)
+    melody = None if clip is None else session.HoldMusic(clip, ctx.room, BackgroundAudioPlayer(), held.after_s)
     place = session.Place(room, melody, await _seat_of(ctx.room, route.channel))
     running = session.open_spoken(
         call,

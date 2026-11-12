@@ -23,12 +23,15 @@ FADE_OUT_S = 0.3
 class HoldMusic:
     """The melody played while a tool runs or the line is held, shared by what overlaps."""
 
-    def __init__(self, clip: Path, room: rtc.Room, after_s: float | None = None) -> None:
+    # The player is the job's to make (livekit's), so a melody is built on whatever plays it.
+    def __init__(self, clip: Path, room: rtc.Room, player: BackgroundAudioPlayer, after_s: float | None = None) -> None:
         """A melody for the call's room, not yet published, that starts after that many seconds of quiet."""
         self.clip = clip
         self.room = room
         self.after_s = after_s
-        self.player: BackgroundAudioPlayer | None = None
+        self.player = player
+        # Whether its track is in the room: a player that did not start plays nothing.
+        self.publishing = False
         self.handle: PlayHandle | None = None
         self.running = 0
         self.pending: asyncio.Task[None] | None = None
@@ -43,13 +46,12 @@ class HoldMusic:
     # player that does not start leaves the call without a melody, and nothing else.
     async def start(self) -> None:
         """Publish the melody's track in the room."""
-        player = BackgroundAudioPlayer()
         try:
-            await player.start(room=self.room)  # pyright: ignore[reportUnknownMemberType]
+            await self.player.start(room=self.room)  # pyright: ignore[reportUnknownMemberType]
         except (RuntimeError, ConnectionError):
             logger.warning("the hold melody did not start: the call goes on without it", exc_info=True)
             return
-        self.player = player
+        self.publishing = True
 
     def floor(self, *, speaking: bool) -> None:
         """Whether the agent is speaking, as the session says."""
@@ -61,7 +63,7 @@ class HoldMusic:
     def begin(self) -> None:
         """One more reason to play; the first starts the melody after the grace."""
         self.running += 1
-        if self.running == 1 and self.player is not None:
+        if self.running == 1 and self.publishing:
             self.pending = asyncio.create_task(self._play_after_the_grace())
 
     def end(self) -> None:
@@ -81,16 +83,16 @@ class HoldMusic:
     async def aclose(self) -> None:
         """Stop and close the player."""
         self._stop()
-        player, self.player = self.player, None
-        if player is not None:
-            await player.aclose()
+        if self.publishing:
+            self.publishing = False
+            await self.player.aclose()
 
     # The tool starts while its announcement still plays, so the grace counts from when the agent
     # is quiet; checked again after it, since livekit may speak another round's preamble.
     async def _play_after_the_grace(self) -> None:
         await self.quiet.wait()
         await asyncio.sleep(GRACE_S if self.after_s is None else self.after_s)
-        if self.running == 0 or not self.quiet.is_set() or self.player is None:
+        if self.running == 0 or not self.quiet.is_set() or not self.publishing:
             return
         melody = AudioConfig(str(self.clip), volume=VOLUME, fade_in=FADE_IN_S, fade_out=FADE_OUT_S)
         self.handle = self.player.play(melody, loop=True)

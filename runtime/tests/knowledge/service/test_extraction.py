@@ -4,7 +4,6 @@ import os
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
-import httpx
 import pytest
 from livekit.agents import llm
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -259,22 +258,14 @@ def test_the_agents_language_stands_in_only_where_the_callers_lines_tell_nothing
 VAULT = Vault(os.environ["PINECALL_VAULT_KEY"])
 
 
-# The providers row names the embedder a hang-up reads each time; it is the box's, shared by every
-# test, so the test hands its own in its place. The agent's model is told its script through its
-# options, which run on the org's own key alone: the org is given one.
+# The agent's model is told its script through its options, which run on the org's own key alone: the
+# org is given one.
 @pytest.fixture
-async def remembering(
-    sessions: async_sessionmaker[AsyncSession], embedder: Embedder, scope: Scope, monkeypatch: pytest.MonkeyPatch
-) -> Embedder:
-    """The scope's org on its own acme key, and the embedder a hang-up finds in the providers row."""
-
-    async def embedder_of(*_: object) -> Embedder:
-        return embedder
-
-    monkeypatch.setattr(extraction, "embedder_of", embedder_of)
+async def on_its_own_key(sessions: async_sessionmaker[AsyncSession], scope: Scope) -> Scope:
+    """The scope, its org holding its own acme key."""
     async with sessions.begin() as session:
         await credentials.put_own_credentials(session, VAULT, scope.org, ACME, "the-orgs-own-key")
-    return embedder
+    return scope
 
 
 async def taught(
@@ -287,13 +278,19 @@ async def taught(
         return await memory.apply_ops(session, scope, written, embedded, model=embedder.model)
 
 
+# The box's embedder is the providers row's, which every test of the run shares: the hang-up is handed
+# the test's, as the call's host hands the box's.
 async def remembered(
-    sessions: async_sessionmaker[AsyncSession], scope: Scope, answer: str, call: Heard
+    sessions: async_sessionmaker[AsyncSession], embedder: Embedder, scope: Scope, answer: str, call: Heard
 ) -> extraction.MemoryWrite:
     """The hang-up's extraction, as the worker runs it, the agent's model answering this."""
     thinking = Model(ACME, MODEL, options={"replies": [[answer]]})
-    async with httpx.AsyncClient() as http:
-        done = await extraction.remember(sessions, VAULT, http, scope, Declaration(slug="agenda", llm=thinking), call)
+
+    async def found(_session: AsyncSession) -> Embedder:
+        return embedder
+
+    declaration = Declaration(slug="agenda", llm=thinking)
+    done = await extraction.remember(sessions, VAULT, found, scope, declaration, call)
     assert done is not None
     return done
 
@@ -306,13 +303,13 @@ async def history_of(sessions: async_sessionmaker[AsyncSession], scope: Scope) -
 
 @needs_the_database
 async def test_remember_adds_supersedes_and_invalidates_as_the_model_asked(
-    sessions: async_sessionmaker[AsyncSession], remembering: Embedder, scope: Scope, models: list[AcmeLLM]
+    sessions: async_sessionmaker[AsyncSession], embedder: Embedder, on_its_own_key: Scope, models: list[AcmeLLM]
 ) -> None:
     """One add, one update of a known fact, one invalidate: history keeps both ends, at the hang-up."""
     morning, pocitos = await taught(
         sessions,
-        remembering,
-        scope,
+        embedder,
+        on_its_own_key,
         Op(op="add", text="prefiere turnos por la mañana", category="preference"),
         Op(op="add", text="vive en Pocitos", category="address"),
     )
@@ -322,13 +319,13 @@ async def test_remember_adds_supersedes_and_invalidates_as_the_model_asked(
         f' {{"op": "invalidate", "of": "{pocitos.id}"}}]'
     )
     call = heard(Spoken("user", "me mudé, y ahora prefiero la tarde"), Spoken("agent", "anotado"))
-    done = await remembered(sessions, scope, answer, call)
+    done = await remembered(sessions, embedder, on_its_own_key, answer, call)
     assert (done.op.op, done.op.contact) == ("remember", CONTACT)
     assert [(fact.text, fact.category, fact.source) for fact in done.op.facts] == [
         ("es alérgico a la penicilina", "health", "call_1"),
         ("prefiere turnos por la tarde", "preference", "call_1"),
     ]
-    history = await history_of(sessions, scope)
+    history = await history_of(sessions, on_its_own_key)
     assert {fact.text for fact in history if fact.invalidated_at is None} == {
         "es alérgico a la penicilina",
         "prefiere turnos por la tarde",
@@ -342,12 +339,15 @@ async def test_remember_adds_supersedes_and_invalidates_as_the_model_asked(
 
 @needs_the_database
 async def test_a_fact_written_carries_its_embedding_model_and_the_tokens_come_back(
-    sessions: async_sessionmaker[AsyncSession], remembering: Embedder, scope: Scope, models: list[AcmeLLM]
+    sessions: async_sessionmaker[AsyncSession], embedder: Embedder, on_its_own_key: Scope, models: list[AcmeLLM]
 ) -> None:
     """The model asked once; its tokens are priced by the caller; the fact names what embedded it."""
-    del remembering
     done = await remembered(
-        sessions, scope, '[{"op": "add", "text": "prefiere la mañana", "category": "preference"}]', heard()
+        sessions,
+        embedder,
+        on_its_own_key,
+        '[{"op": "add", "text": "prefiere la mañana", "category": "preference"}]',
+        heard(),
     )
     assert done.usage is not None
     assert (done.usage.model, done.usage.input_tokens, done.usage.output_tokens) == (
@@ -355,26 +355,25 @@ async def test_a_fact_written_carries_its_embedding_model_and_the_tokens_come_ba
         PROMPT_TOKENS,
         COMPLETION_TOKENS,
     )
-    assert [fact.model for fact in await history_of(sessions, scope)] == [FLAT.model]
+    assert [fact.model for fact in await history_of(sessions, on_its_own_key)] == [FLAT.model]
     assert len(models) == 1
 
 
 @needs_the_database
 async def test_a_fact_is_written_under_the_policys_category_as_written_or_under_other(
-    sessions: async_sessionmaker[AsyncSession], remembering: Embedder, scope: Scope
+    sessions: async_sessionmaker[AsyncSession], embedder: Embedder, on_its_own_key: Scope
 ) -> None:
     """The model's `Health ` is the policy's `health`; a word the policy does not have is `other`."""
-    del remembering
     answer = (
         '[{"op": "add", "text": "Allergic to penicillin.", "category": "Health "},'
         ' {"op": "add", "text": "Prefers mornings.", "category": "time of day"}]'
     )
-    done = await remembered(sessions, scope, answer, heard(language="en"))
+    done = await remembered(sessions, embedder, on_its_own_key, answer, heard(language="en"))
     assert [(fact.text, fact.category) for fact in done.op.facts] == [
         ("Allergic to penicillin.", "health"),
         ("Prefers mornings.", "other"),
     ]
-    assert {(fact.text, fact.category) for fact in await history_of(sessions, scope)} == {
+    assert {(fact.text, fact.category) for fact in await history_of(sessions, on_its_own_key)} == {
         ("Allergic to penicillin.", "health"),
         ("Prefers mornings.", "other"),
     }
@@ -382,48 +381,46 @@ async def test_a_fact_is_written_under_the_policys_category_as_written_or_under_
 
 @needs_the_database
 async def test_a_forget_category_never_reaches_the_table_and_a_fence_is_forgiven(
-    sessions: async_sessionmaker[AsyncSession], remembering: Embedder, scope: Scope
+    sessions: async_sessionmaker[AsyncSession], embedder: Embedder, on_its_own_key: Scope
 ) -> None:
     """Only the kept category is written."""
-    del remembering
     answer = (
         '```json\n[{"op": "add", "text": "es católico", "category": "religion"},'
         ' {"op": "add", "text": "prefiere que le hablen de usted", "category": "preference"}]\n```'
     )
-    done = await remembered(sessions, scope, answer, heard())
+    done = await remembered(sessions, embedder, on_its_own_key, answer, heard())
     assert [fact.text for fact in done.op.facts] == ["prefiere que le hablen de usted"]
-    assert [fact.text for fact in await history_of(sessions, scope)] == ["prefiere que le hablen de usted"]
+    assert [fact.text for fact in await history_of(sessions, on_its_own_key)] == ["prefiere que le hablen de usted"]
 
 
 @needs_the_database
 async def test_a_tenant_that_named_nothing_to_remember_asks_no_model_and_embeds_nothing(
     sessions: async_sessionmaker[AsyncSession],
-    remembering: Embedder,
+    embedder: Embedder,
     vendor: Embeddings,
-    scope: Scope,
+    on_its_own_key: Scope,
     models: list[AcmeLLM],
 ) -> None:
     """An empty policy costs nothing."""
-    del remembering
     call = heard(Spoken("user", "soy alérgico a la penicilina"), policy=MemoryPolicy())
-    done = await remembered(sessions, scope, CLEAN, call)
+    done = await remembered(sessions, embedder, on_its_own_key, CLEAN, call)
     assert (done.op.facts, models, vendor.requests) == ([], [], [])
-    assert list(await history_of(sessions, scope)) == []
+    assert list(await history_of(sessions, on_its_own_key)) == []
 
 
 @needs_the_database
 async def test_garbage_or_an_update_of_an_ended_fact_writes_nothing_and_raises_nothing(
-    sessions: async_sessionmaker[AsyncSession], remembering: Embedder, scope: Scope
+    sessions: async_sessionmaker[AsyncSession], embedder: Embedder, on_its_own_key: Scope
 ) -> None:
     """A model that answers prose, or names a fact that already ended, leaves memory as it was."""
     (ended,) = await taught(
-        sessions, remembering, scope, Op(op="add", text="prefiere la mañana", category="preference")
+        sessions, embedder, on_its_own_key, Op(op="add", text="prefiere la mañana", category="preference")
     )
-    await taught(sessions, remembering, scope, Op(op="invalidate", of=str(ended.id)))
-    assert (await remembered(sessions, scope, GARBAGE, heard())).op.facts == []
+    await taught(sessions, embedder, on_its_own_key, Op(op="invalidate", of=str(ended.id)))
+    assert (await remembered(sessions, embedder, on_its_own_key, GARBAGE, heard())).op.facts == []
     update = f'[{{"op": "update", "of": "{ended.id}", "text": "prefiere la tarde"}}]'
-    assert (await remembered(sessions, scope, update, heard())).op.facts == []
-    assert [fact.text for fact in await history_of(sessions, scope)] == ["prefiere la mañana"]
+    assert (await remembered(sessions, embedder, on_its_own_key, update, heard())).op.facts == []
+    assert [fact.text for fact in await history_of(sessions, on_its_own_key)] == ["prefiere la mañana"]
 
 
 # ── what a hang-up reads ──

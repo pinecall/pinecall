@@ -390,9 +390,12 @@ def _last_said(chat_ctx: ChatContext) -> str:
     return ""
 
 
-def install() -> None:
-    """Put `livekit.plugins.acme` where the runtime looks for vendors, as an installed plugin is."""
-    module = types.ModuleType(f"{plugins.PLUGINS}.{ACME}")
+# A test whose vendor's box key must be its own (the box's keys are every test's) installs acme
+# again under a name of its own.
+def install(name: str = ACME) -> str:
+    """Put `livekit.plugins.<name>` where the runtime looks for vendors, as an installed plugin is; the name."""
+    module = types.ModuleType(f"{plugins.PLUGINS}.{name}")
     vars(module).update(LLM=AcmeLLM, STT=AcmeSTT, TTS=AcmeTTS, OtherSTT=AcmeSTT, StreamedTTS=AcmeStreamedTTS)
     sys.modules[module.__name__] = module
-    plugins.list_vendors()[ACME] = plugins.Vendor(ACME, frozenset(Stage))
+    plugins.list_vendors()[name] = plugins.Vendor(name, frozenset(Stage))
+    return name
