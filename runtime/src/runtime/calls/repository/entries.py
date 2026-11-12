@@ -80,6 +80,19 @@ class EntryRepository(Repository[CallLog]):
         rows = (await self.session.execute(statement)).all()
         return [Positioned(int(row.position), row.org, entry_of(row), row.opened_by) for row in rows]
 
+    # One row off the log's key, newest first: what a recording's endpoint asks on every range a
+    # player seeks to. Until 2026-11 it read the whole log, and folded it, for this one entry.
+    async def find_newest(self, log: str, kind: str) -> Entry | None:
+        """The log's newest entry of a type, or None when it holds none."""
+        statement = (
+            select(*(getattr(CallLog, name) for name in COLUMNS))
+            .where(CallLog.log == log, CallLog.type == kind)
+            .order_by(CallLog.seq.desc())
+            .limit(1)
+        )
+        row = (await self.session.execute(statement)).one_or_none()
+        return None if row is None else entry_of(row)
+
     async def find_of_tool(self, log: str, kind: ToolEntry, call_id: str) -> Entry | None:
         """The `tool.call` or the `tool.result` entry the log holds for this tool call id, or None."""
         statement = (

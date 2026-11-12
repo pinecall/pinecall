@@ -1,5 +1,6 @@
 """An agent's settings per env and scope: read, written, their history, a diff, a rollback, and the canary."""
 
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Query
@@ -8,6 +9,7 @@ from runtime.agents import schemas
 from runtime.agents.auth import KnownAgent, PipelineKey, WordsKey
 from runtime.agents.service import canaries, settings
 from runtime.agents.service.versions import Written
+from runtime.calls.auth import TheOrgsCall
 from runtime.handles import TheSessions, TheVault
 from runtime.postgres import Session
 
@@ -98,3 +100,12 @@ async def clear_canary(
     """The scope's canary cleared: one version for every call."""
     shown = await canaries.clear_canary(session, actor.scope, slug, author=actor.name, team=query.team)
     return schemas.CanaryResponse.of(shown)
+
+
+# By the versions the call's head row kept, never the current ones.
+@router.get("/v1/calls/{call}/settings", response_model_exclude_unset=True)
+async def get_call_settings(call: TheOrgsCall, session: Session) -> schemas.CallSettingsResponse:
+    """The exact settings and lexicon a call was built on."""
+    opened_at = None if call.started_at is None else datetime.fromtimestamp(call.started_at, UTC)
+    ran = await settings.settings_of_call(session, call.scope, call.agent, call.versions, opened_at)
+    return schemas.CallSettingsResponse.of(ran)

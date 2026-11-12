@@ -212,6 +212,13 @@ class PromoteCaseRequest(Schema):
     held_out: bool = False
 
 
+class GoldenQuery(Schema):
+    """What a call read as a golden is named, and the seq it is cut at."""
+
+    name: str | None = Field(default=None, min_length=1)
+    from_seq: int = Field(default=0, ge=0)
+
+
 class WriteCaseRequest(Schema):
     """PUT /v1/agents/{slug}/cases/{name}, the body: the golden a person wrote, held out or not."""
 

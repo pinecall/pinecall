@@ -1,8 +1,10 @@
 """What a call is: its id, direction, who is calling, the route it came in by, its day, and the name its log goes by."""
 
+import dataclasses
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date
+from typing import Any
 from uuid import uuid4
 
 from runtime.enums import Channel, Direction, Env
@@ -114,3 +116,64 @@ class CallContext:
         if self.contact is not None and self.contact.id:
             return self.contact.id
         return self.caller if self.channel.has_a_number else None
+
+
+# ── as it is kept ──
+
+
+# A call's context is kept when it opens (`call_openings.context`) and read back by whichever gateway
+# serves the call again, of this release or of the one that runs beside it: the keys and the values
+# are the ones the release before 2026-11 wrote, a day as its ISO date, every field present.
+def dump_context(context: CallContext) -> dict[str, Any]:
+    """The context as it is kept: JSON values under its fields' own names."""
+    return {
+        **dataclasses.asdict(context),
+        "channel": context.channel.value,
+        "direction": context.direction.value,
+        "route": {
+            **dataclasses.asdict(context.route),
+            "channel": context.route.channel.value,
+            "env": context.route.env.value,
+        },
+        "today": context.today.isoformat(),
+        "pinned_day": None if context.pinned_day is None else context.pinned_day.isoformat(),
+        "metadata": dict(context.metadata),
+        "expects": list(context.expects),
+        "state": dict(context.state),
+    }
+
+
+# A field the row holds and this release does not know is left out, not refused: while two releases
+# run side by side, each reads the openings the other kept.
+def read_context(kept: Mapping[str, Any]) -> CallContext:
+    """The context a kept opening says."""
+    route: Mapping[str, Any] = kept["route"]
+    contact: Mapping[str, Any] | None = kept.get("contact")
+    pinned: str | None = kept.get("pinned_day")
+    return CallContext(
+        call=kept["call"],
+        channel=Channel(kept["channel"]),
+        direction=Direction(kept["direction"]),
+        caller=kept["caller"],
+        route=Route(
+            org=route["org"],
+            agent=route["agent"],
+            channel=Channel(route["channel"]),
+            number=route.get("number"),
+            label=route.get("label"),
+            env=Env(route.get("env", Env.production)),
+            managed=bool(route.get("managed", False)),
+        ),
+        today=date.fromisoformat(kept["today"]),
+        pinned_day=None if pinned is None else date.fromisoformat(pinned),
+        contact=None
+        if contact is None
+        else Contact(**{one.name: contact.get(one.name) for one in dataclasses.fields(Contact)}),
+        metadata=dict(kept.get("metadata") or {}),
+        run=kept.get("run"),
+        persona=kept.get("persona"),
+        expects=tuple(kept.get("expects") or ()),
+        holder=kept.get("holder"),
+        state=dict(kept.get("state") or {}),
+        continues=kept.get("continues"),
+    )

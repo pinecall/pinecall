@@ -3,6 +3,7 @@
 from runtime.billing.service.admission import give_first_quotas
 from runtime.billing.service.limits import admit_evals, admit_memory, admit_number, admit_push, admit_seat
 from runtime.billing.service.quotas import Quotas, get_quotas, hold_stock
+from runtime.billing.service.usage import sum_spent
 
 __all__ = [
     "Quotas",
@@ -14,4 +15,5 @@ __all__ = [
     "get_quotas",
     "give_first_quotas",
     "hold_stock",
+    "sum_spent",
 ]

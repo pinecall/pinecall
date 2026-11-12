@@ -2,10 +2,10 @@
 
 from typing import Annotated
 
-from pydantic import BeforeValidator, Field
+from pydantic import AliasPath, BeforeValidator, Field
 
 from runtime.enums import Channel
-from runtime.kit.schemas import Epoch, Row
+from runtime.kit.schemas import Epoch, Row, Schema
 from runtime.wire.base import WireModel
 from runtime.wire.declaration import KnowledgeFile
 
@@ -171,6 +171,45 @@ class ContactMemory(Row):
     """GET /v1/contacts/{contact}/memory: every fact ever kept of the contact, current first."""
 
     facts: list[ContactFact]
+
+
+class MemoryPage(Schema):
+    """A page of current facts: after which cursor, the words to look for, and how many."""
+
+    after: str | None = None
+    q: str | None = Field(default=None, max_length=200)
+    limit: int = Field(default=50, ge=1, le=200)
+
+
+# Read off a fact and the agent whose call taught it (`memory.TaughtFact`).
+class AgentFact(Row):
+    """One current fact, among the contacts an agent's calls taught."""
+
+    id: Annotated[str, BeforeValidator(str)] = Field(validation_alias=AliasPath("fact", "id"))
+    contact: str = Field(validation_alias=AliasPath("fact", "contact"))
+    text: str = Field(validation_alias=AliasPath("fact", "text"))
+    category: str | None = Field(validation_alias=AliasPath("fact", "category"))
+    written_at: Epoch = Field(validation_alias=AliasPath("fact", "valid_from"))
+
+
+class AgentMemory(Row):
+    """GET /v1/agents/{slug}/memory: the facts the agent's calls taught, newest first, a page."""
+
+    facts: list[AgentFact]
+    next: str | None
+
+
+class OrgFact(AgentFact):
+    """One current fact of the org, with the agent whose call taught it."""
+
+    agent: str
+
+
+class OrgMemory(Row):
+    """GET /v1/memory: the org's current facts from every agent, newest first, a page."""
+
+    facts: list[OrgFact]
+    next: str | None = None
 
 
 class Forgotten(Row):

@@ -4,6 +4,7 @@ import asyncio
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import AsyncExitStack, asynccontextmanager
+from pathlib import Path
 from typing import TypedDict
 
 import httpx
@@ -17,6 +18,8 @@ from runtime.calls.log.logs import Logs
 from runtime.calls.log.relay import Relay
 from runtime.calls.log.store import Store
 from runtime.calls.log.writer import LANES, Writer
+from runtime.calls.recordings import Bucket, Disk, Recordings
+from runtime.calls.service.prompts import Prompts
 from runtime.config import Settings, load_settings
 from runtime.enums import Env
 from runtime.exceptions import PinecallError
@@ -26,6 +29,7 @@ from runtime.fleet.service.roster import Roster
 from runtime.handles import Handles
 from runtime.kit.crypto import Vault
 from runtime.kit.loops import Loops
+from runtime.kit.s3 import Credentials, ObjectStore
 from runtime.knowledge.service.extraction_golden import EXTRACTION_RUNS_A_MINUTE
 from runtime.livekit import open_servers
 from runtime.mail.service.mailboxes import Mailbox, read_environment_mailbox
@@ -81,6 +85,10 @@ class State(TypedDict):
     relay: Relay
     feeds: Feeds
     logs: Logs
+    # Whose an agent is, is whose its own log is: the store answers agents', judging's and alerts' `Owners`.
+    agent_owners: Store
+    recordings: Recordings
+    prompts: Prompts
 
 
 # Everything opened goes on the stack: a failed start closes what opened, a stop closes it all.
@@ -126,6 +134,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[State]:
             relay=relay,
             feeds=feeds,
             logs=logs,
+            agent_owners=log_store,
+            recordings=_recordings(handles),
+            prompts=Prompts(),
         )
 
 
@@ -144,6 +155,21 @@ def _log_engine(handles: Handles, stack: AsyncExitStack) -> tuple[Writer, Store,
     stack.push_async_callback(relay.close)
     feeds = Feeds(relay, store)
     return writer, store, relay, feeds, Logs(store, relay, feeds)
+
+
+# Built once, from the settings: until 2026-11 each request of a recording built it again. A bucket
+# named with no store beside it never starts (`Settings` refuses it), so one named here has all four.
+def _recordings(handles: Handles) -> Recordings:
+    """Where the box keeps its calls' audio: the bucket PINECALL_RECORDINGS_BUCKET names, else the disk."""
+    settings = handles.settings
+    root = Path(settings.recordings_root)
+    secret = settings.s3_secret_access_key
+    named = (settings.recordings_bucket, settings.s3_endpoint, settings.s3_region, settings.s3_access_key_id)
+    bucket, endpoint, region, key_id = named
+    if bucket is None or endpoint is None or region is None or key_id is None or secret is None:
+        return Disk(root)
+    credentials = Credentials(region, key_id, secret.get_secret_value())
+    return Bucket(root, bucket, ObjectStore(endpoint, credentials, handles.http))
 
 
 # The roster hears the other gateways' workers before the first request; the dispatcher offers on it.

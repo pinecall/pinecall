@@ -1,7 +1,7 @@
 """The accounts' rules, one module per noun; what another domain uses is named here, and nothing else."""
 
 from runtime.accounts.repository.members import Membership
-from runtime.accounts.service.actor import check_agent, check_may_grant
+from runtime.accounts.service.actor import check_agent, check_may_grant, sees_every_copy
 from runtime.accounts.service.emails import card_link
 from runtime.accounts.service.invitations import Invitee, invite, reset_link, seat_founder
 from runtime.accounts.service.key_cache import KeyCache
@@ -10,6 +10,7 @@ from runtime.accounts.service.members import (
     find_member_by_test_phone,
     find_membership,
     list_admin_addresses,
+    list_members,
     seat_vouched,
     take_seat,
 )
@@ -59,6 +60,7 @@ __all__ = [
     "issue_person_key",
     "judge_model_of",
     "list_admin_addresses",
+    "list_members",
     "list_newborns",
     "list_operator_addresses",
     "list_orgs",
@@ -68,6 +70,7 @@ __all__ = [
     "reset_link",
     "seat_founder",
     "seat_vouched",
+    "sees_every_copy",
     "set_judge_model",
     "set_judging",
     "slug_of",

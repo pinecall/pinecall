@@ -3,6 +3,8 @@
 from collections.abc import AsyncGenerator, Awaitable, Callable, Sequence
 from typing import overload
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from runtime.agents.declaration import Declaration
 from runtime.calls.context import log_name
 from runtime.calls.folds.state import apply, initial_state
@@ -11,6 +13,8 @@ from runtime.calls.log.private import NoPrivacy, Privacy
 from runtime.calls.log.relay import Relay, log_channel
 from runtime.calls.log.store import Store
 from runtime.calls.log.writer import Guarded, Sure, Unnumbered
+from runtime.calls.repository.entries import EntryRepository
+from runtime.calls.repository.heads import HeadRepository
 from runtime.exceptions import ValidationError
 from runtime.kit.crypto import Vault
 from runtime.kit.text import JsonObject
@@ -221,12 +225,23 @@ class Log:
     # Compared against the store's seq, ephemerals counted, or a live call never hits the memo. A
     # log that moved is folded on from where the memo stands, on a copy: whoever holds the state
     # handed out before keeps it as it was. Until 2026-11 it was folded again from its first entry.
-    async def snapshot(self) -> State:
-        """The state the log reduces to, folded on only when the log moved."""
-        latest = await self._store.seq_of(self.name)
+    #
+    # A request that holds a session hands it in and the log is read on it: asked of the store, the
+    # same request held a second connection of a pool that does not grow, and as many requests as the
+    # pool has connections each waited for one the others held (503 for all of them, at 2 s).
+    async def snapshot(self, session: AsyncSession | None = None) -> State:
+        """The state the log reduces to, folded on only when the log moved; read on the session given, when one is."""
+        if session is None:
+            latest = await self._store.seq_of(self.name)
+        else:
+            latest = await HeadRepository(session).seq_of(self.name)
         if self._snapshot is None or self._snapshot[0] != latest:
             state = initial_state() if self._snapshot is None else self._snapshot[1].model_copy(deep=True)
-            for entry in await self._store.whole_of(self.name, after=state.seq):
+            if session is None:
+                moved = await self._store.whole_of(self.name, after=state.seq)
+            else:
+                moved = await EntryRepository(session).whole_of(self.name, after=state.seq)
+            for entry in moved:
                 state = apply(state, entry)
             self._snapshot = latest, state
         return self._snapshot[1]

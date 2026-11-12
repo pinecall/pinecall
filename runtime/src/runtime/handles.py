@@ -1,5 +1,6 @@
 """One process's handles: what the lifespan builds once, and the getter each one is asked for by."""
 
+import asyncio
 from dataclasses import dataclass
 from typing import Annotated
 
@@ -63,9 +64,17 @@ def sessions_of(connection: HTTPConnection) -> async_sessionmaker[AsyncSession]:
     return handles_of(connection).sessions
 
 
+# Streams never end on their own: each is told when the process stops (`app.announce_closing`).
+def closing_of(connection: HTTPConnection) -> asyncio.Event:
+    """What is set when the process is told to stop."""
+    closing: asyncio.Event = connection.state.closing
+    return closing
+
+
 TheSettings = Annotated[Settings, Depends(settings_of)]
 TheVault = Annotated[Vault, Depends(vault_of)]
 TheHttp = Annotated[httpx.AsyncClient, Depends(http_of)]
 TheServers = Annotated[Servers, Depends(servers_of)]
 TheSignal = Annotated[Signal, Depends(signal_of)]
 TheSessions = Annotated[async_sessionmaker[AsyncSession], Depends(sessions_of)]
+TheClosing = Annotated[asyncio.Event, Depends(closing_of)]

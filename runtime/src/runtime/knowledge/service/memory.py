@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Protocol
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -14,7 +14,7 @@ from runtime.actor import Scope
 from runtime.billing import service as billing
 from runtime.compliance import service as compliance
 from runtime.enums import Env, ReadKind
-from runtime.exceptions import NotFound
+from runtime.exceptions import NotFound, ValidationError
 from runtime.kit.time import A_DAY_S, now
 from runtime.knowledge.models import ContactMemory
 from runtime.knowledge.repository import FactFound, Hit, MemoryRepository
@@ -135,6 +135,63 @@ async def read_history(session: AsyncSession, scope: Scope, contact: str, *, by:
     """Every fact ever kept of the contact in the scope, current first, newest first; the read is written down."""
     await compliance.record_read(session, scope, contact, ReadKind.memory, by=by)
     return await MemoryRepository(session).list_history(scope, contact)
+
+
+# ── the facts calls taught, a page at a time ──
+
+
+# Which agent taught a fact is said by the head of the call that taught it, and the heads are
+# `calls`', above this domain: the endpoint asks them for the rows, and the page is cut here.
+class TaughtFact(Protocol):
+    """A current fact, and the agent whose call taught it."""
+
+    @property
+    def fact(self) -> ContactMemory:
+        """The fact as memory keeps it."""
+        ...
+
+    @property
+    def agent(self) -> str:
+        """The agent whose call taught it."""
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class TaughtPage:
+    """A page of facts with who taught each, newest first, and the cursor of the next."""
+
+    facts: Sequence[TaughtFact]
+    next: str | None
+
+
+# Asked for with one row more than it shows: the row past the limit says another page follows.
+def page_taught(rows: Sequence[TaughtFact], limit: int) -> TaughtPage:
+    """The page out of `limit + 1` rows read, and the cursor of its last fact when more follow."""
+    shown = rows[:limit]
+    return TaughtPage(facts=shown, next=cursor_of(shown[-1].fact) if len(rows) > limit else None)
+
+
+def cursor_of(fact: ContactMemory) -> str:
+    """The cursor a page of facts answers as `next`: the fact's validity start and its id."""
+    return f"{fact.valid_from.isoformat()}|{fact.id}"
+
+
+def parse_cursor(after: str | None) -> tuple[datetime, uuid.UUID] | None:
+    """The `next` a page answered, read back; None for the first page."""
+    if not after:
+        return None
+    moment, _, named = after.partition("|")
+    try:
+        return datetime.fromisoformat(moment), uuid.UUID(named)
+    except ValueError as unread:
+        raise ValidationError(f"{after!r} is not a cursor: pass the `next` a page answered, or nothing") from unread
+
+
+def like_pattern(words: str | None) -> str | None:
+    """The words as a LIKE pattern anywhere in a text, its wildcards escaped; None for no words."""
+    if not words:
+        return None
+    return "%" + words.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
 
 
 async def count_facts(session: AsyncSession, org: str, env: Env) -> int:

@@ -47,3 +47,8 @@ def month_of(ts: float) -> date:
 def day_of(ts: float) -> date:
     """The UTC day a timestamp falls in."""
     return datetime.fromtimestamp(ts, UTC).date()
+
+
+def opening_of(day: date) -> datetime:
+    """The moment a UTC day opens."""
+    return datetime(day.year, day.month, day.day, tzinfo=UTC)
