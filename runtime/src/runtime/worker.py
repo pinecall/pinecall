@@ -139,7 +139,9 @@ async def run_worker(settings: Settings) -> int:
     worker = jobs.worker_name_of(settings.worker_name)
     beats = jobs.Heartbeats(server, gateway, minute, load, fleet_name=settings.fleet, worker=worker)
     loops = Loops()
-    loops.start(jobs_tasks.beat.bind(beats))
+    # A beat counts the calls in livekit's pool of processes, which `run` makes: the first beat waits
+    # for the server to start (in production every worker's first beat failed on 2026-11-12).
+    server.on("worker_started", lambda: loops.start(jobs_tasks.beat.bind(beats)))  # pyright: ignore[reportUnknownMemberType]
     stopping = stop_on_a_signal()
     running = asyncio.create_task(server.run())
     ready = asyncio.create_task(jobs.announce_ready(beats, settings.notify_socket))
