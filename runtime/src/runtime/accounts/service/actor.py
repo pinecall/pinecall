@@ -197,10 +197,15 @@ async def resolve(session: AsyncSession, verified: Verified, asked: Asked) -> Ac
     if asked.looking_at:
         colleague = await MemberRepository(session).find(actor.org, asked.looking_at)
     resolved = actor_of(verified, env, holder=scope_of_request(actor, colleague).holder)
-    if asked.dispatched is None or not actor.opens(KeyScope.fleet):
-        return resolved
-    served = asked.dispatched
-    return replace(resolved, org=served.org, env=served.env, holder=served.holder)
+    return serve_dispatched(resolved, asked.dispatched)
+
+
+# A fleet serves every org of its env: a worker names the one a job is for in the request's query.
+def serve_dispatched(actor: Actor, dispatched: Scope | None) -> Actor:
+    """A fleet's actor in the org, env and holder its dispatch names; any other actor, or none named, as it is."""
+    if dispatched is None or not actor.opens(KeyScope.fleet):
+        return actor
+    return replace(actor, org=dispatched.org, env=dispatched.env, holder=dispatched.holder)
 
 
 async def identify(session: AsyncSession, actor: Actor) -> Identity:

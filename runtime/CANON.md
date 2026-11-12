@@ -78,6 +78,21 @@ in by the entrypoint. Endpoints are the top of every domain and may call any dom
 nothing imports an `endpoints` module but `api.py`. `jobs` is the worker's side and `hosts` the
 runner's: nothing in the gateway imports them.
 
+## Beside the canon's files
+
+A module of a domain that is none of its seven files is named here, and in
+`tests/runtime/conventions/canon.py`, with what it is. Nothing else may sit beside them.
+
+| domain | module | what it is |
+|---|---|---|
+| `providers` | `stage.py` | a value object: a stage of a call as values, what an agent asks for (`Model`, `Voice`) and the stage resolved (`Running`, `Pipeline`). Services of six domains speak in it |
+| `providers` | `catalog.py` | a value object: the providers row, the one shape of a document the box keeps and the one reader of its keys. It is pydantic, the document being JSON an operator edits |
+
+`providers/service/` has more than sixteen modules and is one context: which vendor runs each
+stage of a call, on whose key, told what, at what price. One row, one table of keys and one
+registry of plugins, read by twenty of its modules; where an org's traces go (`telemetry`) and what
+this machine can run (`machine`) stand apart and were decided into it.
+
 ## The rules
 
 1. **One noun, one file.** A module's one-line docstring names one thing, and the filename is

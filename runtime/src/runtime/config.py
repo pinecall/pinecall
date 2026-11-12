@@ -65,6 +65,11 @@ class Settings(BaseSettings):
     metrics_from: str = Field("127.0.0.1,::1", alias="PINECALL_METRICS_FROM")
     app_origins: str = Field("", alias="PINECALL_APP_ORIGINS")
     ops_key: SecretStr | None = Field(None, alias="PINECALL_OPS_KEY")
+    # Each env's fleet key as the gateway knows it: the secret that env's workers hold as
+    # PINECALL_WORKER_KEY and its autoscaler asks the demand with. Drawn outside the runtime, as the
+    # operator's key is; an env given none has no worker this gateway hears.
+    production_fleet_key: SecretStr | None = Field(None, alias="PINECALL_PRODUCTION_FLEET_KEY")
+    sandbox_fleet_key: SecretStr | None = Field(None, alias="PINECALL_SANDBOX_FLEET_KEY")
     token_key: SecretStr | None = Field(None, alias="PINECALL_TOKEN_KEY")
     vault_key: SecretStr | None = Field(None, alias="PINECALL_VAULT_KEY")
     signup: bool = Field(False, alias="PINECALL_SIGNUP")
@@ -152,6 +157,17 @@ class Settings(BaseSettings):
             raise ValueError("PINECALL_TURNSTILE_SITE_KEY and PINECALL_TURNSTILE_SECRET are set together, or neither")
         return self
 
+    # A fleet's key says which env its workers serve: one secret given as both would make every
+    # sandbox worker production's.
+    @model_validator(mode="after")
+    def _fleet_keys_are_two(self) -> "Settings":
+        held = [
+            key.get_secret_value() for key in (self.production_fleet_key, self.sandbox_fleet_key) if key is not None
+        ]
+        if len(held) == 2 and held[0] == held[1]:
+            raise ValueError("PINECALL_PRODUCTION_FLEET_KEY and PINECALL_SANDBOX_FLEET_KEY are two secrets, never one")
+        return self
+
     @property
     def address(self) -> str | None:
         """The https address of the box's name, or None where it has none."""
@@ -171,6 +187,10 @@ class Settings(BaseSettings):
         if self.livekit_public_url:
             return self.livekit_public_url
         return f"wss://{self.domain}" if self.domain else self.livekit_url
+
+    def fleet_key_of(self, env: Env) -> SecretStr | None:
+        """The key that env's fleet speaks with, or None where this process was given none."""
+        return self.sandbox_fleet_key if env is Env.sandbox else self.production_fleet_key
 
     def sip_domain_of(self, env: Env) -> str | None:
         """The name a carrier sends that env's calls to: its SIP name, else the box's name."""

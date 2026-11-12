@@ -63,16 +63,32 @@ FOUNDATIONS = frozenset(
 # Above every domain: wiring only.
 ENTRYPOINTS = frozenset({"app", "api", "worker", "runner", "cli"})
 # A domain's value objects, read by any domain as its models are. Each is named in CONTRIBUTING.md.
-VALUE_OBJECTS: frozenset[str] = frozenset()
+VALUE_OBJECTS: frozenset[str] = frozenset(
+    {
+        # A stage as values: what an agent asks for (`Model`, `Voice`) and the stage resolved (`Running`, `Pipeline`).
+        "providers.stage",
+        # The providers row: the shape of a document the box keeps, and the one reader of its keys.
+        "providers.catalog",
+    }
+)
 # The files a domain folder holds, each a module or a package of the same name.
 CANON_FILES = frozenset({"models", "schemas", "repository", "service", "auth", "endpoints", "tasks"})
 # The modules a domain holds beside the canon's files: its long-lived objects and its value objects, each
 # named in CONTRIBUTING.md. A domain enters here in the commit that builds it.
-ENGINE_MODULES: dict[str, frozenset[str]] = {}
+ENGINE_MODULES: dict[str, frozenset[str]] = {
+    # Its two value objects (`VALUE_OBJECTS`).
+    "providers": frozenset({"stage", "catalog"}),
+}
 # A `service/` package may hold this many modules; past it the domain is cut, or CONTRIBUTING.md says in a
 # sentence why it is one context and the domain is named here with that sentence.
 MOST_SERVICE_MODULES = 16
-ONE_CONTEXT: dict[str, str] = {}
+ONE_CONTEXT: dict[str, str] = {
+    "providers": (
+        "which vendor runs each stage of a call, on whose key, told what, at what price: one row, one table of keys "
+        "and one registry of plugins, read by twenty of its modules; where an org's traces go and what this machine "
+        "can run stand apart and were decided into it (compliance-1, providers-6)"
+    ),
+}
 
 
 @dataclass(frozen=True, slots=True)

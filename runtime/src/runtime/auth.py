@@ -133,6 +133,28 @@ def the_box(request: Request) -> Actor | None:
     return Actor(key_id=THE_BOXS_KEY, org="", env=Env.production, scopes=frozenset(), label=THE_BOXS_KEY)
 
 
+# Until 2026-11 a fleet's key was a row of `api_keys`, minted in the box's own org by a hook of the
+# chart at install and never again: the one secret with a path of its own, and one nobody could
+# rotate without installing anew. It is a secret like the box's own now: drawn outside the runtime,
+# given to the gateway (PINECALL_PRODUCTION_FLEET_KEY, PINECALL_SANDBOX_FLEET_KEY) and to that env's
+# workers (PINECALL_WORKER_KEY), and compared here. The key names its env and acts for no org.
+THE_FLEETS_KEY = "the {env} fleet's key"
+
+
+def the_fleet(request: HTTPConnection) -> Actor | None:
+    """The fleet of an env, when the request carries that env's fleet key as its Bearer; None otherwise."""
+    sent = authorization_of(request)
+    if sent is None:
+        return None
+    settings = settings_of(request)
+    for env in Env:
+        held = settings.fleet_key_of(env)
+        if held is not None and compare_digest(sent.encode(), held.get_secret_value().encode()):
+            label = THE_FLEETS_KEY.format(env=env)
+            return Actor(key_id=label, org="", env=env, scopes=frozenset({KeyScope.fleet}), label=label)
+    return None
+
+
 async def the_operator(request: Request) -> Actor:
     """The box's own key, or an actor whose person is one of the box's operators; 401 or 403 otherwise."""
     box = the_box(request)

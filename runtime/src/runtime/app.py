@@ -21,6 +21,9 @@ from runtime.accounts.service.key_cache import KeyCache
 from runtime.auth import ActorMiddleware
 from runtime.config import Settings, load_settings
 from runtime.exceptions import PinecallError, ServiceUnavailable, TooManyRequests, Unauthorized
+from runtime.fleet import tasks as fleet_tasks
+from runtime.fleet.service.offers import Offering
+from runtime.fleet.service.roster import Roster
 from runtime.handles import Handles
 from runtime.kit.crypto import Vault
 from runtime.kit.loops import Loops
@@ -30,6 +33,8 @@ from runtime.mail.service.mailboxes import Mailbox, read_environment_mailbox
 from runtime.mail.service.outbox import Outbox
 from runtime.platform.service.attempts import AttemptThrottle
 from runtime.postgres import STATEMENT_TIMEOUT_MS, busy, create_engine, session_maker
+from runtime.providers.service.speech import SAMPLES_A_MINUTE
+from runtime.providers.service.transcription import TRANSCRIPTIONS_A_MINUTE
 from runtime.redis import open_signal
 from runtime.signin.service.codes import LoginCodes
 from runtime.signin.service.google import Newcomers
@@ -84,6 +89,10 @@ class State(TypedDict):
     password_throttle: PasswordThrottle
     sign_in_attempts: AttemptThrottle
     turnstile: Turnstile
+    samples: AttemptThrottle
+    transcriptions: AttemptThrottle
+    roster: Roster
+    offering: Offering
 
 
 # Everything opened goes on the stack: a failed start closes what opened, a stop closes it all.
@@ -98,6 +107,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[State]:
         stack.push_async_callback(outbox.drain)
         key_cache = KeyCache(handles.sessions, handles.signal)
         loops.start(accounts_tasks.hear_revocations.bind(key_cache, handles.signal))
+        roster, offering = await _fleet(handles, loops, stack)
         sessions, vault = handles.sessions, handles.vault
         yield State(
             handles=handles,
@@ -113,7 +123,23 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[State]:
             password_throttle=PasswordThrottle(sessions),
             sign_in_attempts=AttemptThrottle(sessions, SIGN_IN_TRIES),
             turnstile=_turnstile(handles),
+            samples=AttemptThrottle(sessions, SAMPLES_A_MINUTE),
+            transcriptions=AttemptThrottle(sessions, TRANSCRIPTIONS_A_MINUTE),
+            roster=roster,
+            offering=offering,
         )
+
+
+# The roster hears the other gateways' workers before the first request; the dispatcher offers on it.
+async def _fleet(handles: Handles, loops: Loops, stack: AsyncExitStack) -> tuple[Roster, Offering]:
+    """The roster and the dispatcher, the roster listening and the fleet's two loops started."""
+    roster = Roster(handles.signal)
+    await roster.start()
+    stack.push_async_callback(roster.close)
+    offering = Offering(handles.sessions, handles.servers, roster)
+    loops.start(fleet_tasks.sweep_offers.bind(offering))
+    loops.start(fleet_tasks.watch_roster.bind(roster))
+    return roster, offering
 
 
 async def _connections(settings: Settings, stack: AsyncExitStack) -> Handles:

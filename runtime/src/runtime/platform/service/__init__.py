@@ -8,6 +8,7 @@ from runtime.platform.service.settings import (
     find_sealed_setting,
     find_setting,
     put_setting,
+    put_setting_if_absent,
 )
 
 __all__ = [
@@ -19,4 +20,5 @@ __all__ = [
     "find_setting",
     "get_brand",
     "put_setting",
+    "put_setting_if_absent",
 ]

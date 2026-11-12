@@ -9,10 +9,18 @@ from starlette.requests import HTTPConnection
 from runtime.accounts.models import Org
 from runtime.accounts.repository.members import Membership
 from runtime.accounts.service import members, orgs
-from runtime.accounts.service.actor import Asked, read_dispatch, resolve
+from runtime.accounts.service.actor import Asked, read_dispatch, resolve, serve_dispatched
 from runtime.accounts.service.key_cache import KeyCache
 from runtime.actor import Actor, Person
-from runtime.auth import ENV_HEADER, HOLDER_HEADER, Authenticator, TheOperator, authorization_of, person_of
+from runtime.auth import (
+    ENV_HEADER,
+    HOLDER_HEADER,
+    Authenticator,
+    TheOperator,
+    authorization_of,
+    person_of,
+    the_fleet,
+)
 from runtime.enums import KeyScope
 from runtime.handles import TheSettings, settings_of
 from runtime.kit.text import is_a_jwt
@@ -35,11 +43,16 @@ async def resolve_actor(request: HTTPConnection, session: AsyncSession) -> Actor
     secret = authorization_of(request)
     if secret is None or is_a_jwt(secret):
         return None
+    query, headers = request.query_params, request.headers
+    dispatched = read_dispatch(query.get("org"), query.get("env"), query.get("holder"))
+    # A fleet's key is the box's own secret, not a row: compared first, it costs no lookup, and it
+    # acts as the box (no org to scope to).
+    fleet = the_fleet(request)
+    if fleet is not None:
+        return serve_dispatched(fleet, dispatched)
     verified = await key_cache_of(request).verify(secret)
     if verified is None:
         return None
-    query, headers = request.query_params, request.headers
-    dispatched = read_dispatch(query.get("org"), query.get("env"), query.get("holder"))
     asked = Asked(env=headers.get(ENV_HEADER), looking_at=headers.get(HOLDER_HEADER), dispatched=dispatched)
     actor = await resolve(session, verified, asked)
     # Every transaction of this request acts for the key's org (row-level security); the fleet's
