@@ -4,7 +4,7 @@ import time
 import typing
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import ClassVar, Self
+from typing import ClassVar, Self, TypeVar
 
 from pinecall import _accepts, _author, _config, _running, _state, _tools, panels
 from pinecall._answers import Answer
@@ -12,8 +12,11 @@ from pinecall._state import Change
 from pinecall.call import CallWorld
 from pinecall.client import Found
 from pinecall.errors import PinecallError, ToolFailed
+from pinecall.tasks import Task
 from pinecall.wire._names import EventSource, JsonObject
 from pinecall.wire.parts import MemoryOp, ToolSpec
+
+_T = TypeVar("_T")
 
 NO_CALL = "there is no call here: an agent is handed its call when one starts"
 
@@ -76,6 +79,15 @@ class Agent:
 
     accepts: ClassVar[Mapping[str, Sequence[EventSource]]] = {}
     """The outside events the agent takes, and from whom: `{"slot.released": ["app"]}`."""
+
+    takes: ClassVar[str | None] = None
+    """What a teammate passes it, as a model reads it: `"questions about a bill"`."""
+
+    tasks: ClassVar[Sequence[Task[object]]] = ()
+    """The tasks its tools may ask the caller for: `[GetEmail, GetPhone]`."""
+
+    scenes: ClassVar[Mapping[str, str]] = {}
+    """The scenes of the caller's screen, each with what it shows: `{"agenda": "open times"}`."""
 
     _pinecall_fields: ClassVar[_state.Fields] = _state.Fields({}, (), None)
     _pinecall_events: ClassVar[dict[str, tuple[EventSource, ...]]] = {}
@@ -189,6 +201,17 @@ class Agent:
     def reply(self, instructions: str, *, allow_interruptions: bool | None = None) -> Answer[bool]:
         """Make the model speak now, following words the caller never hears: `call.reply`."""
         return self.call.reply(instructions, allow_interruptions=allow_interruptions)
+
+    def ask(self, asked: Task[_T]) -> Answer[_T]:
+        """Ask the caller for one of the class's `tasks` from inside a tool, and wait for it.
+
+        `await self.ask(GetEmail)` in an `async def`, `self.ask(GetEmail).result()` in a `def`.
+        """
+        return self.call.ask(asked)
+
+    def screen(self) -> object:
+        """What the caller's page shows now: parts (`part("agenda")(slots=…)`), words, a list."""
+        return None
 
     @property
     def knowledge(self) -> "Knowledge":

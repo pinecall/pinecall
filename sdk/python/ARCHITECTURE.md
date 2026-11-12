@@ -61,6 +61,18 @@ src/pinecall/
   _answers.py                what a verb that waits answers: `Answer`, settled by its entry, its ceiling, or the end
   _room.py                   who is in the room, a seat's two verbs, the turns
   bridge.py                  `mount`: one instance per call, its jobs in order, the state and only the blocks that moved
+  _live.py                   one served call as the bridge holds it: its instance and class, what was sent, its jobs
+  _sending.py                what is sent for a call: the blocks and tools that moved, the state with its screen
+  _passing.py                what a tool call does: a task given, the screen moved, the call passed, a tool run
+  tasks.py                   `task(...)`, `GetEmail`, `GetPhone`, `GetName`: what a tool asks the caller for
+  _asking.py                 a tool that stops to ask, on the loop or a thread, and the answer that lets it go on
+  screen.py                  `part(...)`, the screen a class draws, its scenes and `show_screen`
+  _screened.py               a call's screen as the bridge keeps it: drawn, public, moved by the turns
+  _handoff.py                a team: `takes`, the transfer tools, who answers a line that chooses
+  app.py                     `voice_app(...)`: lines, rules, silence, `on`, the page, what it adds to each agent
+  flows.py                   `@flow(...)`: a function that outlives a call, its steps against the run's journal
+  _app_work.py               the app's doors at the gateway: what it is owed, its runs and steps, a call's new stages
+  _flow_loop.py              the loop an app keeps: events to their handlers and flows, runs a stretch further
   testing.py                 `Gateway`: a gateway that is not there, for ring 0, from a plain `def test_…`
   serve/                     `python -m pinecall.serve`: the entry the one CLI starts — `start`, `prompt` — and `hold`
     _loading.py              its flags, the class in a file (its folder a package), a state field by field
@@ -70,6 +82,8 @@ src/pinecall/
     _held.py                 what a process holds, and leaving: a drain, then the socket, once
     _lines.py                the wire entry a line for the CLI, a line for a person, the drain line, an agent killed
     _masking.py              what it prints of an entry: the values the agent declared private, masked as the log masks them
+    _app.py                  the project's `app.py`: loaded after its agents, `serve app`, each agent held with it
+    _paged.py                the app's page on this machine: its folder, its config, the visitor's ticket passed on
   observe.py                 reading a log: one page (`history`), or the stream from a cursor on (`observe`)
 docs/                        the pages a person writing an agent reads: README · writing-an-agent · the-view
   py.typed                   the package is typed (PEP 561)
@@ -96,6 +110,7 @@ tests/                       mirrors src/ one to one
   wire/golden/call-log.json  the runtime's golden call log, shared with the TypeScript and Ruby packages
   fakes/project.py           a project of one agent written into a folder, as the CLI lays one out
   fakes/gateway.py           a gateway that is not there: a real socket, the lookup and log doors on 127.0.0.1
+  fakes/kept.py              an app's flows doors in memory, on 127.0.0.1: its runs, its events, a call's stages
   wire/entries.py            entries of one made-up call, for the reducer's tests
 ../../examples/python/clinica_norte/   the TypeScript and Ruby example in Python, in the CLI's layout: its agenda, its Jinja view,
                              its ring-0 suite (`make examples`, part of check) and the same eleven goldens (`make ring1`)
@@ -143,6 +158,10 @@ translation; the rows land with the code they describe.
 | `mount({pc})` and `new Pinecall` in your own process | `Pinecall.serve(Klass, url:, api_key:)` | `await pinecall.hold(Klass, url=, api_key=)` | A function named `serve` on the door would hide the module `pinecall.serve` the CLI runs. |
 | `FakeGateway` for ring 0 | `Pinecall::Testing::Gateway`, threads it waits on | `pinecall.testing.Gateway`, a `Client` with no socket and a loop of its own it runs until the agent settles | A tenant's test is a plain `def test_…`: no pytest plugin, no `async`. |
 | the wire's `ZodError` | `Wire::WireError` | `WireError`, a `PinecallError` | A frame that does not fit is the package's error like any other; its message says what did not fit. |
+| `app.ts` default-exports `voiceApp(…)`, importing classes by path | none yet | `app.py` holds one `voice_app(…)` and imports each class from `pinecall_agents.<folder>.agent`, the module the serve entry loaded it as | A folder named with a dash is no Python module: the agents are loaded first under a package of their own, and the app imports the same class objects from there. |
+| `flow(name, async (input, step) => …)` | none yet | `@flow(name)` on an `async def (input, step)` | A decorator names a function where Python names one; a flow's steps await the gateway, so the body is async. |
+| `await this.ask(GetEmail)` | none yet | `await self.ask(GetEmail)`, or `.result()` in a `def` tool | `ask` answers an `Answer`, so a tool on a thread waits for the caller as a coroutine does. |
+| `screen()` returns JSX of `part`s | none yet | `screen()` returns `part("agenda")(…)` calls, words and lists | No JSX in Python: a part is a callable that makes a node, and nesting is its positional arguments. |
 | `toCamel` / `toSnake` | nothing | nothing; `from_` is the one alias (`from` is reserved), as the runtime spells it | The wire is snake_case and so is Python. |
 
 ## 4. The wire

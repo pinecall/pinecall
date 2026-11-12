@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **A voice app, as in TypeScript:** `app.py` holds `voice_app(…)`: lines with a greeting, a team
+  (`takes`) the call passes between, a line that chooses who answers, rules every agent keeps,
+  `silence`, `on` for what the app hears, and a page of its own (`app.page("ui/dist")`).
+- **Flows:** `@flow("…")` on an `async def (input, step)`: sleeps, calls, waits and effects kept by
+  the gateway, so a run outlives the process. `app.on(name, flow)` starts one.
+- **Tasks:** a tool asks the caller for what it lacks with `self.ask(GetEmail)`; `task(…)` makes one.
+- **The caller's screen:** `screen()`, `part(…)`, `scenes`, `@tool(shows=…)`, `self.call.show(…)`.
+- **An agent declares its `timezone`.**
+
 - **The wire reads `stage.changed`**: the agent's settings name another vendor, model or voice for a stage of a
   live call. The model and the voice run from its next turn; the ears wait for the next call (`applied` false).
 

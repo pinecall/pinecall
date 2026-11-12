@@ -1,17 +1,14 @@
 """`mount`: a class on a client, one instance per call, sending only what changed."""
 
 import asyncio
-import json
 import logging
-import threading
 import time
-from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field
-
-from pydantic import TypeAdapter
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 
 from pinecall import (
     _accepts,
+    _asking,
     _author,
     _config,
     _harness,
@@ -25,12 +22,18 @@ from pinecall._agent_socket import AgentSocket, Tool
 from pinecall._calls import Call
 from pinecall._cause import cause_of
 from pinecall._config import slug_of
-from pinecall._failures import hooked, unrendered
+from pinecall._failures import hooked
+from pinecall._handoff import ROUTED, Answering, Team, answered_by, team_tools
+from pinecall._live import Live
+from pinecall._passing import become, passed, runner
+from pinecall._screened import scene_tools, screen_declared, screens, turned, unscreened
+from pinecall._sending import line_of, recalled, searching, state_of, synced
 from pinecall.agent import Agent, EventMeta, LastCall
-from pinecall.blocks import LAYOUT, render
-from pinecall.call import CallLine, CallWorld
-from pinecall.client import Client, Found
-from pinecall.errors import ToolFailed
+from pinecall.blocks import LAYOUT
+from pinecall.call import CallWorld
+from pinecall.client import Client
+from pinecall.screen import TASK_GIVE
+from pinecall.tasks import Task
 from pinecall.wire._names import JsonObject
 from pinecall.wire.config import AgentConfig
 from pinecall.wire.events_call import CallAttached, CallStarted
@@ -39,32 +42,6 @@ from pinecall.wire.frames import WireModel
 from pinecall.wire.parts import ToolSpec
 
 logger = logging.getLogger("pinecall")
-
-# Whatever a tool returns or a field holds, made JSON: dataclasses, models, dates, tuples.
-ANYTHING: TypeAdapter[object] = TypeAdapter(object)
-
-Job = Callable[[], Awaitable[None]]
-
-
-@dataclass
-class Live:
-    """One served call: its instance, what was last sent for it, and its jobs, run in order."""
-
-    agent: Agent
-    world: CallWorld
-    call: Call
-    sent: dict[str, str] = field(default_factory=dict[str, str])
-    tools_shown: str | None = None
-    remembered: list[str] = field(default_factory=list[str])
-    # A call handed over mid-conversation: the view's `resumed` is true for it from then on.
-    resumed: bool = False
-    stops: dict[str, Callable[[], None]] = field(default_factory=dict[str, Callable[[], None]])
-    warned: set[str] = field(default_factory=set[str])
-    # A tool's thread and the loop may both sync: what was sent is read and written under it.
-    lock: threading.Lock = field(default_factory=threading.Lock)
-    jobs: asyncio.Queue[Job | None] = field(default_factory=asyncio.Queue[Job | None])
-    busy: bool = False
-    """Whether one of its jobs is running now."""
 
 
 @dataclass(frozen=True)
@@ -81,13 +58,17 @@ class Mounted:
         return None if held is None else held.agent
 
 
-def mount(
+def mount(  # noqa: PLR0913 - one keyword for each thing a voice app adds to its agent
     cls: type[Agent],
     client: Client,
     *,
     slug: str | None = None,
     takes_unclaimed: bool = True,
     last: LastCall | None = None,
+    declares: Mapping[str, object] | None = None,
+    team: Team | None = None,
+    rules: Sequence[str] = (),
+    answers: Answering | None = None,
 ) -> Mounted:
     """Hold a class on a client, an instance of its own per call; nothing leaves before `connect`.
 
@@ -97,28 +78,37 @@ def mount(
         slug: the name it registers as; left out, the class's own.
         takes_unclaimed: a console's process says no: it serves only the calls it opened.
         last: where `last(contact)` reads a contact's previous call from.
+        declares: what its voice app adds to its declaration: its line's greeting, a silence.
+        team: the agents a call of this one may pass between, itself among them, with slugs.
+        rules: the rules its voice app gives every agent of it, read into its prompt.
+        answers: its line's function that picks who of the team serves each call.
     """
     live: dict[str, Live] = {}
     loop = asyncio.get_running_loop()
-    declared: dict[str, _tools.Declared] = getattr(cls, "_pinecall_tools")  # noqa: B009 - the class's own
-    tools = [Tool(one.spec, runner(cls, live, one.spec)) for one in declared.values()]
+    declared = Declaration.of(cls, team, declares or {})
+    tools = [Tool(spec, runner(live, spec.name)) for spec in declared.tools]
+    tasks, draws = declared.tasks, declared.draws
     held = client.agent(
-        slug or slug_of(cls), config_of(cls), tools, takes_unclaimed=takes_unclaimed, says_done=True
+        slug or slug_of(cls),
+        declared.config,
+        tools,
+        takes_unclaimed=takes_unclaimed,
+        says_done=True,
     )
 
     def serve(call: Call) -> Live:
-        agent = cls().seal()
-        if last is not None:
-            agent.reads_last_from(last)
         world = CallWorld(
-            line_of(call),
-            lambda type_, data: held.command(type_, call.id, data),
-            searching(client, call),
-            loop,
-        )
-        served = Live(agent.serving(world), world, call)
-        # Before the hooks run, so a line logged in `on_call` lands; `on_end`'s lands too.
-        served.stops["log"] = agent.on_log(lambda line: call.log(line.name, as_object(line.data)))
+            line_of(call), lambda type_, data: held.command(type_, call.id, data),
+            searching(client, call), loop,
+        )  # fmt: skip
+        asking = _asking.Asking(tasks)
+        agent = cls().seal()
+        served = Live(agent, cls, world, call, asking, team, rules, last, draws)
+        become(served, cls, agent)
+        world.asked_by(asking.ask, lambda: asking.asked)
+        world.shown_by(lambda: shown(live, served))
+        if team is not None:
+            world.passed_by(lambda to, data: passed(served, to, data, follow))
         live[call.id] = served
         asyncio.ensure_future(work(served))  # noqa: RUF006 - it ends with the call, which ends it
         return served
@@ -126,7 +116,7 @@ def mount(
     def started(event: WireModel, call: Call | None) -> None:
         if isinstance(event, CallStarted) and call is not None:
             served = serve(call)
-            served.jobs.put_nowait(lambda: opening(served, event.state))
+            served.jobs.put_nowait(lambda: opening(served, event.state, answers))
 
     def attached(event: WireModel, call: Call | None) -> None:
         if not isinstance(event, CallAttached) or call is None:
@@ -142,6 +132,7 @@ def mount(
     def ended(_: WireModel, call: Call | None) -> None:
         served = None if call is None else live.pop(call.id, None)
         if served is not None:
+            served.asking.abandon()
             served.jobs.put_nowait(lambda: finished(served))
             served.jobs.put_nowait(None)
 
@@ -149,6 +140,40 @@ def mount(
     held.on("call.attached", attached)
     held.on("call.ended", ended)
     return Mounted(held.slug, held, live)
+
+
+@dataclass(frozen=True)
+class Declaration:
+    """What a mounted class tells the gateway: its declaration, its tools, its tasks and screen."""
+
+    config: AgentConfig
+    tools: list[ToolSpec]
+    tasks: list[Task[object]]
+    draws: bool
+
+    @staticmethod
+    def of(agent: type[Agent], team: Team | None, declares: Mapping[str, object]) -> "Declaration":
+        """The class's, with what its team shares and what its voice app adds."""
+        cls = agent
+        classes: list[type] = list(team) if team else [cls]
+        registry: dict[str, _tools.Declared] = getattr(cls, "_pinecall_tools")  # noqa: B009
+        own = team_tools(team) if team else [one.spec for one in registry.values()]
+        taken = [spec.name for spec in own]
+        tasks = _asking.tasks_on(cls, classes if team else ())
+        tools = [*own, *_asking.giving_tools(tasks, taken), *scene_tools(classes, taken)]
+        draws = screens(classes, Agent)
+        declared = config_of(cls).model_dump(by_alias=True, exclude_unset=True)
+        if draws:
+            declared = screen_declared(declared, tasks=bool(tasks))
+        return Declaration(
+            AgentConfig.model_validate({**declared, **declares}), tools, tasks, draws
+        )
+
+
+def shown(live: Mapping[str, Live], served: Live) -> None:
+    """Something was put on the page: drawn again, while this instance still serves its call."""
+    if live.get(served.call.id) is served:
+        synced(served)
 
 
 def config_of(cls: type[Agent]) -> AgentConfig:
@@ -175,46 +200,6 @@ def config_of(cls: type[Agent]) -> AgentConfig:
     return AgentConfig.model_validate(declared)
 
 
-def runner(
-    cls: type[Agent], live: dict[str, Live], spec: ToolSpec
-) -> Callable[[JsonObject, Call], Awaitable[object]]:
-    """What runs one tool for a call: on the instance serving it, its answer made JSON."""
-
-    async def ran(arguments: JsonObject, call: Call) -> object:
-        served = live.get(call.id)
-        if served is None:
-            raise ToolFailed(f"{spec.name}: this call is no longer being served")
-        declared = getattr(cls, "_pinecall_tools")[spec.name]  # noqa: B009 - the class's own
-        return ANYTHING.dump_python(
-            await _tools.run(served.agent, declared, arguments), mode="json"
-        )
-
-    return ran
-
-
-def searching(client: Client, call: Call) -> Callable[[str, int | None], Awaitable[list[Found]]]:
-    """The gateway's search, for this call."""
-    return lambda query, k: client.search(call.id, query, k)
-
-
-def line_of(call: Call) -> CallLine:
-    """The call as its first entry said it, for the instance that serves it."""
-    contact = call.contact.id if call.contact is not None and call.contact.id else call.from_
-    return CallLine(
-        id=call.id,
-        contact=contact or "",
-        from_=call.from_,
-        to=call.to,
-        channel=call.channel or "phone",
-        direction=call.direction,
-        caller=call.contact,
-        metadata=call.metadata,
-        medium=call.medium,
-        today=call.today,
-        claimed=call.claimed,
-    )
-
-
 async def work(served: Live) -> None:
     """Run the call's jobs one at a time, in the order they came, until the call ends."""
     while (job := await served.jobs.get()) is not None:
@@ -227,11 +212,18 @@ async def work(served: Live) -> None:
             served.busy = False
 
 
-# The state the opener asked for is applied after on_call, which would overwrite it, and before the
-# first render, so the model never reads a state the call was not in; one prompt, not one per field.
-async def opening(served: Live, state: JsonObject | None) -> None:
-    """Run `on_call`, open in the state asked for, send it all, then follow every change."""
-    logger.debug("%s: opening", served.call.id)
+# The line chooses while the caller hears its greeting. The state the opener asked for is applied
+# after on_call, which would overwrite it, and before the first render; one prompt, not one a field.
+async def opening(served: Live, state: JsonObject | None, answers: Answering | None) -> None:
+    """Choose who serves, run `on_call`, open in the state asked for, send it all, then follow."""
+    if answers is not None and served.team is not None:
+        first = await answered_by(answers, line_of(served.call), served.cls, served.team)
+        if first.agent is not served.cls or first.why is not None:
+            said: JsonObject = {"to": served.team.get(first.agent, "")}
+            served.call.log(ROUTED, said if first.why is None else {**said, "why": first.why})
+        if first.agent is not served.cls:
+            served.stops.pop("log", lambda: None)()
+            become(served, first.agent)
     author = _author.hook("on_call")
     await hooked(served.call, "on_call", _running.run(author, served.agent.on_call, served.world))
     wrote = any(change.author == author for change in served.agent.changes())
@@ -241,15 +233,14 @@ async def opening(served: Live, state: JsonObject | None) -> None:
     # the state, and a state with a pii field is sealed before the gateway reads the next command.
     synced(served)
     cause = cause_of(author, served.world) if wrote else None
-    served.call.set_state(jsonable(served.agent.snapshot()), cause=cause)
-    logger.debug("%s: opened", served.call.id)
+    served.call.set_state(state_of(served), cause=cause)
     follow(served)
 
 
 async def adopted(served: Live, state: JsonObject) -> None:
     """A call handed over mid-call: the state the gateway kept, no `on_call`, all of it sent."""
     served.resumed = True
-    served.agent.restore(state)
+    served.agent.restore(unscreened(state))
     synced(served)
     follow(served)
 
@@ -280,7 +271,7 @@ def follow(served: Live) -> None:
     agent, world, call = served.agent, served.world, served.call
 
     def changed(change: _state.Change) -> None:
-        call.set_state(jsonable(agent.snapshot()), [change.field], cause_of(change.author, world))
+        call.set_state(state_of(served), [change.field], cause_of(change.author, world))
         synced(served)
 
     def heard(type_: str, event: WireModel, _: Call) -> None:
@@ -294,7 +285,7 @@ def follow(served: Live) -> None:
             synced(served)
             served.jobs.put_nowait(lambda: remembered(served, event))
         # The view answers the turn being taken; a claim lets the caller see the page.
-        if type_ in ("turn.user", "call.claimed"):
+        if turned(type_, world, served.screened) or type_ in ("turn.user", "call.claimed"):
             synced(served)
 
     served.stops |= {"state": agent.on_change(changed), "entries": call.on_any(heard)}
@@ -310,7 +301,10 @@ async def remembered(served: Live, ops: MemoryOps) -> None:
 
 def received(served: Live, fact: EventReceived) -> None:
     """An outside event reaches `on_event` only from a sender the class accepts; one at a time."""
-    events = getattr(type(served.agent), "_pinecall_events")  # noqa: B009 - the class's own
+    if fact.name == TASK_GIVE and fact.source == "participant":
+        served.jobs.put_nowait(lambda: given_by_page(served, dict(fact.data)))
+        return
+    events = getattr(served.cls, "_pinecall_events")  # noqa: B009 - the class's own
     if not _accepts.takes(events, fact.name, fact.source):
         if fact.name not in served.warned:
             served.warned.add(fact.name)
@@ -335,57 +329,9 @@ def received(served: Live, fact: EventReceived) -> None:
     served.jobs.put_nowait(run)
 
 
-def synced(served: Live) -> None:
-    """Send each block whose text changed since this call's last send; the tools if they moved.
-
-    A view that cannot be rendered fails its call and no other: the model keeps the view it had,
-    and the log says why.
-    """
-    try:
-        show(served)
-    except Exception as failed:  # noqa: BLE001 - a class's own failure is the call's, never the loop's
-        unrendered(served.call, failed)
-
-
-def show(served: Live) -> None:
-    """Send what changed of the prompt and the tools."""
-    with served.lock:
-        rendered = render(
-            served.agent, served.world.line(), resumed=served.resumed, remembered=served.remembered
-        )
-        for block in rendered.blocks:
-            # A block never sent is empty, as the runtime starts it: an empty one costs nothing.
-            if block.text == served.sent.get(block.name, ""):
-                continue
-            served.sent[block.name] = block.text
-            served.call.set_prompt(block.name, block.text)
-        visible = served.agent.visible_tools()
-        shown = json.dumps([spec.written() for spec in visible])
-        if shown != served.tools_shown:
-            served.tools_shown = shown
-            served.call.set_tools(visible)
-
-
-def recalled(ops: MemoryOps) -> list[str]:
-    """What a recall brought, as `remembers` reads it: each fact's text and its category."""
-    return [
-        word
-        for op in ops.ops
-        if op.op == "recall"
-        for fact in op.facts
-        for word in (fact.text, fact.category or "")
-    ]
-
-
-def jsonable(value: object) -> JsonObject:
-    """A snapshot as the wire carries it: dataclasses, models and dates made JSON."""
-    made: JsonObject = ANYTHING.dump_python(value, mode="json")
-    return made
-
-
-def as_object(data: object) -> JsonObject:
-    """A log line's data is an object on the wire: anything else is put under `value`."""
-    if data is None:
-        return {}
-    made = ANYTHING.dump_python(data, mode="json")
-    return made if isinstance(made, dict) else {"value": made}  # pyright: ignore[reportUnknownVariableType]
+async def given_by_page(served: Live, data: JsonObject) -> None:
+    """The page answered a task: the waiting tool goes on, the model is told, the form redrawn."""
+    told = await served.asking.given_by_page(data.get("task"), data.get("given"))
+    if told is not None:
+        served.world.reply(told)
+    synced(served)

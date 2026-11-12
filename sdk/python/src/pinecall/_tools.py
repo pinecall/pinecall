@@ -31,6 +31,7 @@ class ToolOptions(TypedDict, total=False):
     preview: int
     pii: Sequence[str]
     timeout: float
+    shows: str
 
 
 @overload
@@ -57,6 +58,7 @@ def tool(method: _F | None = None, /, **options: Unpack[ToolOptions]) -> _F | Ca
         preview: how many rows of a list the model sees; the state keeps every one.
         pii: the parameters that carry personal data, masked in the log.
         timeout: how many seconds the platform waits for the method.
+        shows: the scene of the caller's screen it puts up once it returns (`scenes`).
     """
     unknown = set(options) - set(ToolOptions.__annotations__)
     if unknown:
@@ -79,6 +81,7 @@ class Declared:
     preview: int | None
     spec: ToolSpec
     arguments: type[BaseModel]
+    shows: str | None = None
 
 
 def declared_tools(
@@ -122,7 +125,10 @@ def declaring(
         "timeout": options.get("timeout"),
     }
     spec = _spec.spec_of(name, method, arguments, said)
-    return Declared(name, wanted, options.get("when"), options.get("preview"), spec, arguments)
+    preview = options.get("preview")
+    return Declared(
+        name, wanted, options.get("when"), preview, spec, arguments, options.get("shows")
+    )
 
 
 def stages_named(

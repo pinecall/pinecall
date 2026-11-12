@@ -1,15 +1,18 @@
 """`CallWorld`: the live call an agent serves — its line, its room, its turns, and its verbs."""
 
 import asyncio
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
+from typing import TypeVar, cast
 
 from pinecall import _answers
 from pinecall._answers import Answer, Attended, Transferred, Waiting
+from pinecall._asking import Asked
 from pinecall._calls import interruptible
 from pinecall._room import History, Participant, Room, Seat, Turn
 from pinecall.client import Found
 from pinecall.errors import PinecallError
+from pinecall.tasks import Task
 from pinecall.wire._names import Channel, Direction, JsonObject, Medium
 from pinecall.wire.commands import (
     AgentReply,
@@ -45,6 +48,11 @@ Searching = Callable[[str, int | None], Awaitable[list[Found]]]
 
 # How the call sends a command: its type and its data.
 Send = Callable[[str, WireModel], None]
+
+_T = TypeVar("_T")
+
+Passing = Callable[[type, Mapping[str, object]], Awaitable[str]]
+"""What passes a call to a teammate, answering what the model is told."""
 
 
 @dataclass(frozen=True)
@@ -117,6 +125,18 @@ class CallWorld:
         self._speaking: Waiting[bool] = Waiting(loop)
         self._transfers: Waiting[Transferred] = Waiting(loop)
         self._asks: Waiting[Attended] = Waiting(loop)
+        self.scene: str | None = None
+        """The scene of the caller's screen now (`scenes`), or None for none."""
+        self.shown: object = None
+        """What `show` put over the screen, or None."""
+        self.handed: Mapping[str, object] | None = None
+        """What the teammate that passed this call handed it, or None."""
+        self.shared: dict[str, object] = {}
+        """What the agents of one call share: what the first one wrote, the next one reads."""
+        self._ask: Callable[[Task[object]], Answer[object]] | None = None
+        self._asked: Callable[[], Asked | None] = lambda: None
+        self._showing: Callable[[], None] = lambda: None
+        self._passing: Passing | None = None
 
     def line(self) -> Line:
         """The call as the prompt reads it."""
@@ -202,6 +222,43 @@ class CallWorld:
     def hangup(self, reason: str | None = None) -> None:
         """End the call; say goodbye first, nothing after it is heard."""
         self._send("call.hangup", CallHangup.model_validate(given(reason=reason)))
+
+    def handoff(self, to: type, data: Mapping[str, object] | None = None) -> Answer[str]:
+        """Pass the call to another agent of its team: `self.call.handoff(Billing, {"id": n})`."""
+        passing = self._passing
+        if passing is None:
+            raise PinecallError(f"this call has no team: {to.__name__} cannot take it")
+        return Answer(_answers.scheduled(self._loop, lambda: passing(to, data or {})))
+
+    def ask(self, asked: Task[_T]) -> Answer[_T]:
+        """Ask the caller for a task from inside a tool: `self.ask(GetEmail)` on the agent."""
+        if self._ask is None:
+            raise PinecallError(f"{asked.name} is asked for inside a tool of a served call")
+        return cast("Answer[_T]", self._ask(asked))
+
+    @property
+    def asking(self) -> Asked | None:
+        """What a tool of this call stopped to ask the caller for, or None."""
+        return self._asked()
+
+    def show(self, shown: object) -> None:
+        """Put a part on the caller's page over the screen: `self.call.show(Map(at=clinic))`."""
+        self.shown = shown
+        self._showing()
+
+    def asked_by(
+        self, asking: Callable[[Task[object]], Answer[object]], asked: Callable[[], Asked | None]
+    ) -> None:
+        """The bridge's: what asks for a task, and what says what is asked now."""
+        self._ask, self._asked = asking, asked
+
+    def shown_by(self, showing: Callable[[], None]) -> None:
+        """The bridge's: what draws the page again when something is shown."""
+        self._showing = showing
+
+    def passed_by(self, passing: Passing) -> None:
+        """The bridge's: what passes the call to a teammate."""
+        self._passing = passing
 
     # ── what the entries teach it ──
 

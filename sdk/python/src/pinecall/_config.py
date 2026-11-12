@@ -13,6 +13,7 @@ from pinecall.wire.parts import EndOfTurn
 # word the TypeScript package's `ENVIRONMENT` and the gem's `Config::ENVIRONMENT`.
 ENVIRONMENT: tuple[str, ...] = (
     "language",
+    "timezone",
     "voice",
     "llm",
     "realtime",

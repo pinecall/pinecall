@@ -13,6 +13,7 @@ from pinecall.agent import Agent, LastCall
 from pinecall.bridge import mount
 from pinecall.client import Client
 from pinecall.errors import DeclarationRefused, NotConnected, Refused
+from pinecall.serve._app import described
 from pinecall.serve._held import Held
 from pinecall.serve._loading import CannotServe, parse
 from pinecall.serve._prompting import prompt
@@ -21,9 +22,11 @@ from pinecall.wire._names import Env
 
 USAGE = (
     "usage: python -m pinecall.serve start --file <agent.py> --slug <slug> [--file … --slug …]"
-    " [--console] [--events] [--prod]\n"
+    " [--app <app.py>] [--console] [--events] [--prod]\n"
     "       python -m pinecall.serve prompt --file <agent.py> --slug <slug> [--state field=json]…"
     " [--channel name] [--medium voice|text] [--show-machine]\n"
+    "       python -m pinecall.serve app --app <app.py> --file <agent.py> --slug <slug>"
+    " [--file … --slug …]\n"
 )
 
 
@@ -46,6 +49,8 @@ def main(
             return prompt(parse(rest), out)
         if verb == "start":
             return asyncio.run(started(rest, out, err, env))
+        if verb == "app":
+            return described(parse(rest), out)
     # A gateway that refuses the registration (a slug of another org, a key it does not take) is a
     # sentence for the person who ran it, not a traceback.
     except (CannotServe, DeclarationRefused, NotConnected, Refused) as refused:

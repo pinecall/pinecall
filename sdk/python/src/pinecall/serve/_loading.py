@@ -44,6 +44,7 @@ class Flags:
     channel: Channel = "phone"
     medium: Medium | None = None
     show_machine: bool = False
+    app: Path | None = None
 
 
 def parse(argv: list[str]) -> Flags:
@@ -54,7 +55,7 @@ def parse(argv: list[str]) -> Flags:
     words = list(argv)
     while words:
         word = words.pop(0)
-        if word in ("--file", "--slug", "--state", "--channel", "--medium"):
+        if word in ("--file", "--slug", "--state", "--channel", "--medium", "--app"):
             value = value_of(word, words)
             if word == "--file":
                 files.append(value)
@@ -62,6 +63,8 @@ def parse(argv: list[str]) -> Flags:
                 slugs.append(value)
             elif word == "--state":
                 typing.cast("JsonObject", found["state"]).update(as_state(value))
+            elif word == "--app":
+                found["app"] = Path(value)
             else:
                 found[word.removeprefix("--")] = value
         elif word in ("--console", "--events", "--prod", "--show-machine"):
@@ -137,10 +140,12 @@ def packaged(package: str, folder: Path) -> None:
         root = types.ModuleType(ROOT)
         root.__path__ = []
         sys.modules[ROOT] = root
-    if package not in sys.modules:
+    held = sys.modules.get(package)
+    if held is None:
         held = types.ModuleType(package)
-        held.__path__ = [str(folder)]
         sys.modules[package] = held
+    # A folder of the same name loaded before, from another project, is not this one.
+    held.__path__ = [str(folder)]
     if str(folder) not in sys.path:
         sys.path.insert(0, str(folder))
 

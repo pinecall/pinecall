@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pinecall import _doc, _rules, _view
 from pinecall.agent import Agent
 from pinecall.call import Line
+from pinecall.screen import scene_line, scenes_of
 from pinecall.wire.parts import PromptBlockSpec, PromptRegion
 
 # Every agent's blocks, in send order. The region boundary is the provider's cache boundary:
@@ -58,6 +59,7 @@ def render(
     *,
     resumed: bool = False,
     remembered: Sequence[str] = (),
+    rules: Sequence[str] = (),
 ) -> Blocks:
     """Render the agent's prompt in its state now, for the call `line` says.
 
@@ -67,23 +69,32 @@ def render(
         resumed: the call picks up one that was cut, which the view may say.
         remembered: the facts the runtime recalled about this caller; the view may ask
             `remembers("…")` of them and never prints one.
+        rules: the rules the agent's voice app gives every agent of it.
     """
     called = line or (agent.call.line() if agent.has_call else Line())
     texts = {
-        "identity": identity(agent, called),
+        "identity": identity(agent, called, rules),
         # The gateway writes it from the agent's settings; the class sends nothing for it.
         "knowledge": "",
         "tools": tools(agent),
-        "view": _view.rendered(
-            type(agent), agent.snapshot(), called, resumed=resumed, remembered=remembered
-        ),
+        "view": viewed(agent, called, resumed=resumed, remembered=remembered),
     }
     blocks = tuple(Block(spec.name, spec.region, texts[spec.name]) for spec in LAYOUT)
     return Blocks(blocks, history(agent))
 
 
-def identity(agent: Agent, line: Line) -> str:
-    """The class's docstring, the framework's rules and protocols, and the channel's. No state."""
+def viewed(agent: Agent, line: Line, *, resumed: bool, remembered: Sequence[str]) -> str:
+    """The view, and what the model reads of its caller's screen."""
+    shown = _view.rendered(
+        type(agent), agent.snapshot(), line, resumed=resumed, remembered=remembered
+    )
+    scene = agent.call.scene if agent.has_call else None
+    said = [shown, tagged("screen", scene_line(scenes_of(type(agent)), scene))]
+    return "\n\n".join(part for part in said if part.strip())
+
+
+def identity(agent: Agent, line: Line, rules: Sequence[str] = ()) -> str:
+    """The class's docstring, the framework's and the app's rules, the protocols, the channel's."""
     channel = (
         tagged("channel", _rules.channel_rules_for(line.channel, line.medium))
         if type(agent).channel_rules
@@ -92,6 +103,7 @@ def identity(agent: Agent, line: Line) -> str:
     said = [
         _doc.one_line(vars(type(agent)).get("__doc__")) or "",
         tagged("rules", _rules.RULES),
+        tagged("app_rules", "\n".join(f"- {rule}" for rule in rules)),
         tagged("protocols", _rules.PROTOCOLS),
         channel,
     ]
