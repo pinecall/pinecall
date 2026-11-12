@@ -3,9 +3,11 @@
 from runtime.live.holders import Registration
 from runtime.live.service.dialing import PlacedCall, Placement, place_call
 from runtime.live.service.tokens import Signer, Visitor, sign_room_token
+from runtime.live.service.visitors import Mint, issue_code, mint_room_token
 from runtime.live.service.written import ServingApps, Simulated, WrittenSetup
 
 __all__ = [
+    "Mint",
     "PlacedCall",
     "Placement",
     "Registration",
@@ -14,6 +16,8 @@ __all__ = [
     "Simulated",
     "Visitor",
     "WrittenSetup",
+    "issue_code",
+    "mint_room_token",
     "place_call",
     "sign_room_token",
 ]

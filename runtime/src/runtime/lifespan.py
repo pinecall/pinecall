@@ -28,6 +28,8 @@ from runtime.fleet.service.offers import Offering
 from runtime.fleet.service.roster import Roster
 from runtime.flows import tasks as flows_tasks
 from runtime.handles import Handles
+from runtime.hosting import service as hosting
+from runtime.hosting import tasks as hosting_tasks
 from runtime.kit.loops import Loops
 from runtime.knowledge.service.extraction_golden import EXTRACTION_RUNS_A_MINUTE
 from runtime.live import tasks as live_tasks
@@ -107,6 +109,8 @@ class State(TypedDict):
     # What places and plays a test call here, and what admits a chat that names a persona (live's `simulations`).
     harness: Harness
     simulations: ChatSimulations
+    # The apps' pages this process keeps unpacked.
+    pages: hosting.Pages
 
 
 # Everything opened goes on the stack: a failed start closes what opened, a stop closes it all.
@@ -138,6 +142,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[State]:
         loops.start(flows_tasks.wake_runs.bind(sessions))
         harness = await builders.build_harness(handles, live, signer, roster, stack)
         loops.start(evals_tasks.renew_leases.bind(harness.runner))
+        loops.start(hosting_tasks.count_serving.bind(sessions, live.sockets))
         yield State(
             handles=handles,
             closing=app.state.closing,
@@ -179,4 +184,5 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[State]:
             codes=builders.build_codes(handles, logs),
             harness=harness,
             simulations=ChatSimulations(harness),
+            pages=hosting.Pages(),
         )

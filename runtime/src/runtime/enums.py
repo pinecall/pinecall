@@ -258,3 +258,16 @@ class StepKind(StrEnum):
     wait = "wait"
     run = "run"
     emit = "emit"
+
+
+class AppKind(StrEnum):
+    """What a hosted app is: sources the env's runner starts, or an agent built in the console the gateway holds."""
+
+    code = "code"
+    studio = "studio"
+
+    # One with no process of its own serves for as long as it is not stopped and has a release.
+    @property
+    def has_process(self) -> bool:
+        """Whether a process of its own runs it, started by the runner."""
+        return self is AppKind.code

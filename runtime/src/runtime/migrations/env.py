@@ -19,6 +19,7 @@ from runtime.config import load_settings
 from runtime.evals import models as evals_models
 from runtime.fleet import models as fleet_models
 from runtime.flows import models as flows_models
+from runtime.hosting import models as hosting_models
 from runtime.insights import models as insights_models
 from runtime.judging import models as judging_models
 from runtime.kit.db import Model
@@ -41,6 +42,7 @@ TABLES = (
     evals_models,
     fleet_models,
     flows_models,
+    hosting_models,
     insights_models,
     judging_models,
     knowledge_models,

@@ -16,7 +16,7 @@ from runtime.auth import ActorMiddleware
 from runtime.config import Settings
 from runtime.exceptions import PinecallError, ServiceUnavailable, TooManyRequests, Unauthorized
 from runtime.handles import Handles
-from runtime.kit.middleware import AllowedOrigins, BodyCeiling
+from runtime.kit.middleware import AllowedOrigins, BodyCeiling, NamesUnder
 from runtime.lifespan import lifespan
 from runtime.postgres import STATEMENT_TIMEOUT_MS, busy
 
@@ -95,6 +95,7 @@ def create_app() -> FastAPI:
         any_page_says=A_PAGE_HANGS_UP,
     )
     app.add_middleware(BodyCeiling, most=LARGEST_BODY)
+    app.add_middleware(NamesUnder, domain=_pages_domain_of, prefix="/v1/pages", own="/pinecall/", files="/files")
     api.mount(app)
     app.add_exception_handler(PinecallError, answer_refusal)
     app.add_exception_handler(PoolTimeout, answer_busy)
@@ -103,6 +104,12 @@ def create_app() -> FastAPI:
 
 
 # Before the lifespan yielded (a preflight during start) there is no state yet: no origin is allowed.
+# Read per request: the settings are loaded by the lifespan, after the middleware is built.
+def _pages_domain_of(scope: Scope) -> str | None:
+    handles: object = scope.get("state", {}).get("handles")
+    return handles.settings.pages_domain if isinstance(handles, Handles) else None
+
+
 def _origins_of(scope: Scope) -> tuple[str, ...]:
     handles: object = scope.get("state", {}).get("handles")
     return list_allowed_origins(handles.settings) if isinstance(handles, Handles) else ()

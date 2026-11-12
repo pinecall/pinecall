@@ -11,6 +11,7 @@ from runtime.compliance import endpoints as compliance
 from runtime.evals import endpoints as evals
 from runtime.fleet import endpoints as fleet
 from runtime.flows import endpoints as flows
+from runtime.hosting import endpoints as hosting
 from runtime.insights import endpoints as insights
 from runtime.judging import endpoints as judging
 from runtime.knowledge import endpoints as knowledge
@@ -46,4 +47,5 @@ def mount(app: FastAPI) -> None:
     app.include_router(live.router)
     app.include_router(flows.router)
     app.include_router(evals.router)
+    app.include_router(hosting.router)
     app.include_router(platform.pages_router)
