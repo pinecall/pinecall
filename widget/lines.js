@@ -88,7 +88,7 @@ export class Lines {
     // indeed the greeting, dropped: the conversation on screen is one.
     let quiet = false;
     if (who === "agent") {
-      widget.onGreeted?.();
+      widget.onArrived?.();
       const standIn = this.list.querySelector(".hello");
       if (standIn) {
         // The stand-in becomes the greeting's own line: nothing disappears, nothing is typed again.

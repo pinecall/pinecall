@@ -47,7 +47,7 @@
 // that follows one that ended (event cart.restored). README.md is the whole reference.
 
 // Pinned: a floating @2 took 2.23.0, which signals on /rtc/v1, a path Pinecall's gateway does not route.
-import { Room, RoomEvent, Track } from "https://cdn.jsdelivr.net/npm/livekit-client@2.22.3/+esm";
+import { ParticipantKind, Room, RoomEvent, Track } from "https://cdn.jsdelivr.net/npm/livekit-client@2.22.3/+esm";
 import { CallUs } from "./call-us.js";
 import { card } from "./cards.js";
 import { Dictation } from "./dictation.js";
@@ -296,6 +296,11 @@ class PinecallWidget extends HTMLElement {
     this.$(".send").addEventListener("click", send);
     input.addEventListener("keydown", (event) => {
       if (event.key === "Enter") send();
+    });
+    // A conversation that ended while the panel stayed open opens again as she goes to write, not
+    // when she sends: the first line then waits for nothing.
+    input.addEventListener("focus", () => {
+      if (!this.room && !this.opening && !this.$(".panel").hidden) void this.conversation("chat");
     });
     // The send lights up with words to send.
     input.addEventListener("input", () => (this.$(".send").disabled = !input.value.trim()));
@@ -566,8 +571,13 @@ class PinecallWidget extends HTMLElement {
     const room = new Room();
     this.room = room;
     this.scope = scope;
-    this.greeted = new Promise((resolve) => {
-      this.onGreeted = resolve;
+    // The agent is there once it is in the room, or once its first words land (they can come before it
+    // is listed). Not its greeting: a resumed conversation is not greeted again.
+    this.arrived = new Promise((resolve) => {
+      this.onArrived = resolve;
+    });
+    room.on(RoomEvent.ParticipantConnected, (participant) => {
+      if (participant.kind === ParticipantKind.AGENT) this.onArrived();
     });
     room.registerTextStreamHandler(TRANSCRIPTION, (reader, from) => this.lines.read(reader, from.identity));
     room.on(RoomEvent.TrackSubscribed, (track) => {
@@ -598,15 +608,16 @@ class PinecallWidget extends HTMLElement {
       this.dispatchEvent(new CustomEvent("pinecall:ended", { detail: { call: minted.call } }));
     });
     await room.connect(minted.server_url, minted.participant_token);
+    if ([...room.remoteParticipants.values()].some((one) => one.kind === ParticipantKind.AGENT)) this.onArrived();
     // What a hang-up is said with at the gateway's door: the call and a token of its own.
     this.hangup = { call: minted.call, token: minted.log_token ?? minted.participant_token };
     this.began(minted.call, scope, minted.resume_token ?? null, earlier);
     // A new call after one that ended starts with an empty cart: it gets back the one this chat had,
     // once the agent is in the room to hear it.
     const cart = earlier?.cart;
-    if (!resumed && cart?.length) void this.greeted.then(() => this.publish("cart.restored", { lines: cart }));
+    if (!resumed && cart?.length) void this.arrived.then(() => this.publish("cart.restored", { lines: cart }));
     // A chat goes through a room too: the agent is told when it is a voice call, to speak for the ear.
-    if (scope === "talk") void this.greeted.then(() => this.publish("call.spoken", { spoken: true }));
+    if (scope === "talk") void this.arrived.then(() => this.publish("call.spoken", { spoken: true }));
     if (scope === "talk") {
       await room.localParticipant.setMicrophoneEnabled(true);
       if (!room.canPlaybackAudio) this.notice(this.words.tapToHear, () => room.startAudio());
@@ -658,8 +669,8 @@ class PinecallWidget extends HTMLElement {
 
   async send(text) {
     if (!this.room) throw new Error(this.words.failed);
-    // Text sent before the agent joins is lost: wait for its first words (8 s at most).
-    await Promise.race([this.greeted, new Promise((resolve) => setTimeout(resolve, 8000))]);
+    // Text sent before the agent joins is lost: wait for it to be there (8 s at most).
+    await Promise.race([this.arrived, new Promise((resolve) => setTimeout(resolve, 8000))]);
     await this.room.localParticipant.sendText(text, { topic: CHAT });
   }
 
