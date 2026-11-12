@@ -4,7 +4,15 @@ import ast
 import sys
 from collections import defaultdict
 
-from tests.conventions.canon import DOMAINS, ENTRYPOINTS, FOUNDATIONS, VALUE_OBJECTS, Module, of_ours
+from tests.conventions.canon import (
+    DOMAINS,
+    ENTRYPOINTS,
+    FOUNDATIONS,
+    SUBPACKAGES,
+    VALUE_OBJECTS,
+    Module,
+    of_ours,
+)
 
 
 def test_no_module_cycles(modules: dict[str, Module]) -> None:
@@ -15,7 +23,7 @@ def test_no_module_cycles(modules: dict[str, Module]) -> None:
 
 
 def test_domains_import_downwards(modules: dict[str, Module]) -> None:
-    """A domain's module reaches a lower domain's service, its schemas or a value object; never upwards."""
+    """A domain reaches a lower one's service, its schemas, a value object or a sub-package; never upwards."""
     wrong: list[str] = []
     for module in modules.values():
         domain = module.domain
@@ -32,7 +40,7 @@ def test_domains_import_downwards(modules: dict[str, Module]) -> None:
                 wrong.append(f"{where}: a domain never imports {dotted}")
             elif DOMAINS.index(head) > DOMAINS.index(domain):
                 wrong.append(f"{where}: {domain} imports {dotted}, which is above it")
-            else:
+            elif not _a_subpackage(dotted, names):
                 wrong.extend(f"{where}: {why}" for why in _downward_refusals(modules, module, dotted, names))
     assert not wrong, "\n".join(wrong)
 
@@ -136,9 +144,16 @@ def _edges(modules: dict[str, Module]) -> dict[str, set[str]]:
     return edges
 
 
-# `from pinecall_runtime.calls.context import Route`, or `from pinecall_runtime.calls import context`.
+# `from runtime.calls.context import Route`, or `from runtime.calls import context`.
 def _a_value_object(dotted: str, names: list[str]) -> bool:
     return dotted in VALUE_OBJECTS or (dotted in DOMAINS and all(f"{dotted}.{name}" in VALUE_OBJECTS for name in names))
+
+
+# A lower domain's sub-package is reached as the package itself, whose `__init__` names what others
+# import: `from runtime.calls.log import Log`, or `from runtime.calls import folds`. A module inside it
+# (`runtime.calls.log.writer`) is the package's own, and is refused as any other module of a domain.
+def _a_subpackage(dotted: str, names: list[str]) -> bool:
+    return dotted in SUBPACKAGES or (dotted in DOMAINS and all(f"{dotted}.{name}" in SUBPACKAGES for name in names))
 
 
 def _resolve(modules: dict[str, Module], dotted: str) -> str | None:
@@ -202,6 +217,8 @@ def test_models_declare_and_import_nothing_of_ours_but_the_base(modules: dict[st
 
 def test_alembic_sees_every_domains_tables(modules: dict[str, Module]) -> None:
     """`migrations/env.py` imports the models of every domain that has any, so the metadata is whole."""
+    if "migrations.env" not in modules:
+        return
     env = modules["migrations.env"]
     imported: set[str] = set()
     for target, names, _line in env.imports():

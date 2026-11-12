@@ -17,7 +17,7 @@ steps:
       - ${_IMAGE}
       - -c
       - >-
-        from pinecall_runtime.providers.service import installed; installed();
+        from runtime.providers.service.plugins import list_vendors; list_vendors();
         from smart_turn_livekit.models import resolve_model;
         print(resolve_model('smart-turn-v3', local_only=True))
 images:

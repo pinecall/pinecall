@@ -1,80 +1,64 @@
 # runtime — how to work here
 
-The Pinecall runtime: one Python package (`pinecall_runtime`, PyPI `pinecall-runtime`), one wheel,
-the gateway that answers the API and the worker that runs the calls, on LiveKit. It runs on
-Kubernetes: the repository's `infra/`, beside this package, holds the charts and the Terraform.
-Rewritten from zero on 2026-10-15 as a Rails-shaped Python application: **`CONTRIBUTING.md` is the
-canon** (the layout, the twelve rules, the vocabulary) and this page only says how to work.
+The Pinecall runtime: the gateway that answers the API and the worker that runs the calls, on
+LiveKit. One Python package, `runtime` (`src/runtime/`, PyPI `pinecall-runtime`), deployed on
+Kubernetes with the charts and the Terraform of the repository's `infra/`. **`CONTRIBUTING.md` is
+the canon** (the layout, the rules, the vocabulary) and this page only says how to work.
 
 Code, comments, commits and pages are in English. A commit subject is a plain sentence saying
 what is now true (`git log --oneline` shows the style).
+
+## Where the package stands
+
+The package is being written, bottom up, domain by domain. Built: the foundations, the toolkit, the
+wire, and every domain of the canon's order up to `evals`. Not built yet: `hosting`, `studio`,
+`retention`, `jobs` (the worker), `hosts`, the operator's terminal (`cli/`) and the three processes
+(`app.py` is here; `worker.py` and `runner.py` are not). So **nothing runs from this tree yet**: no
+image is built from it, `pinecall-runtime` is no command, and the `local*`, `image` and `deploy`
+targets of the Makefile wait for the processes. The package it replaces, `pinecall_runtime`, left
+the repository on 2026-11-12 (its last commit is `8c76bf0e`); production runs an image built before
+that.
+
+What is held meanwhile: `ruff`, `pyright` strict and `mypy` clean on the whole tree, and the
+convention tests. A domain's behaviour tests are written when the processes exist.
 
 ## Commands
 
 ```
 uv sync                           the venv and every dev tool (Python 3.13)
-make check                        ruff (lint and format), pyright strict, mypy, the suites with no database
-make test [T=tests/calls]         every suite on a local Postgres and Redis (colima; `make db`)
-uv run alembic check              the models are the schema (empty diff)
-make image                        the runtime's image at this commit
-make diff CLUSTER=<cluster>       what releasing each chart would change, nothing touched
-make deploy CLUSTER=<cluster>     charts/pinecall released at that image (guarded, rolled back if it fails), then the live suite
-make edge|postgres CLUSTER=<cluster>  the front door's chart, Postgres's chart: released when they change
-make rollback CLUSTER=<cluster>   charts/pinecall back to the release before this one
-make fleet CLUSTER=<cluster> ENV=<env> MIN=<n>   that env keeps n scaled workers warm, at the image that runs
-make logs CLUSTER=<cluster>       the gateways' and the workers' logs of the last hour
+make check                        ruff (lint and format), pyright strict, mypy, the convention tests
 ```
 
-No suite runs on the laptop (`~/.claude/CLAUDE.md`): `~/pinecall-v2/tools/remote-test [pytest args]`
-runs it on the test box, in the background.
+No suite runs on a laptop here: the tests run on the project's test machine.
 
 ## The map
 
-`src/pinecall_runtime/`, one folder per bounded context, every domain the same files
-(`models.py schemas.py repository.py service.py auth.py endpoints.py tasks.py`, each a package when
-it grows), in a fixed bottom-up order a domain never imports against:
+`src/runtime/`, one folder per bounded context, every domain the same files (`models.py schemas.py
+repository.py service.py auth.py endpoints.py tasks.py`, each a package when it grows), in a fixed
+bottom-up order a domain never imports against:
 
 ```
-platform · billing · accounts · compliance · providers · agents · knowledge · channels
-· fleet · telephony · session · judging · alerts · calls · flows · evals · hosting · studio · retention · jobs
+platform · billing · mail · accounts · signin · compliance · providers · agents · knowledge · whatsapp
+· fleet · telephony · session · judging · alerts · calls · insights · live · flows · evals
+· hosting · studio · retention · jobs · hosts
 ```
 
 Below every domain: `kit/` (the toolkit, no business noun), `wire/` (the protocol the SDKs
-implement, golden-pinned), and the process's foundations (`config.py enums.py exceptions.py
-postgres.py redis.py livekit.py`). Each domain owns its tables in its `models.py`. Above them: the entrypoints
-(`app.py api.py worker.py runner.py` and the Typer app `cli/`), wiring only. `calls/` and
-`session/` are engines with extra modules, named in the canon. `migrations/` (inside the package, so the wheel carries it) is
-Alembic, the live schema its baseline; `migrations/sql/` is the history that made that schema, read,
-never run.
+implement), `migrations/` (Alembic, the live schema its baseline; `migrations/sql/` is the history
+that made that schema, read, never run) and the process's foundations (`config.py enums.py
+exceptions.py actor.py auth.py scoping.py postgres.py signal.py redis.py livekit.py shared_state.py
+handles.py`). Each domain owns its tables in its `models.py`. Above them: the entrypoints (`app.py
+lifespan.py builders.py api.py`), wiring only. `calls/`, `live/`, `session/` and `evals/` hold
+engine modules beside the canon's files, each named in the canon.
 
 ## What the machine holds (`tests/conventions/`)
 
 The canon's rules are tests: the layers (an AST walk of every import, no cycles), the canon's
-files, the banned words, the sizes, `alembic check`, every raw `text()` statement prepared on the
-test database with its JSON parameters typed, ruff and pyright strict with no suppression outside
-the allow-list. `make check` runs them; the pre-commit hook (`make hooks`)
-runs `make check` on a commit that touches `runtime/`.
-
-`tests/conftest.py` is what every suite stands on: the test database migrated once, the catalog on
-`acme` (`tests/fakes/acme.py`, a vendor installed as a livekit plugin, its model answering the
-caller's last line), the gateway served by uvicorn on a free port, and a fresh org with its admin
-and keys per test. `tests/app/` reaches that gateway as an SDK does: every GET answered to a valid
-key without a server error, every tenant write refusing an empty body without one, the app
-socket, the box's own key. `tests/test_postgres.py` holds row-level security as the app's role
-meets it: a tenant reads and writes its own org alone. `tests/calls/` holds the engine: the
-reducer, the meter, the latencies and the facts against the golden log, the store on Postgres
-(contiguous seqs under concurrency, batches taken once, the seal and its lease, the append-only
-table, a writer killed mid-append), and a whole written call, held, chatted, sealed and priced. `tests/session/` runs calls on livekit's
-AgentSession with LiveKit faked (`tests/fakes/livekit.py`): the text and voice sessions, the
-room, the tools' round trip, the prompt, hold music, the recording, the widget.
-`tests/channels/` and `tests/telephony/` hold the routes, the legs, the hand-over, the dial
-guards and a number imported, bought, moved and let go (Twilio and each env's LiveKit faked);
-`tests/agents/` what a class declares; `tests/accounts/` keys and signing in;
-`tests/billing/` the quotas; `tests/knowledge/` the embedder, bases, the hybrid search, a call's
-lookups, memory and what a hang-up extracts, on Postgres; `tests/judging/` the judges, the cases
-born at hang-up and decided, and calibration; `tests/hosting/` an upload checked and an app's
-releases; `tests/jobs/` the worker's client on the served gateway, its socket and its retries.
-`tests/wire/` pins the protocol to the SDKs' goldens.
+files, the facades, the names and the banned words, the sizes, what an endpoint and a service may
+hold, every model's retention, every raw `text()` statement prepared on the test database with its
+JSON parameters typed, and no suppression of ruff or pyright. `tests/conftest.py` gives them the
+test database, migrated once by the package's own migrations. `tests/wire/golden/` is the golden
+call log the SDKs copy: when the wire moves, their copies move with it.
 
 ## Decisions that stand
 
@@ -83,8 +67,8 @@ releases; `tests/jobs/` the worker's client on the served gateway, its socket an
   worker fleet.
 - **No vendor is named in code.** Every installed livekit plugin is a vendor; defaults, box keys,
   what the box lends and the prices are the providers row (the catalog), edited from the console.
-- **The wire is ours** (`wire/`), pinned to the TypeScript and Ruby SDKs by `tests/wire/golden/`.
-  Money is US dollars everywhere.
+- **The wire is ours** (`wire/`), pinned to the SDKs by `tests/wire/golden/`. Money is US dollars
+  everywhere.
 - **The log is the record**: every fact of a call is an entry appended to its log; facts, state and
   usage are read models folded from it (`calls/`).
 - `PINECALL_VAULT_KEY` is required: it seals every key and secret the box holds.

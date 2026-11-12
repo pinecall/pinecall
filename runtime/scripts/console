@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The console and the widget into build/public/, which the wheel carries as pinecall_runtime/public/.
+# The console and the widget into build/public/, which the wheel carries as runtime/public/.
 # Built outside src/ so the source tree holds code alone.
 set -euo pipefail
 cd "$(dirname "$0")/.."

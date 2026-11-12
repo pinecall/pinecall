@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from sqlalchemy.sql.elements import TextClause
 from sqlalchemy.types import JSON
 
-import pinecall_runtime
+import runtime
 from tests.conftest import needs_the_database
 
 # What asyncpg encodes from a str alone: a Python value bound to one must be typed, so SQLAlchemy serializes it.
@@ -26,7 +26,7 @@ class Statement:
 def statements() -> list[Statement]:
     """Every module-level `text()` of the package, the migrations' env left out."""
     found: list[Statement] = []
-    for info in pkgutil.walk_packages(pinecall_runtime.__path__, "pinecall_runtime."):
+    for info in pkgutil.walk_packages(runtime.__path__, "runtime."):
         if ".migrations" in info.name or info.name.endswith("__main__"):
             continue
         module = importlib.import_module(info.name)

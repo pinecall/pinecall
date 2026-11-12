@@ -19,4 +19,4 @@ class Console(BuildHookInterface):
         built = Path(self.root) / "build" / "public"
         if not built.is_dir():
             raise RuntimeError(NOT_BUILT)
-        build_data["force_include"][str(built)] = "pinecall_runtime/public"
+        build_data["force_include"][str(built)] = "runtime/public"

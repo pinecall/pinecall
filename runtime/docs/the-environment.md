@@ -69,7 +69,7 @@ the bucket are `store` in the chart's values, and the key is the environment's `
 
 The platform's own Twilio account (the one it buys numbers on) and its Meta app (the secret every WhatsApp webhook is signed with, the handshake's word, the token replies go out on when an org brought none) are not variables: they are the sealed rows `credentials/twilio` and `credentials/whatsapp` of `box_settings`, beside the platform's vendor keys. See [numbers.md](protocol/numbers.md).
 
-The source is `pinecall_runtime/config.py`: one field per variable, with its alias and its
+The source is `runtime/config.py`: one field per variable, with its alias and its
 one-line description. A variable this table names and that file does not, or the reverse, is a bug
 in whichever is younger.
 

@@ -1,6 +1,6 @@
 # State
 
-What a log reduces to: fold every entry in `seq` order and this is what you hold. The runtime's reducer (`pinecall_runtime/calls/reducer.py`) and the SDKs' are written by hand and must agree on the golden call log.
+What a log reduces to: fold every entry in `seq` order and this is what you hold. The runtime's reducer (`runtime/calls/folds/state.py`) and the SDKs' are written by hand and must agree on the golden call log.
 
 ### `CallStatus`
 

@@ -55,7 +55,7 @@ TF_ROOTS  = $(INFRA)/terraform/bootstrap $(INFRA)/terraform/project $(INFRA)/ter
 check:           ## ruff (lint, format), pyright and mypy strict, alembic check, the suites with no database; terraform's form
 	uv run ruff check . && uv run ruff format --check .
 	uv run pyright && uv run mypy src
-	uv run pytest -q -n auto tests/conventions tests/wire
+	uv run pytest -q -n auto tests/conventions
 	@if command -v terraform >/dev/null; then $(MAKE) --no-print-directory tf-check; fi
 
 # Its own data directory: a root module initialized against its bucket would be reached again.

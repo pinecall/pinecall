@@ -20,12 +20,6 @@ ALLOWED_RULES = frozenset(
 # One file, one rule, one reason.
 ALLOWED_IN_A_FILE: dict[tuple[str, str], str] = {
     ("session/voice.py", "reportMissingTypeStubs"): "smart_turn_livekit ships no stubs",
-    ("session/prompt.py", "reportIncompatibleMethodOverride"): "livekit's ChatContext override takes its own arguments",
-    ("session/prompt.py", "override"): "the same, as mypy names it",
-    ("providers/service/committing.py", "reportPrivateUsage"): (
-        "livekit hands the session's keyterms and conversation items to the ears through two hooks with no "
-        "public name, as its own StreamAdapter forwards them"
-    ),
 }
 
 

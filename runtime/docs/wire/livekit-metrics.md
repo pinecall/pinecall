@@ -1,7 +1,7 @@
 # livekit-agents 1.8.8 — every metric it measures, and where each one is produced
 
 Where livekit-agents 1.8 produces each metric, and every class and field it declares: what the
-wire's metrics models (`pinecall_runtime/wire/metrics.py`) are written against. The lines are
+wire's metrics models (`runtime/wire/metrics.py`) are written against. The lines are
 those of 1.8.8, the version `uv.lock` holds.
 
 ## 13 · 14 — where the metrics are produced

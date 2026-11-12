@@ -84,8 +84,8 @@ jobs:
       - name: the wheel carries the console and the widget
         working-directory: runtime
         run: |
-          unzip -l dist/pinecall_runtime-*.whl | grep -q 'pinecall_runtime/public/console/index.html'
-          unzip -l dist/pinecall_runtime-*.whl | grep -q 'pinecall_runtime/public/widget/pinecall-widget.js'
+          unzip -l dist/pinecall_runtime-*.whl | grep -q 'runtime/public/console/index.html'
+          unzip -l dist/pinecall_runtime-*.whl | grep -q 'runtime/public/widget/pinecall-widget.js'
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: runtime

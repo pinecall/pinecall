@@ -1,7 +1,7 @@
 # The wire
 
 The seam between whoever does the real time and the application: every entry the gateway writes
-and every command an app sends. It is the runtime's: `pinecall_runtime/wire/` holds each one as a pydantic
+and every command an app sends. It is the runtime's: `runtime/wire/` holds each one as a pydantic
 model, and these pages describe them field by field. A rule of the runtime's suite
 (`tests/wire/`) holds the two together: an event, a command or a shape the
 code has and a page does not, a field on one side only, a type or a required flag that differ,
@@ -143,7 +143,7 @@ What a supervisor sends to `POST /v1/calls/{id}/verbs`, one per request. Each la
 ## State
 
 `State` is what a log reduces to: fold every entry in `seq` order and that is what you hold. The
-runtime's reducer (`pinecall_runtime/calls/reducer.py`) and the SDKs' must agree: TypeScript's and Ruby's are
+runtime's reducer (`runtime/calls/folds/state.py`) and the SDKs' must agree: TypeScript's and Ruby's are
 written by hand, Python's is a copy of this one. All of them agree, field for field, on the runtime's golden call log
 (`tests/wire/golden/call-log.json`) and the state it folds to (`call-log.state.json`); each SDK
 keeps a copy of both and a test that folds one into the other. The shape is in `state.md`.

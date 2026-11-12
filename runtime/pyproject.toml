@@ -66,9 +66,6 @@ voice = [
   "audioop-lts>=0.2.1; python_version >= '3.13'",
 ]
 
-[project.scripts]
-pinecall-runtime = "pinecall_runtime.cli:main"
-
 [project.urls]
 Homepage = "https://pinecall.io"
 Repository = "https://github.com/pinecall/pinecall"
@@ -92,15 +89,10 @@ dev = [
 requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
-# `src/runtime/` is the package being built beside `pinecall_runtime` (CANON.md): importable in the
-# checkout and on the test box, and in no wheel until the cutover.
-[tool.hatch.build]
-dev-mode-dirs = ["src"]
-
 [tool.hatch.build.targets.wheel]
-packages = ["src/pinecall_runtime"]
+packages = ["src/runtime"]
 
-# The console and the widget, built by scripts/console, ride in the wheel as pinecall_runtime/public.
+# The console and the widget, built by scripts/console, ride in the wheel as runtime/public.
 [tool.hatch.build.targets.wheel.hooks.custom]
 path = "scripts/hatch_build.py"
 
@@ -178,10 +170,10 @@ unfixable = ["T20"]
 convention = "google"
 
 [tool.ruff.lint.isort]
-known-first-party = ["pinecall_runtime", "runtime", "tests"]
+known-first-party = ["runtime", "tests"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D1", "ARG", "T20"]
-"src/pinecall_runtime/migrations/**" = ["D1"]
+"src/runtime/migrations/**" = ["D1"]
 # A script a person runs from the Makefile: its lines are its output.
 "scripts/fleet" = ["T20"]
