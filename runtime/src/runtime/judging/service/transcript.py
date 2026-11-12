@@ -14,19 +14,21 @@ from runtime.session import service as session
 from runtime.wire.base import Entry, WireModel
 from runtime.wire.events import (
     AgentTurnEnded,
+    CallEnded,
     CallStarted,
     CallSummary,
     ConfirmDeclined,
     ConfirmGranted,
     ConfirmRequest,
     DocsSources,
+    ErrorEvent,
     MemoryOps,
     StateChanged,
     ToolCall,
     UserTurnEnded,
     event_of,
 )
-from runtime.wire.parts import SideEffect, ToolResult
+from runtime.wire.parts import EndedBy, SideEffect, ToolResult
 from runtime.wire.scores import CallScore
 
 # livekit's two speakers.
@@ -85,6 +87,16 @@ class GateLine:
     side_effect: SideEffect | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class Failed:
+    """One error the call logged, and whether its session recovered from it."""
+
+    seq: int
+    code: str
+    message: str
+    recoverable: bool
+
+
 # The one reading of a call's log. Until 2026-11 a seal folded the log into this and threw it away,
 # then read the log six more times with four parsers to keep the call as a case; two of those raised
 # on an entry of an older shape, where this one leaves the entry out.
@@ -114,6 +126,10 @@ class Transcript:
     began: float | None = None
     # The call's last call.score, the verdict a judge may write again after the seal; None before it.
     score: CallScore | None = None
+    # Every error the call logged, in order, and who ended it (None for a log with no end): what a
+    # replay's checks read, which until 2026-11 folded the log a third time for them.
+    errors: tuple[Failed, ...] = ()
+    ended_by: EndedBy | None = None
 
     def lines_by(self, role: Role) -> tuple[str, ...]:
         """What one side said, turn by turn."""
@@ -174,6 +190,12 @@ def transcript_of(entries: Sequence[Entry], declaration: Declaration | None) -> 
         direction=None if started is None else started.direction,
         began=None if started is None else started.started_at,
         score=score_of(entries),
+        errors=tuple(
+            Failed(entry.seq, data.code, data.message, data.recoverable)
+            for entry, data in read
+            if isinstance(data, ErrorEvent)
+        ),
+        ended_by=next((data.ended_by for _, data in reversed(read) if isinstance(data, CallEnded)), None),
     )
 
 

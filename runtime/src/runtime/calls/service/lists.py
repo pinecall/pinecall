@@ -132,6 +132,12 @@ async def measure_latencies(session: AsyncSession, logs: Logs, slug: str, limit:
     return len(turns), medians(turns)
 
 
+async def find_newest_call_of(session: AsyncSession, scope: Scope, agent: str) -> str | None:
+    """The scope's newest call of the agent, or None when it never had one."""
+    found = await SearchRepository(session).list_calls(scope, ListFilters(agent=agent), limit=1)
+    return found.calls[0] if found.calls else None
+
+
 async def list_newest_calls(session: AsyncSession, limit: int, *, agent: str | None = None) -> list[str]:
     """The newest calls of the box, or of one agent, across every org."""
     with box_wide():

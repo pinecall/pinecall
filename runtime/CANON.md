@@ -162,6 +162,12 @@ and move the same calls and sockets (`Calls`, `Sockets`, `Holders`); the WhatsAp
 dial, a visitor's way in with its tokens and codes, the supervisor's desk, the console's asks of a
 running app, the apps and the line were decided into it.
 
+`evals/tasks.py` holds, beside its one loop, the two objects that keep the work a request starts and
+does not await: `Runner` (the runs this gateway plays, and the agent each holds by a lease) and
+`Simulations` (the simulated calls on the line, counted across the gateways). Both are built in the
+lifespan and stopped with the process, so they stand with the domain's work in the background and
+not in `service/`; the loop renews the leases of the runs `Runner` holds.
+
 ## The rules
 
 1. **One noun, one file.** A module's one-line docstring names one thing, and the filename is

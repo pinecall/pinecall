@@ -16,7 +16,7 @@ from runtime.providers.service.prices import completion_usage, cost_of
 from runtime.providers.service.questions import Answerer, Line, Patience, ask, open_answerer
 from runtime.providers.service.readiness import Runnable, runnable_on
 from runtime.providers.service.refusals import vendor_named_in
-from runtime.providers.service.signatures import refuse_untaken_settings
+from runtime.providers.service.signatures import default_voice, refuse_untaken_settings
 from runtime.providers.service.speech import TimedWord, speak
 from runtime.providers.service.stages import (
     build_ears,
@@ -27,7 +27,7 @@ from runtime.providers.service.stages import (
 )
 from runtime.providers.service.telemetry import Telemetry, telemetry_of
 from runtime.providers.service.trials import try_realtime, try_stage
-from runtime.providers.service.voices import list_in_catalog
+from runtime.providers.service.voices import list_by_vendor, list_in_catalog
 
 __all__ = [
     "NOT_REALTIME",
@@ -48,11 +48,13 @@ __all__ = [
     "build_voice",
     "completion_usage",
     "cost_of",
+    "default_voice",
     "get_catalog",
     "hears_and_speaks",
     "is_installed",
     "judge_ceiling",
     "keys_of",
+    "list_by_vendor",
     "list_in_catalog",
     "open_answerer",
     "parse_lending",

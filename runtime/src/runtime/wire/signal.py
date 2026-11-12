@@ -157,6 +157,10 @@ class RunningShare(RootModel[dict[str, list[str]]]):
     """One gateway's share of the calls at once: the calls it opened, by `<org>|<env>`."""
 
 
+class SimulatingShare(RootModel[dict[str, int]]):
+    """One gateway's share of the simulated calls on the line: how many it plays, by `<org>|<env>`."""
+
+
 class OwnedShare(BaseModel):
     """One gateway's share of what runs on it: the written calls whose sessions it runs, the threads it holds."""
 
