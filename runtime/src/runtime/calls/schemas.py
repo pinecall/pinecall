@@ -5,7 +5,7 @@ from typing import Annotated, Literal, Self
 from pydantic import AliasPath, BeforeValidator, Field
 
 from runtime.enums import Channel, Direction, Env
-from runtime.kit.schemas import Row, Schema
+from runtime.kit.schemas import Epoch, Row, Schema
 from runtime.kit.text import JsonObject
 from runtime.wire.base import Entry, WireModel
 from runtime.wire.parts import CallStatus, Contact, Cost, EndReason, SessionFlag, ThreadKind
@@ -325,3 +325,44 @@ class BoxUsageQuery(UsageQuery):
     """The usage feed across the box, or one org's when `org` names it (its slug or its id)."""
 
     org: str | None = None
+
+
+# ── a carrier's traceback ──
+
+
+class TracebackCall(Row):
+    """One phone call with the number: whose, which way, when, how it ended, whether erased."""
+
+    call: str
+    org: str | None
+    env: str | None
+    direction: str | None
+    from_number: str | None
+    to_number: str | None
+    started_at: float | None
+    ended_at: float | None
+    end_reason: str | None
+    # The call's log is gone and only its record is left.
+    erased: bool
+
+
+class TracebackDial(Row):
+    """One dial to the number: whose, the call it placed, the number shown, who asked, the guard."""
+
+    org: str
+    env: str
+    agent: str
+    call: str | None
+    shown: str | None
+    asked_by: str
+    refused: str | None
+    at: Epoch
+
+
+class Traceback(Row):
+    """GET /v1/ops/traceback: what the box keeps of one number since a day, oldest first."""
+
+    number: str
+    since: float
+    calls: list[TracebackCall]
+    dials: list[TracebackDial]

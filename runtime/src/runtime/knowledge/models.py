@@ -50,7 +50,8 @@ class ContactMemory(Model):
     __kept__ = Kept(
         call="source_call",
         contact="contact",
-        exported=("env", "holder", "contact", "text", "category", "valid_from", "invalidated_at", "source_call"),
+        exported=("holder", "contact", "text", "category", "valid_from", "invalidated_at", "source_call"),
+        exported_as="memory",
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
@@ -74,9 +75,7 @@ class KnowledgeBase(Model):
     """One base in one scope: the model it was embedded with, its language, how many chunks, when it was pushed."""
 
     __tablename__ = "knowledge_bases"
-    __kept__ = Kept(
-        not_exported="a base's count and its model, made again by pushing its files: the export carries them"
-    )
+    __kept__ = Kept(exported=("holder", "base", "language", "model", "chunks", "pushed_at"))
 
     org: Mapped[str] = mapped_column(Text, ForeignKey("orgs.id", ondelete="CASCADE"), primary_key=True)
     env: Mapped[Env] = mapped_column(StringEnum(Env), primary_key=True)
@@ -103,9 +102,7 @@ class KnowledgeFile(Model):
             ondelete="CASCADE",
         ),
     )
-    __kept__ = Kept(
-        exported=("env", "holder", "base", "path", "text", "pushed_at"),
-    )
+    __kept__ = Kept(exported=("holder", "base", "path", "text", "pushed_at"), exported_as="knowledge_file")
 
     org: Mapped[str] = mapped_column(Text, primary_key=True)
     env: Mapped[Env] = mapped_column(StringEnum(Env), primary_key=True)

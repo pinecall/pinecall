@@ -10,6 +10,7 @@ from runtime.agents.service.declaration import (
     put_declaration,
     read_model,
 )
+from runtime.agents.service.hold_audio import forget_melodies
 from runtime.agents.service.kinds import BUILT_IN_STUDIO, is_studio_key, kind_of
 from runtime.agents.service.lexicon import put_lexicon
 from runtime.agents.service.resolution import name_model
@@ -48,6 +49,7 @@ __all__ = [
     "declaration_of",
     "declare",
     "find_settings_version",
+    "forget_melodies",
     "is_studio_key",
     "keep_settings",
     "kind_of",

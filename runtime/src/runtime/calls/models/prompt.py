@@ -14,7 +14,7 @@ class Prompt(Model):
     """The words behind the hash a `prompt.changed` entry names, so a call's prompt reads back whole."""
 
     __tablename__ = "prompts"
-    __kept__ = Kept(exported=("hash", "text", "first_used_at"))
+    __kept__ = Kept(exported=("hash", "text", "first_used_at"), exported_as="prompt")
 
     org: Mapped[str] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), primary_key=True)
     hash: Mapped[str] = mapped_column(Text, primary_key=True)

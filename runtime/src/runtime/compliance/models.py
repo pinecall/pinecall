@@ -51,7 +51,13 @@ class Read(Model):
         Index("reads_by_org", "org", descending("at")),
         Index("reads_by_subject", "org", "subject", descending("at")),
     )
-    __kept__ = Kept(not_exported="the box's audit of who read the org's data: the org reads it at /v1/org/reads")
+    __kept__ = Kept(
+        not_exported="the box's audit of who read the org's data: the org reads it at /v1/org/reads",
+        outlives=(
+            "the audit says who read what, and stays when what was read is erased: it names its subject "
+            "and holds nothing of it; the rows go with their org"
+        ),
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
     org: Mapped[str] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), nullable=False)
@@ -128,6 +134,8 @@ class ContactConsent(Model):
     )
     __kept__ = Kept(
         exported=("number", "kind", "source", "text", "evidence", "given_by", "call", "given_at"),
+        exported_as="consent",
+        renamed=(("kind", "consent"),),
         outlives=(
             "an opt-out has to survive the erasure of the call it was said on and of the person's data, "
             "or the next call would ring them; the rows go with their org"

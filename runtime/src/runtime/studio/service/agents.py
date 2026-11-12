@@ -131,7 +131,7 @@ async def create_agent(
         raise Conflict(HELD_BY_CODE.format(name=name))
     first = definition or FIRST
     definitions.check(first, await _list_secret_names(session, app.org, app.env), app.env)
-    by = hosting.name_asker(actor)
+    by = actor.asked_by
     await _open(session, app, by=by)
     await _keep(session, signal, app, first, by=by, note=note)
     return await read_agent(session, app.org, app.env, name)
@@ -155,7 +155,7 @@ async def save_agent(
     definitions.check(definition, await _list_secret_names(session, org, env), env)
     if definition != standing.definition:
         app = hosting.App(org=org, env=env, name=name)
-        await _keep(session, signal, app, definition, by=hosting.name_asker(actor), note=note)
+        await _keep(session, signal, app, definition, by=actor.asked_by, note=note)
     return await read_agent(session, org, env, name)
 
 
@@ -189,7 +189,7 @@ async def deploy_agent(
         carried = await _plan_carry(session, vault, actor, name, chosen)
     for one in carried:
         await agents.try_settings(one.plan)
-    by = hosting.name_asker(actor)
+    by = actor.asked_by
     shown = DEPLOYED.format(release=deployed)
     written = agents.Written(author=actor.name, note=shown)
     async with sessions.begin() as session:

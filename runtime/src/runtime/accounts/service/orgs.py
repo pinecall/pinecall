@@ -56,6 +56,16 @@ async def find_org(session: AsyncSession, named: str) -> Org | None:
     return await OrgRepository(session).find(named)
 
 
+# What names the org by a cascading key goes with it; what does not is erased by its owner first.
+async def delete_org(session: AsyncSession, org_id: str) -> None:
+    """Delete the org's row, and with it every row that hangs off it; NotFound for no such org."""
+    repository = OrgRepository(session)
+    found = await repository.find(org_id)
+    if found is None:
+        raise NoSuchOrg(org_id)
+    await repository.delete(found)
+
+
 async def list_orgs(session: AsyncSession) -> Sequence[Org]:
     """Every org, oldest first."""
     return await OrgRepository(session).list_all()

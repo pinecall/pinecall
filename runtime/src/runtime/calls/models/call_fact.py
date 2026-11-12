@@ -65,6 +65,7 @@ class CallFact(Model):
             "hearing",
             "line",
         ),
+        exported_by="calls.service.exporting.export_calls",
     )
 
     call: Mapped[str] = mapped_column(Text, primary_key=True)

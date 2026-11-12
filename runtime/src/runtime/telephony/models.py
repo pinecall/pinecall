@@ -90,7 +90,7 @@ class Route(Model):
     )
     __kept__ = Kept(
         agent="agent",
-        exported=("number", "agent", "channel", "env", "managed", "account", "networks", "origin", "via", "added_at"),
+        exported=("number", "agent", "channel", "managed", "account", "networks", "origin", "via", "added_at"),
         erased_by="telephony.service.numbers.release_numbers_of",
     )
 

@@ -319,7 +319,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `GET` | `/v1/org/erasures` | team | The org's erasures, newest first: what went, when, and who asked. |
 | `GET` | `/v1/org/policy` | team | The org's compliance settings: retention, calling hours, calls a day per number, and who set them. |
 | `PUT` | `/v1/org/policy` | team | The org's compliance settings replaced whole, from the next nightly run. |
-| `GET` | `/v1/org/export` | team | The org's data in the key's environment as JSON Lines: calls and their logs, memories, settings, canaries, words, documents, consents, cases, prompts, and the folded days of stages, judges and tools and the slow turns. |
+| `GET` | `/v1/org/export` | team | The org's data in the key's environment as JSON Lines: its calls with their logs, then everything it wrote or configured, a line a row, each saying its kind. |
 | `GET` | `/v1/org/judging` | calls | Whether hang-up judging is on, the model it runs on, and its ceiling per call. |
 | `PUT` | `/v1/org/judging` | usage | Hang-up judging on or off, and the model it runs on, from the next call. |
 | `DELETE` | `/v1/org/mail` | team | Forget the org's own mailbox: its letters go through the platform's again. |

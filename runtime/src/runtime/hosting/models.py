@@ -13,7 +13,10 @@ class HostedApp(Model):
     """One app per org, env and name, with the server's token its process runs on, sealed."""
 
     __tablename__ = "hosted_apps"
-    __kept__ = Kept(exported=("env", "name", "kind", "created_by", "created_at", "live_release", "stopped_at"))
+    __kept__ = Kept(
+        exported=("name", "kind", "created_by", "created_at", "live_release", "stopped_at"),
+        renamed=(("kind", "app_kind"),),
+    )
 
     org: Mapped[str] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), primary_key=True)
     env: Mapped[Env] = mapped_column(StringEnum(Env), primary_key=True)
@@ -56,7 +59,6 @@ class HostedRelease(Model):
     # The sources themselves are read back by `GET /v1/hosted/{name}/releases/{release}/source`.
     __kept__ = Kept(
         exported=(
-            "env",
             "name",
             "release",
             "sha256",
@@ -88,7 +90,7 @@ class HostedUsage(Model):
     """The seconds an app served each UTC day: what the org is billed for, so it outlives the app."""
 
     __tablename__ = "hosted_usage"
-    __kept__ = Kept(exported=("env", "name", "day", "seconds"))
+    __kept__ = Kept(exported=("name", "day", "seconds"))
 
     org: Mapped[str] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), primary_key=True)
     env: Mapped[Env] = mapped_column(StringEnum(Env), primary_key=True)

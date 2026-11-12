@@ -23,7 +23,7 @@ class EvalRun(Model):
     )
     __kept__ = Kept(
         agent="agent",
-        exported=("id", "env", "agent", "started_at", "finished_at", "status", "document"),
+        exported=("id", "agent", "started_at", "finished_at", "status", "document"),
         erased_by="evals.service.runs.delete_runs",
     )
 
@@ -61,7 +61,7 @@ class Comparison(Model):
 
     __tablename__ = "comparisons"
     __table_args__ = (Index("comparisons_by_scope", "org", "env", descending("started_at")),)
-    __kept__ = Kept(agent="agent", exported=("id", "env", "agent", "started_at", "document"))
+    __kept__ = Kept(agent="agent", exported=("id", "agent", "started_at", "document"))
 
     id: Mapped[str] = mapped_column(Text, primary_key=True)
     org: Mapped[str] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), nullable=False)
@@ -79,7 +79,7 @@ class JudgeLabel(Model):
     __kept__ = Kept(
         call="call",
         agent="agent",
-        exported=("call", "judge", "env", "agent", "held", "note", "author", "labelled_at"),
+        exported=("call", "judge", "agent", "held", "note", "author", "labelled_at"),
     )
 
     call: Mapped[str] = mapped_column(Text, primary_key=True)

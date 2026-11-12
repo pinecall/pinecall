@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **An export carries everything the org wrote or configured.** `GET /v1/org/export` keeps every line it
+  had, with its `kind` and its keys, and adds a line a row for what it left out: the org and its members,
+  its policy, its own judges and personas with their switches, judge labels, runs and comparisons,
+  monitors, numbers, each agent's widget and documents, its knowledge bases, its mailbox and sign-in
+  settings, where its alerts and traces go, and its hosted apps. Nothing sealed is in it.
+- **An erased agent leaves nothing of itself.** Its declaration, its documents, its recorded lines, its
+  alerts and its comparisons outlived it; they go with it, and its numbers are taken off the SFU, where
+  they stayed admitted. A person held to a list of agents loses it from the list.
+- **An erased call takes the flow run that placed it.** The run named the call and kept the number dialled.
+- **A rotation of the vault's key counts a row somebody wrote while it ran.** That row was counted nowhere and
+  the pass said it was clean; it is counted as moved now, and the pass is run again before the old key goes.
 - **A spoken call outlives the gateway that opened it.** On a box of several gateways a call whose gateway
   was replaced (every deploy) went on in its worker, and no other gateway took it: the app that held its
   agent heard no `call.attached`, each tool it called waited out its deadline, and the call stopped counting

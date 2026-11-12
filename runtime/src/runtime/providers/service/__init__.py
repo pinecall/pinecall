@@ -26,7 +26,7 @@ from runtime.providers.service.stages import (
     thinking_outside_a_call,
     voice_outside_a_call,
 )
-from runtime.providers.service.telemetry import Telemetry, telemetry_of
+from runtime.providers.service.telemetry import Telemetry, forget_telemetry, telemetry_of
 from runtime.providers.service.trials import try_realtime, try_stage
 from runtime.providers.service.voices import list_by_vendor, list_in_catalog
 
@@ -50,6 +50,7 @@ __all__ = [
     "completion_usage",
     "cost_of",
     "default_voice",
+    "forget_telemetry",
     "get_catalog",
     "hears_and_speaks",
     "is_installed",

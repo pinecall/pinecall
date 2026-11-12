@@ -10,13 +10,17 @@ from sqlalchemy.orm import Mapped, mapped_column
 from runtime.enums import Env, RunStatus, StepKind
 from runtime.kit.db import Kept, Model, StringEnum, utc_now
 
+# What an app's own process was owed and did: the box's record of work, which the app's code and the calls
+# an export carries say again.
+WORK = "the box's record of what an app's process was owed and did, not what the org wrote: an export leaves it"
+
 
 class AppEvent(Model):
     """One event sent to an app, kept until the app's process says it heard it."""
 
     __tablename__ = "app_events"
     __table_args__ = (Index("app_events_owed", "org", "env", "app", "id", postgresql_where="heard_at IS NULL"),)
-    __kept__ = Kept(exported=("id", "env", "app", "name", "data", "sent_at", "heard_at"))
+    __kept__ = Kept(not_exported=WORK)
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     org: Mapped[str] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), nullable=False)
@@ -43,25 +47,7 @@ class FlowRun(Model):
             "flow_runs_waiting", "status", "wake_at", postgresql_where="status IN ('sleeping', 'waiting', 'calling')"
         ),
     )
-    __kept__ = Kept(
-        call="call",
-        exported=(
-            "id",
-            "env",
-            "app",
-            "flow",
-            "key",
-            "input",
-            "status",
-            "wake_at",
-            "waits_for",
-            "waits_match",
-            "call",
-            "error",
-            "started_at",
-            "moved_at",
-        ),
-    )
+    __kept__ = Kept(call="call", not_exported=WORK)
 
     id: Mapped[str] = mapped_column(Text, primary_key=True)
     org: Mapped[str] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), nullable=False)
@@ -88,7 +74,7 @@ class FlowStep(Model):
     """One step of a run's journal: what was asked, and once it is over, what it came to."""
 
     __tablename__ = "flow_steps"
-    __kept__ = Kept(exported=("run", "seq", "kind", "asked", "result", "at"))
+    __kept__ = Kept(not_exported=WORK)
 
     run: Mapped[str] = mapped_column(ForeignKey("flow_runs.id", ondelete="CASCADE"), primary_key=True)
     seq: Mapped[int] = mapped_column(Integer, primary_key=True)

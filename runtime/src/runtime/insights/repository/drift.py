@@ -222,6 +222,17 @@ class DriftRepository(Repository[DriftCall]):
 
     model = DriftCall
 
+    # A day's sums keep the call's numbers, which name nobody; a tool's last failure names the call, the
+    # moment and the error's text, so those go with the call.
+    async def clear_last_errors(self, calls: Sequence[str]) -> int:
+        """Empty the last failure of every tool's day that names one of the calls; how many days."""
+        statement = (
+            update(ToolDay)
+            .where(ToolDay.last_error_call.in_(calls))
+            .values(last_error_call=None, last_error_at=None, last_error_text=None)
+        )
+        return await self.change(statement)
+
     # ── a call counted ──
 
     # Taken once per call: a second fold of the same call finds its row and changes only what differs.

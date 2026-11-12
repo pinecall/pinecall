@@ -19,6 +19,7 @@ from runtime.live import endpoints as live
 from runtime.mail import endpoints as mail
 from runtime.platform import endpoints as platform
 from runtime.providers import endpoints as providers
+from runtime.retention import endpoints as retention
 from runtime.signin import endpoints as signin
 from runtime.studio import endpoints as studio
 from runtime.telephony import endpoints as telephony
@@ -50,4 +51,5 @@ def mount(app: FastAPI) -> None:
     app.include_router(evals.router)
     app.include_router(hosting.router)
     app.include_router(studio.router)
+    app.include_router(retention.router)
     app.include_router(platform.pages_router)

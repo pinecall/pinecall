@@ -164,6 +164,7 @@ class EvalCase(Model):
             "source",
             "persona",
         ),
+        exported_as="eval_case",
     )
 
     id: Mapped[str] = mapped_column(Text, primary_key=True)

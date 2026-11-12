@@ -39,7 +39,8 @@ class CallLogHead(Model):
         call="log",
         agent="agent",
         exported=("call", "agent", "holder", "started_at", "sealed"),
-        erased_by="calls.service.lists.delete_logs",
+        exported_by="calls.service.exporting.export_calls",
+        erased_by="calls.service.erasing.erase_logs",
     )
 
     log: Mapped[str] = mapped_column(Text, primary_key=True)

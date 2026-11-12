@@ -28,6 +28,7 @@ from runtime.live import models as live_models
 from runtime.mail import models as mail_models
 from runtime.platform import models as platform_models
 from runtime.providers import models as providers_models
+from runtime.retention import models as retention_models
 from runtime.signin import models as signin_models
 from runtime.telephony import models as telephony_models
 from runtime.whatsapp import models as whatsapp_models
@@ -50,6 +51,7 @@ TABLES = (
     mail_models,
     platform_models,
     providers_models,
+    retention_models,
     signin_models,
     telephony_models,
     whatsapp_models,

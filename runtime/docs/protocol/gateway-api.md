@@ -287,14 +287,27 @@ unless `recording_notice` is `false`. A call nobody records says no notice; a wr
 neither. Both play in the sandbox too, so a test hears what a caller will. A client that changes
 one field reads the row and writes it back whole. The trail is `GET /v1/org/erasures`.
 
-`GET /v1/org/export` (`team`) is the org's calls, memories, settings, words, documents, consents,
-cases and what the seal counted, in the key's environment, as a download of JSON
-Lines (`application/x-ndjson`): a header `{kind: "export", org, env, exported_at}`, then one line
-per call (`{kind: "call", call, agent, holder, started_at, sealed, facts, entries}`, oldest first,
-each with its whole log), then every memory (`kind: "memory"`, without its embedding), every
-version of every agent's settings (`agent_config`), canaries (`canary`) and words (`lexicon`), every
-document of its knowledge bases (`knowledge_file`), every fact about a number (`consent`), every
-case of its dataset (`eval_case`, both environments', each with the env its call ran in), every
-block of prompt its calls were told, once per text (`prompt`), and the seal's folds by day:
-`stage_day`, `judge_day`, `tool_day` and `slow_turn` ([../wire/metrics.md](../wire/metrics.md)).
+`GET /v1/org/export` (`team`) is the org's calls and everything it wrote or configured, in the
+key's environment, as a download of JSON Lines (`application/x-ndjson`): a header `{kind: "export",
+org, env, exported_at}`, then one line per call (`{kind: "call", call, agent, holder, started_at,
+sealed, facts, entries}`, oldest first, each with its whole log), then one line per row of each
+thing the org keeps, every line saying its `kind`, none repeating the org or the environment the
+header says. What it wrote: every memory (`memory`, without its embedding), every version of every
+agent's settings (`agent_config`), canaries (`canary`) and words (`lexicon`), its knowledge bases
+(`knowledge_bases`) and every document of them (`knowledge_file`), every fact about a number
+(`consent`), every case of its dataset (`eval_case`, both environments', each with the env its call
+ran in) and their groups (`case_groups`), every block of prompt its calls were told, once per text
+(`prompt`), its own judges and personas with their switches (`agent_judges`, `agent_personas`,
+`judge_switches`, `persona_switches`), the labels people gave a judge (`judge_labels`), its runs of
+goldens and its comparisons (`eval_runs`, `comparisons`), each agent's widget, documents and hold
+melody (`agent_widgets`, `agent_documents`, `hold_audio`, the melody's hash and not its audio), its
+monitors (`monitors`) and its numbers (`routes`). What it configured: the org itself and its members
+(`orgs`, `members`), its policy (`org_policy`), its mailbox, sign-in provider and verified domains
+(`org_mail`, `org_sso`, `sso_domain_proofs`), where its alerts and its traces go (`org_webhooks`,
+`org_telemetry`), which vendors it keyed (`provider_keys`, never a key), the networks it asked the
+fence for (`carrier_networks`), and its hosted apps with their releases and the time they served
+(`hosted_apps`, `hosted_releases`, `hosted_usage`). And the seal's folds by day: `stage_day`,
+`judge_day`, `tool_day` and `slow_turn` ([../wire/metrics.md](../wire/metrics.md)). Nothing sealed
+is in it (a key, a secret, a password), nor what the box keeps for itself: the audit of who read
+what, the erasures' trail, the ledger of dials, alerts raised, and what an app's flows did.
 A recording is not inlined: `GET /v1/calls/{call}/recording`.

@@ -3,10 +3,10 @@
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any, ClassVar, override
+from typing import Any, ClassVar, cast, override
 
 from pgvector.sqlalchemy import HALFVEC
-from sqlalchemy import TIMESTAMP, Dialect, MetaData, String, Text, text
+from sqlalchemy import TIMESTAMP, Dialect, MetaData, String, Table, Text, text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.sql.elements import TextClause
@@ -53,6 +53,12 @@ class Kept:
     # The columns an org's export carries; none, and `not_exported` says why.
     exported: tuple[str, ...] = ()
     not_exported: str = ""
+    # The kind a row's line says it is, where that is not the table's name; and the columns that go under
+    # another key, each as (column, key): one named `kind` always does, `kind` being the line's own.
+    exported_as: str = ""
+    renamed: tuple[tuple[str, str], ...] = ()
+    # The owner's own verb that writes the rows into an export, where a line is more than one row of the table.
+    exported_by: str = ""
     # The owner's own verb that erases the rows, where no foreign key can (an org named with no key to it).
     erased_by: str = ""
     # Why an erasure leaves the row, for a table that names an org, a call, an agent or a contact and stays.
@@ -71,6 +77,20 @@ class Model(DeclarativeBase):
         list[str]: ARRAY(String),
         datetime: TIMESTAMP(timezone=True),
     }
+
+
+# The whole of what the box keeps, as its models declare it: whoever erases, exports or re-seals walks
+# this and names no table. It holds the tables of every model the process imported: the gateway mounts
+# every domain, and so does whoever migrates.
+def list_kept() -> list[tuple[Table, Kept]]:
+    """Every mapped table with what it declares it keeps, by the table's name."""
+    found: list[tuple[Table, Kept]] = []
+    for mapper in Model.registry.mappers:
+        table = mapper.local_table
+        kept: object = getattr(mapper.class_, "__kept__", None)
+        if isinstance(table, Table) and isinstance(kept, Kept):
+            found.append((cast("Table", table), kept))
+    return sorted(found, key=lambda pair: pair[0].name)
 
 
 class StringEnum[E: StrEnum](TypeDecorator[E]):

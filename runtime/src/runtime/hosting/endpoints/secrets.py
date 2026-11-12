@@ -26,7 +26,7 @@ async def put_secret(
 ) -> schemas.SecretList:
     """Keep one secret, sealed, replacing the value it had; the org's list after it."""
     secret = secrets.Secret(env=actor.env, name=name, value=body.value)
-    await secrets.put_secret(session, vault, actor.org, secret, by=apps.name_asker(actor))
+    await secrets.put_secret(session, vault, actor.org, secret, by=actor.asked_by)
     apps.tell_changed(session, signal, apps.App(actor.org, actor.env, name))
     return await _list(session, actor)
 

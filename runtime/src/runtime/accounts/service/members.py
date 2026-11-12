@@ -82,6 +82,12 @@ async def team_of(session: AsyncSession, org: str) -> Team:
     return Team(await repository.list_memberships(org), await repository.count_seated(org))
 
 
+# An agent erased is no longer one a person may be held to.
+async def drop_agent_from_members(session: AsyncSession, org: str, agent: str) -> int:
+    """Take the agent out of the list of every member of the org held to a list; how many held it."""
+    return await MemberRepository(session).drop_agent(org, agent)
+
+
 async def count_seated(session: AsyncSession, org: str) -> int:
     """How many of the org's people hold a seat: the seats quota counts these."""
     return await MemberRepository(session).count_seated(org)

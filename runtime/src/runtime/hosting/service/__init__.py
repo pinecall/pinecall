@@ -5,7 +5,6 @@ from runtime.hosting.service.apps import (
     App,
     find_kind,
     list_standing,
-    name_asker,
     open_held_app,
     tell_changed,
 )
@@ -24,7 +23,6 @@ __all__ = [
     "keep_release",
     "list_secrets",
     "list_standing",
-    "name_asker",
     "open_held_app",
     "source_of",
     "tell_changed",

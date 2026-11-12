@@ -20,7 +20,23 @@ class StageDay(Model):
 
     __tablename__ = "stage_days"
     __table_args__ = (Index("stage_days_by_version", "org", "env", "holder", "agent", "config_version"),)
-    __kept__ = Kept(agent="agent", not_exported=FOLDED)
+    __kept__ = Kept(
+        agent="agent",
+        exported=(
+            "holder",
+            "agent",
+            "day",
+            "config_version",
+            "stage",
+            "vendor",
+            "model",
+            "turns",
+            "buckets",
+            "confidence_sum",
+            "confidence_turns",
+        ),
+        exported_as="stage_day",
+    )
 
     org: Mapped[str] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), primary_key=True)
     env: Mapped[Env] = mapped_column(StringEnum(Env), primary_key=True)
@@ -42,7 +58,11 @@ class JudgeDay(Model):
 
     __tablename__ = "judge_days"
     __table_args__ = (Index("judge_days_by_version", "org", "env", "holder", "agent", "config_version"),)
-    __kept__ = Kept(agent="agent", not_exported=FOLDED)
+    __kept__ = Kept(
+        agent="agent",
+        exported=("holder", "agent", "day", "config_version", "judge", "criteria", "held", "broken"),
+        exported_as="judge_day",
+    )
 
     org: Mapped[str] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), primary_key=True)
     env: Mapped[Env] = mapped_column(StringEnum(Env), primary_key=True)
@@ -79,7 +99,22 @@ class ToolDay(Model):
     """A tool's runs over one day and agent: how many, how many failed, its seconds, its last failure."""
 
     __tablename__ = "tool_days"
-    __kept__ = Kept(agent="agent", not_exported=FOLDED)
+    __kept__ = Kept(
+        agent="agent",
+        exported=(
+            "holder",
+            "agent",
+            "day",
+            "tool",
+            "ran",
+            "failed",
+            "buckets",
+            "last_error_call",
+            "last_error_at",
+            "last_error_text",
+        ),
+        exported_as="tool_day",
+    )
 
     org: Mapped[str] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), primary_key=True)
     env: Mapped[Env] = mapped_column(StringEnum(Env), primary_key=True)
@@ -101,7 +136,12 @@ class SlowTurn(Model):
 
     __tablename__ = "slow_turns"
     __table_args__ = (Index("slow_turns_by_day", "org", "env", "day"),)
-    __kept__ = Kept(call="call", agent="agent", not_exported=FOLDED)
+    __kept__ = Kept(
+        call="call",
+        agent="agent",
+        exported=("holder", "agent", "day", "call", "seq", "at", "name", "hears_s", "thinks_s", "tools_s", "speaks_s"),
+        exported_as="slow_turn",
+    )
 
     call: Mapped[str] = mapped_column(Text, primary_key=True)
     seq: Mapped[int] = mapped_column(Integer, primary_key=True)

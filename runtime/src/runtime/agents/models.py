@@ -35,7 +35,11 @@ class AgentCanary(Model):
     __table_args__ = (
         Index("agent_canaries_standing", "org", "env", "holder", "agent", descending("set_at"), descending("id")),
     )
-    __kept__ = Kept(agent="agent", exported=("env", "agent", "holder", "version", "share", "author", "note", "set_at"))
+    __kept__ = Kept(
+        agent="agent",
+        exported=("agent", "holder", "version", "share", "author", "note", "set_at"),
+        exported_as="canary",
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
     org: Mapped[str] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), nullable=False)
@@ -54,7 +58,7 @@ class AgentConfig(Model):
     """The settings an org set on an agent, versioned per (org, env, holder, agent)."""
 
     __tablename__ = "agent_config"
-    __kept__ = Kept(agent="agent", exported=("env", "agent", "holder", "version", "config", "author", "note", "set_at"))
+    __kept__ = Kept(agent="agent", exported=("agent", "holder", "version", "config", "author", "note", "set_at"))
 
     org: Mapped[str] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), primary_key=True)
     env: Mapped[Env] = mapped_column(StringEnum(Env), primary_key=True)
@@ -91,7 +95,7 @@ class AgentDocument(Model):
     """A JSON document an agent's app publishes under a name, read by any page with no key."""
 
     __tablename__ = "agent_documents"
-    __kept__ = Kept(agent="agent", exported=("env", "agent", "name", "body", "set_at"))
+    __kept__ = Kept(agent="agent", exported=("agent", "name", "body", "set_at"))
 
     org: Mapped[str] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), primary_key=True)
     env: Mapped[Env] = mapped_column(StringEnum(Env), primary_key=True)
@@ -135,7 +139,7 @@ class AgentWidget(Model):
     __tablename__ = "agent_widgets"
     __kept__ = Kept(
         agent="agent",
-        exported=("env", "agent", "title", "tagline", "greeting", "accent", "autostart", "theme", "set_at"),
+        exported=("agent", "title", "tagline", "greeting", "accent", "autostart", "theme", "set_at"),
     )
 
     org: Mapped[str] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), primary_key=True)
@@ -159,7 +163,7 @@ class HoldAudio(Model):
     __tablename__ = "hold_audio"
     __kept__ = Kept(
         agent="agent",
-        exported=("env", "agent", "played", "sha256", "source_sha256", "seconds", "name", "after_s", "set_at"),
+        exported=("agent", "played", "sha256", "source_sha256", "seconds", "name", "after_s", "set_at"),
         erased_by="agents.service.hold_audio.forget_melodies",
     )
 
@@ -182,9 +186,7 @@ class Lexicon(Model):
     """`said` maps a word to its pronunciation; `heard` lists the keyterms."""
 
     __tablename__ = "lexicon"
-    __kept__ = Kept(
-        agent="agent", exported=("env", "agent", "holder", "version", "said", "heard", "author", "note", "set_at")
-    )
+    __kept__ = Kept(agent="agent", exported=("agent", "holder", "version", "said", "heard", "author", "note", "set_at"))
 
     org: Mapped[str] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), primary_key=True)
     env: Mapped[Env] = mapped_column(StringEnum(Env), primary_key=True)

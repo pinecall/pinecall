@@ -8,7 +8,6 @@ from typing import Protocol
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from runtime.accounts import service as accounts
-from runtime.actor import Actor
 from runtime.enums import SERVER_SCOPES, AppKind, Env
 from runtime.exceptions import NotFound
 from runtime.hosting.repository import HostedAppRepository, StandingRow
@@ -84,11 +83,6 @@ class Processes(Protocol):
     def apps_of(self, org: str, env: Env) -> Sequence[Process]:
         """The org's sockets in the env."""
         ...
-
-
-def name_asker(actor: Actor) -> str:
-    """Who a write is signed by: the person behind the key, or the key."""
-    return actor.person.id if actor.person is not None else actor.key_id
 
 
 async def list_standing(session: AsyncSession, env: Env, org: str | None = None) -> list[Standing]:

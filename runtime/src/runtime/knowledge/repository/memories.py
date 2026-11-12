@@ -62,6 +62,10 @@ class MemoryRepository(Repository[ContactMemory]):
         """Delete every fact of the contact in the scope, history included; how many went."""
         return await self.change(delete(ContactMemory).where(*_of_contact(scope, contact)))
 
+    async def delete_taught_by(self, calls: Sequence[str]) -> int:
+        """Delete every fact the calls taught, history included; how many went."""
+        return await self.change(delete(ContactMemory).where(ContactMemory.source_call.in_(calls)))
+
     async def end(self, scope: Scope, fact_id: uuid.UUID, *, at: datetime) -> bool:
         """End one current fact at `at`; False when there is none by that id."""
         statement = update(ContactMemory).where(*_current_in(scope, fact_id)).values(invalidated_at=at)

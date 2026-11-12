@@ -5,8 +5,18 @@ from runtime.accounts.service.actor import check_agent, check_may_grant, scope_o
 from runtime.accounts.service.emails import card_link
 from runtime.accounts.service.invitations import Invitee, invite, reset_link, seat_founder
 from runtime.accounts.service.key_cache import KeyCache
-from runtime.accounts.service.keys import Issue, Issued, get_key, issue_key, issue_person_key, revoke_fingerprint
+from runtime.accounts.service.keys import (
+    Issue,
+    Issued,
+    delete_keys,
+    get_key,
+    issue_key,
+    issue_person_key,
+    list_keys,
+    revoke_fingerprint,
+)
 from runtime.accounts.service.members import (
+    drop_agent_from_members,
     find_member_by_test_phone,
     find_membership,
     forget_test_phone,
@@ -20,7 +30,9 @@ from runtime.accounts.service.members import (
 from runtime.accounts.service.orgs import (
     SlugTaken,
     create_org,
+    delete_org,
     find_org,
+    get_org,
     is_judged,
     judge_model_of,
     list_newborns,
@@ -31,6 +43,7 @@ from runtime.accounts.service.orgs import (
 )
 from runtime.accounts.service.passwords import hash_password
 from runtime.accounts.service.people import (
+    delete_orphans,
     find_or_create_person,
     find_person,
     list_operator_addresses,
@@ -50,6 +63,10 @@ __all__ = [
     "check_agent",
     "check_may_grant",
     "create_org",
+    "delete_keys",
+    "delete_org",
+    "delete_orphans",
+    "drop_agent_from_members",
     "find_member_by_test_phone",
     "find_membership",
     "find_or_create_person",
@@ -58,6 +75,7 @@ __all__ = [
     "forget_test_phone",
     "get_key",
     "get_member",
+    "get_org",
     "hash_password",
     "invite",
     "is_judged",
@@ -65,6 +83,7 @@ __all__ = [
     "issue_person_key",
     "judge_model_of",
     "list_admin_addresses",
+    "list_keys",
     "list_members",
     "list_newborns",
     "list_operator_addresses",

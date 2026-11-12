@@ -33,7 +33,6 @@ class Monitor(Model):
         agent="agent",
         exported=(
             "id",
-            "env",
             "agent",
             "name",
             "metric",

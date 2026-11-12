@@ -16,7 +16,7 @@ from runtime.telephony.service.legs import (
     send_on,
     send_tones,
 )
-from runtime.telephony.service.numbers import get_number
+from runtime.telephony.service.numbers import get_number, release_numbers_of
 from runtime.telephony.service.outbound import get_carrier_for_number, list_phone_routes
 from runtime.telephony.service.routes import (
     find_route_at,
@@ -48,6 +48,7 @@ __all__ = [
     "meta_token_for",
     "move_routes_with_agent",
     "note_call",
+    "release_numbers_of",
     "send_on",
     "send_tones",
     "twilio_account_of",

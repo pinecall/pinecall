@@ -19,7 +19,6 @@ from runtime.calls.log.logs import Logs
 from runtime.calls.models import CallLogHead
 from runtime.calls.projection import TENANT, project_state
 from runtime.calls.repository.entries import EntryRepository, ToolEntry
-from runtime.calls.repository.erasure import ErasureRepository
 from runtime.calls.repository.facts import AgentFacts, FactsRepository
 from runtime.calls.repository.heads import CallHead, Claim, HeadRepository
 from runtime.calls.repository.search import ListFilters, PersonaRunFilters, PersonaRuns, SearchRepository
@@ -279,14 +278,6 @@ async def list_taught(
 ) -> list[Taught]:
     """Current facts the agent's calls taught, newest first, each with its agent; every agent's for None."""
     return await TaughtRepository(session).list_taught(scope, agent, like=like, after=after, limit=limit)
-
-
-# `call_log_head` names its org with no key to it, so nothing cascades: retention calls this when
-# an org is erased, after it wrote what a carrier's traceback keeps of each phone call.
-async def delete_logs(session: AsyncSession, org: str) -> int:
-    """Delete every log of the org: its entries, what they sealed aside, their facts and their heads; how many logs."""
-    with box_wide():
-        return await ErasureRepository(session).delete_logs_of_org(org)
 
 
 # A copy is named by its member, read once per org the page holds; one who left keeps the id. A

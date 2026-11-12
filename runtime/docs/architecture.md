@@ -8,8 +8,8 @@ through them. Every fact of a call is an entry appended to the call's log, and e
 app socket, the console, the fold of its state, the usage feed) reads entries. The media side is
 LiveKit's `AgentSession`, used as is.
 
-The package is being written bottom up. The gateway's domains are in the tree up to `studio/`; the
-worker's side (`jobs/`, `worker.py`), the runner's (`hosts/`, `runner.py`), `retention/` and the
+The package is being written bottom up. The gateway's domains are all in the tree, up to
+`retention/`; the worker's side (`jobs/`, `worker.py`), the runner's (`hosts/`, `runner.py`) and the
 operator's terminal (`cli/`) are named here as the canon lays them out and are not in the tree yet.
 
 ## If you know Rails
@@ -78,7 +78,7 @@ domain's service; nothing imports an `endpoints` module but `api.py`.
 
 | domain | what it holds |
 |---|---|
-| `platform/` | the box's own: its named settings, the brand, attempts counted, the schema brought to this release (`service/schema.py`: the SQL history on a new database, then Alembic's revisions), the database's health, the pages the box serves |
+| `platform/` | the box's own: its named settings, the brand, attempts counted, the schema brought to this release (`service/schema.py`: the SQL history on a new database, then Alembic's revisions), the database's health, the pages the box serves, and the vault's key turned: every sealed column, found by its type, sealed again under the newest key (`service/vault.py`) |
 | `billing/` | quotas and admission: an org's limits in an env against what it used there, before it uses more; the usage totals the database's triggers keep, and their rebuild |
 | `mail/` | the emails the box sends: the mailboxes it sends through, the outbox, and the frame every email is set in |
 | `accounts/` | who is asking: orgs, their members, the people they are, keys (and the keys a gateway verified lately), and the actor a key resolves to |
@@ -93,7 +93,7 @@ domain's service; nothing imports an `endpoints` module but `api.py`.
 | `session/` | one LiveKit `AgentSession` for voice and text, in a worker or in the gateway: the pipeline built, every turn, tool call and metric written as an entry, the call's time, the room, hold music, tools, the widget's channel, the recording |
 | `judging/` | what a judge and a persona are, Pinecall's library of both (`library/`), a finished call as a judge reads it, the hang-up panel, cases grouped |
 | `alerts/` | what an org is told (a monitor crossed, the spend unusual, a quota out, a vendor that failed a call), on the agent's log and posted to its webhook; and the operators' own, a newborn org with no call that went well |
-| `calls/` | the log, which is the record: the store and its writer, the relay between gateways, the logs open in this process and their feeds (`log/`); what is folded from a log, its state, facts, usage, latencies and phone legs (`folds/`); and what is listed, read and metered of a call |
+| `calls/` | the log, which is the record: the store and its writer, the relay between gateways, the logs open in this process and their feeds (`log/`); what is folded from a log, its state, facts, usage, latencies and phone legs (`folds/`); what is listed, read and metered of a call; and what stays when a log goes: one line per phone call, kept for the traceback of a number (`service/traceback.py`) |
 | `insights/` | each sealed call folded into its day, and the windows of whole days read back from the folds |
 | `live/` | a call while it is served: opened, bound to the app socket that holds its agent, parked and handed on, commanded, sealed once; the app socket, the WhatsApp threads, the dial, a visitor's way in with its tokens and codes, the supervisor's desk, the reaper |
 | `flows/` | what an app does around its calls: the events an app is owed until its process hears them, and its flows' runs, each a journal of steps with the time, the event or the call that wakes it; the function runs in the app's process, never here |

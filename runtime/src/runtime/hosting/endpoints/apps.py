@@ -29,7 +29,7 @@ async def list_hosted_apps(actor: AppKey, session: Session) -> schemas.HostedApp
 @router.post("/v1/hosted/{name}/stop", status_code=204)
 async def stop_hosted_app(app: TheApp, actor: AppKey, signal: TheSignal, session: Session) -> None:
     """Stop running the app: its process drains, and its releases and token stay."""
-    await apps.stop_app(session, signal, app, by=apps.name_asker(actor))
+    await apps.stop_app(session, signal, app, by=actor.asked_by)
 
 
 @router.post("/v1/hosted/{name}/start", status_code=204)

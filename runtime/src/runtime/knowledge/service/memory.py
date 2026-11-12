@@ -214,6 +214,12 @@ async def forget(session: AsyncSession, scope: Scope, contact: str) -> int:
     return await MemoryRepository(session).delete_of_contact(scope, contact)
 
 
+# What a call taught goes with the call: an erased call leaves no fact that only it said.
+async def forget_taught(session: AsyncSession, calls: Sequence[str]) -> int:
+    """Delete every fact the calls taught; how many went."""
+    return await MemoryRepository(session).delete_taught_by(calls)
+
+
 # The row stays, ended: the history still shows it.
 async def invalidate(session: AsyncSession, scope: Scope, fact_id: uuid.UUID) -> None:
     """End one current fact of the scope from now on; refused when there is none by that id."""

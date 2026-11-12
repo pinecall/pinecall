@@ -20,7 +20,12 @@ class CallLog(Model):
         Index("call_log_metered_by_day", "type", "position"),
         {"postgresql_partition_by": "RANGE (ts)"},
     )
-    __kept__ = Kept(call="log", agent="agent", exported=("seq", "ts", "type", "data"))
+    __kept__ = Kept(
+        call="log",
+        agent="agent",
+        exported=("seq", "ts", "type", "data"),
+        exported_by="calls.service.exporting.export_calls",
+    )
 
     call: Mapped[str | None] = mapped_column(Text)
     seq: Mapped[int] = mapped_column(BigInteger, primary_key=True)

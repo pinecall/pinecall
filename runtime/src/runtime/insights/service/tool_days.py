@@ -1,7 +1,7 @@
 """Each tool's day: a call's tool results counted by name at the seal, and read back over a window."""
 
 import logging
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -112,3 +112,10 @@ def _result_of(entry: Entry) -> ToolResult | None:
     except ValidationError:
         logger.warning("call %s: seq %d is not a tool result drift reads", entry.call, entry.seq)
         return None
+
+
+# What retention calls when calls are erased: their rows by call go with the declared walk, and this is
+# the one place a day names a call under another column.
+async def forget_calls(session: AsyncSession, calls: Sequence[str]) -> int:
+    """Empty the last failure of every tool's day that names one of the erased calls; how many days."""
+    return await DriftRepository(session).clear_last_errors(calls)

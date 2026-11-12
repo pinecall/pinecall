@@ -115,7 +115,7 @@ async def deploy_release(
     source = await asyncio.to_thread(check_source, upload.data)
     label = pages.label_page(await accounts.slug_of(session, app.org), app)
     page = await asyncio.to_thread(pages.check_page, source.data, upload.page_dir, upload.page_agent, label)
-    author = apps.name_asker(by)
+    author = by.asked_by
     if kind is None:
         hosting = len(await apps.list_standing(session, app.env, app.org))
         await billing.admit_hosted_app(session, app.org, app.env, hosting=hosting)
@@ -136,7 +136,7 @@ async def roll_back_release(
         page = pages.Page(dir=earlier.page_dir, agent=earlier.page_agent)
     source = Source(data=bytes(earlier.source), sha256=earlier.sha256)
     note = ROLLED_BACK.format(release=release)
-    kept = await keep_release(session, app, source, author=apps.name_asker(by), note=note, page=page)
+    kept = await keep_release(session, app, source, author=by.asked_by, note=note, page=page)
     apps.tell_changed(session, signal, app)
     _announce(session, feeds, by, kept)
     return (await _read(session, pages_domain, app, [kept]))[0]

@@ -116,6 +116,15 @@ class MemberRepository(Repository[Member]):
         )
         return await self.all(statement.order_by(Member.created_at, Member.id))
 
+    async def drop_agent(self, org: str, agent: str) -> int:
+        """Take the agent out of the list of every member of the org held to a list; how many held it."""
+        statement = (
+            update(Member)
+            .where(Member.org == org, Member.agents.contains([agent]))
+            .values(agents=func.array_remove(Member.agents, agent))
+        )
+        return await self.change(statement)
+
     async def find_by_test_phone(self, phone: str) -> Member | None:
         """Whose phone this is, in whatever org. Read box-wide by the caller."""
         return await self.one_or_none(self.statement().where(Member.test_phone == phone))
