@@ -3,6 +3,7 @@
 import re
 import unicodedata
 from collections.abc import Mapping
+from hashlib import sha256
 from typing import Any, TypeIs
 
 from runtime.exceptions import ValidationError
@@ -25,6 +26,13 @@ def a_mapping(value: object) -> TypeIs[Mapping[str, object]]:
 def a_list(value: object) -> TypeIs[list[object]]:
     """Whether the value is a list."""
     return isinstance(value, list)
+
+
+# What is kept under the hash of what it holds (a block of a prompt, a recorded line, an uploaded clip) is
+# named by this, so the same content is the same name in every process and every release.
+def sha256_of(content: str | bytes) -> str:
+    """The sha256 of a text or of bytes, in hex."""
+    return sha256(content.encode() if isinstance(content, str) else content).hexdigest()
 
 
 def parse_slug(word: str) -> str:

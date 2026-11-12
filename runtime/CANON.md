@@ -87,6 +87,8 @@ A module of a domain that is none of its seven files is named here, and in
 |---|---|---|
 | `providers` | `stage.py` | a value object: a stage of a call as values, what an agent asks for (`Model`, `Voice`) and the stage resolved (`Running`, `Pipeline`). Services of six domains speak in it |
 | `providers` | `catalog.py` | a value object: the providers row, the one shape of a document the box keeps and the one reader of its keys. It is pydantic, the document being JSON an operator edits |
+| `agents` | `declaration.py` | a value object: what an agent's class declares (its tools, its turns, its words), and the declaration whole |
+| `agents` | `settings.py` | a value object: what the org sets on an agent over its class (its settings, its lexicon), and the versions a call ran on |
 
 `providers/service/` has more than sixteen modules and is one context: which vendor runs each
 stage of a call, on whose key, told what, at what price. One row, one table of keys and one
@@ -106,7 +108,8 @@ this machine can run (`machine`) stand apart and were decided into it.
    fifteen statement lines fails.
 4. **A use case receives what it uses, by name.** No function takes a bag of collaborators. The
    lifespan yields one typed state; each object on it has one getter, declared in the owning
-   domain's `auth.py`; a resource reaches an endpoint loaded and authorised by a dependency. A
+   domain's `auth.py` (for an object a lower domain is handed from above, the `auth.py` of the
+   domain that declares its `Protocol`); a resource reaches an endpoint loaded and authorised by a dependency. A
    session is asked for in the signature by its kind: `Session` (the request's org) or
    `BoxSession` (every org). *Held by:* `.state` appears only in getters; `box_wide` never in an
    `endpoints` module.

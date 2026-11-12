@@ -69,6 +69,10 @@ VALUE_OBJECTS: frozenset[str] = frozenset(
         "providers.stage",
         # The providers row: the shape of a document the box keeps, and the one reader of its keys.
         "providers.catalog",
+        # What an agent's class declares: its tools, its turns, its words, and the declaration whole.
+        "agents.declaration",
+        # What the org sets on an agent over its class: its settings, its lexicon, the versions a call ran on.
+        "agents.settings",
     }
 )
 # The files a domain folder holds, each a module or a package of the same name.
@@ -78,6 +82,8 @@ CANON_FILES = frozenset({"models", "schemas", "repository", "service", "auth", "
 ENGINE_MODULES: dict[str, frozenset[str]] = {
     # Its two value objects (`VALUE_OBJECTS`).
     "providers": frozenset({"stage", "catalog"}),
+    # Its two value objects (`VALUE_OBJECTS`).
+    "agents": frozenset({"declaration", "settings"}),
 }
 # A `service/` package may hold this many modules; past it the domain is cut, or CONTRIBUTING.md says in a
 # sentence why it is one context and the domain is named here with that sentence.
