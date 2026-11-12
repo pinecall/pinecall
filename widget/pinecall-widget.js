@@ -5,7 +5,7 @@
 // the key never reaches the browser. The same endpoints serve every agent of the org.
 //
 //   <script type="module" src="/pinecall/pinecall-widget.js"></script>
-//   <pinecall-widget agent="bidfire-sales" name="Sam" company="BidFire"
+//   <pinecall-widget agent="pip" name="Pip" company="Brightside Dental"
 //                    token-url="/pinecall/token.php" log-url="/pinecall/log.php"></pinecall-widget>
 //
 // Attributes:

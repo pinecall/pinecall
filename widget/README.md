@@ -9,7 +9,7 @@ the public repository at `https://cdn.jsdelivr.net/gh/pinecall/pinecall@main/wid
 
 ```html
 <script type="module" src="https://cloud.pinecall.io/widget/pinecall-widget.js"></script>
-<pinecall-widget agent="bidfire-sales" name="Sam" company="BidFire"
+<pinecall-widget agent="pip" name="Pip" company="Brightside Dental"
                  token-url="/pinecall/token" log-url="/pinecall/log"></pinecall-widget>
 ```
 
@@ -341,7 +341,7 @@ A custom element is an element: render the tag and it works.
 import "https://cloud.pinecall.io/widget/pinecall-widget.js";
 
 export function Support() {
-  return <pinecall-widget agent="bidfire-sales" name="Sam" token-url="/pinecall/token" log-url="/pinecall/log" />;
+  return <pinecall-widget agent="pip" name="Pip" token-url="/pinecall/token" log-url="/pinecall/log" />;
 }
 ```
 
@@ -350,7 +350,7 @@ export function Support() {
 import "https://cloud.pinecall.io/widget/pinecall-widget.js";
 </script>
 <template>
-  <pinecall-widget agent="bidfire-sales" name="Sam" token-url="/pinecall/token" log-url="/pinecall/log" />
+  <pinecall-widget agent="pip" name="Pip" token-url="/pinecall/token" log-url="/pinecall/log" />
 </template>
 ```
 
