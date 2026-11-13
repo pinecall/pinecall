@@ -238,9 +238,12 @@ def gate_line(entry: Entry, data: ConfirmRequest | ConfirmGranted | ConfirmDecli
     return GateLine(entry.seq, kind, data.call_id, data.tool, data.audience)
 
 
-def conversation_of(transcript: Transcript) -> str:
-    """Every turn and tool call of the call, each line starting with its log position."""
-    return "\n".join(line for turn in transcript.turns for line in _lines_of(turn))
+# What an org's policy has a call open with is said by the worker before the greeting and logged as a
+# turn of the agent's. Until 2026-11 a judge read it as the agent's first message, and one asked
+# whether every turn was one message broke every recorded call on the notice and the greeting.
+def conversation_of(transcript: Transcript, *, platforms: int | None = None) -> str:
+    """Every turn and tool call of the call under its log position; the turn at `platforms` is the platform's."""
+    return "\n".join(line for turn in transcript.turns for line in _lines_of(turn, _speaker_of(turn, platforms)))
 
 
 # An entry of an older shape is left out of the transcript, not the whole call refused.
@@ -355,8 +358,13 @@ def _excerpts(data: DocsSources) -> list[str]:
     ]
 
 
-def _lines_of(turn: Said) -> list[str]:
-    who = "agent" if turn.role == AGENT else "caller"
+def _speaker_of(turn: Said, platforms: int | None) -> str:
+    if turn.role == CALLER:
+        return "caller"
+    return "platform" if turn.seq == platforms else "agent"
+
+
+def _lines_of(turn: Said, who: str) -> list[str]:
     lines = [f"#{turn.seq} {who}: {turn.text}"]
     for called in turn.calls:
         arguments = json.dumps(called.arguments, ensure_ascii=False)

@@ -12,10 +12,12 @@ from runtime.judging.service.panel import (
     Surroundings,
     alone,
     ask_panel,
+    context_of,
     evidence_at,
     facts_of,
     gate_of,
     panel_of,
+    platforms_line_of,
     skip_unjudged,
 )
 from runtime.judging.service.specs import JudgeSpec
@@ -129,6 +131,38 @@ def test_expected_outcome_is_na_when_the_simulated_caller_expected_nothing() -> 
 
 def test_a_judge_with_no_gate_is_always_asked() -> None:
     assert gate_of(RosterJudge(SLOT, owner=THE_ORG, on=True), plain()) is None
+
+
+# ── the platform's line ──
+
+NOTICE = "Esta llamada puede ser grabada."
+DISCLOSURE = "Le llama un asistente de Clínica Norte."
+THE_ORG_OPENS = Surroundings(org="Clínica Norte", disclosure=DISCLOSURE, notice=NOTICE)
+
+
+def opening_with(first: str, direction: Direction = Direction.inbound) -> Transcript:
+    turns = (agent_line(first, seq=3), agent_line("Clínica Norte, dígame.", seq=5), caller_line("¿Hay hueco?", seq=7))
+    return dataclasses.replace(a_transcript(*turns), direction=direction)
+
+
+def test_a_recorded_calls_notice_is_the_platforms_line() -> None:
+    assert platforms_line_of(opening_with(NOTICE), THE_ORG_OPENS) == 3
+    assert context_of(opening_with(NOTICE), THE_ORG_OPENS, "").platforms == 3
+
+
+def test_an_outbound_calls_disclosure_is_the_platforms_line_with_or_without_the_notice() -> None:
+    assert platforms_line_of(opening_with(f"{DISCLOSURE} {NOTICE}", Direction.outbound), THE_ORG_OPENS) == 3
+    assert platforms_line_of(opening_with(DISCLOSURE, Direction.outbound), THE_ORG_OPENS) == 3
+
+
+def test_a_call_that_came_in_never_opened_with_the_disclosure() -> None:
+    assert platforms_line_of(opening_with(DISCLOSURE), THE_ORG_OPENS) is None
+
+
+def test_a_call_that_opens_with_the_agents_own_words_has_no_line_of_the_platforms() -> None:
+    assert platforms_line_of(opening_with("Clínica Norte, dígame."), THE_ORG_OPENS) is None
+    assert platforms_line_of(opening_with(NOTICE), Surroundings(org="Clínica Norte")) is None
+    assert platforms_line_of(a_transcript(caller_line("¿Hola?")), THE_ORG_OPENS) is None
 
 
 # ── the facts ──

@@ -19,7 +19,7 @@ from runtime.judging.service.evidence import as_text, evidence_of
 from runtime.judging.service.judge_model import JudgeModel, Unjudged, judge_model_of, price_of
 from runtime.judging.service.judges import RosterJudge
 from runtime.judging.service.specs import JudgeSpec
-from runtime.judging.service.transcript import Transcript, call_of, transcript_of
+from runtime.judging.service.transcript import AGENT, Transcript, call_of, transcript_of
 from runtime.kit.crypto import Vault
 from runtime.kit.text import JsonObject, sha256_of
 from runtime.providers import service as providers
@@ -40,11 +40,13 @@ NOT_JUDGED = "judging this call failed: {broke}"
 
 @dataclass(frozen=True, slots=True)
 class Surroundings:
-    """What is known of a call beyond its log, as the judges that read facts are told it."""
+    """What is known of a call beyond its log, as its judges are told it."""
 
     org: str
     # The sentence outbound calls open with; None when the org and the platform set none.
     disclosure: str | None = None
+    # The sentence a recorded call opens with; None when the org turned its notice off.
+    notice: str | None = None
     # A do-not-call fact was written with this call's id (call.opt_out).
     opted_out: bool = False
 
@@ -150,7 +152,23 @@ async def ask_judge(
 
 def context_of(transcript: Transcript, around: Surroundings, prompt: str) -> Context:
     """What the judges of a call may read beyond the conversation."""
-    return Context(prompt=prompt, evidence=as_text(evidence_of(transcript)), facts=facts_of(transcript, around))
+    return Context(
+        prompt=prompt,
+        evidence=as_text(evidence_of(transcript)),
+        facts=facts_of(transcript, around),
+        platforms=platforms_line_of(transcript, around),
+    )
+
+
+# The worker says the disclosure and the notice in one speech before the greeting, and the log keeps
+# that speech as a turn of the agent's: only its words tell it from the agent's own.
+def platforms_line_of(transcript: Transcript, around: Surroundings) -> int | None:
+    """The log position of what the org's policy had the call open with, when the agent's first turn is that."""
+    opening = next((turn for turn in transcript.turns if turn.role == AGENT), None)
+    disclosure = around.disclosure if transcript.direction is Direction.outbound else None
+    said_first = [one for one in (disclosure, around.notice) if one]
+    sentences = {" ".join(said_first), *said_first} - {""}
+    return opening.seq if opening is not None and opening.text.strip() in sentences else None
 
 
 def facts_of(transcript: Transcript, around: Surroundings) -> str:
@@ -176,9 +194,9 @@ def facts_of(transcript: Transcript, around: Surroundings) -> str:
     return "\n".join(lines)
 
 
-# The org as the call spoke for it: its name, the opening sentence it set, and an opt-out it took.
+# The org as the call spoke for it: its name, the sentences its policy opens a call with, and an opt-out it took.
 async def surroundings_of(session: AsyncSession, org: str, call: str, declaration: Declaration | None) -> Surroundings:
-    """What the judges that read facts are told beyond the call's log."""
+    """What the judges are told of a call beyond its log."""
     found = await accounts.find_org(session, org)
     name = org if found is None else found.name
     policy = await compliance.policy_of(session, org)
@@ -186,6 +204,7 @@ async def surroundings_of(session: AsyncSession, org: str, call: str, declaratio
     return Surroundings(
         org=name,
         disclosure=policy.disclosure_for(name, language),
+        notice=policy.notice_in(language),
         opted_out=await compliance.has_opt_out_on(session, call),
     )
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **A judge reads what the platform said as the platform's.** What an org's policy has a call open with, an
+  outbound call's disclosure and a recorded call's notice, is said before the agent's greeting and logged as
+  a turn like any other, and a judge read it as the agent's first message: one asked whether the agent kept
+  every turn to one message broke every recorded call on the notice and the greeting. The line now reaches
+  every judge, and a trigger, under `platform`, and the judge is told it is never one of the agent's messages.
+
 ## 0.11.34 — the overflow promises a call back only where one is asked (2026-11-13)
 
 - **The overflow promises a call back only where one is asked.** A visitor of a page, who has no number, was

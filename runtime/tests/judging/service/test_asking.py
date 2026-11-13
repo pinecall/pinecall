@@ -237,6 +237,29 @@ async def test_no_evidence_or_facts_is_said_none_and_an_empty_prompt_is_left_out
     assert "Facts about this call:\n(none)" in prompt
 
 
+async def test_the_platforms_line_reaches_the_question_and_the_trigger_as_the_platforms() -> None:
+    recorded = a_transcript(
+        agent_line("This call may be recorded.", seq=2),
+        agent_line("Hi, Brightside Dental.", seq=3),
+        caller_line("I want a refund.", seq=4),
+    )
+    model = answering(
+        {"name": "submit_applies", "arguments": {"applies": True, "reason": "asked"}},
+        submitted("submit_verdict", verdict="held"),
+    )
+    await ask(REFUND, recorded, Context(platforms=2), model)
+    asked = prompts_of(model)
+    assert len(asked) == 2
+    for prompt in asked:
+        assert "#2 platform: This call may be recorded.\n#3 agent: Hi, Brightside Dental." in prompt
+
+
+async def test_a_judge_is_told_what_a_line_of_the_platforms_is() -> None:
+    model = a_judge(("held", "ok"))
+    await ask(SLOT, offered(), Context(), model)
+    assert "A line said by `platform` is what the organisation's policy has the call open with" in prompts_of(model)[0]
+
+
 # ── the conversation ──
 
 
@@ -258,6 +281,15 @@ def test_every_line_starts_with_its_position_and_a_tool_call_says_what_it_answer
         '#4 [tool call: book({"slot": "v10"})]',
         "#4 [tool error: taken]",
     ]
+
+
+def test_only_the_turn_at_the_platforms_position_is_named_the_platforms() -> None:
+    case = a_transcript(agent_line("This call may be recorded.", seq=2), agent_line("Hi.", seq=3))
+    assert conversation_of(case, platforms=2).split("\n") == [
+        "#2 platform: This call may be recorded.",
+        "#3 agent: Hi.",
+    ]
+    assert conversation_of(case).split("\n") == ["#2 agent: This call may be recorded.", "#3 agent: Hi."]
 
 
 def test_a_skipped_or_deferred_answer_is_not_an_eval() -> None:

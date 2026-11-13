@@ -340,7 +340,10 @@ with the `choice`) or `score` (1 to 5, `classified` with the `score`); any of th
 `na`, the question did not apply. Only a verdict judge sets `passed`. It runs `always`, only on a
 call a simulated caller played (`simulations`), or on a `trigger`: a short yes-or-no asked first,
 and a no is `na` without the question. It always reads the whole call, both sides' turns and the
-tool calls between them, each line under its log position, and cites the positions it rests on —
+tool calls between them, each line under its log position and who said it (`caller`, `agent`, and
+`platform` for what the org's policy has the call open with, an outbound call's disclosure and a
+recorded call's notice: heard by the caller, never one of the agent's messages), and cites the
+positions it rests on —
 first the positions, then the reason, and the answer last, decided by that reason, since a model
 fills the fields in that order and one that decided first argued its way to the other answer.
 It answers its own question alone: what else the conversation got wrong is another judge's, never
