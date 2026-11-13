@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.35 — a judge reads what the platform said as the platform's (2026-11-13)
 
 - **A judge reads what the platform said as the platform's.** What an org's policy has a call open with, an
   outbound call's disclosure and a recorded call's notice, is said before the agent's greeting and logged as

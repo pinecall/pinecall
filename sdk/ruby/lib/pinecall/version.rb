@@ -2,5 +2,5 @@
 
 module Pinecall
   # Set by the maintainer at release time.
-  VERSION = "0.11.34"
+  VERSION = "0.11.35"
 end

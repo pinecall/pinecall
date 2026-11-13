@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.35 — a judge reads what the platform said as the platform's (2026-11-13)
+
+- Released with the runtime: nothing of this package changed.
+
 ## 0.11.34 — the overflow promises a call back only where one is asked (2026-11-13)
 
 - Released with the runtime: nothing of this package changed.
