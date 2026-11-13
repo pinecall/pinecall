@@ -116,7 +116,7 @@ class Seated(rtc.LocalParticipant):
 
 
 class Room(rtc.Room):
-    """A room that never connects, whose seats a test sets."""
+    """A room that is connected only when a test says so, whose seats a test sets."""
 
     def __init__(self, name: str, *seats: rtc.RemoteParticipant) -> None:
         """The room and who is in it."""
@@ -124,6 +124,12 @@ class Room(rtc.Room):
         self.called = name
         self.seats = {seat.identity: seat for seat in seats}
         self.me = Seated()
+        self.connected = False
+
+    @override
+    def isconnected(self) -> bool:
+        """Whether the test connected it."""
+        return self.connected
 
     @property
     @override

@@ -61,13 +61,16 @@ async def widgets(box: Box, store: Store) -> AsyncIterator[Widgets]:
     """A widget's channel on the call, as many as a test opens; their writers closed after it."""
     opened: list[Call] = []
 
-    def open_one(visibility: dict[str, Visibility] | None = None) -> tuple[Widget, Room]:
+    def open_one(
+        visibility: dict[str, Visibility] | None = None, *seated: rtc.RemoteParticipant
+    ) -> tuple[Widget, Room]:
         assert box.log.call is not None
         config = Declaration(slug=AGENT.slug, events=AGENT.events, state_fields=visibility or AGENT.state_fields)
         call = Call(context_of(box.log.call, Channel.web), config, box)
         call.writing.open()
         opened.append(call)
-        offline = Room(box.log.call)
+        offline = Room(box.log.call, *seated)
+        offline.connected = bool(seated)
         widget = Widget(call, offline, _reading(box.log, store, config))
         widget.watch()
         return widget, offline
@@ -99,6 +102,17 @@ async def test_a_widget_gets_the_snapshot_first_and_then_the_log_as_it_grows(
     (snapshot,) = _sent(offline, SNAPSHOT)
     assert snapshot["last_seq"] == 1
     assert [entry["seq"] for entry in _sent(offline, LOG)] == [2]
+
+
+# A visitor's seat is in the room before the worker's: nothing says it came, and it is greeted all the same.
+@needs_the_database
+async def test_a_widget_that_was_in_the_room_first_gets_its_snapshot(widgets: Widgets, box: Box, store: Store) -> None:
+    await box.log.append("state.changed", {"state": {"step": 1}, "changed": ["step"]})
+    widget, offline = widgets(None, seat("visitor_1", attributes=WIDGET))
+    await _settled()
+    widget.stop()
+    (snapshot,) = _sent(offline, SNAPSHOT)
+    assert snapshot["last_seq"] == 1
 
 
 @needs_the_database

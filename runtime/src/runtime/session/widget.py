@@ -64,6 +64,11 @@ class Widget:
         """Greet each widget that is or comes into the room, and hear what it sends."""
         for name, listener in self._listeners().items():
             self.room.on(name, listener)  # pyright: ignore[reportUnknownMemberType]
+        # A visitor's seat is in the room before the worker's, and no event says who was there already.
+        # Until 0.11.38 only a widget that came later was greeted: the first never got its snapshot,
+        # which is how a page knows the agent hears what it sends.
+        if self.room.isconnected():
+            self._on_connection_state_changed(rtc.ConnectionState.CONN_CONNECTED)
 
     def when_hung_up(self, hang_up: Callable[[], None]) -> None:
         """Call `hang_up` when a widget in the room says its caller hung up."""

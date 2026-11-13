@@ -132,6 +132,9 @@ class Job:
         setup, running = self.setup, self.setup.running
         await running.start(notice=setup.notice, worker=self.warmed.told.worker)
         setup.room.watch()
+        # After the start, which opens the call's writer: a greeting flushes it before it reads the state.
+        if setup.widget is not None:
+            setup.widget.watch()
         setup.room.when_the_caller_is_gone(running.caller_hung_up)
         self.tasks.spawn(self.follow())
         self.tasks.spawn(session.keep_time(running, setup.limit_s, exhausted=None))
@@ -392,7 +395,6 @@ def _widget_of(
     reading = session.Reading(state=read_state, since=link.since, tail=link.tail, public=read_entry)
     widget = session.Widget(call, ctx.room, reading)
     widget.when_hung_up(running.caller_hung_up)
-    widget.watch()
     return widget
 
 
