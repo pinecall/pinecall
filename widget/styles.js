@@ -121,7 +121,8 @@ export const STYLE = `
   .lines li { padding: 9px 13px; border-radius: 14px; max-width: 86%; font-size: 14.5px; line-height: 1.45; overflow-wrap: anywhere; white-space: pre-line; }
   .lines li.agent { background: var(--_raised); align-self: flex-start; border-bottom-left-radius: 4px; }
   .lines li.user { background: var(--_accent); color: var(--_on-accent); align-self: flex-end; border-bottom-right-radius: 4px; }
-  .lines li.interim { opacity: .6; }
+  /* A line still being written or heard: dimmed until it is whole, unless the page says otherwise. */
+  .lines li.interim { opacity: var(--pc-writing-opacity, .6); }
   .lines li.mark { background: none; color: var(--_muted); font: 11.5px/1.4 ui-monospace, Menlo, monospace; max-width: 100%; padding: 2px 4px; }
   .lines li.typing { display: inline-flex; gap: 4px; align-items: center; padding: 13px 14px; }
   .lines li.typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--_muted); animation: pc-dot 1.2s infinite ease-in-out; }

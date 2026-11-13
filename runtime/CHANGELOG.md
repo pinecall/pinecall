@@ -18,6 +18,9 @@
   opens the panel straight into a voice call in the browser, for a page that draws its own "Talk";
   `pinecall:close` is said as the panel closes. LiveKit's signal log is silent in it, as on
   pinecall.io: an unclean close at every page change read as an error on the page's console.
+- **The widget's line in the writing is the page's to dim or not.** A line still being written or
+  heard was drawn at 60%, and a long answer read as grey for as long as it took. `--pc-writing-opacity`
+  on the tag sets it; `1` shows it at full strength from its first word.
 - **A visitor typing in a page's chat is answered as on a website.** A written call held in a room (a
   widget's chat) started as spoken, and the model was told "you are on a phone call": a visitor who
   asked which page they were on was told the agent could not see it, on a phone call. A session's

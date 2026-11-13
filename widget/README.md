@@ -330,6 +330,7 @@ pinecall-widget {
   --pc-font: inherit;         /* the page's own */
   --pc-font-size: 15px;
   --pc-z: 2147483000;
+  --pc-writing-opacity: .6;   /* a line still being written or heard; 1 shows it at full strength from its first word */
   --pc-panel-width: 400px;    /* the size a panel opens at */
   --pc-panel-height: 640px;
 }
