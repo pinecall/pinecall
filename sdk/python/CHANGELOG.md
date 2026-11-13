@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- **An agent is named by its slug.** A voice app's `app.py` imported its agents from
+  `pinecall_agents.<folder>.agent`, a package only the loader makes: it ran, and no type checker
+  could read it, nor could one agent import the teammate it passes a call to. A line's `answers`,
+  `team` and `fallback`, a page's `answers`, what a line's function returns, `self.call.handoff`
+  and a flow's `step.call` take the agent's slug, its folder's name, as well as its class:
+  `app.line("+1 415 555 0134", "front-desk", team=["billing"])`. A slug no agent is served as is
+  refused by name.
+- **Brightside Dental, the voice app on pinecall.io's editor, is an example**
+  (`examples/python/brightside_dental`): two agents, a team, a rule, a flow, and the clinic they
+  share, the same app as the TypeScript and Ruby ones.
+
 ## 0.11.35 — a judge reads what the platform said as the platform's (2026-11-13)
 
 - Released with the runtime: nothing of this package changed.

@@ -9,6 +9,7 @@ import typing
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from pinecall import _config
 from pinecall.agent import Agent
 from pinecall.errors import DeclarationRefused, PinecallError
 from pinecall.wire._names import Channel, JsonObject, Medium
@@ -101,6 +102,7 @@ def load_served(served: Served) -> type[Agent]:
         )
     # The folder names it: its view is `views/<slug>.jinja` beside it, whatever the class is called.
     cls.slug = served.slug
+    _config.keep_served(served.slug, cls)
     return cls
 
 

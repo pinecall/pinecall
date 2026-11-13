@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import Any, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pinecall import _harness
+from pinecall import _config, _harness
 from pinecall._handoff import Answering, taken_by
 from pinecall.agent import Agent
 from pinecall.errors import DeclarationRefused
@@ -23,7 +23,10 @@ A_LOGGED_LINE = "custom"
 NOT_A_ZONE = "a voice app's timezone is an IANA zone, like America/Los_Angeles or Europe/Madrid"
 NOT_A_NAME = "a voice app's name is lowercase letters, digits and dashes, like its project's folder"
 NOT_A_NUMBER = "a line is a phone number with its country code, like +1 415 555 0134"
-NOT_AN_AGENT = "a line is answered by an agent class: app.line(number, FrontDesk)"
+NOT_AN_AGENT = (
+    "a line is answered by an agent, its class or its slug:"
+    ' app.line(number, FrontDesk) or app.line(number, "front-desk")'
+)
 NOT_A_PAGE = 'a page is the folder its build writes, inside the project: app.page("ui/dist")'
 NO_AGENT_FOR_A_PAGE = (
     "a page's visitors reach an agent: write a line before the page,"
@@ -81,17 +84,20 @@ class VoiceApp:
     def line(
         self,
         number: str,
-        answers: type | Answering,
+        answers: type | str | Answering,
         *,
         greeting: str | None = None,
-        team: Sequence[type] = (),
-        fallback: type | None = None,
+        team: Sequence[type | str] = (),
+        fallback: type | str | None = None,
     ) -> "VoiceApp":
-        """Answer `number` with an agent: `app.line("+14155550134", FrontDesk)`.
+        """Answer `number` with an agent: `app.line("+14155550134", "front-desk")`.
+
+        An agent is named by its class or by its slug, its folder's name: an `app.py` that names
+        slugs imports none of the agents' folders, which a dash keeps from being imported.
 
         Args:
             number: the number, with its country code.
-            answers: the agent class, or a function of the call that picks one of `team`.
+            answers: the agent, or a function of the call that picks one of `team`.
             greeting: said as written when the call comes in, before any model runs.
             team: the agents the call may pass to; each says what it takes with `takes`.
             fallback: with a function, the agent the number is pointed at, which answers
@@ -102,15 +108,8 @@ class VoiceApp:
             raise DeclarationRefused(NOT_A_NUMBER)
         if any(line.number == dialled for line in self.lines):
             raise DeclarationRefused(f"{dialled} is a line of {self.name} already")
-        if not callable(answers):
-            raise DeclarationRefused(NOT_AN_AGENT)
-        chooses = None if _is_an_agent(answers) else answers
-        bound = answers if chooses is None else fallback
-        if not isinstance(bound, type) or not _is_an_agent(bound):
-            raise DeclarationRefused(
-                f"{dialled}: a line whose answers is a function names its fallback,"
-                " the agent the number is pointed at"
-            )
+        chooses, bound = _answering(answers, fallback, dialled)
+        mates = _team_of(team, chooses, dialled)
         if greeting is not None and not greeting.strip():
             raise DeclarationRefused(f"the greeting of {dialled} is the words the call opens with")
         other = next(
@@ -121,18 +120,7 @@ class VoiceApp:
                 f"{bound.__name__} answers {other.number} and {dialled}:"
                 " both lines open with the same greeting, or with none"
             )
-        for mate in team:
-            if taken_by(mate) is None:
-                raise DeclarationRefused(
-                    f"{mate.__name__} is of the team of {dialled} and says nothing of what it"
-                    ' takes: takes = "…"'
-                )
-        if chooses is not None and not team:
-            raise DeclarationRefused(
-                f"{dialled}: a function answers with one of the line's team,"
-                " and this line names none"
-            )
-        self.lines.append(Line(dialled, bound, tuple(team), greeting, chooses))  # pyright: ignore[reportArgumentType]
+        self.lines.append(Line(dialled, bound, mates, greeting, chooses))
         return self
 
     def rule(self, rule: str) -> "VoiceApp":
@@ -169,8 +157,10 @@ class VoiceApp:
             self._hearing.setdefault(name, []).append(handler)
         return self
 
-    def page(self, folder: str, *, answers: type | None = None) -> "VoiceApp":
+    def page(self, folder: str, *, answers: type | str | None = None) -> "VoiceApp":
         """The app's page: `app.page("ui/dist")`, served by the platform at the app's own name."""
+        if isinstance(answers, str):
+            answers = agent_of(answers, f"{self.name}'s page")
         cleaned = folder.removeprefix("./").rstrip("/")
         if not cleaned or cleaned.startswith("/") or ".." in cleaned.split("/"):
             raise DeclarationRefused(NOT_A_PAGE)
@@ -301,6 +291,56 @@ def voice_app(name: str, *, timezone: str | None = None) -> VoiceApp:
         except (ZoneInfoNotFoundError, ValueError) as wrong:
             raise DeclarationRefused(NOT_A_ZONE) from wrong
     return VoiceApp(name, timezone)
+
+
+def agent_of(given: type | str, named_by: str) -> type:
+    """The agent class a slug names, among those this process serves; a class is itself."""
+    if not isinstance(given, str):
+        return given
+    found = _config.agent_named(given)
+    if found is None:
+        raise DeclarationRefused(
+            f"{named_by} names {given}, and no agent here is served as {given}:"
+            f" an agent's slug is its folder's name, agents/{given}/agent.py"
+        )
+    return found
+
+
+def _answering(
+    answers: type | str | Answering, fallback: type | str | None, dialled: str
+) -> tuple[Answering | None, type]:
+    # The function that chooses per call, when one answers the line, and the agent its number is
+    # pointed at.
+    if isinstance(answers, str):
+        answers = agent_of(answers, dialled)
+    if not callable(answers):
+        raise DeclarationRefused(NOT_AN_AGENT)
+    if isinstance(answers, type) and _is_an_agent(answers):
+        return None, answers
+    bound = None if fallback is None else agent_of(fallback, dialled)
+    if bound is None or not _is_an_agent(bound):
+        raise DeclarationRefused(
+            f"{dialled}: a line whose answers is a function names its fallback,"
+            " the agent the number is pointed at"
+        )
+    return answers, bound
+
+
+def _team_of(
+    team: Sequence[type | str], chooses: Answering | None, dialled: str
+) -> tuple[type, ...]:
+    mates = tuple(agent_of(mate, dialled) for mate in team)
+    for mate in mates:
+        if taken_by(mate) is None:
+            raise DeclarationRefused(
+                f"{mate.__name__} is of the team of {dialled} and says nothing of what it"
+                ' takes: takes = "…"'
+            )
+    if chooses is not None and not mates:
+        raise DeclarationRefused(
+            f"{dialled}: a function answers with one of the line's team, and this line names none"
+        )
+    return mates
 
 
 def _is_an_agent(given: object) -> bool:

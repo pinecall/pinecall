@@ -1,0 +1,6 @@
+{#- What the model reads this turn, from the state: the times on the table, and nothing else to offer. -#}
+{% if slots %}
+Offer only these times: {{ slots | map(attribute="time") | join(", ") }}.
+{% else %}
+No times are on the table yet.
+{% endif %}

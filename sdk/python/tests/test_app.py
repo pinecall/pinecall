@@ -4,7 +4,7 @@ from typing import cast
 
 import pytest
 
-from pinecall import Agent, CallLine, DeclarationRefused, Heard, flow, voice_app
+from pinecall import Agent, CallLine, DeclarationRefused, Heard, _config, flow, voice_app
 from pinecall.flows import Step
 from pinecall.wire._names import JsonObject
 
@@ -65,6 +65,23 @@ def test_a_teammate_says_what_it_takes_and_a_line_that_chooses_names_its_fallbac
     assert app.team_of(Billing) == [FrontDesk, Billing]
     assert app.choosing(FrontDesk) is not None
     assert app.numbers_of(FrontDesk) == ["+14155550134"]
+
+
+def test_an_agent_is_named_by_the_slug_it_is_served_as_wherever_a_class_is() -> None:
+    _config.keep_served("front-desk", FrontDesk)
+    _config.keep_served("billing", Billing)
+    app = voice_app("brightside").line("+14155550134", "front-desk", team=["billing"])
+    assert (app.lines[0].answers, app.lines[0].team) == (FrontDesk, (Billing,))
+    app.line("+14155550135", billing, team=["billing"], fallback="front-desk").page(
+        "ui/dist", answers="billing"
+    )
+    assert app.choosing(FrontDesk) is not None
+    assert app.paged is not None
+    assert app.paged.answers is Billing
+    with pytest.raises(DeclarationRefused, match="no agent here is served as front-desc"):
+        voice_app("other").line("+14155550134", "front-desc")
+    with pytest.raises(DeclarationRefused, match="no agent here is served as billin"):
+        voice_app("other").line("+14155550134", FrontDesk, team=["billin"])
 
 
 def test_what_the_app_declares_for_its_agents_and_a_setting_both_declare_is_refused() -> None:

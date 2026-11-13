@@ -5,6 +5,14 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
+## Unreleased
+
+- **The Brightside Dental example is the voice app on pinecall.io's editor**, file for file
+  (`examples/typescript/brightside-dental`): `app.ts`, the front desk and billing with `@agent`,
+  the reminder as a flow in `flows/`, the clinic in `lib/`, its judge, its two test callers and its
+  three goldens. The page it carried, its `screen()` and the reminder written as a third agent left
+  with the version it replaces. The same app is in `examples/python` and `examples/ruby`.
+
 ## 0.11.35 — a judge reads what the platform said as the platform's (2026-11-13)
 
 - Released with the runtime: nothing of this package changed.

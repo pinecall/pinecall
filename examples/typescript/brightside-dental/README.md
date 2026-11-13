@@ -1,32 +1,31 @@
 # Brightside Dental: a voice app
 
-A dental clinic's phone line, written as a voice app: one `app.ts` that says who answers the number,
-two agents the call passes between, a flow that calls the patient back the day before, and the clinic they share. It is the example to read for an app
-of more than one agent. [Clínica Norte](../clinica-norte/README.md) is the example for one agent in depth.
+The app on [pinecall.io](https://pinecall.io)'s editor, file for file: a dental clinic's phone line
+written as a voice app. One `app.ts` says who answers the number; two agents the call passes
+between; a flow that calls the patient back the day before the visit; and the clinic they share. It
+is the example to read for an app of more than one agent. [Clínica Norte](../clinica-norte/README.md)
+is the example for one agent in depth. The same app is written in
+[Python](../../python/brightside_dental/README.md) and [Ruby](../../ruby/brightside_dental/README.md).
 
 ```text
 brightside-dental/
-  app.ts                          the line, who answers it, the team, the timezone, the silence, the reminder's flow
+  app.ts                          the line, who answers it, the team, the rule, the silence, the reminder
   agents/
-    brightside-front-desk/
+    clinic-front-desk/
       agent.tsx                   answers the line: reads the agenda, books, passes a charge on
-      harness.ts                  its own judge and its own test caller
-      test/agent.test.ts          the class as a class
+      judges.ts                   its own judge, beside two of Pinecall's
+      personas.ts                 two test callers `pinecall simulate` plays
       test/goldens/               three written calls a model must get right
-    brightside-billing/
+    clinic-billing/
       agent.tsx                   takes the call the front desk passes: invoices, refund requests
-    brightside-reminder/
-      agent.ts                    calls a patient the day before a visit, for the flow
-  lib/clinic.ts                   the agenda, the patients and the ledger (a stand-in, in memory)
-  lib/screen.ts                   the parts the agents put on a caller's page
-  ui/                             that page: React, `@pinecall/room`, and a dev server that mints its tickets
-  test/team.test.ts               the pass between the two agents, on the wire
+  flows/remind-visit.ts           the day before a visit, the front desk calls the patient
+  lib/clinic.ts                   the agenda, the patients and the invoices (a stand-in, in memory)
 ```
 
 ## The app
 
 ```ts
-const app = voiceApp("brightside-dental", { timezone: "America/Los_Angeles" });
+const app = voiceApp("brightside", { timezone: "America/Los_Angeles" });
 
 app.line("+1 415 555 0134", {
   greeting: "Brightside Dental. How can I help?",
@@ -37,109 +36,57 @@ app.line("+1 415 555 0134", {
 app.rule("Never say an amount of money that a tool did not give you.");
 app.silence({ after: "8s", say: "Are you still there?", times: 2 });
 
-const remindVisit = flow("remind-visit", async (booked, step) => {
-  const visit = booked as unknown as Visit & { phone: string };
-  if (!visit.phone.startsWith("+")) return;
-  await step.sleepUntil(startsAt(visit), { before: "24h" });
-  const reminder = { state: { visit: visit.id }, instruction: `Remind ${visit.patient} of the visit …` };
-  let called = await step.call(visit.phone, Reminder, reminder);
-  if (!called.answered && called.refused === undefined) {
-    await step.sleep("2h");
-    called = await step.call(visit.phone, Reminder, reminder);
-  }
-  await step.run(() => void clinic.reminded.push({ visit: visit.id, answered: called.answered }));
-}).cancelOn("visit.cancelled", (gone, visit) => gone["id"] === visit["id"]);
-
 app.on("visit.booked", remindVisit);
 ```
 
 | line | what it does |
 |---|---|
-| `timezone` | every agent of the app is told the date, the weekday and the hour in Los Angeles, and `this.call.today` is that day |
+| `timezone` | every agent of the app is told the date, the weekday and the hour in Los Angeles |
 | `greeting` | said as written the moment the call comes in, before any model runs |
 | `answers` | the agent on the call when it starts |
 | `team` | the agents the call may pass to; each says what it takes, `@agent({ takes })` |
 | `rule` | read into the prompt of both agents, and a judge asks of every call whether it was kept |
-| `on` | what an agent logs by name (`visit.booked`) and what happens to a call (`call.ended`) reach the app: a function hears it, a flow is started by it |
-| `flow` | what outlives the call: the gateway keeps where the run stands and wakes it, so the reminder is made a day later whatever was deployed meanwhile |
 | `silence` | what any agent of the app says to a caller who went quiet |
+| `on` | a line an agent logs by name (`visit.booked`) starts a run of the flow |
 
 ## How a call goes
 
 1. The call comes in and the caller hears the greeting.
 2. `FrontDesk.onCall` looks the calling number up and puts the patient in `this.call.shared`.
-3. The caller asks for a time: the model calls `freeSlots`, offers two, reads one back, and calls `book`
-   after a yes. `book` refuses a time the agenda did not give, so the model cannot invent one. On a call
-   with no number (the chat, the web) `book` stops to ask for one, `await this.ask(GetPhone)`, and books
-   once the caller gave it.
+3. The caller asks for a time: the model calls `freeSlots`, offers what the agenda gave, asks the
+   caller's name and calls `book`. `book` refuses a time `freeSlots` did not return, so the model
+   cannot invent one, and `render()` tells the model each turn which times are on the table.
 4. The caller asks about a charge instead: the model calls `transfer_to_billing`, a tool nobody wrote.
    It exists because `Billing` says `@agent({ takes: "a question about a charge, …" })`.
-5. From there the call is `Billing`'s: its instructions, its tools, and its `onCall`, which reads the
-   patient from `this.call.shared` and loads her invoices. It can take a refund request and never
-   promises one.
-
-A caller who only says "Hello?" is passed to nobody: the front desk answers.
-
+5. From there the call is `Billing`'s: its instructions, its tools, its voice, and its `onCall`, which
+   reads the patient from `this.call.shared` and loads her invoices. It takes a refund request and
+   never promises one.
 6. `book` logs `visit.booked`, which starts a run of `remind-visit`. It sleeps until a day before the
-   visit, then `Reminder` calls the patient with what the call is for and the visit as its state. Nobody
-   answers: it tries once more two hours later. The patient cancels on that call: `Reminder` logs
-   `visit.cancelled`, and a reminder still waiting for that visit is cancelled.
+   visit, then the front desk calls the patient; nobody answers, and it tries once more two hours
+   later. A visit booked from a web page has no number to ring, and the run ends there.
 
-## The page that follows the call
-
-`ui/` is a page a caller talks to the line from, and it is drawn by the agents. Each agent has a
-`screen()` beside its tools, returning parts (`lib/screen.ts`) from the same state the model reads:
-
-```tsx
-override screen() {
-  const asked = this.call.asking;
-  return (
-    <Stage desk="front">
-      {asked !== undefined ? <Form {...asked} /> : this.visit !== null ? <Ticket visit={this.visit} … /> : <Agenda slots={this.slots} picked={this.picked} />}
-    </Stage>
-  );
-}
-```
-
-The page maps each part to a component of its own (`ui/src/parts.tsx`) and draws whatever the call's log
-says is on the screen: the agenda once the model read it, a form when `book` stops to ask for a phone
-number, the ticket once booked, and billing's invoices in billing's colours once the call is passed. A
-tap on a time is the event `slot.picked`, which the front desk declares and answers by reading the time
-back; the form gives the phone number with `task.give`, in the model's place.
-
-```bash
-pnpm ui:build                     # the page, built into ui/dist
-pinecall start                    # the agents, held, and the page on http://localhost:4747
-pnpm ui                           # while you change the page: Vite on http://localhost:5184
-pinecall deploy                   # the app and its page, on Pinecall
-```
-
-`app.ts` names the page (`app.page("ui/dist")`), and the page asks its own name for its tickets
-(`useRoom(hosted())`): `pinecall start` answers them here with your key, and Pinecall answers them for
-the deployed app, at `https://brightside-dental--<org>.app.pinecall.io`. There is no server to write
-and no key in the page. A page has no caller id, so the door's "Ana Lopez" says who she is with the
-event `caller.known`, and the front desk looks her up as it does a caller's number.
+At hang-up the call is judged: `consent` and `grounded` are Pinecall's, `offers-a-real-time` is the
+clinic's own (`judges.ts`), and `app-rule-1` is the app's rule.
 
 ## Run it
 
 ```bash
-pinecall link                     # once: the org, and its key into .env
-pinecall start                    # serves both agents with app.ts, in the sandbox
-pinecall chat --agent brightside-front-desk  # talk to the line in writing
-pinecall test                     # the goldens, played on the agents you are holding
-pnpm test                         # the unit tests: no network, no key, no model
+npm pkg set dependencies.@pinecall/agents=latest && npm install   # outside this repository's workspace
+pinecall login                               # once per machine: signs it in
+pinecall start                               # serves both agents with app.ts, in the sandbox
+pinecall chat --agent clinic-front-desk      # talk to the line in writing
+pinecall test                                # the goldens, played on the agents you are holding
+pinecall simulate --agent clinic-front-desk --persona hurried --judge   # a test caller phones it, and the judges read the call
+pinecall deploy up                           # the app on Pinecall
 ```
 
-Point a number of your org at `brightside-front-desk` with `pinecall numbers` to answer it by phone; until then
-`pinecall start` says once that the line's number is not pointed at the agent, and the web and the
-chat work all the same.
+Point a number of your org at `clinic-front-desk` with `pinecall numbers` to answer it by phone; until
+then the web and the chat work all the same.
 
 ## What to know
 
-- An agent's slug is its folder's name, and a slug is one org's in the whole gateway: these two carry
-  the clinic's name for that. Rename the folders to hold them in an org where the names are taken.
-
+- An agent's slug is its folder's name, and a slug is one org's in the whole gateway. Rename the
+  folders to hold them in an org where the names are taken.
 - The agents of one team give each tool a name of its own: the app is refused when it loads otherwise.
 - A spoken call passed to billing takes billing's model and voice from its next sentence. It stays
   listed and judged under the agent that answered.
-- A call is passed three times at most.

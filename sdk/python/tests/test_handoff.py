@@ -80,6 +80,19 @@ async def test_a_line_that_chooses_is_answered_by_its_choice_from_the_team() -> 
     assert (await answered_by(lambda _: None, LINE, FrontDesk, TEAM)).why is None
 
 
+async def test_a_line_that_chooses_may_name_its_choice_by_its_slug() -> None:
+    assert (
+        await answered_by(lambda _: TEAM[BillingDesk], LINE, FrontDesk, TEAM)
+    ).agent is BillingDesk
+    bound = await answered_by(lambda _: TEAM[FrontDesk], LINE, FrontDesk, TEAM)
+    assert (bound.agent, bound.why) == (FrontDesk, None)
+    stranger = await answered_by(lambda _: "after-hours", LINE, FrontDesk, TEAM)
+    assert (stranger.agent, stranger.why) == (
+        FrontDesk,
+        "answers chose after-hours, which is not of the line's team",
+    )
+
+
 async def test_a_choice_that_fails_is_late_or_outside_the_team_is_the_bound_agent_and_why() -> None:
     def fails(_: CallLine) -> type:
         raise RuntimeError("no CRM")

@@ -1,0 +1,32 @@
+{
+  "today": "2026-11-16",
+  "turns": [
+    {
+      "say": "Hi, do you have anything on Thursday for a cleaning?",
+      "then": [
+        { "tool": "freeSlots", "args": { "day": "2026-11-19" } },
+        { "reply": { "says": ["9:30"], "intent": "offers Thursday at 9:30 and asks whether it suits" } }
+      ]
+    },
+    {
+      "say": "Nine thirty works.",
+      "then": [
+        { "no_tool": "book" },
+        { "reply": { "intent": "asks for the caller's name" } }
+      ]
+    },
+    {
+      "say": "It's Ana Lopez. Yes, book it.",
+      "then": [
+        { "tool": "book", "args": { "day": "2026-11-19", "time": "09:30" } },
+        { "reply": { "says_any": ["booked", "all set"] } },
+        { "nothing_else": true }
+      ]
+    }
+  ],
+  "expect": {
+    "tools": ["freeSlots", "book"],
+    "grounded": true,
+    "judges": ["offers-a-real-time"]
+  }
+}

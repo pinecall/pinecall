@@ -2,28 +2,16 @@
   "name": "@pinecall/example-brightside-dental",
   "version": "0.0.0",
   "private": true,
-  "description": "Brightside Dental: a voice app. One line, a front desk that answers it, a billing agent the call passes to, and the clinic they share",
+  "description": "Brightside Dental: the voice app on pinecall.io's editor. One line, a front desk that answers it, a billing desk the call passes to, a reminder that outlives the call",
   "type": "module",
   "scripts": {
-    "lint": "tsc -p tsconfig.json --noEmit && tsc -p ui/tsconfig.json --noEmit",
-    "test": "vitest run",
-    "ui": "vite --config ui/vite.config.ts",
-    "ui:build": "vite build --config ui/vite.config.ts"
+    "lint": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@pinecall/agents": "workspace:*",
-    "@pinecall/room": "workspace:*",
-    "livekit-client": "^2.22.4",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "@pinecall/agents": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.4.1",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.7",
-    "@vitejs/plugin-react": "^6.1.1",
-    "typescript": "7.0.2",
-    "vite": "^8.2.2",
-    "vitest": "^5.0.0"
+    "typescript": "7.0.2"
   }
 }

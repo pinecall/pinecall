@@ -1,0 +1,23 @@
+{
+  "turns": [
+    {
+      "say": "Hi there.",
+      "then": [
+        { "no_tool": "transfer_to_billing" },
+        { "reply": { "intent": "greets the caller" } }
+      ]
+    },
+    {
+      "say": "I was charged twice for my cleaning last month and I want to know why.",
+      "then": [
+        { "tool": "transfer_to_billing" },
+        { "no_tool": "book" }
+      ]
+    }
+  ],
+  "expect": {
+    "tools": ["transfer_to_billing"],
+    "not_tools": ["book", "freeSlots"],
+    "not": ["refund you", "we will refund"]
+  }
+}

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "fileutils"
+require "tmpdir"
 
 # What the serve entry is told: a file with the slug at its place, a state field by field, no flag of its own.
 class LoadingTest < Minitest::Test
@@ -25,6 +27,19 @@ class LoadingTest < Minitest::Test
     assert_equal({ patient: { name: "Ana" }, slots: [] }, flags.state)
     error = assert_raises(Pinecall::Serve::CannotServe) { Loading.as_state("patient={nope") }
     assert_equal "--state patient: its value is not JSON", error.message
+  end
+
+  def test_a_class_is_served_as_its_folders_slug_and_reads_the_view_named_by_it
+    Dir.mktmpdir do |root|
+      folder = File.join(root, "agents", "clinic-front-desk")
+      FileUtils.mkdir_p(File.join(folder, "views"))
+      File.write(File.join(folder, "agent.rb"), "# You answer the phone.\nclass NamedOtherThanItsFolder < Pinecall::Agent\nend\n")
+      File.write(File.join(folder, "views", "clinic-front-desk.erb"), "Offer only the open times.\n")
+      served = Loading.load_served(Pinecall::Serve::Served.new(file: File.join(folder, "agent.rb"), slug: "clinic-front-desk"))
+
+      assert_equal "clinic-front-desk", served.slug
+      assert_equal File.join(folder, "views", "clinic-front-desk.erb"), served.view&.path
+    end
   end
 
   def test_a_flag_it_does_not_have_is_refused_by_name

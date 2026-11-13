@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from pinecall import _config
 from pinecall.serve._loading import CannotServe, Served, as_state, load_served, parse
 from tests.fakes.project import written
 
@@ -54,10 +55,10 @@ def test_a_class_loads_from_its_folder_whose_modules_it_imports_relatively_or_by
 
 
 def test_the_slug_is_the_folders_and_a_class_that_names_another_is_refused(tmp_path: Path) -> None:
-    assert (
-        load_served(Served(written(tmp_path / "a", "front-desk"), "front-desk")).slug
-        == "front-desk"
-    )
+    served = load_served(Served(written(tmp_path / "a", "front-desk"), "front-desk"))
+    assert served.slug == "front-desk"
+    # An app and a flow name it by that slug.
+    assert _config.agent_named("front-desk") is served
     named = written(tmp_path / "b", "otra-carpeta")
     named.write_text(
         named.read_text().replace(

@@ -260,6 +260,23 @@ def knowledge(*, path: str, text: str) -> Callable[[_Class], _Class]:
     return _declaring(KNOWLEDGE, {"path": path, "text": text})
 
 
+# The classes this process serves, by the slug each is served as. An app's line, its team and a
+# flow's call may name an agent by it: an agent's folder has a dash and cannot be imported, so an
+# `app.py` that imported the class went through a package only the loader makes, which no type
+# checker can read.
+_SERVED: dict[str, type] = {}
+
+
+def keep_served(slug: str, cls: type) -> None:
+    """Keep the class this process serves as that slug."""
+    _SERVED[slug] = cls
+
+
+def agent_named(slug: str) -> type | None:
+    """The class this process serves as that slug; None when it serves none."""
+    return _SERVED.get(slug)
+
+
 def slug_of(cls: type) -> str:
     """The slug the class names itself with `slug = "…"`, else its name in kebab-case."""
     named = getattr(cls, "slug", None)

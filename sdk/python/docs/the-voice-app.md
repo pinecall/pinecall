@@ -68,16 +68,20 @@ to a caller who went quiet.
 ```python
 # app.py
 from pinecall import voice_app
-from pinecall_agents.front_desk.agent import FrontDesk
 
 app = voice_app("brightside", timezone="America/Los_Angeles")
 
-app.line("+1 415 555 0134", FrontDesk, greeting="Brightside Dental. How can I help?")
+app.line("+1 415 555 0134", "front-desk", greeting="Brightside Dental. How can I help?")
 app.silence(after="8s", say="Are you still there?", times=2)
 ```
 
-`pinecall start` serves the agents first, each as `pinecall_agents.<folder>.agent` (a dash in the
-folder's name is an underscore), and then loads `app.py`, which imports them from there. The file
+An agent is named by its **slug**, its folder's name under `agents/`: a folder with a dash cannot be
+imported, so `app.py` imports none of them. `pinecall start` serves the agents first and then loads
+`app.py`, and a slug no agent is served as is refused there, by name. Wherever this page names an
+agent — a line's `answers`, `team` and `fallback`, a page's `answers`, what a line's function
+returns, `self.call.handoff` and a flow's `step.call` — the slug and the class are the same thing;
+the class is for a project whose agents import as modules. The project's own modules import by name
+from its root (`from lib.clinic import clinic`), in an agent, a flow and `app.py` alike. The file
 holds one `voice_app(…)` at its top level. `timezone` is the zone every agent of the app reads its day
 and its clock in, the same setting as a class's `timezone`. The greeting is said as written, before
 any model runs: it is that agent's `greeting`, declared by the app, and `silence` is its `idle`. A
@@ -93,7 +97,7 @@ app.page("ui/dist")
 An app may have a page of its own: the folder its build writes, inside the project. `pinecall deploy`
 sends the folder with the release, and Pinecall serves it at `https://<app>--<org>.app.pinecall.io`
 (`--sandbox` after the org in the sandbox). A visitor of it reaches the agent of the app's first
-line, or the one `app.page(dir, answers=Billing)` names. The page asks its own name for its ticket
+line, or the one `app.page(dir, answers="billing")` names. The page asks its own name for its ticket
 (`POST /pinecall/token`) and for a visitor's code (`POST /pinecall/code`); while you write it,
 `pinecall start` serves the same folder and routes on `http://localhost:4747`
 (`PINECALL_PAGE_PORT` names another port), with your own key and no captcha.
@@ -125,11 +129,11 @@ from pinecall import flow
 async def remind_visit(visit, step):
     await step.sleep_until(visit["at"], before="24h")
     called = await step.call(
-        visit["phone"], Reminder, instruction=f"Remind {visit['patient']} of the visit."
+        visit["phone"], "reminder", instruction=f"Remind {visit['patient']} of the visit."
     )
     if not called.answered:
         await step.sleep("2h")
-        called = await step.call(visit["phone"], Reminder)
+        called = await step.call(visit["phone"], "reminder")
     await step.run(lambda: db.visits.update(visit["id"], reminded=called.answered))
 
 
@@ -176,12 +180,12 @@ class Billing(Agent):
     takes = "a question about a charge, an invoice or a refund"
 
 
-app.line("+1 415 555 0134", FrontDesk, greeting="Brightside Dental.", team=[Billing])
+app.line("+1 415 555 0134", "front-desk", greeting="Brightside Dental.", team=["billing"])
 ```
 
 The agent on the call is offered one tool per teammate, named by its class (`transfer_to_billing`),
 and the model calls it when the caller asks for that. A tool can pass the call itself:
-`return await self.call.handoff(Billing, {"invoice": invoice})`. From the pass on, the call is the
+`return await self.call.handoff("billing", {"invoice": invoice})`. From the pass on, the call is the
 teammate's: its instructions, tools, state and `on_call`, where `self.call.handed` is what it was
 handed and `self.call.shared` is a dict the agents of one call share. A call is passed three times at
 most. The agents of a team give each tool a name of its own, or the app is refused when it loads. A
@@ -191,10 +195,10 @@ spoken call takes the teammate's model and voice from its next sentence; the ear
 
 ```python
 def who(call):
-    return AfterHours if clinic.is_closed(call.today) else FrontDesk
+    return "after-hours" if clinic.is_closed(call.today) else "front-desk"
 
 
-app.line("+1 415 555 0134", who, fallback=FrontDesk, team=[AfterHours, Billing])
+app.line("+1 415 555 0134", who, fallback="front-desk", team=["after-hours", "billing"])
 ```
 
 `answers` may be a function (a `def` or an `async def`) of the call as a hook sees it. `fallback` is

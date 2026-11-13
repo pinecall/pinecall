@@ -5,5 +5,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["app.ts", "agents", "lib", "test"]
+  "include": ["app.ts", "agents", "flows", "lib"]
 }

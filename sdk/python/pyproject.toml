@@ -122,6 +122,11 @@ typeCheckingMode = "strict"
 pythonVersion = "3.11"
 reportImplicitOverride = true
 
+# A tenant's project is checked from its own root, where its own modules (`lib`, `flows`) import by
+# name: the example's root is that root here.
+[[tool.pyright.executionEnvironments]]
+root = "../../examples/python/brightside_dental"
+
 [tool.deptry]
 known_first_party = ["pinecall", "tests"]
 

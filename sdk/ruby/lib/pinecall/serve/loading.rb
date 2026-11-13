@@ -48,7 +48,7 @@ module Pinecall
         raise CannotServe, "--state #{field}: its value is not JSON"
       end
 
-      # The class the file defines, refused when its own `slug` says another than the one it is served as.
+      # The class the file defines, served as its folder's slug; refused when its own `slug` says another.
       def load_served(served)
         klass = load_agent(served.file)
         declared = klass.declared_slug
@@ -56,6 +56,10 @@ module Pinecall
           raise CannotServe, "#{served.file} says its slug is #{declared}, and it is served as #{served.slug}: the slug is its folder's name"
         end
 
+        # The folder names it: its view is `views/<slug>.erb` beside it, whatever the class is called.
+        # Until 0.11.36 a class named otherwise than its folder looked for a view by its own name,
+        # found none and answered every call with no view.
+        klass.slug(served.slug)
         klass
       end
 

@@ -4,6 +4,17 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## Unreleased
+
+- **A class is served as its folder's slug, whatever it is called.** `pinecall start` served a class
+  under its folder's name while the class went on naming itself by its own: `class FrontDesk` in
+  `agents/clinic-front-desk/` looked for `views/front-desk.erb`, found none, and answered every call
+  with no view and no word of it. The loader gives the class its folder's slug, as the Python one
+  does, so its view is `views/<slug>.erb` beside it.
+- **Brightside Dental, the voice app on pinecall.io's editor, is an example**
+  (`examples/ruby/brightside_dental`): two agents, a team, a rule, a flow, and the clinic they
+  share, the same app as the TypeScript and Python ones.
+
 ## [0.11.35] — a judge reads what the platform said as the platform's (2026-11-13)
 
 - Released with the runtime: nothing of this package changed.

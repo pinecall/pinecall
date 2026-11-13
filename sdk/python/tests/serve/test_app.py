@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from pinecall import DeclarationRefused
 from pinecall.serve._app import described, load_app, loaded
 from pinecall.serve._loading import CannotServe, Flags, Served
 
@@ -46,6 +47,17 @@ def test_the_app_imports_its_agents_as_they_were_loaded_and_is_told_with_its_pag
     classes, app = loaded(flags)
     assert app is not None
     assert app.lines[0].answers is classes[0][1]
+
+
+def test_an_app_that_names_its_agents_by_slug_imports_none_of_their_folders(tmp_path: Path) -> None:
+    by_slug = APP.replace("from pinecall_agents.front_desk.agent import FrontDesk\n", "").replace(
+        "FrontDesk", '"front-desk"'
+    )
+    classes, app = loaded(project(tmp_path, by_slug))
+    assert app is not None
+    assert app.lines[0].answers is classes[0][1]
+    with pytest.raises(DeclarationRefused, match="no agent here is served as back-office"):
+        loaded(project(tmp_path / "other", by_slug.replace("front-desk", "back-office")))
 
 
 def test_a_file_with_no_voice_app_or_an_app_naming_a_class_not_served_is_refused(

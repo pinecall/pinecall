@@ -25,8 +25,9 @@ ANSWERED_WITHIN_S = 1.0
 
 TRANSFER = "transfer_to_"
 
-Answering = Callable[[CallLine], "type | Awaitable[type | None] | None"]
-"""A line's `answers` as a function: the agent of the team that serves this call, or None."""
+Answering = Callable[[CallLine], "type | str | Awaitable[type | str | None] | None"]
+"""A line's `answers` as a function: the agent of the team that serves this call, its class or its
+slug, or None."""
 
 Team = Mapping[type, str]
 """The agents a call may pass between, each with the slug it is served as."""
@@ -50,13 +51,26 @@ async def answered_by(answers: Answering, line: CallLine, bound: type, team: Tea
         return Answered(bound, f"answers raised: {failed}")
     if chosen is None or chosen is bound:
         return Answered(bound)
-    if chosen not in team:
-        name = getattr(chosen, "__name__", repr(chosen))
-        return Answered(bound, f"answers chose {name}, which is not of the line's team")
-    return Answered(chosen)
+    mate = teammate(chosen, team)
+    if mate is None:
+        named = name_of(chosen)
+        return Answered(bound, f"answers chose {named}, which is not of the line's team")
+    return Answered(mate)
 
 
-async def _chosen(answers: Answering, line: CallLine) -> type | None:
+def teammate(named: type | str, team: Team) -> type | None:
+    """The agent of the team a class or a slug names; None when it is not of the team."""
+    if isinstance(named, str):
+        return next((mate for mate, slug in team.items() if slug == named), None)
+    return named if named in team else None
+
+
+def name_of(agent: type | str) -> str:
+    """An agent as a sentence names it: the slug it was named by, or its class's name."""
+    return agent if isinstance(agent, str) else getattr(agent, "__name__", repr(agent))
+
+
+async def _chosen(answers: Answering, line: CallLine) -> type | str | None:
     chosen = answers(line)
     if inspect.isawaitable(chosen):
         return await chosen

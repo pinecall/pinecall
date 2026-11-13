@@ -1,120 +1,24 @@
-// Brightside Dental's own systems, as the agents reach them: the agenda, the patients and the ledger. A
-// stand-in kept in memory, with the shapes a real clinic's API would answer.
+// The clinic's own systems, as the agents reach them: the agenda, the patients, the invoices.
+// Your code, not Pinecall's: an agent's tools call whatever your business already runs on.
 
-export interface Patient {
-  id: string;
-  name: string;
-  phone: string;
-}
+export interface Slot { day: string; time: string; with: string }
+export interface Visit extends Slot { id: string; patient: string }
+export interface Patient { id: string; name: string; phone: string }
+export interface Invoice { id: string; patient: string; amount: number; paid: boolean }
 
-export interface Slot {
-  /** `YYYY-MM-DD`. */
-  day: string;
-  /** `HH:MM`, on the clinic's clock. */
-  time: string;
-  with: string;
-}
+// Dr. Patel keeps one time open every weekday morning.
+const weekday = (day: string): boolean => [1, 2, 3, 4, 5].includes(new Date(`${day}T12:00:00Z`).getUTCDay());
+const patients: Patient[] = [{ id: "p-1", name: "Ana Lopez", phone: "+14155550142" }];
+const invoices: Invoice[] = [{ id: "inv-204", patient: "p-1", amount: 120, paid: true }];
+const refunds: { invoice: string; reason: string }[] = [];
 
-export interface Visit extends Slot {
-  id: string;
-  patient: string;
-}
+export const clinic = {
+  free: (day: string): Slot[] => (weekday(day) ? [{ day, time: "09:30", with: "Dr. Patel" }] : []),
+  book: (day: string, time: string, patient: string): Visit => ({ id: "v-1", day, time, with: "Dr. Patel", patient }),
+  patientByPhone: (phone: string): Patient | undefined => patients.find((one) => one.phone === phone),
+  invoicesOf: (patient: Patient): Invoice[] => invoices.filter((one) => one.patient === patient.id),
+  askRefund: (invoice: string, reason: string): void => void refunds.push({ invoice, reason }),
+};
 
-export interface Invoice {
-  id: string;
-  patient: string;
-  what: string;
-  amount: number;
-  paid: boolean;
-}
-
-const PATIENTS: Patient[] = [
-  { id: "p-1", name: "Ana Lopez", phone: "+14155550142" },
-  { id: "p-2", name: "Jordan Lee", phone: "+14155550187" },
-];
-
-const INVOICES: Invoice[] = [
-  { id: "inv-301", patient: "p-1", what: "cleaning", amount: 120, paid: true },
-  { id: "inv-302", patient: "p-1", what: "cleaning", amount: 120, paid: true },
-  { id: "inv-417", patient: "p-2", what: "filling", amount: 240, paid: false },
-];
-
-const HOURS = ["09:30", "11:00", "15:30"];
-const DENTISTS = ["Dr. Lin", "Dr. Okafor"];
-
-/** The zone of the clinic's clock. */
-export const ZONE = "America/Los_Angeles";
-
-/** The instant a time of the agenda starts: its day and hour are on the clinic's clock. */
-export function startsAt(slot: Pick<Slot, "day" | "time">): Date {
-  const read = new Date(`${slot.day}T${slot.time}:00Z`);
-  // What the clinic's clock shows at that instant says how far it is from UTC on that day.
-  const there = new Date(read.toLocaleString("en-US", { timeZone: ZONE }));
-  const utc = new Date(read.toLocaleString("en-US", { timeZone: "UTC" }));
-  return new Date(read.getTime() + utc.getTime() - there.getTime());
-}
-
-/** The clinic opens Monday to Friday, 9:00 to 18:00, on its own clock. */
-export const OPENS = 9;
-export const CLOSES = 18;
-
-export class Clinic {
-  readonly visits: Visit[] = [];
-  readonly refundsAsked: { invoice: string; reason: string }[] = [];
-  /** The visits a patient confirmed, the reminders that were made, and every call that ended. */
-  readonly confirmed = new Set<string>();
-  readonly reminded: { visit: string; answered: boolean }[] = [];
-  readonly callsKept: { call: string; agent: string; reason: string }[] = [];
-
-  /** The patient a phone number belongs to. */
-  patientByPhone(phone: string): Patient | undefined {
-    const digits = phone.replace(/\D/g, "");
-    return PATIENTS.find((patient) => patient.phone.replace(/\D/g, "") === digits);
-  }
-
-  /** The open times of a day: none on a weekend, and never one already booked. */
-  free(day: string): Slot[] {
-    const weekday = new Date(`${day}T12:00:00Z`).getUTCDay();
-    if (Number.isNaN(weekday) || weekday === 0 || weekday === 6) return [];
-    return HOURS.map((time, at) => ({ day, time, with: DENTISTS[at % DENTISTS.length]! })).filter(
-      (slot) => !this.visits.some((visit) => visit.day === slot.day && visit.time === slot.time),
-    );
-  }
-
-  /** Book a time that is still open; undefined when it was taken meanwhile. */
-  book(day: string, time: string, patient: string): Visit | undefined {
-    const slot = this.free(day).find((open) => open.time === time);
-    if (slot === undefined) return undefined;
-    const visit: Visit = { ...slot, id: `v-${this.visits.length + 1}`, patient };
-    this.visits.push(visit);
-    return visit;
-  }
-
-  /** The patient said they are coming. */
-  confirm(visit: string): void {
-    this.confirmed.add(visit);
-  }
-
-  /** The visit is off and its time is open again. */
-  cancel(visit: string): void {
-    const at = this.visits.findIndex((kept) => kept.id === visit);
-    if (at !== -1) this.visits.splice(at, 1);
-  }
-
-  /** A patient's invoices, the newest last. */
-  invoicesOf(patient: string): Invoice[] {
-    return INVOICES.filter((invoice) => invoice.patient === patient);
-  }
-
-  invoice(id: string): Invoice | undefined {
-    return INVOICES.find((invoice) => invoice.id === id);
-  }
-
-  /** A refund is asked for, never given: a person at the office decides it. */
-  askRefund(invoice: string, reason: string): void {
-    this.refundsAsked.push({ invoice, reason });
-  }
-}
-
-/** The one clinic the agents of this project share. */
-export const clinic = new Clinic();
+/** When a visit starts, on the clinic's clock. */
+export const startsAt = (visit: Visit): Date => new Date(`${visit.day}T${visit.time}:00-08:00`);

@@ -32,6 +32,11 @@ class FrontDesk(Agent):
         """Books a visit, asking where to send it."""
         return {"day": day, "email": await self.ask(GetEmail)}
 
+    @tool
+    async def charge(self, invoice: str) -> str:
+        """Passes a charge to billing, named by its slug."""
+        return await self.call.handoff("billing", {"invoice": invoice})
+
     @override
     def screen(self) -> object:
         """The agenda, open while its scene is up."""
@@ -92,6 +97,16 @@ async def test_a_teammate_takes_the_call_with_its_own_tools_and_the_pass_on_the_
     assert logged[0]["data"] == {"from": "front-desk", "to": "billing", "reason": "a bill"}
     shown = cast("list[dict[str, object]]", sent(gateway, "tools.set")[-1]["tools"])
     assert [one["name"] for one in shown] == ["find_bill"]
+
+
+async def test_a_tool_passes_the_call_to_a_teammate_it_names_by_its_slug(
+    gateway: FakeGateway, mounted: Mounted
+) -> None:
+    said = await called(gateway, "charge", {"invoice": "inv-204"}, 1)
+    assert str(said).startswith("Done: you are billing now")
+    assert isinstance(mounted.instance_of("CA_1"), Billing)
+    logged = [one for one in sent(gateway, "call.log") if one.get("name") == "handoff"]
+    assert logged[0]["data"] == {"from": "front-desk", "to": "billing", "invoice": "inv-204"}
 
 
 async def test_a_tool_that_asks_leaves_one_tool_open_and_finishes_once_it_is_given(

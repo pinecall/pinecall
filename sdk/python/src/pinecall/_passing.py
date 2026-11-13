@@ -5,7 +5,7 @@ from collections.abc import Awaitable, Callable, Mapping
 from pinecall import _author, _running, _tools
 from pinecall._calls import Call
 from pinecall._failures import hooked
-from pinecall._handoff import MOST_PASSES, PASSED, mate_named, transfers_of
+from pinecall._handoff import MOST_PASSES, PASSED, mate_named, name_of, teammate, transfers_of
 from pinecall._live import Live
 from pinecall._screened import scene_chosen
 from pinecall._sending import ANYTHING, as_object, state_of, synced
@@ -75,13 +75,14 @@ def become(served: Live, cls: type[Agent], agent: Agent | None = None) -> None:
 
 
 async def passed(
-    served: Live, to: type, data: Mapping[str, object], follow: Callable[[Live], None]
+    served: Live, named: type | str, data: Mapping[str, object], follow: Callable[[Live], None]
 ) -> str:
     """One agent of the team takes the call from another; the model is told whose it is now."""
     team = served.team
-    slug = None if team is None else team.get(to)
-    if team is None or slug is None or not issubclass(to, Agent):
-        raise ToolFailed(f"{to.__name__} is not of this call's team")
+    to = None if team is None else teammate(named, team)
+    if team is None or to is None or not issubclass(to, Agent):
+        raise ToolFailed(f"{name_of(named)} is not of this call's team")
+    slug = team[to]
     if served.passes >= MOST_PASSES:
         raise ToolFailed(f"this call was passed {MOST_PASSES} times already: answer it yourself")
     for kind in ("state", "entries", "log"):

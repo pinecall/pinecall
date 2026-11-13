@@ -9,7 +9,7 @@ from typing import Literal, TypeVar, cast
 
 import httpx
 
-from pinecall import _app_work
+from pinecall import _app_work, _config
 from pinecall._app_work import AppDoor, KeptRun, StepKind
 from pinecall.errors import DeclarationRefused, PinecallError
 from pinecall.wire._names import JsonObject
@@ -163,7 +163,7 @@ class Step:
     async def call(  # noqa: PLR0913 - each is a part of what the call opens with
         self,
         to: str,
-        agent: type,
+        agent: type | str,
         *,
         state: JsonObject | None = None,
         metadata: JsonObject | None = None,
@@ -171,12 +171,12 @@ class Step:
         instruction: str | None = None,
         from_: str | None = None,
     ) -> Called:
-        """Have an agent call a number, and wait for how the call ended."""
-        slug = self._slug_of(agent)
+        """Have an agent, its class or its slug, call a number, and wait for how the call ended."""
+        cls = _config.agent_named(agent) if isinstance(agent, str) else agent
+        slug = None if cls is None else self._slug_of(cls)
         if slug is None:
-            raise DeclarationRefused(
-                f"{self._of.name}: {agent.__name__} is no agent this process serves"
-            )
+            named = agent if isinstance(agent, str) else agent.__name__
+            raise DeclarationRefused(f"{self._of.name}: {named} is no agent this process serves")
         opening = {"state": state, "metadata": metadata, "greeting": greeting,
                    "instruction": instruction, "from": from_}  # fmt: skip
         asked: JsonObject = {

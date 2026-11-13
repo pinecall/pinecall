@@ -2,7 +2,7 @@
 
 import pytest
 
-from pinecall import Agent, Called, DeclarationRefused, Step, flow
+from pinecall import Agent, Called, DeclarationRefused, Step, _config, flow
 from pinecall._app_work import AppDoor
 from pinecall.flows import FlowChanged, StepUnwritten, advance, cancelled, seconds_of, started
 from pinecall.wire._names import JsonObject
@@ -97,6 +97,32 @@ async def test_a_call_step_dials_as_the_agents_slug_and_reads_how_it_ended(
         "instruction": "Remind them.",
     }
     assert ended == [Called(answered=False, refused="Forbidden", message="a stranger")]
+
+
+async def test_a_call_step_takes_the_agent_by_its_slug_and_refuses_one_nobody_is_served_as(
+    door: AppDoor, kept: KeptApp
+) -> None:
+    _config.keep_served("brightside-reminder", Reminder)
+
+    @flow("remind-visit")
+    async def remind(visit: JsonObject, step: Step) -> None:
+        await step.call(str(visit["phone"]), "brightside-reminder")
+
+    @flow("remind-nobody")
+    async def nobody(visit: JsonObject, step: Step) -> None:
+        await step.call(str(visit["phone"]), "brightside-remainder")
+
+    kept.refuses = {"answered": True}
+    run = await started(door, remind, "visit-8", {"phone": "+59899000001"})
+    assert (await advance(door, remind, run, slug_of)).status == "done"
+    asked = kept.runs[run.id]["steps"][0]["asked"]  # type: ignore[index]
+    assert asked == {"agent": "brightside-reminder", "to": "+59899000001"}
+    lost = await started(door, nobody, "visit-9", {"phone": "+59899000001"})
+    ended = await advance(door, nobody, lost, slug_of)
+    assert (ended.status, ended.error) == (
+        "failed",
+        "DeclarationRefused: remind-nobody: brightside-remainder is no agent this process serves",
+    )
 
 
 async def test_a_flow_whose_code_changed_under_its_run_is_said_so(

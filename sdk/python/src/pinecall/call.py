@@ -51,7 +51,7 @@ Send = Callable[[str, WireModel], None]
 
 _T = TypeVar("_T")
 
-Passing = Callable[[type, Mapping[str, object]], Awaitable[str]]
+Passing = Callable[["type | str", Mapping[str, object]], Awaitable[str]]
 """What passes a call to a teammate, answering what the model is told."""
 
 
@@ -223,11 +223,12 @@ class CallWorld:
         """End the call; say goodbye first, nothing after it is heard."""
         self._send("call.hangup", CallHangup.model_validate(given(reason=reason)))
 
-    def handoff(self, to: type, data: Mapping[str, object] | None = None) -> Answer[str]:
-        """Pass the call to another agent of its team: `self.call.handoff(Billing, {"id": n})`."""
+    def handoff(self, to: type | str, data: Mapping[str, object] | None = None) -> Answer[str]:
+        """Pass the call to an agent of its team, by its class or its slug: `handoff("billing")`."""
         passing = self._passing
         if passing is None:
-            raise PinecallError(f"this call has no team: {to.__name__} cannot take it")
+            named = to if isinstance(to, str) else to.__name__
+            raise PinecallError(f"this call has no team: {named} cannot take it")
         return Answer(_answers.scheduled(self._loop, lambda: passing(to, data or {})))
 
     def ask(self, asked: Task[_T]) -> Answer[_T]:

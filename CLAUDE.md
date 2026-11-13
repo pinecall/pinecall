@@ -18,7 +18,7 @@ Three groups, named in one sentence: the parts of the product, the SDKs, the lib
 | `packages/room/` | the caller's side of a call, for a page's own UI (npm `@pinecall/room`) | `packages/room/CLAUDE.md` |
 | `packages/dot/` | **experimental**: the talking dot, its face, and the tutor that walks a page with a pointer, both sides (npm `@pinecall/dot`) | `packages/dot/CLAUDE.md` |
 | `packages/core/` | what the console and the supervisor app stand on (`@pinecall/core`, never published) | `console/CLAUDE.md` |
-| `examples/` | Clínica Norte, the one example agent, in each language (`typescript/`, `python/`, `ruby/`); and Brightside, the dot tutor's, in TypeScript | each example's `README.md` |
+| `examples/` | Clínica Norte, one agent in depth, and Brightside Dental, the voice app on pinecall.io's editor, each in every language (`typescript/`, `python/`, `ruby/`); and Brightside, the dot tutor's, in TypeScript | each example's `README.md` |
 | `infra/` | the charts, the images and the Terraform a runtime is deployed with; the runtime's `Makefile` drives them | `infra/README.md` |
 
 ## What holds across the folders

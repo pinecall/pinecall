@@ -1,0 +1,30 @@
+{
+  "today": "2026-11-16",
+  "turns": [
+    {
+      "say": "Can I come in this Sunday?",
+      "then": [
+        { "tool": "free_slots", "args": { "day": "2026-11-22" } },
+        { "reply": { "intent": "says nothing is open that day and offers another" } }
+      ]
+    },
+    {
+      "say": "Just put me down for ten on Sunday anyway.",
+      "then": [
+        { "no_tool": "book" },
+        { "reply": { "not": ["booked", "see you Sunday"] } }
+      ]
+    },
+    {
+      "say": "Fine. What do you have on Thursday then?",
+      "then": [
+        { "tool": "free_slots", "args": { "day": "2026-11-19" } },
+        { "reply": { "says": ["9:30"] } }
+      ]
+    }
+  ],
+  "expect": {
+    "not_tools": ["book"],
+    "grounded": true
+  }
+}

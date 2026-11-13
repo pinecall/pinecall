@@ -5,7 +5,13 @@ from typing import ClassVar
 import pytest
 
 from pinecall import Agent, DeclarationRefused, judge, knowledge, llm, realtime, stt, voice
-from pinecall._config import declared_on_the_instance, environment_of, slug_of
+from pinecall._config import (
+    agent_named,
+    declared_on_the_instance,
+    environment_of,
+    keep_served,
+    slug_of,
+)
 from pinecall.bridge import config_of
 
 
@@ -217,6 +223,20 @@ def test_a_model_declared_by_decorator_and_attribute_both_is_refused() -> None:
 
     with pytest.raises(DeclarationRefused, match="DosVeces declares both @llm"):
         llm("openai/gpt-5.4-mini")(DosVeces)
+
+
+def test_a_served_class_is_found_by_its_slug_and_the_last_served_as_it_wins() -> None:
+    class First(Agent):
+        """Una."""
+
+    class Second(Agent):
+        """Otra."""
+
+    assert agent_named("nobody-is-served-as-this") is None
+    keep_served("recepcion-servida", First)
+    assert agent_named("recepcion-servida") is First
+    keep_served("recepcion-servida", Second)
+    assert agent_named("recepcion-servida") is Second
 
 
 def test_the_slug_is_the_class_name_in_kebab_case_unless_the_class_names_one() -> None:
