@@ -4,6 +4,15 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.11.39] — a terminal signs in again, a phone put down ends its call, and the console's call list is one row per call (2026-11-13)
+
+- **The MCP hands the person the command for a step that takes a secret.** Its words for bringing a
+  vendor's key, a carrier's account or an app's secret ended with "or in the console", and an
+  assistant sent a person to a screen. The rule is said as it is, no key printed and none passed
+  through an assistant, and the assistant gives the command to type in a terminal:
+  `pinecall providers add <vendor>`, `pinecall carriers add twilio --account-sid AC… --user SK…`,
+  `pinecall secrets set <NAME>`.
+
 ## [0.11.38] — a page's chat is written, a visitor keeps the conversation from page to page, and an app of one agent is one row (2026-11-13)
 
 - **`deploy` leaves a page out of the environment it is not for.** An app that says

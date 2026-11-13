@@ -5,7 +5,7 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
-## Unreleased
+## 0.11.39 — a terminal signs in again, a phone put down ends its call, and the console's call list is one row per call (2026-11-13)
 
 - A row of the calls list may say its test run: `run` on `SessionLine`, sent by a gateway asked with `runs`.
 

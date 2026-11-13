@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.39 — a terminal signs in again, a phone put down ends its call, and the console's call list is one row per call (2026-11-13)
 
 - **An account's only number is picked already.** Bringing a number from Twilio, Review stayed off
   until the number's radio was clicked, though the account owned one number and there was nothing to

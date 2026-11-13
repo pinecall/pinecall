@@ -4,6 +4,10 @@ All notable changes to `@pinecall/room`. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## 0.11.39 — a terminal signs in again, a phone put down ends its call, and the console's call list is one row per call (2026-11-13)
+
+- Released with the runtime: nothing of this package changed.
+
 ## 0.11.38 — a page's chat is written, a visitor keeps the conversation from page to page, and an app of one agent is one row (2026-11-13)
 
 - Released with the runtime: nothing of this package changed.
