@@ -4,6 +4,10 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.11.38] — a page's chat is written, a visitor keeps the conversation from page to page, and an app of one agent is one row (2026-11-13)
+
+- Released with the runtime: nothing of this package changed.
+
 ## [0.11.37] — an app's own page dictates, the widget's header is a menu, and a page going away ends its call (2026-11-13)
 
 - Released with the runtime and the SDKs: nothing of this package changed.

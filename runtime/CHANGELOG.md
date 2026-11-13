@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.38 — a page's chat is written, a visitor keeps the conversation from page to page, and an app of one agent is one row (2026-11-13)
 
 - **A visitor keeps the conversation from page to page, and a closed tab ends it in 30 seconds.**
   0.11.37 had the widget hang up as its page went away, so a visitor lost the conversation at every
