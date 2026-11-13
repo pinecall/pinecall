@@ -2,7 +2,7 @@
 
 from livekit.agents.voice import AgentSession
 
-from runtime.enums import Stage
+from runtime.enums import Medium, Stage
 from runtime.providers import service as providers
 from runtime.providers.stage import Running
 from runtime.session.call import Call
@@ -41,5 +41,6 @@ def text_session(
         policy_for(call.declaration.language, call.declaration.turn),
         running={Stage.llm: thinking},
         place=place,
+        medium=Medium.text,
         on_ended=on_ended,
     )

@@ -66,6 +66,12 @@ const HANGUP = "pinecall.hangup";
 const UI = "pinecall.ui";
 // A fact about the page, for the agent's onEvent: {name, data}.
 const EVENT = "pinecall.event";
+// The first thing the agent's side sends a widget that joined: its call's state. Until it comes the
+// agent hears no event, and one sent before it was lost (a page that said which page it is as the
+// conversation opened, at the moment it opened, was never heard).
+const SNAPSHOT = "pinecall.snapshot";
+// How long an event waits for the agent to listen before it is sent all the same.
+const HEARD_WITHIN_MS = 8000;
 // Default gateway: the origin that served this file, or Pinecall's when served from the CDN.
 const SERVED_FROM = new URL(import.meta.url).origin;
 const A_GATEWAY = SERVED_FROM.includes("jsdelivr.net") ? "https://cloud.pinecall.io" : SERVED_FROM;
@@ -605,8 +611,12 @@ class PinecallWidget extends HTMLElement {
       this.shadowRoot.append(element);
     });
     room.on(RoomEvent.TrackUnsubscribed, (track) => track.detach().forEach((element) => element.remove()));
+    this.listening = new Promise((resolve) => {
+      this.onListening = resolve;
+    });
     room.on(RoomEvent.DataReceived, (payload, _from, _kind, topic) => {
       if (topic === UI) this.ui(payload);
+      if (topic === SNAPSHOT) this.onListening();
     });
     // LiveKit reconnects on its own when the network blinks: the conversation goes on. Only a room
     // that is gone for good ends it.
@@ -633,9 +643,9 @@ class PinecallWidget extends HTMLElement {
     // A new call after one that ended starts with an empty cart: it gets back the one this chat had,
     // once the agent is in the room to hear it.
     const cart = earlier?.cart;
-    if (!resumed && cart?.length) void this.arrived.then(() => this.publish("cart.restored", { lines: cart }));
+    if (!resumed && cart?.length) void this.heard().then(() => this.publish("cart.restored", { lines: cart }));
     // A chat goes through a room too: the agent is told when it is a voice call, to speak for the ear.
-    if (scope === "talk") void this.arrived.then(() => this.publish("call.spoken", { spoken: true }));
+    if (scope === "talk") void this.heard().then(() => this.publish("call.spoken", { spoken: true }));
     if (scope === "talk") {
       await room.localParticipant.setMicrophoneEnabled(true);
       if (!room.canPlaybackAudio) this.notice(this.words.tapToHear, () => room.startAudio());
@@ -707,7 +717,15 @@ class PinecallWidget extends HTMLElement {
   async event(name, data = {}) {
     if (this.dot) return this.dot.event(name, data);
     if (!this.room) throw new Error("not in a call");
-    await this.room.localParticipant.publishData(packet(name, data), { topic: EVENT, reliable: true });
+    const room = this.room;
+    await this.heard();
+    if (this.room !== room) throw new Error("not in a call");
+    await room.localParticipant.publishData(packet(name, data), { topic: EVENT, reliable: true });
+  }
+
+  /** Once the agent hears what this widget sends: its first snapshot of the call, or eight seconds. */
+  heard() {
+    return Promise.race([this.listening ?? Promise.resolve(), new Promise((resolve) => setTimeout(resolve, HEARD_WITHIN_MS))]);
   }
 
   /**

@@ -15,6 +15,14 @@
   opens the panel straight into a voice call in the browser, for a page that draws its own "Talk";
   `pinecall:close` is said as the panel closes. LiveKit's signal log is silent in it, as on
   pinecall.io: an unclean close at every page change read as an error on the page's console.
+- **A visitor typing in a page's chat is answered as on a website.** A written call held in a room (a
+  widget's chat) started as spoken, and the model was told "you are on a phone call": a visitor who
+  asked which page they were on was told the agent could not see it, on a phone call. A session's
+  medium is now its kind, written or spoken, and no longer whether it has a room.
+- **An event a page sends as the conversation opens is heard.** The agent's side listens once it
+  has sent the widget its first snapshot of the call; the widget's `event()` waits for it (eight
+  seconds at most), where an event sent before was lost. A page that said which page it is on
+  `pinecall:started` was never heard.
 
 ## 0.11.37 — an app's own page dictates, the widget's header is a menu, and a page going away ends its call (2026-11-13)
 

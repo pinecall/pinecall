@@ -12,7 +12,7 @@ from livekit.agents.voice.turn import InterruptionOptions, TurnDetectionMode, Tu
 from smart_turn_livekit import SmartTurnDetector  # pyright: ignore[reportMissingTypeStubs]
 
 from runtime.agents.declaration import Declaration, Turn
-from runtime.enums import Stage
+from runtime.enums import Medium, Stage
 from runtime.kit.words import replace_in_stream
 from runtime.providers import service as providers
 from runtime.providers.stage import Ears, Pipeline, Running, TurnModel
@@ -60,7 +60,9 @@ def voice_session(
     if stages.realtime is not None:
         alone, voices = _realtime_session(call, stages.realtime, stages.tts, tool_steps or TOOL_STEPS)
         line = Line(call, alone, place.melody)
-        return Session(alone, voices, lookups, line, policy, running={}, place=place, on_ended=on_ended)
+        return Session(
+            alone, voices, lookups, line, policy, running={}, place=place, medium=Medium.voice, on_ended=on_ended
+        )
     thinking = providers.build_thinking(stages.llm)
     ears = providers.build_ears(stages.stt, declaration.turn, keyterms(declaration, {}), speech_detector())
     voice = providers.build_voice(stages.tts)
@@ -86,6 +88,7 @@ def voice_session(
         policy,
         running={Stage.llm: stages.llm, Stage.stt: stages.stt, Stage.tts: stages.tts},
         place=place,
+        medium=Medium.voice,
         turn=_turn_detection(stages.stt, declaration.turn),
         on_ended=on_ended,
     )

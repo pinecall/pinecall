@@ -94,6 +94,7 @@ class Session:
         *,
         running: Mapping[Stage, Running],
         place: Place,
+        medium: Medium,
         turn: wire.TurnDetection | None = None,
         on_ended: OnEnded | None = None,
     ) -> None:
@@ -107,8 +108,10 @@ class Session:
         self.line = line
         self.room = place.room
         self.participant = place.participant
-        # Spoken in a room, written without one: said on the call's first entry.
-        self.medium = Medium.text if place.room is None else Medium.voice
+        # Said on the call's first entry, and the model is told it. A written call has a room too when a
+        # page's chat holds it; until 0.11.38 a room meant spoken, and a visitor typing in the widget's
+        # chat was answered as on a phone call ("I'm on a phone call, so I can't see the page").
+        self.medium = medium
         # Who ends the caller's turn on a spoken call, said on the log as it opens; a written call has none.
         self.turn = turn
         self.on_ended = on_ended

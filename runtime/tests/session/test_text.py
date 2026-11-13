@@ -7,9 +7,11 @@ from runtime.calls.log.store import Store
 from runtime.exceptions import Conflict
 from runtime.session.commands import apply
 from runtime.session.history import history_of
+from runtime.session.session import Place
 from runtime.wire.commands import CallAttention, ReleaseVerb, TakeoverVerb
 from tests.conftest import needs_the_database
-from tests.session.conftest import Box, a_session, hear, heard_live, kinds, model_of, supervised
+from tests.fakes.livekit import Server
+from tests.session.conftest import Box, a_room, a_session, hear, heard_live, kinds, model_of, supervised
 
 AGENT = Declaration(slug="clinica-norte")
 
@@ -26,6 +28,16 @@ async def test_a_message_is_answered_and_both_turns_land_in_the_log(box: Box, st
     entries = await store.whole_of(call)
     agent = next(entry for entry in entries if entry.type == "turn.agent")
     assert agent.data["text"] == "Hola, ¿en qué le ayudo?"
+
+
+# A page's chat is held in a room, and is written all the same: the model is told it is on a website.
+@needs_the_database
+async def test_a_written_call_in_a_room_starts_as_written(box: Box, store: Store, call: str, server: Server) -> None:
+    session = a_session(box, AGENT, ["Hola"], place_of=lambda held: Place(room=a_room(box, held, server)))
+    await session.start()
+    await session.close()
+    started = next(entry for entry in await store.whole_of(call) if entry.type == "call.started")
+    assert started.data["medium"] == "text"
 
 
 @needs_the_database

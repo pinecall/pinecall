@@ -419,7 +419,7 @@ widget.addEventListener("pinecall:started", () => widget.event("page.viewed", { 
 pricing.addEventListener("click", () => widget.event("plan.chosen", { plan: "pro" }).catch(() => undefined));
 ```
 
-It rejects when no call or chat is open. The widget itself sends `call.spoken` `{ spoken: true }`
+An event sent as the conversation opens waits until the agent listens (its first snapshot of the call, eight seconds at most), so a page may say what it is on `pinecall:started`. It rejects when no call or chat is open. The widget itself sends `call.spoken` `{ spoken: true }`
 when a voice call starts, so the agent speaks for the ear, and `cart.add`, `cart.restored` and a
 form's event as above. Anybody can send what a browser sends: keep `data` to values the agent's view
 reads, never words the model is told to obey.
