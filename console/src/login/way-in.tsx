@@ -107,7 +107,7 @@ function Sky(): ReactNode {
   return (
     <div className="login-art" aria-hidden="true">
       <img className="login-sky" src="/login-sky-d1fb0146.webp" alt="" />
-      <img className="login-shot" src="/login-shot-2888051c.webp" alt="" />
+      <img className="login-shot" src="/login-shot-5891b2fc.webp" alt="" />
     </div>
   );
 }
