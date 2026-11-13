@@ -258,8 +258,9 @@ async def test_the_caller_waits_through_a_long_answer_and_gives_up_on_silence_al
     await log.append("agent.state", {"state": "speaking"})
     with pytest.raises(TimeoutError):
         await asyncio.wait_for(asyncio.shield(waiting), 1.5)
-    await log.append("agent.state", {"state": "listening"})
+    # The silence is counted from the entry, which a busy database lands before its append answers.
     began = time.monotonic()
+    await log.append("agent.state", {"state": "listening"})
     await waiting
     assert 0.5 <= time.monotonic() - began < 3.0
 
@@ -279,8 +280,9 @@ async def test_an_answer_holds_after_the_quiet_and_not_before(
     await log.append("turn.user", {"text": "hola"})
     await log.append("agent.state", {"state": "speaking"})
     await log.append("turn.agent", {"text": "buenas"})
-    await log.append("agent.state", {"state": "listening"})
+    # The silence is counted from the entry, which a busy database lands before its append answers.
     began = time.monotonic()
+    await log.append("agent.state", {"state": "listening"})
     await waiting
     assert 0.4 <= time.monotonic() - began < 3.0
 
@@ -300,8 +302,9 @@ async def test_an_answer_in_hand_is_let_go_the_moment_the_quiet_has_passed(
     await log.append("turn.user", {"text": "hola"})
     await log.append("agent.state", {"state": "speaking"})
     await log.append("turn.agent", {"text": "buenas"})
-    await log.append("agent.state", {"state": "listening"})
+    # The silence is counted from the entry, which a busy database lands before its append answers.
     began = time.monotonic()
+    await log.append("agent.state", {"state": "listening"})
     await waiting
     assert 0.2 <= time.monotonic() - began < 1.0
 
