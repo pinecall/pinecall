@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **An account's only number is picked already.** Bringing a number from Twilio, Review stayed off
+  until the number's radio was clicked, though the account owned one number and there was nothing to
+  choose. The only free number of an account is the one picked.
 - **A Twilio account is brought with a Standard API key.** The pair was checked by asking Twilio for
   the account itself, which a Standard key, the kind Twilio's console makes unless told otherwise,
   may not read: a right pair was answered "Twilio refused these credentials". It is checked against

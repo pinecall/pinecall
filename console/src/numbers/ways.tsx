@@ -131,11 +131,15 @@ export function TwilioWay({ agents, agent: fixed, carriers, owned, mover, onAcco
   if (accounts.length === 0 || another) {
     return <AccountForm kind="twilio" mover={mover} onBring={async (wanted) => (await mover.move(() => bringCarrier(credentials, wanted)), await onAccount(), setAnother(false))} />;
   }
-  const wanted: WantedNumber = { number, agent, channel: "phone", account: chosen };
-  if (plan !== null) {
-    return <Plan plan={plan} busy={mover.busy} confirm={`Connect ${shown(number)}`} onBack={() => setPlan(null)} onConfirm={() => void mover.move(() => addNumber(credentials, wanted, false)).then(() => onAdded(number), () => undefined)} />;
-  }
   const theirs = owned.filter((one) => one.account === chosen);
+  // The number picked, or the account's only free one: with one to choose from there is nothing to choose,
+  // and until 0.11.39 Review stayed off until its radio was clicked.
+  const free = theirs.filter((one) => !one.imported && !one.held_elsewhere);
+  const picked = free.some((one) => one.number === number) ? number : free.length === 1 ? (free[0]?.number ?? "") : "";
+  const wanted: WantedNumber = { number: picked, agent, channel: "phone", account: chosen };
+  if (plan !== null) {
+    return <Plan plan={plan} busy={mover.busy} confirm={`Connect ${shown(picked)}`} onBack={() => setPlan(null)} onConfirm={() => void mover.move(() => addNumber(credentials, wanted, false)).then(() => onAdded(number), () => undefined)} />;
+  }
   const review = (event: FormEvent): void => {
     event.preventDefault();
     void mover.move(() => addNumber(credentials, wanted, true)).then(setPlan, () => undefined);
@@ -152,7 +156,7 @@ export function TwilioWay({ agents, agent: fixed, carriers, owned, mover, onAcco
             const taken = one.imported || one.held_elsewhere;
             return (
               <label key={one.number} className={taken ? "num-owned-row num-owned-taken" : "num-owned-row"}>
-                <input type="radio" name="owned" disabled={taken} checked={number === one.number} onChange={() => setNumber(one.number)} />
+                <input type="radio" name="owned" disabled={taken} checked={picked === one.number} onChange={() => setNumber(one.number)} />
                 <span className="num-owned-number">{shown(one.number)}</span>
                 <span className="num-owned-name dash-clip">{one.imported ? "already here" : one.held_elsewhere ? "in use elsewhere" : one.name === one.number || one.name === shown(one.number).replace("+1 ", "") ? "" : one.name}</span>
               </label>
@@ -161,7 +165,7 @@ export function TwilioWay({ agents, agent: fixed, carriers, owned, mover, onAcco
         </div>
       </Field>
       <AgentField agents={agents} fixed={fixed !== undefined} value={agent} onChange={setAgent} />
-      <Submit busy={mover.busy} doing="Checking…" disabled={number === "" || agent === ""}>
+      <Submit busy={mover.busy} doing="Checking…" disabled={picked === "" || agent === ""}>
         Review
       </Submit>
     </form>
