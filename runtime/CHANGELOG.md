@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.37 — an app's own page dictates, the widget's header is a menu, and a page going away ends its call (2026-11-13)
 
 - **An app's own page dictates.** `POST /pinecall/dictation` at the page's name answers one dictation's
   socket, a minute long, past the page's captcha and its limit of asks a minute from one address, as

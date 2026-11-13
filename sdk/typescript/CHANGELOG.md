@@ -5,7 +5,7 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
-## Unreleased
+## 0.11.37 — an app's own page dictates, the widget's header is a menu, and a page going away ends its call (2026-11-13)
 
 - **An app's page dictates on this machine too.** `pinecall start` answers `POST /pinecall/dictation` beside the
   page's ticket and its code, with your key and no captcha: the gateway's socket whole, as the deployed
