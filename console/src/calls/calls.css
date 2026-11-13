@@ -46,6 +46,14 @@
 .calls-row-time.dash-mood-good { color: var(--good); }
 .calls-row-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 18px; min-width: 0; }
 .calls-row-where { flex: 1; min-width: 0; font-size: 12px; font-weight: 400; color: var(--quiet); }
+.calls-count { flex: none; padding: 0 6px; border-radius: 999px; background: var(--raised); font-size: 11px; color: var(--quiet); font-variant-numeric: tabular-nums; }
+/* Every call of the open person, under their row. */
+.calls-theirs { display: flex; flex-direction: column; gap: 1px; margin: 0 0 4px 42px; padding-left: 8px; border-left: 1px solid var(--line); }
+.calls-their { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 5px 8px; border-radius: 7px; font-size: 12.5px; color: var(--quiet); }
+.calls-their:hover { background: var(--panel); }
+.calls-their-on { background: var(--panel); color: var(--ink); }
+.calls-their-when { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.calls-their-how { flex: none; font-variant-numeric: tabular-nums; }
 
 .calls-tag { flex: none; padding: 0 6px; border-radius: 4px; font-size: 11.5px; font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .calls-tag-bad { background: color-mix(in srgb, var(--bad) 15%, transparent); color: var(--bad); }

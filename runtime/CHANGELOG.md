@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Every call of a person is in the console's list.** Calls lists one row per person, showing their
+  newest call, and their earlier ones were only in the details panel: someone who called three times
+  read as one call. A row that holds several says how many, and the open person's calls are listed
+  under their row.
 - **A phone put down ends its call at once.** A caller who hung up was waited for 20 seconds like one
   whose line dropped: the console said "on a call" after the phone was down, and a room LiveKit closed
   in that time could leave the call open. A leg that left because its caller hung up, was rejected

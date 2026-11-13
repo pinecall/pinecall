@@ -73,7 +73,7 @@ export function CallsPage(): ReactNode {
         )}
       </PageHead>
       <div className="app-layout calls-layout">
-        <ThreadList threads={threads} lines={mine} open={holding(threads, chosen)} url={url} />
+        <ThreadList threads={threads} lines={mine} open={holding(threads, chosen)} shown={chosen} url={url} />
         <div className="app-open">
           {chosen === undefined ? (
             <p className="dash-quiet app-open-note">Pick a conversation to read it here.</p>

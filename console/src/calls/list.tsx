@@ -8,7 +8,8 @@ import { type SessionLine } from "@pinecall/core/wire/rest";
 import { useOrg } from "../lib/org";
 import { Face } from "./face";
 import { AgentPick, StatusChips } from "./filters";
-import { copyOf, hourOf } from "./format";
+import { lengthOf } from "../lib/format";
+import { copyOf, dayOf, hourOf } from "./format";
 import { dayName, lastOf, lettersOf, threadDays, titleOf, type Thread } from "./threads";
 import type { CallsUrl } from "./url";
 import { useNow } from "./use-now";
@@ -66,6 +67,7 @@ function ThreadRow({ thread, to, on, now, held }: { thread: Thread; to: string; 
         <span className="app-row-under dash-clip">{lastOf(thread)}</span>
         <span className="calls-row-foot">
           <span className="calls-row-where dash-clip">{where}</span>
+          {thread.lines.length > 1 && <span className="calls-count">{thread.lines.length} calls</span>}
           <Mark line={line} />
         </span>
       </span>
@@ -73,7 +75,26 @@ function ThreadRow({ thread, to, on, now, held }: { thread: Thread; to: string; 
   );
 }
 
-export function ThreadList({ threads, lines, open, url }: { threads: readonly Thread[]; /** The calls in view, before the status: what the chips count. */ lines: readonly SessionLine[]; open: Thread | undefined; url: CallsUrl }): ReactNode {
+// A row is a person and shows their newest call: every call of theirs is listed under it once it is
+// open. Until 0.11.39 the earlier ones were only in the details panel, and a person who called three
+// times read as one call.
+/** Every call of the open thread, newest first, the one shown marked. */
+function ThreadCalls({ thread, shown, search, now }: { thread: Thread; shown: string | undefined; search: string; now: number }): ReactNode {
+  if (thread.lines.length < 2) return null;
+  return (
+    <div className="calls-theirs" aria-label="Their calls">
+      {thread.lines.map((line) => (
+        <Link key={line.call} to={`/calls/${encodeURIComponent(line.call)}${search}`} className={line.call === shown ? "calls-their calls-their-on" : "calls-their"} aria-current={line.call === shown ? "true" : undefined}>
+          <span className="calls-their-when">{line.started_at === null ? "—" : `${dayOf(line.started_at)}, ${hourOf(line.started_at)}`}</span>
+          <span className={isLive(line) ? "calls-their-how dash-mood-good" : "calls-their-how"}>{isLive(line) ? elapsed(line.started_at, now) : lengthOf(line.started_at, line.ended_at)}</span>
+          <Mark line={line} />
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+export function ThreadList({ threads, lines, open, shown: shownCall, url }: { threads: readonly Thread[]; /** The calls in view, before the status: what the chips count. */ lines: readonly SessionLine[]; open: Thread | undefined; /** The call on screen, one of the open thread's. */ shown: string | undefined; url: CallsUrl }): ReactNode {
   const navigate = useNavigate();
   const [more, setMore] = useState<ReadonlyMap<string, number>>(new Map());
   const now = useNow(threads.some((thread) => isLive(thread.latest)));
@@ -118,7 +139,10 @@ export function ThreadList({ threads, lines, open, url }: { threads: readonly Th
             <Fragment key={day.key}>
               <div className="calls-day">{dayName(day)}</div>
               {rows.map((thread) => (
-                <ThreadRow key={thread.contact} thread={thread} to={hrefOf(thread)} on={thread === open} now={now} held={thread === open ? openRow : undefined} />
+                <Fragment key={thread.contact}>
+                  <ThreadRow thread={thread} to={hrefOf(thread)} on={thread === open} now={now} held={thread === open ? openRow : undefined} />
+                  {thread === open && <ThreadCalls thread={thread} shown={shownCall} search={url.search} now={now} />}
+                </Fragment>
               ))}
               {left > 0 && (
                 <button type="button" className="calls-more" onClick={() => setMore(new Map(more).set(day.key, rows.length + A_PAGE))}>
