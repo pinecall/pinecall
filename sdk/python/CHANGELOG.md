@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.34 — the overflow promises a call back only where one is asked (2026-11-13)
+
+- Released with the runtime: nothing of this package changed.
+
 ## 0.11.33 — a tool's answer follows what its app said, and the overflow speaks the agent's language (2026-11-13)
 
 - **A file at the project's root that is no voice app says the way out.** `app.py` there is read as the

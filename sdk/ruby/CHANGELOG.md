@@ -4,6 +4,10 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## [0.11.34] — the overflow promises a call back only where one is asked (2026-11-13)
+
+- Released with the runtime: nothing of this package changed.
+
 ## [0.11.33] — a tool's answer follows what its app said, and the overflow speaks the agent's language (2026-11-13)
 
 - **A file at the project's root that is no voice app says the way out.** `app.rb` there is read as the

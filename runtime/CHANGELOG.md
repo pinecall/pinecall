@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.34 — the overflow promises a call back only where one is asked (2026-11-13)
 
 - **The overflow promises a call back only where one is asked.** A visitor of a page, who has no number, was
   told "we have noted your number and will call you back": they are told the lines are busy and to try again
