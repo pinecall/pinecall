@@ -12,10 +12,13 @@ export interface Agent {
   kind: "code" | "studio";
 }
 
+// An app is not an agent: one that holds its agents under other names (a voice app, `cloudacio-riley`
+// holding `riley`) was listed by its own, and its goldens were asked of an agent nobody has.
 /** Every agent connected or hosted, once each by name; `asked` is the one the address names, kept even when nobody holds it any more. */
 export function agentsOf(held: readonly HeldAgent[], hosted: readonly Hosted[], asked: string): Agent[] {
   const studio = new Set([...held.filter((one) => one.kind === "studio").map((one) => one.slug), ...hosted.filter((one) => one.kind === "studio").map((one) => one.name)]);
-  const slugs = new Set([...held.map((one) => one.slug), ...hosted.map((one) => one.name), ...(asked === "" ? [] : [asked])]);
+  const theirs = hosted.flatMap((one) => (one.agents.length > 0 ? one.agents : [one.name]));
+  const slugs = new Set([...held.map((one) => one.slug), ...theirs, ...(asked === "" ? [] : [asked])]);
   return [...slugs].sort().map((slug) => ({ slug, kind: studio.has(slug) ? "studio" : "code" }));
 }
 

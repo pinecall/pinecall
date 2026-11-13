@@ -11,6 +11,9 @@
 - **An app of one agent is one row in the console.** Its row is the app's and the agent's at once: its
   calls, tests, channels and settings are the agent's, its releases the app's. An app of several
   agents lists them under it, as 0.11.37 did.
+- **The Goldens page lists an app's agents, never the app.** An app that holds its agents under other
+  names was listed by its own, and the page read "no agent <app> in this org" where its goldens go.
+  An address that names an app's one agent opens the app's row.
 - **The widget opens a voice call from a page's own button and says when its panel closes.** `talk()`
   opens the panel straight into a voice call in the browser, for a page that draws its own "Talk";
   `pinecall:close` is said as the panel closes. LiveKit's signal log is silent in it, as on

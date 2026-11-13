@@ -257,7 +257,8 @@ function Fleet({ kind, tabs, base, title, search, nothing }: Kind): ReactNode {
   const apps = useMemo(() => appsOf(hosted ?? [], agents, kind), [hosted, agents, kind]);
   const shown = apps.filter((one) => one.name.toLowerCase().includes(filter.trim().toLowerCase()));
   const read = hosted !== null && agentsRead;
-  const open = apps.find((one) => one.name === asked) ?? apps[0];
+  // An address may name an app's one agent (the Goldens page's "Test tab" does): its row is the app's.
+  const open = apps.find((one) => one.name === asked) ?? apps.find((one) => one.agent === asked) ?? apps[0];
   // An app's agent has no releases of its own, and an app of several agents has no settings, channels or tests of its own.
   const shownTabs = open === undefined ? tabs : open.of !== null ? tabs.filter((one) => one.path !== "releases") : isOfAgents(open) ? tabs.filter((one) => one.path === "" || one.path === "releases") : tabs;
   const at = shownTabs.some((one) => one.path === tab) ? tab : undefined;
