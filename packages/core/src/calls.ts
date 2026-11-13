@@ -14,6 +14,11 @@ export function isSimulated(line: Pick<SessionLine, "from">): boolean {
   return line.from === A_SIMULATED_CALLER;
 }
 
+/** A call a test run opened, a golden's: never a person, whatever address it came from. Said on a list asked with `runs`. */
+export function isARun(line: Pick<SessionLine, "run">): boolean {
+  return line.run !== null && line.run !== undefined;
+}
+
 /** Ringing, dialling or connected. */
 export function isLive(line: Pick<SessionLine, "status">): boolean {
   return line.status !== "ended";

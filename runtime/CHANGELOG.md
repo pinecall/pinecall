@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A golden's call is listed as a golden.** A written golden opens its call as a visitor of a page
+  would, and Calls showed a run of four as four web visitors nobody could place. A call's head keeps
+  the run it is one of (migration 000026); `GET /v1/sessions?runs=true` says it on each row (`run`,
+  null for anybody's call), and the console draws the row as "Golden · 3f7d", "running now" while it is.
+- **Quality lists the agents the org has.** It listed every name a call of the window carried, so an
+  app removed weeks ago was still pickable and still a row of "by agent".
 - **A developer whose ring is handed to the sandbox is told so.** Their call is answered as the leg
   to the sandbox starts to dial, and its agent speaks two or three seconds later: silence, until now.
   Production's worker says "Redirecting you to your sandbox." in the agent's voice while the leg is

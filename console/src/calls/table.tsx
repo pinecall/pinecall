@@ -3,7 +3,7 @@
 import { Fragment, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
 
-import { byDay, elapsed, isLive, isSimulated, whoOn } from "@pinecall/core/calls";
+import { byDay, elapsed, isARun, isLive, isSimulated, whoOn } from "@pinecall/core/calls";
 import { floorMoved, matches, useServerSearch, type Filter } from "@pinecall/core/calls-search";
 import { type SessionLine } from "@pinecall/core/wire/rest";
 import { AvatarOf } from "../apps/avatar";
@@ -13,7 +13,7 @@ import { Select } from "../ui/select";
 import { useCallMenu } from "./call-menu";
 import { Face } from "./face";
 import { AgentPick, StatusChips } from "./filters";
-import { copyOf, hourOf, lettersFor, liveFirst, simulationOf, standingOf, webVisitor } from "./format";
+import { copyOf, goldenOf, hourOf, lettersFor, liveFirst, simulationOf, standingOf, webVisitor } from "./format";
 import { keeps } from "./status";
 import { dayName } from "./threads";
 import type { CallsUrl } from "./url";
@@ -37,16 +37,16 @@ function hrefOf(call: string, url: CallsUrl): string {
 function Row({ line, to, now, onErased }: { line: SessionLine; to: string; now: number; onErased: (call: string) => void }): ReactNode {
   const menu = useCallMenu(onErased);
   const { whose } = useOrg();
-  const who = isSimulated(line) ? simulationOf(line.call) : whoOn(line, webVisitor);
+  const who = isARun(line) ? goldenOf(line.call) : isSimulated(line) ? simulationOf(line.call) : whoOn(line, webVisitor);
   const live = isLive(line);
   const standing = standingOf(line);
   const copy = copyOf(line, whose?.subject ?? null);
   return (
     <Link to={to} className="calls-tr dash-row" title={line.call} onContextMenu={(event) => menu(event, line, who)}>
-      <Face name={who} letters={isSimulated(line) ? "S" : lettersFor(line.caller?.name, line.direction === "outbound" ? line.to : line.from)} on={live ? (standing.mood === "warn" ? "asking" : "live") : null} />
+      <Face name={who} letters={isARun(line) ? "G" : isSimulated(line) ? "S" : lettersFor(line.caller?.name, line.direction === "outbound" ? line.to : line.from)} on={live ? (standing.mood === "warn" ? "asking" : "live") : null} />
       <span className="calls-td-who">
         <span className="calls-td-name dash-clip">{who}</span>
-        <span className="dash-quiet dash-clip">{line.outcome ?? (live ? "On a call now" : "Nothing was said")}</span>
+        <span className="dash-quiet dash-clip">{line.outcome ?? (live ? (isARun(line) ? "A golden, running now" : "On a call now") : "Nothing was said")}</span>
       </span>
       <span className="calls-td calls-td-agent calls-td-worn">
         <AvatarOf name={line.agent} size={20} />

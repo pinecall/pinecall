@@ -63,6 +63,7 @@ async def list_calls(
     before: str | None,
     limit: int,
     holders: bool = False,
+    runs: bool = False,
 ) -> CallPage:
     """One page of the calls of the key's scope the filter matches, newest first, one row each."""
     wanted = ListFilters(agent=agent or None, q=q or None, channel=channel, before=before, holders=list_copies(actor))
@@ -70,7 +71,7 @@ async def list_calls(
     by_agent: dict[str, Declaration | None] = {}
     if wanted.agent:
         by_agent[wanted.agent] = (await agents.agent_of(session, actor.scope, wanted.agent)).declaration
-    rows = await list_rows(session, logs, found.calls, by_agent, holders=holders)
+    rows = await list_rows(session, logs, found.calls, by_agent, holders=holders, runs=runs)
     return CallPage(calls=rows, total=found.total, next=found.next)
 
 
@@ -97,8 +98,9 @@ async def list_rows(
     by_agent: Mapping[str, Declaration | None],
     *,
     holders: bool = False,
+    runs: bool = False,
 ) -> list[JsonObject]:
-    """The calls as a list shows them, the ones nothing was written to left out; whose copy took each when asked."""
+    """The calls as a list shows them, none nothing was written to; whose copy took each, and its run, when asked."""
     heads = await HeadRepository(session).heads_of(calls)
     facts = await FactsRepository(session).list_with_agent(calls)
     names = await _name_holders(session, heads.values()) if holders else None
@@ -113,7 +115,9 @@ async def list_rows(
             line = {**line_of(state), **_mask(state, by_agent)} if state.seq else None
         if line is None or not line.get("seq"):
             continue
-        rows.append(_row(call, head, line, fact, names))
+        row = _row(call, head, line, fact, names)
+        # Said only to a reader who asked, as a holder is: an app built before strict-parses the row it knew.
+        rows.append({**row, "run": head.run} if runs else row)
     return rows
 
 

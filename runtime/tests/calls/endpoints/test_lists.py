@@ -87,6 +87,24 @@ async def test_a_developer_lists_their_copy_and_the_orgs_and_an_admin_lists_ever
     assert all("holder" not in row and "holder_name" not in row for row in await listed(gateway, tenant.person))
 
 
+# A golden's call is opened like a visitor's: the row says whose run it is to a reader who asks.
+async def test_a_runs_call_says_its_run_to_a_list_asked_with_runs(
+    gateway: Gateway, tenant: Tenant, agent: str, store: Store
+) -> None:
+    a_persons = await a_call_on(store, tenant, agent, tenant.member)
+    a_goldens = new_call_id()
+    claimed = Claim(Scope(tenant.org, Env.sandbox, tenant.member), Versions(settings=1), run="run_1")
+    await claim_call(store, a_goldens, agent, claimed)
+    writing = logs_on(store).logs.writing(a_goldens, agent)
+    for written in a_call_with_tools(a_goldens, agent):
+        await writing.append(written.type, written.data)
+
+    every = await listed(gateway, tenant.person, runs="true")
+    assert {row["call"]: row["run"] for row in every} == {a_persons: None, a_goldens: "run_1"}
+    # A list not asked for it is the row an app built before strict-parses.
+    assert all("run" not in row for row in await listed(gateway, tenant.person))
+
+
 async def test_an_admin_opens_a_colleagues_call_and_a_developer_does_not(
     gateway: Gateway,
     tenant: Tenant,

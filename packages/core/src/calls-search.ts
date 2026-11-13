@@ -50,7 +50,7 @@ export function useServerSearch(scope: string, filter: Filter, pages: number, re
     const timer = window.setTimeout(() => {
       void (async () => {
         const path = scope === "" ? "/v1/sessions" : `/v1/agents/${encodeURIComponent(scope)}/sessions`;
-        const params: Record<string, string | number> = { limit: A_PAGE, holders: "true" };
+        const params: Record<string, string | number> = { limit: A_PAGE, holders: "true", runs: "true" };
         if (filter.query.trim() !== "") params["q"] = filter.query.trim();
         if (filter.agent !== "") params["agent"] = filter.agent;
         if (filter.channel !== "") params["channel"] = filter.channel;

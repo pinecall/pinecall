@@ -42,6 +42,11 @@ export function simulationOf(call: string): string {
   return `Simulation · ${visitorId(call) ?? call}`;
 }
 
+/** "Golden · 3f7d": a call a test run opened, named by its call id as a simulation is. */
+export function goldenOf(call: string): string {
+  return `Golden · ${visitorId(call) ?? call}`;
+}
+
 /** A web visitor's name from their address, or null for any other address. */
 export function visitorOf(address: string | null | undefined): string | null {
   const id = visitorId(address);

@@ -24,6 +24,8 @@ class Claim:
     versions: Versions = field(default_factory=Versions)
     # None for a dial placed before its worker opens it: the open says who.
     opened_by: Opener | None = None
+    # The test run the call is one of, when a run opened it.
+    run: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -137,6 +139,7 @@ class HeadRepository(Repository[CallLogHead]):
             config_version=versions.settings,
             lexicon_version=versions.lexicon,
             opened_by=None if claim is None else claim.opened_by,
+            run=None if claim is None else claim.run,
         )
         excluded = statement.excluded
         statement = statement.on_conflict_do_update(
@@ -148,6 +151,7 @@ class HeadRepository(Repository[CallLogHead]):
                 "config_version": func.coalesce(CallLogHead.config_version, excluded.config_version),
                 "lexicon_version": func.coalesce(CallLogHead.lexicon_version, excluded.lexicon_version),
                 "opened_by": func.coalesce(CallLogHead.opened_by, excluded.opened_by),
+                "run": func.coalesce(CallLogHead.run, excluded.run),
             },
         )
         await self.session.execute(statement)

@@ -99,7 +99,7 @@ async def open_served(live: LiveParts, opening: Opening, versions: Versions) -> 
     """Serve a new call: its head claimed and its opening kept, then served here and its commands heard."""
     context, declaration, scope = opening.context, opening.declaration, opening.scope
     async with live.sessions.begin() as own:
-        claim = calls.Claim(scope, versions, opened_by=opening.opened_by)
+        claim = calls.Claim(scope, versions, opened_by=opening.opened_by, run=context.run)
         await calls.claim_call(own, context.call, declaration.slug, claim)
         await calls.keep_opening(own, scope.org, context, declaration)
         await live.prompts.keep(own, scope.org, declaration.knowledge or "")

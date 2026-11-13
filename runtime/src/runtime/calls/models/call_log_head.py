@@ -52,6 +52,8 @@ class CallLogHead(Model):
     org: Mapped[str | None] = mapped_column(Text)
     env: Mapped[Env | None] = mapped_column(StringEnum(Env))
     holder: Mapped[str | None] = mapped_column(Text)
+    # The test run the call is one of (a golden's), for a list to say so; none for anybody's call.
+    run: Mapped[str | None] = mapped_column(Text)
     # The versions of the agent's settings and of its lexicon the call was built on.
     config_version: Mapped[int | None] = mapped_column(Integer)
     lexicon_version: Mapped[int | None] = mapped_column(Integer)

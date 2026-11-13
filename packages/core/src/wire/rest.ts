@@ -62,6 +62,8 @@ export const SessionLineSchema = z.strictObject({
   /** Whose copy of the agent took it, on a list asked with `holders`: a member's id, "" the org's own. */
   holder: z.string().nullish(),
   holder_name: z.string().nullish(),
+  /** The test run the call is one of, on a list asked with `runs`: a golden's call, never a person's. */
+  run: z.string().nullish(),
 });
 
 export type SessionLine = z.infer<typeof SessionLineSchema>;

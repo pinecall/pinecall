@@ -126,6 +126,8 @@ class CallRow(Row):
     # Whose copy of the agent took it, to a list asked with holders: a member's id and name, "" the org's own.
     holder: str | None = None
     holder_name: str | None = None
+    # The test run the call is one of, to a list asked with runs: a golden's call, never a person's.
+    run: str | None = None
 
 
 class CallList(Row):
@@ -147,6 +149,8 @@ class ListQuery(Schema):
     before: str | None = None
     # Each row also says whose copy of the agent took it (holder, holder_name).
     holders: bool = False
+    # Each row also says the test run it is one of (run), null for a call no run opened.
+    runs: bool = False
 
 
 # ── the inbox ──

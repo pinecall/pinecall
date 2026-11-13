@@ -1,11 +1,14 @@
 /** The calls read as conversations: one thread per person, who is waiting first, and what its row says. */
 
-import { byDay, isLive, isSimulated, prettyNumber, wantsAPerson, type CallDay } from "@pinecall/core/calls";
+import { byDay, isARun, isLive, isSimulated, prettyNumber, wantsAPerson, type CallDay } from "@pinecall/core/calls";
 import { type SessionLine } from "@pinecall/core/wire/rest";
 import { lengthOf, utcDay } from "../lib/format";
-import { dayOf, lettersFor, simulationOf, visitorOf } from "./format";
+import { dayOf, goldenOf, lettersFor, simulationOf, visitorOf } from "./format";
 
 const A_SIMULATED_CALL = "simulated caller";
+// A golden opens its call as a visitor of a page would, from an address of its own: read by its
+// address, a run of four goldens was four web visitors nobody could place.
+const A_GOLDEN_RUN = "golden run";
 
 /** One person's calls, newest first. */
 export interface Thread {
@@ -29,11 +32,12 @@ function addressOf(line: SessionLine): string | null {
 // Every simulation comes from the one simulated caller: grouped by address, six run this morning
 // would be one thread showing the last. Each is a conversation of its own, keyed by its call.
 function contactOf(line: SessionLine): string {
-  if (isSimulated(line)) return line.call;
+  if (isARun(line) || isSimulated(line)) return line.call;
   return line.caller?.id ?? line.caller?.phone ?? addressOf(line) ?? line.call;
 }
 
 function handleOf(line: SessionLine): string {
+  if (isARun(line)) return A_GOLDEN_RUN;
   if (isSimulated(line)) return A_SIMULATED_CALL;
   const address = addressOf(line);
   if (address === null) return line.channel === "web" ? "web visitor" : "—";
@@ -83,6 +87,7 @@ export function threadDays(threads: readonly Thread[]): CallDay<Thread>[] {
 /** What a thread is called: its name, its number, or the web visitor as the list names them. */
 export function titleOf(thread: Thread): string {
   if (thread.name !== null && thread.name !== "") return thread.name;
+  if (thread.handle === A_GOLDEN_RUN) return goldenOf(thread.contact);
   if (thread.handle === A_SIMULATED_CALL) return simulationOf(thread.contact);
   if (thread.contact.startsWith("+")) return prettyNumber(thread.contact);
   return visitorOf(thread.contact) ?? thread.contact;
@@ -90,6 +95,7 @@ export function titleOf(thread: Thread): string {
 
 /** Two letters for a person, one for a web visitor or a simulation, a number's last two digits for a number nobody named. */
 export function lettersOf(thread: Thread): string | undefined {
+  if (thread.handle === A_GOLDEN_RUN) return "G";
   if (thread.handle === A_SIMULATED_CALL) return "S";
   return lettersFor(thread.name, thread.handle === "web visitor" ? "web" : thread.contact);
 }
@@ -98,7 +104,7 @@ export function lettersOf(thread: Thread): string | undefined {
 export function lastOf(thread: Thread): string {
   const line = thread.latest;
   if (line.outcome !== null && line.outcome !== "") return line.outcome;
-  if (line.status !== "ended") return "On a call now";
+  if (line.status !== "ended") return thread.handle === A_GOLDEN_RUN ? "A golden, running now" : "On a call now";
   return `${line.channel ?? "A"} call, ${lengthOf(line.started_at, line.ended_at)}`;
 }
 

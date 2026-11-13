@@ -4,6 +4,7 @@ import { useCallback, useMemo, type ReactNode } from "react";
 import { useSearchParams } from "react-router";
 
 import { count, percent, utcDay } from "../lib/format";
+import { useFleet } from "../dashboard/fleet";
 import { useInsights } from "../lib/insights";
 import { useOrg } from "../lib/org";
 import { PageHead } from "../shell/page-head";
@@ -25,10 +26,16 @@ import "./quality.css";
 const AGENT = "agent";
 const JUDGE = "judge";
 
-/** The agent whose calls are read, when the org has several. Agents nobody holds any more stay pickable: their calls happened. */
+// The agents the org has now: the ones Agents and Apps list. Until 0.11.39 this page also listed every
+// name a call of the window carried, so an app removed weeks ago was still an agent here.
+function useTheAgentsThereAre(): ReadonlySet<string> {
+  const { studio, code } = useFleet();
+  return useMemo(() => new Set([...studio, ...code].map((one) => one.agent)), [studio, code]);
+}
+
+/** The agent whose calls are read, when the org has several: the agents there are, never one that was removed. */
 function AgentPick({ agent, onPick }: { agent: string; onPick: (agent: string) => void }): ReactNode {
-  const { agents, lines } = useOrg();
-  const slugs = [...new Set([...agents.map((one) => one.slug), ...lines.map((line) => line.agent)])].sort();
+  const slugs = [...useTheAgentsThereAre()].sort();
   if (slugs.length < 2) return null;
   return (
     <div className="ql-pick">
@@ -59,6 +66,9 @@ function Quality({ agent, open, ask }: { agent: string; open: string | null; ask
 
   // Nothing is drawn of another window than the one picked.
   const counted = answered?.days === days ? answered : null;
+  const there = useTheAgentsThereAre();
+  // By agent, the ones the org still has and whose calls were judged: a removed app's score is history, not a row.
+  const scoredNow = useMemo(() => (counted?.agents ?? []).filter((one) => one.score !== null && there.has(one.slug)), [counted, there]);
   const before = answeredBefore?.days === days ? answeredBefore : null;
   const quiet = counted === null ? null : counted.judged === 0;
   const deciding = useWidenedWhenQuiet(opening, quiet);
@@ -103,7 +113,7 @@ function Quality({ agent, open, ask }: { agent: string; open: string | null; ask
           <>
             <Hero counted={counted} before={before} days={days} figures={figures} />
             <Fixes groups={fixes} everyAgent={agent === ""} />
-            {agent === "" && counted.agents.filter((one) => one.score !== null).length > 1 && <ByAgent agents={counted.agents} onPick={(picked) => ask(AGENT, picked)} />}
+            {agent === "" && scoredNow.length > 1 && <ByAgent agents={scoredNow} onPick={(picked) => ask(AGENT, picked)} />}
             <div className="ql-pair">
               <Judges rules={rules} read={judgedIn(scored)} open={rule?.name ?? null} onOpen={(name) => ask(JUDGE, name === rule?.name ? "" : name)} />
               <BrokenCalls calls={brokenCalls(scored)} to={brokeInCalls} />
