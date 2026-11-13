@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.36 — a Python app names its agents by slug, and Brightside Dental is an example in every language (2026-11-13)
+
+- Released with the SDKs: nothing of this package changed.
+
 ## 0.11.35 — a judge reads what the platform said as the platform's (2026-11-13)
 
 - **A judge reads what the platform said as the platform's.** What an org's policy has a call open with, an

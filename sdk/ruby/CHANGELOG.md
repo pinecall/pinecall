@@ -4,7 +4,7 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
-## Unreleased
+## [0.11.36] — a Python app names its agents by slug, and Brightside Dental is an example in every language (2026-11-13)
 
 - **A class is served as its folder's slug, whatever it is called.** `pinecall start` served a class
   under its folder's name while the class went on naming itself by its own: `class FrontDesk` in

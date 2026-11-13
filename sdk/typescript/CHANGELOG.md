@@ -5,7 +5,7 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
-## Unreleased
+## 0.11.36 — a Python app names its agents by slug, and Brightside Dental is an example in every language (2026-11-13)
 
 - **The Brightside Dental example is the voice app on pinecall.io's editor**, file for file
   (`examples/typescript/brightside-dental`): `app.ts`, the front desk and billing with `@agent`,

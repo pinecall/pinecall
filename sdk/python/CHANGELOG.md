@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.36 — a Python app names its agents by slug, and Brightside Dental is an example in every language (2026-11-13)
 
 - **An agent is named by its slug.** A voice app's `app.py` imported its agents from
   `pinecall_agents.<folder>.agent`, a package only the loader makes: it ran, and no type checker

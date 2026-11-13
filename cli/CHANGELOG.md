@@ -4,6 +4,10 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.11.36] — a Python app names its agents by slug, and Brightside Dental is an example in every language (2026-11-13)
+
+- Released with the SDKs: nothing of this package changed.
+
 ## [0.11.35] — a judge reads what the platform said as the platform's (2026-11-13)
 
 - Released with the runtime: nothing of this package changed.
