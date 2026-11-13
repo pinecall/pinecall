@@ -188,6 +188,15 @@ export function languageOf(element) {
 }
 
 /** `{key}` in a text filled from `params`; a placeholder with nothing to fill it stays as written. */
+/**
+ * What a server said went wrong, when it said it in words, else `otherwise`. A gateway refuses a body
+ * it cannot read with a list in `detail`: written out as it came, that list read "[object Object]".
+ */
+export function refusalOf(answered, otherwise) {
+  const detail = answered?.detail;
+  return typeof detail === "string" && detail.trim() !== "" ? detail : otherwise;
+}
+
 export function fill(text, params = {}) {
   return text.replace(/\{(\w+)\}/g, (whole, key) => (key in params ? String(params[key]) : whole));
 }

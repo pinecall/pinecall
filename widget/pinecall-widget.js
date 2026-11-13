@@ -56,7 +56,7 @@ import { Lines } from "./lines.js";
 import { ICONS } from "./markup.js";
 import { Panel } from "./panel.js";
 import { PHONE, STYLE } from "./styles.js";
-import { languageOf, wordsOf } from "./texts.js";
+import { languageOf, refusalOf, wordsOf } from "./texts.js";
 
 const TRANSCRIPTION = "lk.transcription";
 const CHAT = "lk.chat";
@@ -545,7 +545,7 @@ class PinecallWidget extends HTMLElement {
       body: JSON.stringify({ agent: this.agent, scope, ...(resume ? { resume } : {}) }),
     });
     const minted = await answer.json().catch(() => ({}));
-    if (!answer.ok) throw new Error(minted.detail ?? this.words.failed);
+    if (!answer.ok) throw new Error(refusalOf(minted, this.words.failed));
     if (typeof minted?.server_url !== "string" || typeof minted?.participant_token !== "string") throw new Error(this.words.failed);
     return minted;
   }

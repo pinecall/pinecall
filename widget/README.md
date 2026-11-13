@@ -119,6 +119,24 @@ agent's slug with each request, so one set of endpoints serves every agent (reje
 doesn't serve). Use a production key with the `talk` scope (tokens, codes, dictation) and `calls`
 (logs), sent as `Authorization: Bearer <key>`.
 
+### On an app's own page
+
+A page Pinecall serves for an app (`app.page("site")`) has no server of yours. Its doors,
+`/pinecall/token` and `/pinecall/code`, are Pinecall's: they ask for a captcha first and take no
+agent's name, so `token-url` cannot point at them. Give the tag its tickets with `hosted()` of
+`@pinecall/room`, which speaks to them, on the deployed page and under `pinecall start` alike:
+
+```html
+<pinecall-widget agent="riley" name="Riley"></pinecall-widget>
+<script type="module">
+  import { hosted } from "https://cdn.jsdelivr.net/npm/@pinecall/room@0.11/+esm";
+  const doors = hosted();
+  document.querySelector("pinecall-widget").tokenProvider = (scope, _agent, resume) => doors.tokens(scope, resume);
+</script>
+```
+
+Such a page has no dictation door: dictation needs an endpoint of your own.
+
 ### `token-url`
 
 The widget sends:

@@ -8,6 +8,7 @@
 
 import { ICONS } from "./markup.js";
 import { toast } from "./cards.js";
+import { refusalOf } from "./texts.js";
 
 const NOTE_RATE = 16000;
 // After she has said something, this long without a new word sends what she said.
@@ -158,7 +159,7 @@ export class Dictation {
       const url = widget.getAttribute("dictation-url");
       const answer = await fetch(`${url}${url.includes("?") ? "&" : "?"}language=${encodeURIComponent(widget.lang)}`, { method: "POST" });
       const minted = await answer.json().catch(() => ({}));
-      if (!answer.ok || typeof minted.url !== "string") throw new Error(minted.detail || words.dictationFailed);
+      if (!answer.ok || typeof minted.url !== "string") throw new Error(refusalOf(minted, words.dictationFailed));
       if (this.current !== dictation) return;
       const spelled = speller(minted.hear, widget.lang);
       const socket = new WebSocket(minted.url);

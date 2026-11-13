@@ -7,6 +7,11 @@
   the image was built with two of the widget's files, named one by one, since before it was split
   into modules. Every module is built in, and `pinecall-runtime reach`, which a deploy ends in, asks
   for each module the widget imports and no longer for its first file alone.
+- **The widget says a refusal in words or not at all.** A door that refused the widget's request with
+  a list in `detail`, as a gateway does for a body it cannot read, was shown to the visitor as
+  "[object Object]": the widget shows a `detail` that is words, and its own sentence otherwise. Its
+  README says how the tag gets its tickets on a page Pinecall serves for an app, whose door is not a
+  `token-url`.
 - **A voice app is one app in the console, with its agents under it.** The Apps list drew a row for
   every hosted app and one for every held agent that was not named as one: an app of two agents, whose
   names are not the app's, read as three apps, two of them "connected from your server". `GET

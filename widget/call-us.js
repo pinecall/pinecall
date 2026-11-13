@@ -7,7 +7,7 @@
 // `log-url` it follows the agent's live phone call through the site's own relay.
 
 import { ICONS } from "./markup.js";
-import { fill } from "./texts.js";
+import { fill, refusalOf } from "./texts.js";
 
 // Must match the entry types a log-url relay requests.
 const LOG_TYPES = "call.started,user.transcript,agent.transcript,turn.user,turn.agent,tool.call,tool.result,call.ended";
@@ -347,7 +347,7 @@ export class CallUs {
       body: JSON.stringify({ agent: widget.agent }),
     });
     const said = await answer.json().catch(() => ({}));
-    if (!answer.ok) throw new Error(said.detail ?? `code: HTTP ${answer.status}`);
+    if (!answer.ok) throw new Error(refusalOf(said, `code: HTTP ${answer.status}`));
     return said;
   }
 
@@ -427,7 +427,7 @@ export class CallUs {
         // A 5xx or the network is tried again; any other refusal is final.
         if (answer.status >= 500) throw new Error(`code: HTTP ${answer.status}`);
         standing = await answer.json();
-        if (!answer.ok) throw Object.assign(new Error(standing.detail ?? `code: HTTP ${answer.status}`), { final: true });
+        if (!answer.ok) throw Object.assign(new Error(refusalOf(standing, `code: HTTP ${answer.status}`)), { final: true });
       } catch (refused) {
         if (stop.signal.aborted) return;
         if (refused.final) return failed(refused.message);
