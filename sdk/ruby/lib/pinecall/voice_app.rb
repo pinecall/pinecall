@@ -18,7 +18,10 @@ module Pinecall
     # One number of the app and who answers it.
     Line = Data.define(:number, :answers, :team, :greeting, :chooses)
     # The app's page: the built folder the platform serves, and the agent a visitor reaches.
-    Page = Data.define(:dir, :answers)
+    # `only` is the one environment the page is served in ("sandbox" or "production"); both when nil.
+    Page = Data.define(:dir, :answers, :only)
+    WORLDS = %w[sandbox production].freeze
+    NOT_A_PAGE_ENV = "a page is served in both environments, or in one: app.page(dir, only: \"sandbox\") or only: \"production\""
     # The call an entry belongs to, as a handler is told it; `id` is nil for an entry of no call.
     Heard = Data.define(:id, :agent)
 
@@ -95,8 +98,9 @@ module Pinecall
       self
     end
 
-    # The app's page: `app.page("ui/dist")`, served by the platform at the app's own name.
-    def page(dir, answers: nil)
+    # The app's page: `app.page("ui/dist")`, served by the platform at the app's own name;
+    # `only: "sandbox"` keeps it out of production, whose deploy sends the app alone.
+    def page(dir, answers: nil, only: nil)
       folder = dir.to_s.delete_prefix("./").chomp("/")
       raise DeclarationRefused, NOT_A_PAGE if folder.empty? || folder.start_with?("/") || folder.split("/").include?("..")
       raise DeclarationRefused, "#{@name} has its page already, #{@paged.dir}: an app has one" unless @paged.nil?
@@ -104,7 +108,9 @@ module Pinecall
       reached = answers || @lines.first&.answers
       raise DeclarationRefused, "a page's visitors reach an agent: write a line before the page, or name one with page(dir, answers: FrontDesk)" unless agent?(reached)
 
-      @paged = Page.new(dir: folder, answers: reached)
+      raise DeclarationRefused, NOT_A_PAGE_ENV unless only.nil? || WORLDS.include?(only.to_s)
+
+      @paged = Page.new(dir: folder, answers: reached, only: only&.to_s)
       self
     end
 

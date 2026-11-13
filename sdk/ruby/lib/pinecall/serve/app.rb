@@ -58,6 +58,7 @@ module Pinecall
           raise CannotServe, "#{app.name}'s page reaches #{app.paged.answers}, which no agent is" if served.nil?
 
           page = { dir: app.paged.dir, agent: served.slug }
+          page[:only] = app.paged.only unless app.paged.only.nil?
         end
         out.puts(JSON.generate({ name: app.name, page: }))
         0
@@ -92,6 +93,8 @@ module Pinecall
         paged = app.paged
         agent = paged && slugs[paged.answers]
         return nil if agent.nil? || !env["PINECALL_HOST"].to_s.empty?
+        # A page of one environment is not this one's: `pinecall start --prod` holds the app alone.
+        return nil if paged.only && client.env && paged.only != client.env.to_s
 
         port = Integer(env["PINECALL_PAGE_PORT"] || Paged::PORT)
         page = Paged.new(folder: File.join(File.dirname(File.expand_path(file)), paged.dir), agent:, url: client.url,

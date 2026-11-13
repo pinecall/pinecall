@@ -4,6 +4,7 @@ import { Agent } from "../agent/agent.js";
 import { harnessOf, judges } from "../agent/harness.js";
 import { DeclarationRefused } from "../agent/tools.js";
 import type { AgentOptions } from "../client/agent.js";
+import type { World } from "../client/signed.js";
 
 import { isFlow, type Flow } from "./flows.js";
 import { takenBy, type Answering } from "./handoff.js";
@@ -37,7 +38,11 @@ export interface Page {
   /** The folder of the built page, from the project's root: `ui/dist`. Its `index.html` is the page. */
   dir: string;
   answers: Ctor;
+  /** The one environment the page is served in: a guide in the sandbox, say. Both, when left out. */
+  only?: World;
 }
+
+const WORLDS: readonly World[] = ["sandbox", "production"];
 
 /** What every agent of the app says to a caller who went quiet. */
 export interface Silence {
@@ -89,6 +94,7 @@ const NOT_AN_AGENT = "a line is answered by an agent class: app.line(number, Fro
 const NOT_HEARD = "app.on takes the name of an entry and the function that hears it, or the flow it starts";
 const NOT_A_PAGE = "a page is the folder its build writes, inside the project: app.page(\"ui/dist\")";
 const NO_AGENT_FOR_A_PAGE = "a page's visitors reach an agent: write a line before the page, or name one with app.page(dir, { answers: FrontDesk })";
+const NOT_A_PAGE_ENV = "a page is served in both environments, or in one: app.page(dir, { only: \"sandbox\" }) or { only: \"production\" }";
 const NOT_A_SILENCE = "silence is { after, say }: after in seconds (8, or \"8s\"), say the words to a caller who went quiet";
 
 /** A voice app. `line` and `silence` return the app, so they chain. */
@@ -204,15 +210,17 @@ export class VoiceApp {
   /**
    * The app's page: `app.page("ui/dist")`. `pinecall deploy` sends the folder with the release and the
    * platform serves it at the app's own name; a visitor of it reaches the agent of the app's first line,
-   * or the one `answers` names.
+   * or the one `answers` names. `only` keeps it to one environment: with `{ only: "sandbox" }` a deploy to
+   * production sends the app alone, with no page.
    */
-  page(dir: string, options: { answers?: Ctor } = {}): this {
+  page(dir: string, options: { answers?: Ctor; only?: World } = {}): this {
     const folder = typeof dir === "string" ? dir.replace(/^\.\//, "").replace(/\/+$/, "") : "";
     if (folder === "" || folder.startsWith("/") || folder.split("/").includes("..")) throw new DeclarationRefused(NOT_A_PAGE);
     if (this.#page !== undefined) throw new DeclarationRefused(`${this.name} has its page already, ${this.#page.dir}: an app has one`);
     const answers = options.answers ?? this.#lines[0]?.answers;
     if (answers === undefined || !isAnAgent(answers)) throw new DeclarationRefused(NO_AGENT_FOR_A_PAGE);
-    this.#page = { dir: folder, answers };
+    if (options.only !== undefined && !WORLDS.includes(options.only)) throw new DeclarationRefused(NOT_A_PAGE_ENV);
+    this.#page = { dir: folder, answers, ...(options.only === undefined ? {} : { only: options.only }) };
     return this;
   }
 

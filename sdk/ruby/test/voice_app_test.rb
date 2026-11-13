@@ -65,6 +65,14 @@ class VoiceAppTest < Minitest::Test
     assert_raises(Pinecall::DeclarationRefused) { Pinecall.voice_app("other").page("ui/dist") }
   end
 
+  def test_a_page_may_be_kept_to_one_environment_and_no_other_word_names_one
+    app = Pinecall.voice_app("brightside").line("+14155550134", FrontDesk).page("site", only: "sandbox")
+
+    assert_equal "sandbox", app.paged.only
+    assert_nil Pinecall.voice_app("both").line("+14155550134", FrontDesk).page("site").paged.only
+    assert_raises(Pinecall::DeclarationRefused) { Pinecall.voice_app("other").line("+14155550134", FrontDesk).page("site", only: "staging") }
+  end
+
   def test_an_entry_reaches_its_handlers_by_name_a_logged_line_by_its_own
     heard = []
     failed = []

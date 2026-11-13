@@ -6,7 +6,10 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [0.11.38] — a page's chat is written, a visitor keeps the conversation from page to page, and an app of one agent is one row (2026-11-13)
 
-- Released with the runtime: nothing of this package changed.
+- **`deploy` leaves a page out of the environment it is not for.** An app that says
+  `app.page("site", { only: "sandbox" })` is sent to production alone: no page rides with that release
+  and none is served. It needs the framework of this version; an older one says no `only`, and its
+  page goes to both as before.
 
 ## [0.11.37] — an app's own page dictates, the widget's header is a menu, and a page going away ends its call (2026-11-13)
 

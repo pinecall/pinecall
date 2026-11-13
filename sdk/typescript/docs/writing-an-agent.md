@@ -385,6 +385,8 @@ An app may have a page of its own: the folder its build writes, inside the proje
 sends the folder with the release, and Pinecall serves it at the app's own name,
 `https://<app>--<org>.app.pinecall.io` (`--sandbox` after the org in the sandbox). A visitor of it
 reaches the agent of the app's first line, or the one `app.page(dir, { answers: Billing })` names.
+`app.page(dir, { only: "sandbox" })` keeps the page to one environment (`"sandbox"` or
+`"production"`): a deploy to the other sends the app alone, with no page.
 
 The page needs no server and holds no key. It asks its own name for its ticket
 (`POST /pinecall/token`), for the code a visitor keys from a phone (`POST /pinecall/code`) and for a

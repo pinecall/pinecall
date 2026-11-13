@@ -8,7 +8,7 @@ import * as api from "../api/hosting.js";
 import type { Context } from "../context.js";
 import { UsageError } from "../errors.js";
 import { folderFiles, projectFiles, tarball } from "../kit/tarball.js";
-import { describedApp } from "../project/app.js";
+import { describedApp, pageIn } from "../project/app.js";
 import { agentFilesOf, appFileOf } from "../project/layout.js";
 import { languageOf, type Language } from "../project/language.js";
 
@@ -100,7 +100,7 @@ export async function uploadRelease(ctx: Context, name: string, note: string): P
   if (files.length === 0) throw new UsageError(NOTHING_TO_SEND);
   // The app says whether it has a page; its built folder is one a .gitignore names, and rides with the release.
   const app = languages[0] === undefined ? undefined : appFileOf(ctx.cwd, languages[0]);
-  const page = app === undefined ? null : ((await describedApp(ctx.cwd, app, agents, ctx.processEnv))?.page ?? null);
+  const page = app === undefined ? null : pageIn((await describedApp(ctx.cwd, app, agents, ctx.processEnv))?.page ?? null, ctx.env);
   const built = page === null ? [] : folderFiles(ctx.cwd, page.dir);
   if (page !== null && !built.includes(`${page.dir}/index.html`)) throw new UsageError(PAGE_NOT_BUILT(page.dir));
   const sent = await api.uploadRelease(ctx.gateway(), name, tarball(ctx.cwd, [...new Set([...files, ...built])].sort()), note, page);

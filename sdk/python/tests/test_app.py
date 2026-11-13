@@ -111,6 +111,17 @@ def test_a_page_is_a_folder_inside_the_project_reaching_the_first_lines_agent() 
         voice_app("other").page("ui/dist")
 
 
+def test_a_page_may_be_kept_to_one_environment_and_no_other_word_names_one() -> None:
+    app = voice_app("brightside").line("+14155550134", FrontDesk).page("site", only="sandbox")
+    assert app.paged is not None
+    assert app.paged.only == "sandbox"
+    everywhere = voice_app("both").line("+14155550134", FrontDesk).page("site").paged
+    assert everywhere is not None
+    assert everywhere.only is None
+    with pytest.raises(DeclarationRefused, match="in one"):
+        voice_app("other").line("+14155550134", FrontDesk).page("site", only="staging")
+
+
 async def test_an_entry_reaches_its_handlers_by_name_a_logged_line_by_its_own() -> None:
     heard: list[tuple[str | None, JsonObject]] = []
 

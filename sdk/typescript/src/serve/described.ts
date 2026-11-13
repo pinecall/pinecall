@@ -2,14 +2,15 @@
 
 import { parseArgs } from "node:util";
 
+import type { World } from "../client/signed.js";
 import type { Io } from "./io.js";
 import { CannotServe, loadApp, loadServed } from "./load.js";
 
 /** What `serve app` prints. */
 export interface Described {
   name: string;
-  /** The app's page: its built folder from the project's root, and the slug of the agent a visitor reaches. */
-  page: { dir: string; agent: string } | null;
+  /** The app's page: its built folder from the project's root, the slug of the agent a visitor reaches, and the one environment it is served in, when it has one. */
+  page: { dir: string; agent: string; only?: World } | null;
 }
 
 /** Print the app at `--app`, its classes read from each `--file` served as its `--slug`. */
@@ -25,7 +26,7 @@ export async function described(argv: string[], io: Io): Promise<number> {
   const page = app.paged;
   const agent = page === undefined ? undefined : classes.get(page.answers);
   if (page !== undefined && agent === undefined) throw new CannotServe(`${app.name}'s page reaches ${page.answers.name}, and no agent of the project is that class`);
-  const told: Described = { name: app.name, page: page === undefined || agent === undefined ? null : { dir: page.dir, agent } };
+  const told: Described = { name: app.name, page: page === undefined || agent === undefined ? null : { dir: page.dir, agent, ...(page.only === undefined ? {} : { only: page.only }) } };
   io.out.write(`${JSON.stringify(told)}\n`);
   return 0;
 }

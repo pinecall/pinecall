@@ -2,7 +2,9 @@
 
 ## 0.11.38 — a page's chat is written, a visitor keeps the conversation from page to page, and an app of one agent is one row (2026-11-13)
 
-- Released with the runtime: nothing of this package changed.
+- **A page may be one environment's alone.** `app.page("site", only="sandbox")` keeps a guide or a
+  demo to the sandbox: a deploy to production sends the app alone. `pinecall start` follows the same
+  rule, and anything but `sandbox` or `production` is refused as the app is declared.
 
 ## 0.11.37 — an app's own page dictates, the widget's header is a menu, and a page going away ends its call (2026-11-13)
 

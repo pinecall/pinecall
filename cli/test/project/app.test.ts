@@ -6,7 +6,23 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { servedApp } from "../../src/project/app.js";
+import { pageIn, servedApp } from "../../src/project/app.js";
+
+describe("the page a release carries", () => {
+  const page = { dir: "site", agent: "riley" };
+
+  it("is the app's, in either environment, when the app keeps it to none", () => {
+    expect(pageIn(page, "sandbox")).toEqual(page);
+    expect(pageIn(page, "production")).toEqual(page);
+    expect(pageIn(null, "production")).toBeNull();
+  });
+
+  it("is none in the environment the app keeps it out of: that release is the app alone", () => {
+    expect(pageIn({ ...page, only: "sandbox" }, "sandbox")).toEqual(page);
+    expect(pageIn({ ...page, only: "sandbox" }, "production")).toBeNull();
+    expect(pageIn({ ...page, only: "production" }, "sandbox")).toBeNull();
+  });
+});
 
 /** A project with one agent, an `app.ts` at its root, and a framework whose serve entry does what `serve` says. */
 function projectWhoseFramework(serve: string): { root: string; agents: string[] } {

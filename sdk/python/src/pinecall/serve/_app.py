@@ -90,6 +90,8 @@ def described(flags: Flags, out: TextIO) -> int:
         if slug is None:
             raise CannotServe(f"{app.name}'s page reaches {reached.__name__}, which no agent is")
         page = {"dir": app.paged.dir, "agent": slug}
+        if app.paged.only is not None:
+            page["only"] = app.paged.only
     out.write(json.dumps({"name": app.name, "page": page}) + "\n")
     return 0
 
@@ -143,6 +145,9 @@ async def page_of(
     port = int(env.get("PINECALL_PAGE_PORT") or PAGE_PORT)
     client = process.client
     key, world = env.get("PINECALL_KEY", ""), cast("Env | None", client.env)
+    # A page of one environment is not this one's: `pinecall start --prod` holds the app alone.
+    if paged.only is not None and world is not None and paged.only != world:
+        return None
     paging = Paging(file.parent / paged.dir, agent, client.url, key, world, port)
     for tried in range(PORT_TRIES + 1):
         try:

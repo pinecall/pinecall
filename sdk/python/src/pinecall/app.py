@@ -28,6 +28,11 @@ NOT_AN_AGENT = (
     ' app.line(number, FrontDesk) or app.line(number, "front-desk")'
 )
 NOT_A_PAGE = 'a page is the folder its build writes, inside the project: app.page("ui/dist")'
+WORLDS = ("sandbox", "production")
+NOT_A_PAGE_ENV = (
+    "a page is served in both environments, or in one: "
+    'app.page(folder, only="sandbox") or only="production"'
+)
 NO_AGENT_FOR_A_PAGE = (
     "a page's visitors reach an agent: write a line before the page,"
     " or name one with app.page(dir, answers=FrontDesk)"
@@ -66,6 +71,8 @@ class Page:
 
     dir: str
     answers: type
+    # The one environment the page is served in: a guide in the sandbox, say. Both, when None.
+    only: str | None = None
 
 
 @dataclass
@@ -157,8 +164,10 @@ class VoiceApp:
             self._hearing.setdefault(name, []).append(handler)
         return self
 
-    def page(self, folder: str, *, answers: type | str | None = None) -> "VoiceApp":
-        """The app's page: `app.page("ui/dist")`, served by the platform at the app's own name."""
+    def page(
+        self, folder: str, *, answers: type | str | None = None, only: str | None = None
+    ) -> "VoiceApp":
+        """The app's page, `app.page("ui/dist")`; `only="sandbox"` keeps it out of production."""
         if isinstance(answers, str):
             answers = agent_of(answers, f"{self.name}'s page")
         cleaned = folder.removeprefix("./").rstrip("/")
@@ -171,7 +180,9 @@ class VoiceApp:
         reached = answers or (self.lines[0].answers if self.lines else None)
         if reached is None or not _is_an_agent(reached):
             raise DeclarationRefused(NO_AGENT_FOR_A_PAGE)
-        self.paged = Page(cleaned, reached)
+        if only is not None and only not in WORLDS:
+            raise DeclarationRefused(NOT_A_PAGE_ENV)
+        self.paged = Page(cleaned, reached, only)
         return self
 
     def silence(self, *, after: float | str, say: str, times: int | None = None) -> "VoiceApp":

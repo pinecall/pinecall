@@ -2639,7 +2639,9 @@ acme-support · release 4 sent · 38 KB · 3b507661b052
 A project whose voice app (`app.ts`, `app.py` or `app.rb`, in its agents' language) names a page
 (`app.page("ui/dist")`) is sent with it: the built folder rides
 with the release though a `.gitignore` names it, and the answer says where Pinecall serves it. A page
-that is not built is refused before anything is sent.
+that is not built is refused before anything is sent. A page the app keeps to one environment
+(`app.page("site", { only: "sandbox" })`) is left out of a deploy to the other: that release is the
+app alone, and the answer names no page.
 
 ```console
 ~/brightside-dental $ pinecall deploy up --prod

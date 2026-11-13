@@ -172,6 +172,13 @@ describe("a page", () => {
     expect(app.agents()).toEqual([Billing]);
   });
 
+  it("may be kept to one environment, and no other word names one", () => {
+    const app = voiceApp("brightside").line("+14155550134", FrontDesk).page("site", { only: "sandbox" });
+    expect(app.paged).toEqual({ dir: "site", answers: FrontDesk, only: "sandbox" });
+    // @ts-expect-error an environment is sandbox or production
+    expect(() => voiceApp("brightside").line("+14155550134", FrontDesk).page("site", { only: "staging" })).toThrow(/in one/);
+  });
+
   it("is refused outside the project, with no agent to reach, and twice", () => {
     expect(() => voiceApp("brightside").line("+14155550134", FrontDesk).page("../site")).toThrow(DeclarationRefused);
     expect(() => voiceApp("brightside").line("+14155550134", FrontDesk).page("/var/www")).toThrow(DeclarationRefused);

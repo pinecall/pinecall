@@ -90,6 +90,8 @@ async function pageOf(app: VoiceApp, file: string, pc: Pinecall, slugs: Map<Load
   const paged = app.paged;
   const agent = paged === undefined ? undefined : slugs.get(paged.answers);
   if (paged === undefined || agent === undefined || io.env["PINECALL_HOST"]) return undefined;
+  // A page of one environment is not this one's: `pinecall start --prod` holds the app alone, as its deploy does.
+  if (paged.only !== undefined && pc.env !== undefined && paged.only !== pc.env) return undefined;
   const port = Number(io.env["PINECALL_PAGE_PORT"] ?? PAGE_PORT);
   const paging = { folder: resolve(dirname(file), paged.dir), agent, door: { url: pc.url, apiKey: pc.apiKey, env: pc.env }, port };
   // A reload starts this process while the one before it drains, still on the port: it is asked for until that one left.

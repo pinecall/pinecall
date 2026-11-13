@@ -11,8 +11,18 @@ import { appFileOf } from "./layout.js";
 /** What a project's voice app says of itself. */
 export interface DescribedApp {
   name: string;
-  /** Its page: the built folder from the project's root, and the slug of the agent a visitor reaches. */
-  page: { dir: string; agent: string } | null;
+  /** Its page: the built folder from the project's root, the slug of the agent a visitor reaches, and the one environment it is served in when the app keeps it to one. */
+  page: { dir: string; agent: string; only?: "sandbox" | "production" } | null;
+}
+
+/**
+ * The page a release to `env` carries. An app may keep its page to one environment
+ * (`app.page(dir, { only: "sandbox" })`, a guide beside the agent): a release to the other is the
+ * app alone, with no page sent and none served.
+ */
+export function pageIn(said: DescribedApp["page"], env: "sandbox" | "production"): { dir: string; agent: string } | null {
+  if (said === null || (said.only !== undefined && said.only !== env)) return null;
+  return { dir: said.dir, agent: said.agent };
 }
 
 // A framework that has no `app` verb answers with its usage: such a project has no page to send.
