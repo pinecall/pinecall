@@ -1,11 +1,12 @@
 /** Calls: every conversation of the org, as threads beside the one open or as one table; the address says which, through which status, and which call. */
 
 import { useMemo, useState, type ReactNode } from "react";
-import { Navigate, useParams } from "react-router";
+import { Navigate, useNavigate, useParams } from "react-router";
 
 import { Icon } from "../shell/icons";
 import { useOrg } from "../lib/org";
 import { PageHead } from "../shell/page-head";
+import { useGrouped } from "./grouped";
 import { ThreadList } from "./list";
 import { OpenCall } from "./open-call";
 import { keeps } from "./status";
@@ -28,14 +29,23 @@ function holding(threads: readonly Thread[], call: string | undefined): Thread |
 export function CallsPage(): ReactNode {
   const { call: chosen } = useParams();
   const url = useCallsUrl();
-  const { lines } = useOrg();
+  const { lines: read } = useOrg();
+  const navigate = useNavigate();
+  const [grouped, flipGrouped] = useGrouped();
+  // The feed says nothing of an erasure, so the list would keep the call until its next read: taken out here.
+  const [erased, setErased] = useState<ReadonlySet<string>>(new Set());
+  const lines = useMemo(() => (erased.size === 0 ? read : read.filter((line) => !erased.has(line.call))), [read, erased]);
   const [details, setDetails] = useState(() => window.innerWidth > DETAILS_OPEN_FROM);
   const { agent, status } = url;
   const mine = useMemo(() => (agent === "" ? lines : lines.filter((line) => line.agent === agent)), [lines, agent]);
-  const threads = useMemo(() => threadsOf(mine.filter((line) => keeps(status, line))), [mine, status]);
+  const threads = useMemo(() => threadsOf(mine.filter((line) => keeps(status, line)), grouped), [mine, status, grouped]);
   // Who the person is does not depend on the status picked: their other conversations are all of them.
   const everyone = useMemo(() => threadsOf(lines), [lines]);
   const first = threads[0];
+  const onErased = (call: string): void => {
+    setErased((was) => new Set(was).add(call));
+    if (call === chosen) void navigate(`/calls${url.search}`, { replace: true });
+  };
 
   const views = (
     <div className="dash-switch" role="group" aria-label="How the calls are listed">
@@ -52,7 +62,7 @@ export function CallsPage(): ReactNode {
     return (
       <>
         <PageHead>{views}</PageHead>
-        <CallsTable lines={mine} url={url} />
+        <CallsTable lines={mine} url={url} onErased={onErased} />
       </>
     );
   }
@@ -73,7 +83,7 @@ export function CallsPage(): ReactNode {
         )}
       </PageHead>
       <div className="app-layout calls-layout">
-        <ThreadList threads={threads} lines={mine} open={holding(threads, chosen)} shown={chosen} url={url} />
+        <ThreadList threads={threads} lines={mine} open={holding(threads, chosen)} shown={chosen} url={url} grouped={grouped} onGroup={flipGrouped} onErased={onErased} />
         <div className="app-open">
           {chosen === undefined ? (
             <p className="dash-quiet app-open-note">Pick a conversation to read it here.</p>

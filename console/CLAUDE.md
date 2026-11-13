@@ -37,7 +37,7 @@ was deployed with, whatever this checkout says.
   operator's, …), each with its `door.ts` (the gateway's answers it reads, as zod schemas), its
   page and its one stylesheet · `shell/` (the frame: the menu, the org picker, the page's head) ·
   `login/` (sign-in, sign-up, an invitation) · `lib/` (the page's own reading of the gateway: the
-  world, the key, the org) · `ui/` (the kit: the side panel, every control). Its `vite.config.ts`
+  world, the key, the org) · `ui/` (the kit: the side panel, every control, and `row-menu.tsx`, the menu a right click opens on a row of any list: a row that is a link gets what a link can do, and a page adds its own with `useRowMenu`). Its `vite.config.ts`
   builds `dist/`.
 - `../packages/core/src/` — what any supervisor app stands on, imported as `@pinecall/core/<module>`
   and taken as SOURCE by the app's bundler (nothing here is compiled): `api.ts` (the fetch, the one

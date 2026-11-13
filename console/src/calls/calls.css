@@ -46,6 +46,9 @@
 .calls-row-time.dash-mood-good { color: var(--good); }
 .calls-row-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 18px; min-width: 0; }
 .calls-row-where { flex: 1; min-width: 0; font-size: 12px; font-weight: 400; color: var(--quiet); }
+.calls-filters { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.calls-filters > .calls-chips { flex: 1; }
+.calls-group { margin-left: auto; }
 .calls-count { flex: none; padding: 0 6px; border-radius: 999px; background: var(--raised); font-size: 11px; color: var(--quiet); font-variant-numeric: tabular-nums; }
 /* Every call of the open person, under their row. */
 .calls-theirs { display: flex; flex-direction: column; gap: 1px; margin: 0 0 4px 42px; padding-left: 8px; border-left: 1px solid var(--line); }

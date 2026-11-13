@@ -10,6 +10,7 @@ import { AvatarOf } from "../apps/avatar";
 import { lengthOf, utcDay } from "../lib/format";
 import { useOrg } from "../lib/org";
 import { Select } from "../ui/select";
+import { useCallMenu } from "./call-menu";
 import { Face } from "./face";
 import { AgentPick, StatusChips } from "./filters";
 import { copyOf, hourOf, lettersFor, liveFirst, simulationOf, standingOf, webVisitor } from "./format";
@@ -33,14 +34,15 @@ function hrefOf(call: string, url: CallsUrl): string {
   return `/calls/${encodeURIComponent(call)}${url.status === "" ? "" : `?status=${url.status}`}`;
 }
 
-function Row({ line, to, now }: { line: SessionLine; to: string; now: number }): ReactNode {
+function Row({ line, to, now, onErased }: { line: SessionLine; to: string; now: number; onErased: (call: string) => void }): ReactNode {
+  const menu = useCallMenu(onErased);
   const { whose } = useOrg();
   const who = isSimulated(line) ? simulationOf(line.call) : whoOn(line, webVisitor);
   const live = isLive(line);
   const standing = standingOf(line);
   const copy = copyOf(line, whose?.subject ?? null);
   return (
-    <Link to={to} className="calls-tr dash-row" title={line.call}>
+    <Link to={to} className="calls-tr dash-row" title={line.call} onContextMenu={(event) => menu(event, line, who)}>
       <Face name={who} letters={isSimulated(line) ? "S" : lettersFor(line.caller?.name, line.direction === "outbound" ? line.to : line.from)} on={live ? (standing.mood === "warn" ? "asking" : "live") : null} />
       <span className="calls-td-who">
         <span className="calls-td-name dash-clip">{who}</span>
@@ -73,7 +75,7 @@ function Row({ line, to, now }: { line: SessionLine; to: string; now: number }):
   );
 }
 
-export function CallsTable({ lines, url }: { /** What the page follows, through the agent picked. */ lines: readonly SessionLine[]; url: CallsUrl }): ReactNode {
+export function CallsTable({ lines, url, onErased }: { /** What the page follows, through the agent picked. */ lines: readonly SessionLine[]; url: CallsUrl; onErased: (call: string) => void }): ReactNode {
   const navigate = useNavigate();
   const [pages, setPages] = useState(1);
   const filter: Filter = { query: url.query, agent: url.agent, channel: url.channel };
@@ -124,7 +126,7 @@ export function CallsTable({ lines, url }: { /** What the page follows, through 
                   </span>
                 </div>
                 {day.lines.map((line) => (
-                  <Row key={line.call} line={line} to={hrefOf(line.call, url)} now={now} />
+                  <Row key={line.call} line={line} to={hrefOf(line.call, url)} now={now} onErased={onErased} />
                 ))}
               </Fragment>
             ))}

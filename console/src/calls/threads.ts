@@ -39,11 +39,14 @@ function handleOf(line: SessionLine): string {
   return line.channel === "web" ? "web visitor" : address;
 }
 
-/** The calls grouped by who was on them: a person waiting for a human first, then whoever is on the line, then the newest. */
-export function threadsOf(lines: readonly SessionLine[]): Thread[] {
+/**
+ * The calls as the list's rows: a person waiting for a human first, then whoever is on the line, then the newest.
+ * Grouped, a row is a person and holds every call of theirs; one by one, each call is a row of its own.
+ */
+export function threadsOf(lines: readonly SessionLine[], grouped = true): Thread[] {
   const found = new Map<string, Thread>();
   for (const line of lines) {
-    const contact = contactOf(line);
+    const contact = grouped ? contactOf(line) : line.call;
     const standing = found.get(contact);
     if (standing === undefined) {
       found.set(contact, { contact, name: line.caller?.name ?? null, handle: handleOf(line), lines: [line], latest: line });

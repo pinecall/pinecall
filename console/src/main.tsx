@@ -22,6 +22,7 @@ import { API_BASE, DEVICE, forgetKey, keepKey, keptKey } from "./lib/key";
 import { forgetThisBrowser } from "./lib/notifier";
 import { OrgProvider } from "./lib/org";
 import { inWorld, pageHere, WORLD, WORLD_BASE } from "./lib/world";
+import { RowMenus } from "./ui/row-menu";
 import { Accept, Login, SignUp, Terminal, Verify, VERIFY } from "./login";
 import { MonitorsPage } from "./monitors/monitors";
 import { BillingPage } from "./billing/billing";
@@ -144,7 +145,9 @@ function Console({ startingWith }: { startingWith: string | null }): ReactNode {
   return (
     <CredentialsProvider value={credentials}>
       <OrgProvider>
-        <RouterProvider router={router} />
+        <RowMenus>
+          <RouterProvider router={router} />
+        </RowMenus>
       </OrgProvider>
     </CredentialsProvider>
   );

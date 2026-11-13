@@ -2,10 +2,12 @@
 
 ## Unreleased
 
-- **Every call of a person is in the console's list.** Calls lists one row per person, showing their
-  newest call, and their earlier ones were only in the details panel: someone who called three times
-  read as one call. A row that holds several says how many, and the open person's calls are listed
-  under their row.
+- **The console's call list is one row per call, grouped when asked, and a right click opens a row's
+  menu.** Calls listed one row per person showing their newest call, and someone who called three times
+  read as one call. A row is a call now; **Group**, beside the status chips, makes it one row per
+  person with their calls under it, kept in the browser. A right click on a row of any list opens its
+  menu: open in a new tab, copy the link or the name, and on a call judge it again or erase it, asked
+  first. Erasing was only at the foot of the details panel.
 - **A phone put down ends its call at once.** A caller who hung up was waited for 20 seconds like one
   whose line dropped: the console said "on a call" after the phone was down, and a room LiveKit closed
   in that time could leave the call open. A leg that left because its caller hung up, was rejected
