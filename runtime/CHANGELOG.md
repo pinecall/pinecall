@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **The gateway serves the whole widget.** A page that loaded `/widget/pinecall-widget.js` from its
+  gateway got that file and a 404 for each of the nine modules it imports, so no widget was drawn:
+  the image was built with two of the widget's files, named one by one, since before it was split
+  into modules. Every module is built in, and `pinecall-runtime reach`, which a deploy ends in, asks
+  for each module the widget imports and no longer for its first file alone.
 - **A voice app is one app in the console, with its agents under it.** The Apps list drew a row for
   every hosted app and one for every held agent that was not named as one: an app of two agents, whose
   names are not the app's, read as three apps, two of them "connected from your server". `GET

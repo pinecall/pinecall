@@ -43,6 +43,22 @@ async def test_a_page_a_browser_may_keep_is_named_and_the_rest_is_still_asked() 
     assert set(found.values()) == {None}
 
 
+async def test_a_widget_whose_modules_are_not_served_is_named_by_the_first_one_missing() -> None:
+    """The widget's first file imports the ones beside it: one that answers 404 is the widget's trouble."""
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/widget/pinecall-widget.js":
+            said = 'import { Panel } from "./panel.js";\nimport { STYLE } from "./styles.js";\n'
+            return httpx.Response(200, text=said, headers={"access-control-allow-origin": "*"})
+        if request.url.path == "/widget/panel.js":
+            return httpx.Response(200, text="export {}")
+        return httpx.Response(404, json={"detail": "Not Found"})
+
+    async with httpx.AsyncClient(base_url="https://a.gateway", transport=httpx.MockTransport(answer)) as http:
+        found = {finding.name: finding.trouble for finding in await ask_gateway(http)}
+    assert found["widget"] == "/widget/pinecall-widget.js imports ./styles.js, and /widget/styles.js answered 404"
+
+
 # The suite's gateway is a checkout's: no console and no widget are built into it, which is what
 # the verb must say of it, while what the API itself answers is found well.
 @needs_the_services

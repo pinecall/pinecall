@@ -1,5 +1,6 @@
 """`reach`: a gateway asked at its name what a browser and a server ask first; the exit is 1 when one is wrong."""
 
+import re
 from collections.abc import Awaitable, Callable
 from typing import Annotated
 
@@ -13,6 +14,8 @@ WAITED_S = 10.0
 OK, UNAUTHORIZED, NOT_THERE = 200, 401, 404
 A_PAGE = "/calls/nobody"
 THE_WIDGET = "/widget/pinecall-widget.js"
+# A module the widget imports from beside itself: `from "./styles.js"`.
+ITS_OWN_MODULE = re.compile(r'from\s+"\./([\w.-]+\.js)"')
 A_KEY_NOBODY_ISSUED = {"Authorization": "Bearer pc_test_nobody"}
 NOT_FOUND = {"detail": "Not Found"}
 ALWAYS_THERE = ("/v1/calls", "/v1/tokens")
@@ -58,10 +61,17 @@ async def _ask_console(http: httpx.AsyncClient) -> str | None:
     return _wrong_header(page, "cache-control", "no-store")
 
 
+# The widget is modules: its first file imports the ones beside it, and a browser asks for each. Until
+# 2026-11-13 this asked for the first alone, and a gateway that served no other was found well.
 async def _ask_widget(http: httpx.AsyncClient) -> str | None:
     widget = await http.get(THE_WIDGET)
     if widget.status_code != OK:
         return f"{THE_WIDGET} answered {widget.status_code}"
+    for module in sorted(set(ITS_OWN_MODULE.findall(widget.text))):
+        beside = THE_WIDGET.rsplit("/", 1)[0] + "/" + module
+        imported = await http.get(beside)
+        if imported.status_code != OK:
+            return f"{THE_WIDGET} imports ./{module}, and {beside} answered {imported.status_code}"
     return _wrong_header(widget, "access-control-allow-origin", "*")
 
 
