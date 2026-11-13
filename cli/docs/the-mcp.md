@@ -7,7 +7,10 @@ tools take a person from an empty folder to an agent on Pinecall without a termi
 The server starts no process of its own but `pinecall-runtime`, for the `runtime` tool: what needs
 a browser, an editor or a speaker hands the link, the text or the file back instead. Every tool acts in the **sandbox** unless it says `prod`
 (below). No tool takes a vendor key, a carrier secret or an app's secret, and no answer carries a
-Pinecall key: every answer and every refusal is scrubbed before it reaches the model. The server
+Pinecall key: every answer and every refusal is scrubbed before it reaches the model. When a step
+needs a secret, the assistant is told to hand the person the command to type in their own terminal
+(`pinecall providers add <vendor>`, `pinecall carriers add twilio --account-sid AC… --user SK…`,
+`pinecall secrets set <NAME>`), which reads it with nothing echoed, and never to send them to a screen. The server
 writes one line per call to its stderr — the tool, how long it took, whether it answered or
 refused, never what it was asked or what it answered — which the assistant keeps in its own log.
 

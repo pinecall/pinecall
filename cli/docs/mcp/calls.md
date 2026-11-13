@@ -242,7 +242,7 @@ What the agent hears, decides and speaks with — the vendors and models of each
 
 The vendors an agent may run on: what each does, whether it is ready, and whose key it would run on. Never a key.
 
-`providers` lists every speech, model and voice vendor this gateway can run, what each does, and whose key a call would use. Bringing a key of your own is never a tool: the person types `pinecall providers add <vendor>` in a terminal, or uses the console.
+`providers` lists every speech, model and voice vendor this gateway can run, what each does, and whose key a call would use. Bringing a key of your own is never a tool, because the rule is that no key is printed or passed through an assistant: give the person the command to type in their own terminal, `pinecall providers add <vendor>`, which reads the key with nothing echoed.
 
 | parameter | takes | | what it is |
 |---|---|---|---|

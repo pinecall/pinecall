@@ -62,7 +62,7 @@ export const carriers = tool({
   name: "carriers",
   description: "The org's carrier accounts — Twilio, a SIP peer, WhatsApp — and one account's networks and how outbound calls leave. Never a secret.",
   schema: { action: z.enum(["list", "show"]).describe("list the org's carrier accounts, or show one"), account: z.string().optional().describe("`show`: the account's id") },
-  manual: "`carriers` lists the org's carrier accounts and shows one. Adding one takes its secrets, so it is never a tool: the person types `pinecall carriers add` in a terminal, or uses the console's Numbers screen.",
+  manual: "`carriers` lists the org's carrier accounts and shows one. Adding one takes its secret, and the rule is that no key is printed or passed through an assistant, so it is never a tool: give the person the command to type in their own terminal, `pinecall carriers add twilio --account-sid AC… --user SK…` (`sip` and `whatsapp` the same way), which reads the secret with nothing echoed.",
   handler: async (args, ctx) => {
     if (args.action === "show") return await service.showCarrier(ctx, args.account);
     return { carriers: await service.listCarriers(ctx) };

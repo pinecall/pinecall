@@ -23,9 +23,12 @@ switch still decides whether the key may.
 A tool that runs long (\`login\`, \`test\`, \`simulate\`, \`deploy\`) answers within \`wait_s\` seconds
 (25 unless asked, at most 50) with what it has, and says how to keep waiting.
 
-No secret passes through you: no tool takes a vendor key, a carrier secret or an app's secret, and
-none returns a Pinecall key. A person types those in a terminal (\`pinecall providers add\`,
-\`pinecall carriers add\`, \`pinecall secrets set\`) or in the console.
+The rule is that no key is printed and none is passed through you: no tool takes a vendor key, a
+carrier secret or an app's secret, and none returns a Pinecall key. When a step needs one, never ask
+for it and never send the person to a screen: give them the command to type in their own terminal,
+which reads the secret with nothing echoed —
+\`pinecall providers add <vendor>\`, \`pinecall carriers add twilio --account-sid AC… --user SK…\`
+(\`sip\` and \`whatsapp\` the same way), \`pinecall secrets set <NAME>\` — and go on once they say it is done.
 
 What cannot be undone is not a tool: erasing data, forgetting a contact, dropping a base, a number
 or a carrier, removing a deployed app. Those stay \`pinecall\` verbs a person types.`;

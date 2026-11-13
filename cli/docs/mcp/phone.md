@@ -89,7 +89,7 @@ The org's numbers and the agent each reaches; the numbers its carrier accounts o
 
 The org's carrier accounts — Twilio, a SIP peer, WhatsApp — and one account's networks and how outbound calls leave. Never a secret.
 
-`carriers` lists the org's carrier accounts and shows one. Adding one takes its secrets, so it is never a tool: the person types `pinecall carriers add` in a terminal, or uses the console's Numbers screen.
+`carriers` lists the org's carrier accounts and shows one. Adding one takes its secret, and the rule is that no key is printed or passed through an assistant, so it is never a tool: give the person the command to type in their own terminal, `pinecall carriers add twilio --account-sid AC… --user SK…` (`sip` and `whatsapp` the same way), which reads the secret with nothing echoed.
 
 | parameter | takes | | what it is |
 |---|---|---|---|
