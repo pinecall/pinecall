@@ -17,6 +17,11 @@
 .app-row-under { font-size: 12.5px; font-weight: 400; color: var(--quiet); }
 .app-row-worn { flex-direction: row; align-items: center; gap: 10px; }
 .app-row-words { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; }
+/* an app's agent, under its app: set in, and a size smaller */
+.app-row-of { margin-left: 18px; padding: 6px 10px; font-size: 13px; }
+.app-members { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 10px; }
+.app-member { display: inline-flex; align-items: center; gap: 8px; min-width: 0; padding: 7px 12px 7px 8px; border: 1px solid var(--line); border-radius: 8px; font-size: 13.5px; font-weight: 500; }
+.app-member:hover { background: var(--panel); }
 .app-avatar { display: block; flex: none; }
 
 .app-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; }

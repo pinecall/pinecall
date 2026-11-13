@@ -8,7 +8,7 @@ from fastapi.responses import StreamingResponse
 from runtime.accounts.auth import TheKeyCache
 from runtime.handles import TheClosing, TheSessions, TheSignal
 from runtime.hosting import schemas
-from runtime.hosting.auth import TheApp
+from runtime.hosting.auth import TheApp, TheHolding
 from runtime.hosting.service import apps, logs
 from runtime.kit import sse
 from runtime.live.auth import AppKey
@@ -20,10 +20,11 @@ RETRY_MS = 1000
 
 
 @router.get("/v1/hosted")
-async def list_hosted_apps(actor: AppKey, session: Session) -> schemas.HostedAppList:
-    """The apps the box hosts for the org in this env, by name."""
+async def list_hosted_apps(actor: AppKey, holding: TheHolding, session: Session) -> schemas.HostedAppList:
+    """The apps the box hosts for the org in this env, by name, each with the agents its processes hold."""
     standing = await apps.list_standing(session, actor.env, actor.org)
-    return schemas.HostedAppList(apps=[schemas.HostedAppRow.of(app) for app in standing])
+    listed = [schemas.HostedAppRow.of_standing(app, apps.agents_of(app.name, holding)) for app in standing]
+    return schemas.HostedAppList(apps=listed)
 
 
 @router.post("/v1/hosted/{name}/stop", status_code=204)

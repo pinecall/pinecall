@@ -46,7 +46,7 @@ function AgentsAndApps({ counted }: { counted: Insights | null }): ReactNode {
   const { studio, code } = useFleet();
   const known = [...studio.map((app) => ({ app, kind: "studio" as const })), ...code.map((app) => ({ app, kind: "code" as const }))];
   const of = new Map((counted?.agents ?? []).map((one) => [one.slug, one]));
-  const gone = [...of.keys()].filter((slug) => !known.some((one) => one.app.name === slug)).map((slug) => ({ app: { name: slug, hosted: null, held: null }, kind: "code" as const, gone: true }));
+  const gone = [...of.keys()].filter((slug) => !known.some((one) => one.app.name === slug)).map((slug) => ({ app: { name: slug, hosted: null, held: null, of: null, agents: [] }, kind: "code" as const, gone: true }));
   const rows = [...known.map((one) => ({ ...one, gone: false })), ...gone].sort((a, b) => (of.get(b.app.name)?.calls ?? 0) - (of.get(a.app.name)?.calls ?? 0) || a.app.name.localeCompare(b.app.name));
   return (
     <section className="dash-card" aria-label="Agents and apps">

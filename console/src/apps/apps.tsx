@@ -19,7 +19,7 @@ import { AppOverview } from "./app";
 import { Avatar } from "./avatar";
 import { ConfirmButton } from "./confirm";
 import { readHosted, readServed, removeApp, startApp, stopApp, type Hosted } from "./door";
-import { appsOf, saidOf, type App } from "./fold";
+import { appsOf, isOfAgents, saidOf, type App } from "./fold";
 import { LogsCard } from "./logs";
 import { Releases } from "./releases";
 import { Secrets } from "./secrets";
@@ -100,8 +100,8 @@ const AGENTS: Kind = {
 function Row({ app, kind, base, tab }: { app: App; kind: Kind["kind"]; base: string; tab: string }): ReactNode {
   const said = saidOf(app);
   return (
-    <NavLink to={`${base}/${encodeURIComponent(app.name)}${tab === "" ? "" : `/${tab}`}`} className={({ isActive }) => (isActive ? "app-row app-row-worn app-row-on" : "app-row app-row-worn")}>
-      <Avatar kind={kind} name={app.name} size={32} />
+    <NavLink to={`${base}/${encodeURIComponent(app.name)}${tab === "" ? "" : `/${tab}`}`} className={({ isActive }) => `app-row app-row-worn${app.of === null ? "" : " app-row-of"}${isActive ? " app-row-on" : ""}`}>
+      <Avatar kind={kind} name={app.name} size={app.of === null ? 32 : 24} />
       <span className="app-row-words">
         <span className="app-row-top">
           <span className="dash-clip">{app.name}</span>
@@ -258,6 +258,9 @@ function Fleet({ kind, tabs, base, title, search, nothing }: Kind): ReactNode {
   const shown = apps.filter((one) => one.name.toLowerCase().includes(filter.trim().toLowerCase()));
   const read = hosted !== null && agentsRead;
   const open = apps.find((one) => one.name === asked) ?? apps[0];
+  // An app's agent has no releases of its own, and an app of several agents has no settings, channels or tests of its own.
+  const shownTabs = open === undefined ? tabs : open.of !== null ? tabs.filter((one) => one.path !== "releases") : isOfAgents(open) ? tabs.filter((one) => one.path === "" || one.path === "releases") : tabs;
+  const at = shownTabs.some((one) => one.path === tab) ? tab : undefined;
 
   // The menu's row names the page, and the page opens on the first of its list, in the address like any other.
   if (read && asked === undefined && apps[0] !== undefined) return <Navigate to={`${base}/${encodeURIComponent(apps[0].name)}`} replace />;
@@ -272,12 +275,12 @@ function Fleet({ kind, tabs, base, title, search, nothing }: Kind): ReactNode {
       <PageHead open={open?.name} mark={open !== undefined && <Avatar kind={kind} name={open.name} size={20} />}>
         {open !== undefined && (
           <>
-            <TalkButton open={talking} onClick={() => setTalking(!talking)} />
+            {!isOfAgents(open) && <TalkButton open={talking} onClick={() => setTalking(!talking)} />}
             <Actions key={open.name} app={open} onChanged={reread} onRemoved={leave} />
           </>
         )}
       </PageHead>
-      {open !== undefined && talking && !making && <TalkPanel agent={open.name} onClose={stopTalking} />}
+      {open !== undefined && talking && !making && !isOfAgents(open) && <TalkPanel agent={open.name} onClose={stopTalking} />}
       {making && (
         <NewAgentPanel
           taken={new Set(agents.map((one) => one.slug))}
@@ -295,7 +298,7 @@ function Fleet({ kind, tabs, base, title, search, nothing }: Kind): ReactNode {
         <aside className="app-list" aria-label={title}>
           <div className="app-list-head">
             <span className="app-list-title">{title}</span>
-            <span className="dash-quiet">{read ? apps.length : ""}</span>
+            <span className="dash-quiet">{read ? apps.filter((one) => one.of === null).length : ""}</span>
             {makes && (
               <button type="button" className="app-button app-list-new" title={WORLD === "sandbox" ? "New agent" : "Agents are built in the sandbox: this opens it"} onClick={make}>
                 New
@@ -327,26 +330,26 @@ function Fleet({ kind, tabs, base, title, search, nothing }: Kind): ReactNode {
           )}
           {open !== undefined && (
             <>
-              <Tabs name={open.name} base={base} tabs={tabs}>
+              <Tabs name={open.name} base={base} tabs={shownTabs}>
               </Tabs>
               <div className="app-main">
                 {/* A tab that reads the agent as it runs is drawn only while the gateway answers for it. */}
-                {tab !== undefined && NEEDS_IT_ANSWERING.has(tab) && !isAnswering(open) && agentsRead ? (
+                {at !== undefined && NEEDS_IT_ANSWERING.has(at) && !isAnswering(open) && agentsRead ? (
                   <NotAnswering key={open.name} app={open} base={base} onChanged={reread} onRemoved={leave} />
                 ) : (
                   <>
-                    {kind === "studio" && tab === "configure" && <Configure key={open.name} agent={open.name} kind={kind} onSaved={reread} />}
-                    {kind === "studio" && tab === "knowledge" && <KnowledgeTab key={open.name} agent={open.name} />}
-                    {kind === "studio" && tab === "tools" && <StudioTools key={open.name} agent={open.name} onSaved={reread} />}
-                    {kind === "studio" && tab === "advanced" && <AdvancedTab key={open.name} agent={open.name} kind={kind} />}
-                    {tab === "channels" && <ChannelsTab key={open.name} agent={open.name} />}
-                    {tab === "monitors" && <MonitorsBoard key={open.name} agent={open.name} />}
-                    {tab === "test" && <TestTab key={open.name} agent={open.name} kind={kind} authors={names} />}
-                    {kind === "code" && tab === "setup" && <Setup key={open.name} agent={open.name} />}
-                    {kind === "code" && tab === "releases" && <ReleasesTab key={open.name} app={open} names={names} onChanged={reread} />}
+                    {kind === "studio" && at === "configure" && <Configure key={open.name} agent={open.name} kind={kind} onSaved={reread} />}
+                    {kind === "studio" && at === "knowledge" && <KnowledgeTab key={open.name} agent={open.name} />}
+                    {kind === "studio" && at === "tools" && <StudioTools key={open.name} agent={open.name} onSaved={reread} />}
+                    {kind === "studio" && at === "advanced" && <AdvancedTab key={open.name} agent={open.name} kind={kind} />}
+                    {at === "channels" && <ChannelsTab key={open.name} agent={open.name} />}
+                    {at === "monitors" && <MonitorsBoard key={open.name} agent={open.name} />}
+                    {at === "test" && <TestTab key={open.name} agent={open.name} kind={kind} authors={names} />}
+                    {kind === "code" && at === "setup" && <Setup key={open.name} agent={open.name} />}
+                    {kind === "code" && at === "releases" && <ReleasesTab key={open.name} app={open} names={names} onChanged={reread} />}
                   </>
                 )}
-                {!tabs.some((one) => one.path === tab && one.path !== "") && <AppOverview key={open.name} app={open} kind={kind} served={served.get(open.name) ?? 0} names={names} onChanged={reread} />}
+                {(at === undefined || at === "") && <AppOverview key={open.name} app={open} kind={kind} base={base} served={served.get(open.name) ?? 0} names={names} onChanged={reread} />}
               </div>
             </>
           )}

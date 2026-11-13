@@ -43,7 +43,8 @@ export function useFleet(): { studio: App[]; code: App[] } {
 
 /** How a list stands, in a line: `3 live, 1 failed, 1 stopped`. */
 function standing(apps: readonly App[], none: string): { said: string; mood: "calm" | "bad" } {
-  const moods = apps.map((one) => saidOf(one).mood);
+  // An app's agents are rows under it, and no apps of their own.
+  const moods = apps.filter((one) => one.of === null).map((one) => saidOf(one).mood);
   const of = (mood: string): number => moods.filter((one) => one === mood).length;
   const parts = [of("good") > 0 && `${of("good")} live`, of("warn") > 0 && `${of("warn")} on its way`, of("bad") > 0 && `${of("bad")} failed`, of("calm") > 0 && `${of("calm")} off`].filter((part) => part !== false);
   return { said: parts.length === 0 ? none : parts.join(", "), mood: of("bad") > 0 ? "bad" : "calm" };

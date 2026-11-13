@@ -25,6 +25,14 @@ class HostedAppRow(Row):
     kind: AppKind = AppKind.code
     created_by: str
     created_at: Epoch
+    # The agents its own processes hold now, by name: a voice app's agents are its, not apps beside it.
+    # Empty while nothing of it is connected, and for a Studio agent, which the gateway holds itself.
+    agents: list[str] = []
+
+    @classmethod
+    def of_standing(cls, app: Any, agents: Sequence[str]) -> Self:
+        """The body an app answers as, with the agents its processes hold."""
+        return cls.of(app).model_copy(update={"agents": list(agents)})
 
 
 class HostedAppList(Row):

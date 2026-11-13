@@ -1,6 +1,7 @@
 /** An app or a Studio agent's overview: what its calls say; an app's measures too, and a Studio agent's releases. */
 
 import { useEffect, useState, type ReactNode } from "react";
+import { Link } from "react-router";
 
 import { useCredentials } from "@pinecall/core/credentials";
 import { seconds } from "@pinecall/core/metrics";
@@ -13,10 +14,11 @@ import { count, dayLabel, money, percent } from "../lib/format";
 import { callsOf, useInsights } from "../lib/insights";
 import { WORLD } from "../lib/world";
 import { whoIs } from "./door";
-import { hours, saidOf, type App } from "./fold";
+import { Avatar } from "./avatar";
+import { hours, isOfAgents, saidOf, type App } from "./fold";
 import { Releases } from "./releases";
 
-export function AppOverview({ app, kind, served, names, onChanged }: { app: App; kind: "code" | "studio"; served: number; names: ReadonlyMap<string, string>; onChanged: () => void }): ReactNode {
+export function AppOverview({ app, kind, base, served, names, onChanged }: { app: App; kind: "code" | "studio"; base: string; served: number; names: ReadonlyMap<string, string>; onChanged: () => void }): ReactNode {
   const credentials = useCredentials();
   const counted = useInsights(30, { agent: app.name });
   const rehearsed = useInsights(30, { agent: app.name, world: "sandbox" });
@@ -41,14 +43,52 @@ export function AppOverview({ app, kind, served, names, onChanged }: { app: App;
   const passed = counted?.passed ?? 0;
   const channels = counted?.channels;
 
+  const failed = hosted?.failed_why != null && (
+    <section className="app-failed" aria-label="Why it failed">
+      <span className="app-failed-title">Release {hosted.release} did not start</span>
+      <pre className="app-logs">{hosted.failed_why}</pre>
+    </section>
+  );
+  // An app of several agents has no calls of its own: each agent's are on its own page, a row under the app's.
+  if (isOfAgents(app)) {
+    return (
+      <div className="app-panel">
+        {failed}
+        <section className="dash-card" aria-label="Its agents">
+          <div className="dash-card-top">
+            <span className="dash-eyebrow">Agents</span>
+          </div>
+          <p className="dash-quiet app-note">The calls, the tests, the channels and the settings are each agent's own.</p>
+          <div className="app-members">
+            {app.agents.map((slug) => (
+              <Link key={slug} to={`${base}/${encodeURIComponent(slug)}`} className="app-member">
+                <Avatar kind={kind} name={slug} size={24} />
+                <span className="dash-clip">{slug}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+        <section className="dash-card" aria-label="How it is running">
+          <div className="dash-parts cfg-parts-flush">
+            <Part
+              title="Running"
+              value={hosted === null ? said.where : hosted.live_release === null ? "Not serving" : `Release ${hosted.live_release}`}
+              under={hosted === null ? "Connected to the gateway" : `Deployed by ${whoIs(names, hosted.created_by)}`}
+              facts={[
+                { name: "Served", value: hosted === null ? "—" : hours(served) },
+                { name: "World", value: WORLD === "sandbox" ? "Sandbox" : "Production" },
+                { name: "Agents", value: String(app.agents.length) },
+              ]}
+            />
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="app-panel">
-      {hosted?.failed_why != null && (
-        <section className="app-failed" aria-label="Why it failed">
-          <span className="app-failed-title">Release {hosted.release} did not start</span>
-          <pre className="app-logs">{hosted.failed_why}</pre>
-        </section>
-      )}
+      {failed}
 
       <section className="dash-card app-headlines" aria-label="The last 30 days">
         <Ring

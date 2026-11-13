@@ -9,6 +9,10 @@ export interface App {
   name: string;
   hosted: Hosted | null;
   held: HeldAgent | null;
+  /** The hosted app whose processes hold this agent, when the row is one of an app's agents; null on an app's own row. */
+  of: string | null;
+  /** The agents the app's processes hold under other names than its own: the rows listed under it. */
+  agents: readonly string[];
 }
 
 export interface Said {
@@ -17,14 +21,29 @@ export interface Said {
   where: string;
 }
 
-/** One row per name, the stopped ones last: what the box hosts of that kind, and every agent of that kind that is connected. */
+// A voice app holds several agents under names that are not its own. Until 0.11.37 each of them was a row
+// beside its app, "connected from your server": one app of two agents read as three apps.
+/**
+ * One row per app, the stopped ones last: what the box hosts of that kind, each followed by the agents its
+ * processes hold, and every other agent of that kind that is connected, which a server of yours holds.
+ */
 export function appsOf(hosted: readonly Hosted[], held: readonly HeldAgent[], kind: "code" | "studio"): App[] {
   const code = hosted.filter((one) => one.kind === kind);
   const classes = held.filter((one) => (one.kind === "studio") === (kind === "studio"));
-  const named = new Set([...code.map((one) => one.name), ...classes.map((one) => one.slug)]);
-  const apps = [...named].sort().map((name) => ({ name, hosted: code.find((one) => one.name === name) ?? null, held: classes.find((one) => one.slug === name) ?? null }));
-  return [...apps.filter((one) => one.hosted?.stopped !== true), ...apps.filter((one) => one.hosted?.stopped === true)];
+  const heldAs = (slug: string): HeldAgent | null => classes.find((one) => one.slug === slug) ?? null;
+  const members = (app: Hosted): string[] => app.agents.filter((slug) => slug !== app.name).sort();
+  const theirs = new Set(code.flatMap(members));
+  const named = new Set([...code.map((one) => one.name), ...classes.map((one) => one.slug).filter((slug) => !theirs.has(slug))]);
+  const apps = [...named].sort().map((name): App => {
+    const app = code.find((one) => one.name === name) ?? null;
+    return { name, hosted: app, held: heldAs(name), of: null, agents: app === null ? [] : members(app) };
+  });
+  const listed = [...apps.filter((one) => one.hosted?.stopped !== true), ...apps.filter((one) => one.hosted?.stopped === true)];
+  return listed.flatMap((app) => [app, ...app.agents.map((slug): App => ({ name: slug, hosted: null, held: heldAs(slug), of: app.name, agents: [] }))]);
 }
+
+/** Whether the row is an app whose calls are its agents': it holds agents, and none under its own name. */
+export const isOfAgents = (app: App): boolean => app.agents.length > 0 && app.held === null;
 
 function terminalOf(held: HeldAgent): string | null {
   const holder = held.holder?.holder;
@@ -32,7 +51,8 @@ function terminalOf(held: HeldAgent): string | null {
 }
 
 /** Its state, the newest release being the one a state speaks of, and where it runs. */
-export function saidOf({ hosted, held }: App): Said {
+export function saidOf({ hosted, held, of }: App): Said {
+  if (of !== null) return { state: `Agent of ${of}`, mood: "good", where: "On Pinecall" };
   if (hosted !== null) {
     const where = hosted.kind === "studio" ? "Built in Studio" : "On Pinecall";
     if (hosted.stopped) return { state: "Stopped", mood: "calm", where };

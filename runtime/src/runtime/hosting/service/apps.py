@@ -1,6 +1,6 @@
 """An app the box hosts for an org: how it stands, and its being opened, stopped, started and let go."""
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Protocol
@@ -87,6 +87,15 @@ async def list_standing(session: AsyncSession, env: Env, org: str | None = None)
     """The apps the box hosts in the env, one org's or every org's, by org and name, stopped ones too."""
     rows = await HostedAppRepository(session).list_standing(env, org, logs_for_s=LOGS_FOR_S)
     return [_standing_of(row, env) for row in rows]
+
+
+# A release's host carries its app's name, and a process says the host it runs on: what the
+# processes of that name hold are the app's agents. Until 0.11.37 the console was told the hosted
+# apps and the held agents apart, and listed the two agents of one voice app as two more apps.
+def agents_of(name: str, holding: Mapping[str, Sequence[str]]) -> list[str]:
+    """The agents the app's own processes hold now, by name, once each."""
+    held = (slugs for host, slugs in holding.items() if hostnames.is_host_of(name, host))
+    return sorted({slug for slugs in held for slug in slugs})
 
 
 def hosts_of(processes: Processes, org: str, env: Env) -> frozenset[str]:

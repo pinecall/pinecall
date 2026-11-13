@@ -13,6 +13,8 @@ const HostedSchema = z.object({
   kind: z.enum(["code", "studio"]),
   created_by: z.string(),
   created_at: z.number(),
+  /** The agents the app's own processes hold now; a gateway from before it said names none. */
+  agents: z.array(z.string()).default([]),
 });
 
 const ReleaseSchema = z.object({ name: z.string(), release: z.number().int(), sha256: z.string(), bytes: z.number().int(), author: z.string(), note: z.string(), created_at: z.number() });

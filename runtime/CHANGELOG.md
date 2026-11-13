@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- **A voice app is one app in the console, with its agents under it.** The Apps list drew a row for
+  every hosted app and one for every held agent that was not named as one: an app of two agents, whose
+  names are not the app's, read as three apps, two of them "connected from your server". `GET
+  /v1/hosted` says the agents each app's own processes hold (`agents`), read off the host a process
+  says it runs on, and the console lists them under their app: the releases, the logs and stop and
+  start on the app's row, the calls, the tests, the channels and the settings on each agent's.
+
 ## 0.11.36 — a Python app names its agents by slug, and Brightside Dental is an example in every language (2026-11-13)
 
 - Released with the SDKs: nothing of this package changed.

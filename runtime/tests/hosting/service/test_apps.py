@@ -11,7 +11,15 @@ from runtime.enums import Env
 from runtime.exceptions import NotFound
 from runtime.hosting.models import HostedApp
 from runtime.hosting.repository import HostedAppRepository
-from runtime.hosting.service.apps import App, delete_app, environment_for, list_standing, open_app, start_app
+from runtime.hosting.service.apps import (
+    App,
+    agents_of,
+    delete_app,
+    environment_for,
+    list_standing,
+    open_app,
+    start_app,
+)
 from runtime.hosting.service.hostnames import host_of
 from runtime.hosting.service.releases import check_source, keep_release, list_releases
 from runtime.kit.crypto import fingerprint
@@ -129,3 +137,15 @@ async def test_deleting_an_app_takes_its_releases_and_revokes_its_token(
     assert await key_cache.verify(token) is None
     (minted,) = await hosted_keys(sessions, tenant.org)
     assert minted.revoked_at is not None
+
+
+def test_an_apps_agents_are_what_the_processes_of_its_name_hold_and_nobody_elses() -> None:
+    holding = {
+        "brightside-r4-7247b145": ["clinic-front-desk", "clinic-billing"],
+        "brightside-r4-f438d14a": ["clinic-billing", "clinic-front-desk"],
+        "brightside-dental-r2-0a1b2c3d": ["dental-desk"],
+        "anas-macbook.local": ["clinic-front-desk", "drafts"],
+    }
+    assert agents_of("brightside", holding) == ["clinic-billing", "clinic-front-desk"]
+    assert agents_of("brightside-dental", holding) == ["dental-desk"]
+    assert agents_of("support", holding) == []

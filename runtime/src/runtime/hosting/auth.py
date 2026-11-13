@@ -1,5 +1,6 @@
 """Hosting's dependencies: the env's runner, the app a path names, the page a name reaches, and what they stand on."""
 
+from collections.abc import Mapping, Sequence
 from typing import Annotated
 
 from fastapi import Depends, Request
@@ -76,3 +77,15 @@ def processes_of(parts: TheLive) -> Processes:
 
 
 TheProcesses = Annotated[Processes, Depends(processes_of)]
+
+
+def holding_of(parts: TheLive, actor: AppKey) -> Mapping[str, Sequence[str]]:
+    """What the org's processes in the env hold, by the host each says it runs on."""
+    held: dict[str, list[str]] = {}
+    for socket in parts.sockets.apps_of(actor.org, actor.env):
+        if socket.host is not None:
+            held.setdefault(socket.host, []).extend(one.slug for one in parts.holders.list_of_socket(socket.app))
+    return held
+
+
+TheHolding = Annotated[Mapping[str, Sequence[str]], Depends(holding_of)]
