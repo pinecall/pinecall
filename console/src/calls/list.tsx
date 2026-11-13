@@ -119,7 +119,7 @@ export function ThreadList({ threads, lines, open, shown: shownCall, url, groupe
     return () => document.removeEventListener("keydown", onKey);
   });
 
-  const contact = open?.contact;
+  const contact = open?.key;
   useEffect(() => {
     if (contact !== undefined) openRow.current?.scrollIntoView({ block: "nearest" });
   }, [contact]);
@@ -148,7 +148,7 @@ export function ThreadList({ threads, lines, open, shown: shownCall, url, groupe
             <Fragment key={day.key}>
               <div className="calls-day">{dayName(day)}</div>
               {rows.map((thread) => (
-                <Fragment key={thread.contact}>
+                <Fragment key={thread.key}>
                   <ThreadRow thread={thread} to={hrefOf(thread)} on={thread === open} now={now} held={thread === open ? openRow : undefined} onErased={onErased} />
                   {thread === open && <ThreadCalls thread={thread} shown={shownCall} search={url.search} now={now} onErased={onErased} />}
                 </Fragment>

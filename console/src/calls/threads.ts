@@ -9,6 +9,8 @@ const A_SIMULATED_CALL = "simulated caller";
 
 /** One person's calls, newest first. */
 export interface Thread {
+  /** What tells this row from the others: the contact when a row is a person, the call when it is one call. */
+  key: string;
   /** Who the thread is with, as the log names them: the contact's id, their phone, or the web visitor's id. */
   contact: string;
   /** The contact's name when the platform recognised the caller. */
@@ -46,10 +48,13 @@ function handleOf(line: SessionLine): string {
 export function threadsOf(lines: readonly SessionLine[], grouped = true): Thread[] {
   const found = new Map<string, Thread>();
   for (const line of lines) {
-    const contact = grouped ? contactOf(line) : line.call;
-    const standing = found.get(contact);
+    // Who the row is with is the same either way: ungrouped, only what tells the rows apart is the call.
+    // A row keyed and NAMED by its call read "call-_+34607827824_…" where the caller's number goes.
+    const contact = contactOf(line);
+    const key = grouped ? contact : line.call;
+    const standing = found.get(key);
     if (standing === undefined) {
-      found.set(contact, { contact, name: line.caller?.name ?? null, handle: handleOf(line), lines: [line], latest: line });
+      found.set(key, { key, contact, name: line.caller?.name ?? null, handle: handleOf(line), lines: [line], latest: line });
       continue;
     }
     standing.lines.push(line);
