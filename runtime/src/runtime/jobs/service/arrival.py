@@ -6,12 +6,14 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from livekit.agents import JobContext
+from livekit.agents.utils import aio
 
 from runtime.actor import Scope
 from runtime.calls.context import CallContext, Contact, Route, dump_context
 from runtime.enums import Channel, Direction, Env
 from runtime.exceptions import NotFound, UpstreamError
 from runtime.jobs.service.client import GatewayClient
+from runtime.jobs.service.handed import tell_it_is_handed
 from runtime.kit.time import today_in
 from runtime.telephony import service as telephony
 from runtime.wire.dispatch import Dispatch
@@ -228,8 +230,13 @@ async def _hand_over(
             "diverted_from": Env.production,
         }
     )
+    # Said while the leg is dialled, which is when the caller is answered and would hear nothing.
+    telling = asyncio.create_task(tell_it_is_handed(ctx, gateway, route.agent, Scope(route.org, route.env)))
     if not await telephony.hand_on(ctx.api, ctx.room.name, handed=handed, moved=moved, number=str(route.number)):
+        await aio.cancel_and_wait(telling)
         return False
+    # The sentence is said whole before this worker leaves the room: its track goes with it.
+    await telling
     ctx.shutdown(reason=f"handed to {handed.fleet}")
     return True
 

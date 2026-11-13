@@ -104,6 +104,12 @@ stay bridged in production's room, the audio passing through production's media 
 agent runs on the sandbox's. A leg the sandbox does not answer within 10 s is given up, and the
 caller reaches production's agent.
 
+While the leg is dialled the developer is told where the ring is going: production's worker says
+"Redirecting you to your sandbox." in the agent's own voice. The carrier's call is answered as the
+leg starts to dial, two or three seconds before the sandbox's agent can speak, and without the
+sentence those seconds are silence. A voice that cannot be had says nothing, and the ring is handed
+over all the same.
+
 On the sandbox's LiveKit one trunk and one rule, both named `hand-over`, admit these legs. The
 trunk lists no number, unlike an org's: it admits whatever production dials, from production's
 media address alone (the address `PINECALL_SIP_DOMAIN` names, looked up at start: production's

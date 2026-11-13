@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A developer whose ring is handed to the sandbox is told so.** Their call is answered as the leg
+  to the sandbox starts to dial, and its agent speaks two or three seconds later: silence, until now.
+  Production's worker says "Redirecting you to your sandbox." in the agent's voice while the leg is
+  dialled.
+- **Erasing a call is a button.** In a call's details it was a grey link under the others; it is a
+  button like them, in the colour of what cannot be undone.
 - **The console's call list is one row per call, grouped when asked, and a right click opens a row's
   menu.** Calls listed one row per person showing their newest call, and someone who called three times
   read as one call. A row is a call now; **Group**, beside the status chips, makes it one row per

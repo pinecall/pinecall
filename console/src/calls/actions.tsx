@@ -121,7 +121,7 @@ export function Actions({ agent, call, number, onJudged }: { agent: string; call
           </div>
         </div>
       ) : (
-        <button type="button" className="calls-link calls-link-bad" disabled={busy !== ""} onClick={() => setSure(true)}>
+        <button type="button" className="app-button app-button-danger calls-erase-ask" disabled={busy !== ""} onClick={() => setSure(true)}>
           Erase this call
         </button>
       )}
