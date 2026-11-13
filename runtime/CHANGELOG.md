@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **`pinecall login` is approved in the browser again.** The console started over on 2026-11-10
+  without its `/cli` page: the link `pinecall login` prints landed on the dashboard, nothing approved
+  the terminal, and it waited for good. Every new user's first step stopped there. The page is back:
+  the person signs in if they are not, and approves the terminal by its machine's name.
+
 ## 0.11.38 — a page's chat is written, a visitor keeps the conversation from page to page, and an app of one agent is one row (2026-11-13)
 
 - **A visitor keeps the conversation from page to page, and a closed tab ends it in 30 seconds.**

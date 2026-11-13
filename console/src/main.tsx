@@ -22,7 +22,7 @@ import { API_BASE, DEVICE, forgetKey, keepKey, keptKey } from "./lib/key";
 import { forgetThisBrowser } from "./lib/notifier";
 import { OrgProvider } from "./lib/org";
 import { inWorld, pageHere, WORLD, WORLD_BASE } from "./lib/world";
-import { Accept, Login, SignUp, Verify, VERIFY } from "./login";
+import { Accept, Login, SignUp, Terminal, Verify, VERIFY } from "./login";
 import { MonitorsPage } from "./monitors/monitors";
 import { BillingPage } from "./billing/billing";
 import { CarriersPage } from "./box/carriers";
@@ -100,6 +100,8 @@ function Console({ startingWith }: { startingWith: string | null }): ReactNode {
     () =>
       createBrowserRouter(
         [
+          // A terminal's `pinecall login` is approved here, production's page as the CLI builds it, outside the shell.
+          ...(WORLD === "production" ? [{ path: "cli", element: <Terminal /> }] : []),
           {
             path: "/",
             element: <Shell onLeave={leave} />,
