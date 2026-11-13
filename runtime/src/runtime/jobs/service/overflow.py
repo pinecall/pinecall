@@ -31,7 +31,9 @@ THE_ONE_SENTENCE = "sp_1"
 # What the overflow says where the operator named no sentence of its own (PINECALL_OVERFLOW_SAYS): the
 # agent's language when it is one of these, English for any other. Until 2026-11 it was the Spanish one
 # for every call, and a caller of an English agent was told the lines were busy in Spanish.
-ALL_LINES_BUSY = {
+# A call back is promised only to a caller it is asked for, one with a number: a visitor of a page was
+# told their number had been noted.
+WILL_CALL_BACK = {
     "en": (
         "All our lines are busy right now. We have noted your number and will call you back as soon as "
         "one is free. Thank you for your patience."
@@ -39,6 +41,13 @@ ALL_LINES_BUSY = {
     "es": (
         "En este momento todas nuestras líneas están ocupadas. Hemos tomado nota de su número "
         "y le devolveremos la llamada en cuanto se libere una. Gracias por su paciencia."
+    ),
+}
+ALL_LINES_BUSY = {
+    "en": "All our lines are busy right now. Please try again in a few minutes. Thank you for your patience.",
+    "es": (
+        "En este momento todas nuestras líneas están ocupadas. Por favor, inténtelo de nuevo en unos "
+        "minutos. Gracias por su paciencia."
     ),
 }
 
@@ -66,12 +75,13 @@ async def answer_overflow(ctx: JobContext, warmed: Warmed) -> None:
     arrived = await arrive_as_rung(ctx, gateway, default_agent=warmed.told.agent, zone=warmed.told.zone)
     route, caller = arrived.route, arrived.arrival.caller
     stages = await gateway.get_stages(route.agent, arrived.scope)
-    says = sentence_in(stages.pipeline.tts.language, warmed.told.overflow_says)
+    calls_back = route.channel is Channel.phone and bool(caller)
+    says = sentence_in(stages.pipeline.tts.language, warmed.told.overflow_says, calls_back=calls_back)
     link = await open_call(gateway, arrived.open_with(None))
     writing = open_writer(link)
     try:
         await _say_once(ctx, writing, stages.pipeline.tts, says)
-        if route.channel is Channel.phone and caller:
+        if calls_back and caller:
             await gateway.ask_callback(route.agent, route.channel, caller, link.call)
     finally:
         # Deleting the room is what hangs up a SIP leg.
@@ -89,14 +99,16 @@ async def tell_the_caller(ctx: JobContext, warmed: Warmed, dispatch: Dispatch) -
     call = ctx.job.room.name
     ctx.log_context_fields = {"room": call}
     gateway, scope = warmed.gateway, dispatch.named_scope
-    says = sentence_in(None, warmed.told.overflow_says)
+    # The gateway offered the call back as it drained the call, to a caller with a number.
+    calls_back = dispatch.caller is not None and dispatch.caller.startswith("+")
+    says = sentence_in(None, warmed.told.overflow_says, calls_back=calls_back)
     await ctx.connect()
     link = CallClient(gateway, call)
     writing = open_writer(link, after=dispatch.entries_written)
     try:
         if scope is not None and dispatch.agent is not None:
             stages = await gateway.get_stages(dispatch.agent, scope)
-            says = sentence_in(stages.pipeline.tts.language, warmed.told.overflow_says)
+            says = sentence_in(stages.pipeline.tts.language, warmed.told.overflow_says, calls_back=calls_back)
             await _say_once(ctx, writing, stages.pipeline.tts, says)
     except UpstreamError:
         logger.warning(
@@ -111,11 +123,12 @@ async def tell_the_caller(ctx: JobContext, warmed: Warmed, dispatch: Dispatch) -
         logger.warning("call %s: the gateway did not take the seal; its reaper seals the call", call, exc_info=True)
 
 
-def sentence_in(language: str | None, operators: str | None) -> str:
+def sentence_in(language: str | None, operators: str | None, *, calls_back: bool) -> str:
     """The overflow's one sentence: the operator's where it named one, else its own in the agent's language."""
     if operators:
         return operators
-    return ALL_LINES_BUSY.get(primary_language(language) or "en", ALL_LINES_BUSY["en"])
+    said = WILL_CALL_BACK if calls_back else ALL_LINES_BUSY
+    return said.get(primary_language(language) or "en", said["en"])
 
 
 def sentence_entry(says: str) -> AgentTranscript:

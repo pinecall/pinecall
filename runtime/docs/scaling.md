@@ -293,7 +293,7 @@ made. A phone caller arriving at a full production fleet is answered by the **ov
 (the Deployment `overflow-production`), registered as `<fleet>/overflow` and offered a call by the
 gateway alone, when no worker has a seat or a room ran out of offers: one sentence, in the
 agent's language (English or Spanish, English for any other) unless `PINECALL_OVERFLOW_SAYS` names one
-for every call, the caller's number onto the agent's log as `callback.requested`, and it
+for every call (a call back is promised to a caller with a number, never to a page's visitor), the caller's number onto the agent's log as `callback.requested`, and it
 hangs up. No ears, no model.
 An org's own concurrency is its `concurrent_calls` quota, counted on the calls this gateway serves
 in that environment and held at the endpoint, never mid-call: sandbox calls never use up production's.

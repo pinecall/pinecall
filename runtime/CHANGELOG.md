@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **The overflow promises a call back only where one is asked.** A visitor of a page, who has no number, was
+  told "we have noted your number and will call you back": they are told the lines are busy and to try again
+  in a few minutes. A caller with a number hears the promise, as before, and it is kept (`callback.requested`).
+
 ## 0.11.33 — a tool's answer follows what its app said, and the overflow speaks the agent's language (2026-11-13)
 
 - **A tool's answer reaches the model after what its app said before it.** The answer went back on the
