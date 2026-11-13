@@ -1,4 +1,4 @@
-/** A page Pinecall serves for an app: its tickets and its codes asked of the page's own name, the captcha solved first. */
+/** A page Pinecall serves for an app: its tickets, its codes and its dictations asked of the page's own name, the captcha solved first. */
 
 import type { Code, Minted } from "./server/index.js";
 
@@ -6,6 +6,14 @@ import type { Code, Minted } from "./server/index.js";
 export interface Hosted {
   tokens: (scope: "talk" | "chat", resume?: string) => Promise<Minted>;
   expect: () => Promise<Code>;
+  /** One dictation into a field of the page, in a language: what `<pinecall-widget>` takes as its `dictationProvider`. */
+  dictation: (language?: string) => Promise<Dictating>;
+}
+
+/** What one dictation is opened with: the gateway's socket, a minute long, and the words to write the page's own way. */
+export interface Dictating {
+  url: string;
+  hear: string[];
 }
 
 export interface HostedOptions {
@@ -78,6 +86,12 @@ export function hosted(options: HostedOptions = {}): Hosted {
       const minted = await asked("/pinecall/token", resume === undefined ? { scope } : { scope, resume });
       if (!hasStrings(minted, ["server_url", "participant_token", "call", "log_token"])) throw new Error("the page's server answered a ticket this package does not know");
       return minted;
+    },
+    async dictation(language) {
+      const minted = await asked("/pinecall/dictation", language === undefined ? {} : { language });
+      if (!hasStrings(minted, ["url"])) throw new Error("the page's server answered a dictation this package does not know");
+      const hear: unknown = Reflect.get(minted, "hear");
+      return { url: minted.url, hear: Array.isArray(hear) ? hear.filter((word): word is string => typeof word === "string") : [] };
     },
     async expect() {
       const code = await asked("/pinecall/code", {});

@@ -4,9 +4,10 @@ import json
 import mimetypes
 import threading
 from dataclasses import dataclass
+from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import unquote, urlsplit
+from urllib.parse import quote, unquote, urlsplit
 
 import httpx
 from typing_extensions import override
@@ -79,7 +80,7 @@ def got(paging: Paging, path: str) -> Said:
 
 
 def posted(paging: Paging, path: str, body: bytes) -> Said:
-    """A POST: a visitor's ticket or code, asked of the gateway with the key."""
+    """A POST: a visitor's ticket, code or dictation, asked of the gateway with the key."""
     if path == "/pinecall/token":
         asked = _read(body)
         wanted: dict[str, object] = {
@@ -92,7 +93,24 @@ def posted(paging: Paging, path: str, body: bytes) -> Said:
         return passed(paging, "/v1/tokens", wanted)
     if path == "/pinecall/code":
         return passed(paging, "/v1/codes", {"agent": paging.agent})
+    if path == "/pinecall/dictation":
+        language = _read(body).get("language")
+        asked_in = f"?language={quote(language)}" if isinstance(language, str) else ""
+        return dictating(paging.url, passed(paging, f"/v1/transcriptions/token{asked_in}", {}))
     return Said(405, b'{"detail": "a page is read"}')
+
+
+# The gateway answers a token and the path of its socket; a page's door answers the socket whole, at
+# the gateway's own name, and the words to expect, of which a page served here has none.
+def dictating(url: str, minted: Said) -> Said:
+    """The gateway's dictation token as a page's door answers it; its refusal as it came."""
+    if minted.status >= HTTPStatus.MULTIPLE_CHOICES:
+        return minted
+    path = _read(minted.body).get("path")
+    if not isinstance(path, str):
+        return Said(502, b'{"detail": "the gateway answered no dictation"}')
+    socket = url.rstrip("/").replace("http", "ws", 1) + path
+    return Said(200, json.dumps({"url": socket, "hear": []}).encode())
 
 
 def passed(paging: Paging, door: str, body: dict[str, object]) -> Said:

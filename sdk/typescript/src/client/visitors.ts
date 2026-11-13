@@ -1,4 +1,4 @@
-// A visitor's ticket and a visitor's code, asked of the gateway with the key: what a page's own server answers its page with.
+// A visitor's ticket, code and dictation, asked of the gateway with the key: what a page's own server answers its page with.
 
 import { signed, type World } from "./signed.js";
 
@@ -27,6 +27,18 @@ async function asked(door: VisitorDoor, path: string, body: Record<string, unkno
 /** A seat in a new call with `agent`: `POST /v1/tokens`. */
 export const visitorTicket = (door: VisitorDoor, agent: string, scope: "talk" | "chat", resume?: string): Promise<Answered> =>
   asked(door, "/v1/tokens", { agent, scope, ...(resume === undefined ? {} : { resume }) });
+
+/**
+ * One dictation into a field of the page: `POST /v1/transcriptions/token`, answered as a page's door
+ * answers it, the socket whole at the gateway's own name and no words of the page's to expect.
+ */
+export async function visitorDictation(door: VisitorDoor, language?: string): Promise<Answered> {
+  const minted = await asked(door, `/v1/transcriptions/token${language === undefined ? "" : `?language=${encodeURIComponent(language)}`}`, {});
+  if (minted.status >= 300) return minted;
+  const path: unknown = Reflect.get(Object(JSON.parse(minted.body)), "path");
+  if (typeof path !== "string") return { status: 502, body: JSON.stringify({ detail: "the gateway answered no dictation" }) };
+  return { status: 200, body: JSON.stringify({ url: `${door.url.replace(/\/+$/, "").replace(/^http/, "ws")}${path}`, hear: [] }) };
+}
 
 /** A code a visitor keys when they call `agent`: `POST /v1/codes`. */
 export const visitorCode = (door: VisitorDoor, agent: string): Promise<Answered> => asked(door, "/v1/codes", { agent });

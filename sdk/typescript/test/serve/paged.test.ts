@@ -2,7 +2,7 @@
 
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import type { AddressInfo } from "node:net";
-import type { Server } from "node:http";
+import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -46,4 +46,24 @@ it("answers the page when the gateway cannot be reached, in words", async () => 
   const refused = await fetch(`${at}/pinecall/token`, { method: "POST", body: JSON.stringify({ scope: "chat" }) });
   expect(refused.status).toBe(502);
   expect(typeof ((await refused.json()) as { detail: unknown }).detail).toBe("string");
+});
+
+it("answers a dictation with the gateway's socket whole, in the language the field is written in", async () => {
+  const asked: string[] = [];
+  const gateway = createServer((request, response) => {
+    asked.push(`${request.method} ${request.url}`);
+    response.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ token: "t", path: "/v1/transcriptions/stream?token=t", expires_in: 60, vendor: "deepgram" }));
+  });
+  await new Promise<void>((listening) => gateway.listen(0, "127.0.0.1", listening));
+  const url = `http://127.0.0.1:${(gateway.address() as AddressInfo).port}`;
+  const folder = mkdtempSync(join(tmpdir(), "page-"));
+  const page = await servePage({ folder, agent: "front-desk", door: { url, apiKey: "pk_test" }, port: 0 });
+  try {
+    const answered = await fetch(`http://127.0.0.1:${(page.address() as AddressInfo).port}/pinecall/dictation`, { method: "POST", body: JSON.stringify({ language: "es" }) });
+    expect(await answered.json()).toEqual({ url: `${url.replace("http", "ws")}/v1/transcriptions/stream?token=t`, hear: [] });
+    expect(asked).toEqual(["POST /v1/transcriptions/token?language=es"]);
+  } finally {
+    page.close();
+    gateway.close();
+  }
 });

@@ -387,8 +387,9 @@ sends the folder with the release, and Pinecall serves it at the app's own name,
 reaches the agent of the app's first line, or the one `app.page(dir, { answers: Billing })` names.
 
 The page needs no server and holds no key. It asks its own name for its ticket
-(`POST /pinecall/token`) and for the code a visitor keys from a phone (`POST /pinecall/code`), and
-Pinecall answers both, after a captcha. With `@pinecall/room` that is `room({ ...hosted() })`. While
+(`POST /pinecall/token`), for the code a visitor keys from a phone (`POST /pinecall/code`) and for a
+dictation into one of its fields (`POST /pinecall/dictation`), and Pinecall answers each, after a
+captcha. With `@pinecall/room` that is `room({ ...hosted() })`, and `hosted().dictation`. While
 you write it, `pinecall start` serves the same folder and the same routes on
 `http://localhost:4747` (`PINECALL_PAGE_PORT` names another port), with your own key and no captcha, so
 a dev server of yours only has to pass `/pinecall` on to it.

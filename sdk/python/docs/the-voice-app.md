@@ -98,7 +98,8 @@ An app may have a page of its own: the folder its build writes, inside the proje
 sends the folder with the release, and Pinecall serves it at `https://<app>--<org>.app.pinecall.io`
 (`--sandbox` after the org in the sandbox). A visitor of it reaches the agent of the app's first
 line, or the one `app.page(dir, answers="billing")` names. The page asks its own name for its ticket
-(`POST /pinecall/token`) and for a visitor's code (`POST /pinecall/code`); while you write it,
+(`POST /pinecall/token`), for a visitor's code (`POST /pinecall/code`) and for a dictation into one of
+its fields (`POST /pinecall/dictation`); while you write it,
 `pinecall start` serves the same folder and routes on `http://localhost:4747`
 (`PINECALL_PAGE_PORT` names another port), with your own key and no captcha.
 

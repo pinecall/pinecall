@@ -21,7 +21,7 @@ from runtime.providers.service.catalog import get_catalog
 from runtime.providers.service.keyring import keys_of
 from runtime.providers.service.refusals import refusing
 from runtime.providers.service.stages import A_RATE, ears_outside_a_call, silence
-from runtime.providers.service.transcription import FRAME_MS, TAIL_MS, Asked, ears_for, hear_out
+from runtime.providers.service.transcription import FRAME_MS, TAIL_MS, Asked, ears_for, hear_out, read_asked
 from runtime.providers.stage import Running
 from runtime.wire.tokens import OUR_KEY_ID
 
@@ -77,6 +77,15 @@ async def mint(session: AsyncSession, vault: Vault, scope: Scope, asked: Asked, 
     # Refused now, not when the page opens the socket: the ears must run on a key this org may use.
     running = ears_for(asked, await get_catalog(session), await keys_of(session, vault, scope))
     return Minted(token=sign_token(own_key, scope, asked), vendor=running.vendor)
+
+
+# An app's own page has no server and no key: Pinecall mints for its visitor, on the page's org, the
+# ears the box hears with by default. The page says the language and nothing else.
+async def mint_for_a_page(
+    session: AsyncSession, vault: Vault, scope: Scope, language: str | None, own_key: str | None
+) -> Minted:
+    """A minute's token for one dictation of a page's visitor, in the language the page asked for."""
+    return await mint(session, vault, scope, read_asked(None, None, language, None), own_key)
 
 
 # The page's socket carries no key: the token is all it has. The org's catalog and keys are read in a

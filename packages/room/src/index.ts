@@ -7,6 +7,6 @@ export type { Connection } from "./log/follow.js";
 export type { Speaking } from "./seat/join.js";
 export type { LivekitModule } from "./seat/livekit.js";
 export { brief, knownBy, rowsOf, type Row } from "./rows.js";
-export { hosted, type Hosted, type HostedOptions } from "./hosted.js";
+export { hosted, type Dictating, type Hosted, type HostedOptions } from "./hosted.js";
 export { screenOf, TASK_GIVE, type Screen, type ScreenNode } from "./screen.js";
 export { joined, litAt, sayingOf, soundedBy, type Lit, type Saying, type Word } from "./karaoke.js";

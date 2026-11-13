@@ -1,10 +1,10 @@
-/** The app's page on this machine: its built folder and the three routes the platform answers for a deployed one. */
+/** The app's page on this machine: its built folder and the four routes the platform answers for a deployed one. */
 
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { extname, join, normalize, resolve, sep } from "node:path";
 
-import { visitorCode, visitorTicket, type Answered, type VisitorDoor } from "../client/visitors.js";
+import { visitorCode, visitorDictation, visitorTicket, type Answered, type VisitorDoor } from "../client/visitors.js";
 
 /** What a page is served with here. */
 export interface Paging {
@@ -59,6 +59,10 @@ async function answered(paging: Paging, request: IncomingMessage, response: Serv
     return said(response, await visitorTicket(paging.door, paging.agent, asked["scope"] === "chat" ? "chat" : "talk", resume));
   }
   if (request.method === "POST" && pathname === "/pinecall/code") return said(response, await visitorCode(paging.door, paging.agent));
+  if (request.method === "POST" && pathname === "/pinecall/dictation") {
+    const language = (await bodyOf(request))["language"];
+    return said(response, await visitorDictation(paging.door, typeof language === "string" ? language : undefined));
+  }
   if (request.method !== "GET") return said(response, { status: 405, body: JSON.stringify({ detail: "a page is read" }) });
   file(paging.folder, pathname, response);
 }

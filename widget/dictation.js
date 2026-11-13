@@ -1,4 +1,4 @@
-// Dictation in <pinecall-widget>'s field, on when the tag has `dictation-url`: the visitor's words
+// Dictation in <pinecall-widget>'s field, on when the tag has `dictation-url` or a `dictationProvider`: the visitor's words
 // written in as she speaks them; she reads them, edits, and sends, or a pause sends them for her.
 //
 // The microphone goes as raw 16 kHz PCM, the same on every browser, to Pinecall's socket, which
@@ -110,10 +110,26 @@ export class Dictation {
     this.current = null;
   }
 
-  /** Whether the tag dictates at all: a `dictation-url`, and not `dictation="off"`. */
+  /** Whether the tag dictates at all: a `dictation-url` or a `dictationProvider`, and not `dictation="off"`. */
   get offered() {
     const widget = this.widget;
-    return Boolean(widget.getAttribute("dictation-url")) && widget.getAttribute("dictation") !== "off";
+    const asks = Boolean(widget.getAttribute("dictation-url")) || typeof widget.dictationProvider === "function";
+    return asks && widget.getAttribute("dictation") !== "off";
+  }
+
+  /** The socket to open and the words to spell the site's way: from `dictationProvider`, or `dictation-url`. */
+  async minted(words) {
+    const widget = this.widget;
+    if (typeof widget.dictationProvider === "function") {
+      const given = await widget.dictationProvider(widget.lang);
+      if (typeof given?.url !== "string") throw new Error(words.dictationFailed);
+      return given;
+    }
+    const url = widget.getAttribute("dictation-url");
+    const answer = await fetch(`${url}${url.includes("?") ? "&" : "?"}language=${encodeURIComponent(widget.lang)}`, { method: "POST" });
+    const minted = await answer.json().catch(() => ({}));
+    if (!answer.ok || typeof minted.url !== "string") throw new Error(refusalOf(minted, words.dictationFailed));
+    return minted;
   }
 
   get active() {
@@ -156,10 +172,7 @@ export class Dictation {
         else waiting.push(pcm);
         mic.style.setProperty("--_level", String(1 + Math.min(0.5, level * 4)));
       });
-      const url = widget.getAttribute("dictation-url");
-      const answer = await fetch(`${url}${url.includes("?") ? "&" : "?"}language=${encodeURIComponent(widget.lang)}`, { method: "POST" });
-      const minted = await answer.json().catch(() => ({}));
-      if (!answer.ok || typeof minted.url !== "string") throw new Error(refusalOf(minted, words.dictationFailed));
+      const minted = await this.minted(words);
       if (this.current !== dictation) return;
       const spelled = speller(minted.hear, widget.lang);
       const socket = new WebSocket(minted.url);

@@ -36,22 +36,25 @@ stands in for it until the agent's own first words take its place). While the ag
 dots wait where its answer will be; its words are then typed out at a reading pace, and what it
 shows on screen comes after them, so the answer is read first.
 
-The header holds, from left to right, whatever the page offers of:
+The header holds three things: the call, a menu, and **×**.
 
-- **Your conversations** (a clock), while there is a conversation from before to read again.
-- **The theme switch** (sun or moon), unless the page forced a `theme`.
 - **The call**: a voice call in the browser, a call of its own with the chat's lines still on screen
   and its cart carried over; its hang-up button comes back to the chat, which carries the voice call
   on in writing. Or, with `phone` or `code-url`, **Call us**. With both, a small menu under the
   button asks which.
-- **Start over**: the conversation under way ends, and a new one opens.
-- **Maximize** (not on a phone, not `inline`), and **×**.
+- **The menu** (⋯), what a visitor does now and then:
+  - **New conversation**: the conversation under way ends, and a new one opens.
+  - **Your conversations**, while there is a conversation from before to read again.
+  - **The theme**, light or dark, unless the page forced a `theme`.
+  - **Maximize** (not on a phone, not `inline`).
 
 Closing the panel is not hanging up: the conversation waits, and the next open carries it on where
-it was. A page change or a reload does too: the conversation under way is kept in this browser with
-its resume token, and a panel that was open opens again. **Start over** is hanging up (and so is
-carrying another conversation on in its place): said at the gateway's door with the call's own token,
-and the call ends at once.
+it was. **The page going away is hanging up**: a tab closed, a reload or a link that loads another
+page ends the call at once, said at the gateway's door with the call's own token, so no call waits
+on a visitor who left. Back on the page, a panel that was open opens again on a new conversation,
+with the lines of the one before still on screen. A site that swaps its pages without loading them
+(a client router) never leaves the page, and its conversation goes on from page to page. **New
+conversation** is hanging up too (and so is carrying another conversation on in its place).
 
 The panel is the visitor's to size: they drag its edges or its corner, double-click the corner to
 reset, or maximize it (Escape restores); the size they leave is kept in this browser. On a phone
@@ -60,7 +63,7 @@ under it holds still. When the page routes a link of its own that the visitor ta
 conversation ([`pinecall:ui`](#events)), the chat steps aside on a phone, and the agent's newest line
 waits over the button until it is tapped.
 
-With `dictation-url`, the field has a microphone: the visitor's words are written in as they speak,
+With `dictation-url` (or a `dictationProvider`), the field has a microphone: the visitor's words are written in as they speak,
 greyed while they are still being heard; they can edit and send, and a pause of four seconds sends
 them. On a voice call the microphone is the call's, and dictation steps aside.
 
@@ -103,6 +106,7 @@ token. Use one tag per agent; several can share a page.
 | property | |
 |---|---|
 | `tokenProvider` | `(scope, agent, resume) => Promise<token JSON>`, in place of `token-url` |
+| `dictationProvider` | `(language) => Promise<{ url, hear? }>`, in place of `dictation-url`: the field gets its microphone |
 | `codeProvider` | `(agent) => Promise<code JSON>`, in place of `code-url` |
 | `texts` | `{ key: "words" }`: any of the widget's words, over `lang`'s and the `text-*` attributes; it can be set at any time |
 | `views` | with `tutor`: `{ toolName: (host, result, tools) => … }`, the page's own cards for the results of the agent's tools |
@@ -131,11 +135,14 @@ agent's name, so `token-url` cannot point at them. Give the tag its tickets with
 <script type="module">
   import { hosted } from "https://cdn.jsdelivr.net/npm/@pinecall/room@0.11/+esm";
   const doors = hosted();
-  document.querySelector("pinecall-widget").tokenProvider = (scope, _agent, resume) => doors.tokens(scope, resume);
+  const widget = document.querySelector("pinecall-widget");
+  widget.tokenProvider = (scope, _agent, resume) => doors.tokens(scope, resume);
+  widget.dictationProvider = (language) => doors.dictation(language);
 </script>
 ```
 
-Such a page has no dictation door: dictation needs an endpoint of your own.
+Set them before the widget's own script runs (a plain `<script>` above it, with `import()` inside):
+a conversation kept from before opens as the page loads, and asks for its ticket then.
 
 ### `token-url`
 
@@ -267,8 +274,8 @@ and its cart, so a page change, a reload or a closed tab brought back carries it
 within five minutes is the same call, which waited for them; later, Pinecall opens a new call whose
 agent reads what was said. Either way it stays one conversation.
 
-The ones before it — after **Start over**, or a dot's call that ended — are kept too, the last 20, and the
-header's clock lists them under **Your conversations**: the first thing the visitor said, a chat or a
+The ones before it — after **New conversation**, or a dot's call that ended — are kept too, the last 20, and the
+menu lists them under **Your conversations**: the first thing the visitor said, a chat or a
 call, when. A tap reads one again as it was; **Carry on this conversation** (when the gateway gave it
 a resume token) ends the one under way and takes this one up as a chat; the bin deletes it, and
 **Clear** deletes them all. The lines are this browser's alone, so a shared computer is a reason to set
@@ -292,7 +299,7 @@ text is shown. The keys, with their English words:
 
 | area | keys |
 |---|---|
-| the button and the header | `assistant` (the name when `name` is left out), `open` "Talk to {name}", `close`, `call` "Call {name}", `hangUpToChat`, `fresh` "Start over", `maximize`, `restore`, `resize`, `toLight`, `toDark` |
+| the button and the header | `assistant` (the name when `name` is left out), `open` "Talk to {name}", `close`, `call` "Call {name}", `hangUpToChat`, `more` "More", `fresh` "New conversation", `maximize`, `restore`, `resize`, `toLight` "Light theme", `toDark` "Dark theme" |
 | the conversation | `write` "Write to {name}…", `send`, `typing` "{name} is typing…", `connecting`, `reconnecting`, `live` "Online", `listening` "{name} is listening", `ended`, `tapToHear`, `micRefused`, `failed` |
 | dictation | `dictate`, `stopDictating`, `hearing` "Listening…", `dictationFailed` |
 | products | `addToCart` "Add to cart", `pickSize`, `sizes` "Sizes {sizes}", `added` "Added to cart", `notAdded`, `tapHint`, `soldOut` |
@@ -421,7 +428,7 @@ reads, never words the model is told to obey.
 | event | `detail` | when |
 |---|---|---|
 | `pinecall:open` | | the panel opens |
-| `pinecall:started` | `{ call, scope }` | a chat or a voice call has joined; a voice call from the chat, a **Start over** or a carry-on is a new one |
+| `pinecall:started` | `{ call, scope }` | a chat or a voice call has joined; a voice call from the chat, a **New conversation** or a carry-on is a new one |
 | `pinecall:ended` | `{ call }` | it left |
 | `pinecall:ui` | `{ action: "open", url }` | the visitor tapped a link of the page's own site in the conversation (`url` is its path and query). The event is cancelable: a page that routes it itself (a single-page app) calls `preventDefault()`, and the widget then leaves the link to it and, on a phone, steps aside. Not cancelled, the link opens in this tab and the conversation carries on on the next page |
 | `pinecall:ui` | what the agent sent | with `look="dot"`: a card or choices the dot cannot draw |
@@ -527,6 +534,7 @@ In TypeScript, declare the tag once: `declare global { namespace JSX { interface
 | `lines.js` | the lines on screen: the dots, the typed-out reveal, what waits for the words |
 | `cards.js` | choices, HTML, products and their viewer, the form, the toast |
 | `panel.js` | the panel's size, drag, maximize, the phone fit, the theme switch |
+| `menu.js` | the header's menu: a new conversation, the ones before, the theme, the size |
 | `history.js` | the conversations kept, and the layer that lists them |
 | `call-us.js` | **Call us**: the number, the code, the phone call's live log |
 | `dictation.js` | dictation into the field |

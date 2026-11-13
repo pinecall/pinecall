@@ -60,7 +60,8 @@ zone every agent of the app reads its day and clock in, the same setting as a cl
 
 `APP.page("ui/dist")` gives the app a page, sent with `pinecall deploy` and served at
 `https://<app>--<org>.app.pinecall.io`; `pinecall start` serves the same folder on
-`http://localhost:4747` (`PINECALL_PAGE_PORT` names another port) with your key and no captcha.
+`http://localhost:4747` (`PINECALL_PAGE_PORT` names another port) with your key and no captcha, its
+ticket, its code and its dictation asked at `/pinecall/token`, `/pinecall/code` and `/pinecall/dictation`.
 
 ### What the app hears
 

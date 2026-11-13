@@ -13,6 +13,7 @@
     "history.js",
     "lines.js",
     "markup.js",
+    "menu.js",
     "panel.js",
     "styles.js",
     "texts.js",

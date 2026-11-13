@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **An app's own page dictates.** `POST /pinecall/dictation` at the page's name answers one dictation's
+  socket, a minute long, past the page's captcha and its limit of asks a minute from one address, as
+  its ticket is: the visitor's microphone goes to the gateway and the page holds no key. Until now a
+  page Pinecall serves had a ticket and a code and no way to dictate, which a site with a server of
+  its own gives its widget with `dictation-url`.
+- **The widget's header is the call, a menu and the close.** A new conversation, the conversations
+  before, the theme and the panel's size are in the menu (⋯), where the header had a button for each.
+  The widget takes its dictation from a `dictationProvider` as it takes its tickets from a
+  `tokenProvider`.
+- **The page going away ends a visitor's call.** The widget says the visitor hung up when its page is
+  left (a tab closed, a reload, a link to another page), at the gateway's door with the call's own
+  token: the call ends then, where it waited five minutes for a visitor who was not coming back and
+  read "on a call now" meanwhile. A site that swaps its pages without loading them keeps its
+  conversation; a visitor whose line drops is still waited for.
 - **The gateway serves the whole widget.** A page that loaded `/widget/pinecall-widget.js` from its
   gateway got that file and a 404 for each of the nine modules it imports, so no widget was drawn:
   the image was built with two of the widget's files, named one by one, since before it was split

@@ -5,6 +5,12 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
+## Unreleased
+
+- **An app's page dictates on this machine too.** `pinecall start` answers `POST /pinecall/dictation` beside the
+  page's ticket and its code, with your key and no captcha: the gateway's socket whole, as the deployed
+  page's door answers it.
+
 ## 0.11.36 — a Python app names its agents by slug, and Brightside Dental is an example in every language (2026-11-13)
 
 - **The Brightside Dental example is the voice app on pinecall.io's editor**, file for file

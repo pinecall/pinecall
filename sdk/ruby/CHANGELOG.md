@@ -4,6 +4,12 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## Unreleased
+
+- **An app's page dictates on this machine too.** `pinecall start` answers `POST /pinecall/dictation` beside the
+  page's ticket and its code, with your key and no captcha: the gateway's socket whole, as the deployed
+  page's door answers it.
+
 ## [0.11.36] — a Python app names its agents by slug, and Brightside Dental is an example in every language (2026-11-13)
 
 - **A class is served as its folder's slug, whatever it is called.** `pinecall start` served a class

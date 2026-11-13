@@ -1,4 +1,4 @@
-// A page deployed with its app asks its own name for its ticket and its code, and says the server's own sentence when refused.
+// A page deployed with its app asks its own name for its ticket, its code and its dictation, and says the server's own sentence when refused.
 
 import { describe, expect, it } from "vitest";
 
@@ -36,6 +36,18 @@ describe("hosted()", () => {
   it("asks for the code a visitor keys, at a dev server's address when given one", async () => {
     const page = server({ "http://localhost:4747/pinecall/code": { status: 201, body: CODE } });
     expect(await hosted({ at: "http://localhost:4747/", fetch: page.fetch }).expect()).toEqual(CODE);
+  });
+
+  it("asks for a dictation's socket in the language the field is written in", async () => {
+    const page = server({ "/pinecall/dictation": { status: 200, body: { url: "wss://gateway.example/v1/transcriptions/stream?token=t", hear: ["Riley"] } } });
+    const { dictation } = hosted({ fetch: page.fetch });
+
+    expect(await dictation("es")).toEqual({ url: "wss://gateway.example/v1/transcriptions/stream?token=t", hear: ["Riley"] });
+    await dictation();
+    expect(page.asked).toEqual([
+      { path: "/pinecall/dictation", body: { language: "es" } },
+      { path: "/pinecall/dictation", body: {} },
+    ]);
   });
 
   it("fails with the server's own sentence, and with a plain one for a ticket it cannot read", async () => {

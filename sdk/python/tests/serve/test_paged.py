@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from pinecall.serve._paged import NOT_BUILT, Paging, file_of, got, posted
+from pinecall.serve._paged import NOT_BUILT, Paging, Said, dictating, file_of, got, posted
 
 
 def paging(folder: Path) -> Paging:
@@ -34,3 +34,19 @@ def test_the_page_reads_its_agent_and_no_captcha_here_and_is_only_read(tmp_path:
 
 def test_a_ticket_the_gateway_could_not_be_asked_for_is_a_502(tmp_path: Path) -> None:
     assert posted(paging(tmp_path), "/pinecall/token", b'{"scope": "chat"}').status == 502
+
+
+def test_a_dictation_is_answered_with_the_gateways_socket_whole_and_a_refusal_as_it_came(
+    tmp_path: Path,
+) -> None:
+    minted = Said(
+        200, b'{"token": "t", "path": "/v1/transcriptions/stream?token=t", "vendor": "deepgram"}'
+    )
+    assert json.loads(dictating("https://cloud.example/", minted).body) == {
+        "url": "wss://cloud.example/v1/transcriptions/stream?token=t",
+        "hear": [],
+    }
+    refused = Said(429, b'{"detail": "too many dictations this minute"}')
+    assert dictating("https://cloud.example", refused) is refused
+    assert dictating("https://cloud.example", Said(200, b"{}")).status == 502
+    assert posted(paging(tmp_path), "/pinecall/dictation", b'{"language": "es"}').status == 502

@@ -21,4 +21,20 @@ While you write the page, `pinecall start` answers the same routes on `http://lo
 your own key and no captcha. A dev server passes them on (`proxy: { "/pinecall": "http://localhost:4747" }`
 in Vite), or the page names the address: `hosted({ at: "http://localhost:4747" })`.
 
+`hosted()` also gives `dictation(language)`: one dictation into a field of the page, asked of
+`POST /pinecall/dictation` past the same captcha, answering the gateway's socket to open and send the
+microphone to. `<pinecall-widget>` takes it as its `dictationProvider`, beside `tokens` as its
+`tokenProvider`:
+
+```html
+<pinecall-widget agent="front-desk"></pinecall-widget>
+<script type="module">
+  import { hosted } from "https://cdn.jsdelivr.net/npm/@pinecall/room@0.11/+esm";
+  const doors = hosted();
+  const widget = document.querySelector("pinecall-widget");
+  widget.tokenProvider = (scope, _agent, resume) => doors.tokens(scope, resume);
+  widget.dictationProvider = (language) => doors.dictation(language);
+</script>
+```
+
 There is no `callMe` on a deployed page: nobody anonymous has the agent ring a number.

@@ -19,6 +19,19 @@ class PagedTest < Minitest::Test
     end
   end
 
+  def test_a_dictation_is_answered_with_the_gateways_socket_whole_and_a_refusal_as_it_came
+    Dir.mktmpdir do |folder|
+      said = Pinecall::Serve::Paged::Said
+      minted = said.new(200, '{"token":"t","path":"/v1/transcriptions/stream?token=t"}', "application/json")
+      page = Pinecall::Serve::Paged.new(folder:, agent: "front-desk", url: "https://cloud.example/", api_key: "pk_test", env: nil, port: 0)
+
+      assert_equal({ "url" => "wss://cloud.example/v1/transcriptions/stream?token=t", "hear" => [] }, JSON.parse(page.dictating(minted).body))
+      refused = said.new(429, '{"detail":"too many dictations this minute"}', "application/json")
+      assert_same refused, page.dictating(refused)
+      assert_equal 502, page.dictating(said.new(200, "{}", "application/json")).status
+    end
+  end
+
   def test_a_page_not_built_yet_says_so_and_the_config_names_the_agent
     Dir.mktmpdir do |folder|
       assert_equal Pinecall::Serve::Paged::NOT_BUILT, JSON.parse(paged(folder).file_of("/").body)["detail"]

@@ -95,6 +95,13 @@ export const STYLE = `
   header .tool.call { color: var(--_ink); }
   header .tool.call.on { background: var(--_accent); color: var(--_on-accent); }
   header .close { font-size: 22px; line-height: 1; }
+  header .more[aria-expanded="true"] { background: var(--_raised); color: var(--_ink); }
+  .menu { position: absolute; z-index: 6; top: calc(100% - 6px); right: 10px; min-width: 216px; padding: 6px; display: grid; gap: 2px; border: 1px solid var(--_line); border-radius: 12px; background: var(--_surface); box-shadow: 0 14px 34px rgba(0, 0, 0, .18); }
+  .menu[hidden], .menu .item[hidden] { display: none; }
+  .menu .item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--_ink); font: inherit; font-size: 13.5px; text-align: left; cursor: pointer; }
+  .menu .item:hover, .menu .item:focus-visible { background: var(--_raised); outline: none; }
+  .menu .ico { display: grid; place-items: center; flex: 0 0 18px; height: 18px; color: var(--_muted); }
+  .menu .ico svg { width: 18px; height: 18px; }
   :host([theme="light"]) header .theme, :host([theme="dark"]) header .theme { display: none; }
   /* Which call, when the page offers both: in the browser, or from the visitor's phone. */
   .choose { position: absolute; top: calc(100% - 4px); right: 10px; z-index: 7; display: flex; flex-direction: column; min-width: 250px; max-width: calc(100% - 20px);

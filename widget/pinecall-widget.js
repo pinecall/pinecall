@@ -54,6 +54,7 @@ import { Dictation } from "./dictation.js";
 import { Kept, listKept } from "./history.js";
 import { Lines } from "./lines.js";
 import { ICONS } from "./markup.js";
+import { Menu } from "./menu.js";
 import { Panel } from "./panel.js";
 import { PHONE, STYLE } from "./styles.js";
 import { languageOf, refusalOf, wordsOf } from "./texts.js";
@@ -79,12 +80,15 @@ const TEMPLATE = `
     <header>
       <span class="avatar" aria-hidden="true"></span>
       <div class="who"><h2></h2><p></p></div>
-      <button class="tool kept-tool" type="button" hidden>${ICONS.clock}</button>
-      <button class="tool theme" type="button"></button>
       <button class="tool call" type="button"></button>
-      <button class="tool fresh" type="button">${ICONS.fresh}</button>
-      <button class="tool maximize" type="button"></button>
+      <button class="tool more" type="button" aria-haspopup="menu" aria-expanded="false">${ICONS.more}</button>
       <button class="tool close" type="button">×</button>
+      <div class="menu" role="menu" hidden>
+        <button class="item fresh" type="button" role="menuitem"><span class="ico"></span><span class="name"></span></button>
+        <button class="item kept-tool" type="button" role="menuitem" hidden><span class="ico"></span><span class="name"></span></button>
+        <button class="item theme" type="button" role="menuitem"><span class="ico"></span><span class="name"></span></button>
+        <button class="item maximize" type="button" role="menuitem"><span class="ico"></span><span class="name"></span></button>
+      </div>
     </header>
     <div class="body"><span class="status"></span><ul class="lines"></ul></div>
     <footer>
@@ -165,6 +169,7 @@ class PinecallWidget extends HTMLElement {
     this.openKey = `pinecall-widget:open:${this.agent}`;
     this.shadowRoot.innerHTML = TEMPLATE;
     this.$ = (selector) => this.shadowRoot.querySelector(selector);
+    this.menu = new Menu(this);
     this.panel = new Panel(this);
     this.lines = new Lines(this);
     this.dictation = new Dictation(this);
@@ -231,10 +236,10 @@ class PinecallWidget extends HTMLElement {
     this.$("header .avatar").textContent = (this.name.trim()[0] ?? "A").toUpperCase();
     this.$("header h2").textContent = this.name;
     this.$("header p").textContent = [this.company, this.tagline].filter(Boolean).join(" · ");
-    const kept = this.$(".kept-tool");
-    kept.title = kept.ariaLabel = words.history;
-    const fresh = this.$(".fresh");
-    fresh.title = fresh.ariaLabel = words.fresh;
+    this.menu.item(".kept-tool", ICONS.clock, words.history);
+    this.menu.item(".fresh", ICONS.fresh, words.fresh);
+    const more = this.$(".more");
+    more.title = more.ariaLabel = words.more;
     this.$(".close").ariaLabel = words.close;
     const input = this.$("footer input");
     input.placeholder = this.dictation.active ? words.hearing : words.write;
@@ -305,6 +310,10 @@ class PinecallWidget extends HTMLElement {
     // The send lights up with words to send.
     input.addEventListener("input", () => (this.$(".send").disabled = !input.value.trim()));
     this.$(".mic").addEventListener("click", () => (this.dictation.active ? this.dictation.stop() : this.dictation.start()));
+    // The page going away is the visitor hanging up, said at the gateway's door, which a closing tab
+    // still reaches: the call ends now and not when the wait for her runs out. A site that swaps its
+    // pages without loading them never leaves the page, and its conversation goes on.
+    addEventListener("pagehide", () => void this.hungUp());
     this.$(".field").dataset.state = "";
   }
 
@@ -321,7 +330,7 @@ class PinecallWidget extends HTMLElement {
     return this.kept.all().filter((one) => one.call !== under?.call);
   }
 
-  /** "Your conversations" is in the header while there is one to read again. */
+  /** "Your conversations" is in the menu while there is one to read again. */
   keptChanged() {
     this.$(".kept-tool").hidden = this.past().length === 0;
   }

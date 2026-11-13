@@ -79,13 +79,11 @@ export class Panel {
     });
   }
 
-  /** The maximize button and the grip, in the widget's words. */
+  /** The menu's maximize and the grip, in the widget's words. */
   label() {
     const words = this.widget.words;
-    const maximize = this.widget.$(".maximize");
     const maxed = this.panel.classList.contains("maxed");
-    maximize.innerHTML = maxed ? ICONS.shrink : ICONS.expand;
-    maximize.title = maximize.ariaLabel = maxed ? words.restore : words.maximize;
+    this.widget.menu.item(".maximize", maxed ? ICONS.shrink : ICONS.expand, maxed ? words.restore : words.maximize);
     this.widget.$(".grip").title = words.resize;
   }
 
@@ -179,7 +177,7 @@ export class Panel {
 
   // ── the theme ──────────────────────────────────────────────────────────────────
 
-  /** The theme follows the visitor's machine; unless the page forced one, the header switches it, and the choice is kept. */
+  /** The theme follows the visitor's machine; unless the page forced one, the menu switches it, and the choice is kept. */
   theming() {
     const widget = this.widget;
     const button = widget.$(".theme");
@@ -210,9 +208,7 @@ export class Panel {
   /** The switch shows the theme it goes to. */
   themeLabel() {
     if (this.forced()) return;
-    const button = this.widget.$(".theme");
     const words = this.widget.words;
-    button.innerHTML = this.dark() ? ICONS.sun : ICONS.moon;
-    button.title = button.ariaLabel = this.dark() ? words.toLight : words.toDark;
+    this.widget.menu.item(".theme", this.dark() ? ICONS.sun : ICONS.moon, this.dark() ? words.toLight : words.toDark);
   }
 }

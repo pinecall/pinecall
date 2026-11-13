@@ -116,6 +116,11 @@ async def test_an_apps_page_is_served_at_the_apps_own_name_and_never_at_the_gate
     ticket = await gateway.http.post("/pinecall/token", json={"scope": "chat"}, headers=at_its_name)
     assert ticket.status_code == 404, ticket.text
     assert "support" in ticket.text
+    # A visitor dictates into the page's field: the socket is the gateway's own, a minute long.
+    dictation = await gateway.http.post("/pinecall/dictation", json={"language": "es"}, headers=at_its_name)
+    assert dictation.status_code == 200, dictation.text
+    assert "/v1/transcriptions/stream?token=" in dictation.json()["url"]
+    assert (dictation.json()["url"].split(":")[0], dictation.json()["hear"]) in (("ws", []), ("wss", []))
 
     # The same routes asked at the gateway's own name answer nothing: a page is never the console's document.
     assert (await gateway.http.get(f"/v1/pages/{name}/files/")).status_code == 404

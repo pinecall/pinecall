@@ -155,6 +155,22 @@ class PageTicketRequest(Schema):
     turnstile: str | None = None
 
 
+class PageDictationRequest(Schema):
+    """POST /pinecall/dictation on an app's page: one dictation into the page's field, in a language."""
+
+    # The language the visitor dictates in, as the page's widget says it; the ears' own when unsaid.
+    language: str | None = Field(None, max_length=16)
+    turnstile: str | None = None
+
+
+class PageDictation(Row):
+    """What a page opens one dictation with: the socket, a minute long, and the words to write its own way."""
+
+    url: str
+    # A page of Pinecall's has no words of its own to expect: the app's are the agent's, on a call.
+    hear: list[str] = []
+
+
 class PageCodeRequest(Schema):
     """POST /pinecall/code on an app's page: a code a visitor keys when they call the agent's number."""
 

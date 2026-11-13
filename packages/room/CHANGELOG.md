@@ -4,6 +4,12 @@ All notable changes to `@pinecall/room`. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## Unreleased
+
+- **`hosted().dictation(language)`**: one dictation into a field of a page Pinecall serves for an app,
+  asked of the page's own `POST /pinecall/dictation` past its captcha. `<pinecall-widget>` takes it as its
+  `dictationProvider`.
+
 ## 0.11.36 — a Python app names its agents by slug, and Brightside Dental is an example in every language (2026-11-13)
 
 - Released with the SDKs: nothing of this package changed.

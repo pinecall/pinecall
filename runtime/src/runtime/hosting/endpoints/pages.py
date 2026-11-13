@@ -1,9 +1,9 @@
-"""An app's page, served at the app's own name: what it needs, a visitor's ticket and code, and its files."""
+"""An app's page, served at the app's own name: what it needs, a visitor's ticket, code and dictation, and its files."""
 
 from fastapi import APIRouter, Response
 
 from runtime.fleet.auth import TheRoster
-from runtime.handles import TheSettings
+from runtime.handles import TheSettings, TheVault
 from runtime.hosting import schemas
 from runtime.hosting.auth import ThePage, ThePages, ThePageTickets
 from runtime.hosting.service import pages
@@ -11,6 +11,8 @@ from runtime.live import schemas as live_schemas
 from runtime.live import service as live
 from runtime.live.auth import TheCodes, TheLive, TheSigner
 from runtime.postgres import Session
+from runtime.providers import service as providers
+from runtime.providers.auth import TheTokenKey
 from runtime.signin.auth import Client, TheTurnstile
 
 router = APIRouter()
@@ -66,6 +68,29 @@ async def page_code(
     asked = live_schemas.IssueCodeRequest(agent=paged.page.agent)
     issued = await live.issue_code(session, codes, signer, pages.visitor_of(paged), asked.agent, asked.ttl_s, asked.log)
     return live_schemas.IssueCodeResponse.of(issued)
+
+
+# A visitor dictates into the page's field: the microphone goes from their browser to the gateway's
+# socket, and the page never holds a key. Asked as a ticket is, past the captcha and so many a
+# minute from one address, since each one spends the org's transcription.
+@router.post("/v1/pages/{host}/pinecall/dictation")
+async def page_dictation(
+    host: str,
+    body: schemas.PageDictationRequest,
+    paged: ThePage,
+    client: Client,
+    tickets: ThePageTickets,
+    turnstile: TheTurnstile,
+    settings: TheSettings,
+    own_key: TheTokenKey,
+    vault: TheVault,
+    session: Session,
+) -> schemas.PageDictation:
+    """One dictation's socket, a minute long, for a visitor who passed the captcha."""
+    await pages.admit_visitor(tickets, turnstile, host, body.turnstile, client)
+    scope = pages.visitor_of(paged).scope
+    minted = await providers.mint_for_a_page(session, vault, scope, body.language, own_key)
+    return schemas.PageDictation(url=settings.base_url.replace("http", "ws", 1) + minted.path)
 
 
 @router.get("/v1/pages/{host}/files/{path:path}")

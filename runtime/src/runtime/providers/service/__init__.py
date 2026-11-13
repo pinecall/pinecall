@@ -2,6 +2,7 @@
 
 from runtime.providers.service.catalog import get_catalog, judge_ceiling
 from runtime.providers.service.credentials import box_credentials, put_box_credentials
+from runtime.providers.service.dictation import mint_for_a_page
 from runtime.providers.service.health import VendorHealth
 from runtime.providers.service.keyring import Keyring, keys_of, parse_lending, running_on
 from runtime.providers.service.pipeline import build_pipeline, refuse_what_cannot_run, stage_on_its_key, thinking_of
@@ -60,6 +61,7 @@ __all__ = [
     "list_by_vendor",
     "list_in_catalog",
     "list_vendors",
+    "mint_for_a_page",
     "open_answerer",
     "parse_lending",
     "put_box_credentials",

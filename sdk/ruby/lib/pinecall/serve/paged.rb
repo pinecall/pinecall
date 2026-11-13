@@ -44,7 +44,7 @@ module Pinecall
         file_of(path)
       end
 
-      # A POST: a visitor's ticket or code, asked of the gateway with the key.
+      # A POST: a visitor's ticket, code or dictation, asked of the gateway with the key.
       def posted(path, body)
         asked = begin
           JSON.parse(body.to_s.empty? ? "{}" : body, symbolize_names: true)
@@ -55,8 +55,27 @@ module Pinecall
         when "/pinecall/token"
           passed("/v1/tokens", { agent: @agent, scope: asked[:scope] == "chat" ? "chat" : "talk", resume: asked[:resume] }.compact)
         when "/pinecall/code" then passed("/v1/codes", { agent: @agent })
+        when "/pinecall/dictation"
+          language = asked[:language]
+          asked_in = language.is_a?(String) ? "?language=#{URI.encode_www_form_component(language)}" : ""
+          dictating(passed("/v1/transcriptions/token#{asked_in}", {}))
         else Said.new(405, JSON.generate({ detail: "a page is read" }), "application/json")
         end
+      end
+
+      # The gateway answers a token and the path of its socket; a page's door answers the socket whole,
+      # at the gateway's own name, and the words to expect, of which a page served here has none.
+      def dictating(minted)
+        return minted if minted.status >= 300
+
+        path = begin
+          JSON.parse(minted.body)["path"]
+        rescue JSON::ParserError
+          nil
+        end
+        return Said.new(502, JSON.generate({ detail: "the gateway answered no dictation" }), "application/json") unless path.is_a?(String)
+
+        Said.new(200, JSON.generate({ url: "#{@url.chomp("/").sub(/\Ahttp/, "ws")}#{path}", hear: [] }), "application/json")
       end
 
       # A path that names no file is the page itself, so its own router reads it.

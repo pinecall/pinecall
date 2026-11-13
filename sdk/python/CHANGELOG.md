@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **An app's page dictates on this machine too.** `pinecall start` answers `POST /pinecall/dictation` beside the
+  page's ticket and its code, with your key and no captcha: the gateway's socket whole, as the deployed
+  page's door answers it.
+
 ## 0.11.36 — a Python app names its agents by slug, and Brightside Dental is an example in every language (2026-11-13)
 
 - **An agent is named by its slug.** A voice app's `app.py` imported its agents from
