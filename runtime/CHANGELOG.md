@@ -2,6 +2,10 @@
 
 ## 0.11.39 — a terminal signs in again, a phone put down ends its call, and the console's call list is one row per call (2026-11-13)
 
+- **Two dependencies raised for advisories published on the day of the release.** `dnspython` 2.9.2
+  (GHSA-vvf4-9x63-8xvv) and `opentelemetry-api` 1.45.2 (GHSA-mf5v-w3w3-f6cg), with the SDK and the
+  semantic conventions that go with it.
+
 - **An account's only number is picked already.** Bringing a number from Twilio, Review stayed off
   until the number's radio was clicked, though the account owned one number and there was nothing to
   choose. The only free number of an account is the one picked.
