@@ -35,6 +35,15 @@ async def test_a_wrong_pair_is_not_verified_and_a_right_one_is() -> None:
         assert not await Twilio(http, fake.account_sid, fake.user, "not the secret").opens()
 
 
+# Twilio's console makes a Standard key unless told otherwise, and such a key may not read /Accounts.
+async def test_a_standard_key_which_may_not_read_the_account_itself_is_verified() -> None:
+    fake = FakeTwilio(standard=True)
+    http, client = a_client(fake)
+    async with http:
+        assert await client.opens()
+        assert not await Twilio(http, fake.account_sid, fake.user, "not the secret").opens()
+
+
 async def test_twilios_own_sentence_reaches_the_person_on_a_refusal() -> None:
     fake = FakeTwilio()
     http, client = a_client(fake)

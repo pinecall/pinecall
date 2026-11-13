@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **A Twilio account is brought with a Standard API key.** The pair was checked by asking Twilio for
+  the account itself, which a Standard key, the kind Twilio's console makes unless told otherwise,
+  may not read: a right pair was answered "Twilio refused these credentials". It is checked against
+  the account's numbers, which any key reads and which is what the platform asks next.
 - **A golden's call is listed as a golden.** A written golden opens its call as a visitor of a page
   would, and Calls showed a run of four as four web visitors nobody could place. A call's head keeps
   the run it is one of (migration 000026); `GET /v1/sessions?runs=true` says it on each row (`run`,

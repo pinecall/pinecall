@@ -111,9 +111,12 @@ class Twilio:
         self.auth = httpx.BasicAuth(user, secret)
         self.home = f"{ACCOUNTS}/Accounts/{account_sid}"
 
+    # Asked of the account's numbers, never of the account itself: a Standard API key, the kind
+    # Twilio's console makes unless told otherwise, reads every resource but /Accounts and /Keys.
+    # Until 0.11.39 the account was asked, and a right pair of that kind read as refused.
     async def opens(self) -> bool:
         """Whether the pair opens the account."""
-        answer = await self._ask("GET", f"{self.home}.json")
+        answer = await self._ask("GET", f"{self.home}/IncomingPhoneNumbers.json", params={"PageSize": "1"})
         if answer.status_code in {httpx.codes.UNAUTHORIZED, httpx.codes.FORBIDDEN}:
             return False
         _answer_of(answer)

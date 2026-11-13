@@ -28,6 +28,8 @@ class Twilio:
     account_sid: str = field(default_factory=lambda: a_sid("AC", 1))
     user: str = field(default_factory=lambda: a_sid("SK", 1))
     secret: str = "the key's secret"
+    # A Standard API key, as Twilio's console makes one: every resource but the account's own.
+    standard: bool = False
     # Number -> (its SID, the trunk it is attached to).
     numbers: dict[str, tuple[str, str | None]] = field(default_factory=dict[str, tuple[str, str | None]])
     trunks: dict[str, TwilioTrunkHeld] = field(default_factory=dict[str, TwilioTrunkHeld])
@@ -74,6 +76,8 @@ class Twilio:
     def _accounts(self, request: httpx.Request, form: dict[str, str]) -> httpx.Response:
         path = request.url.path.removeprefix(f"/2010-04-01/Accounts/{self.account_sid}")
         if path == ".json":
+            if self.standard:
+                return httpx.Response(401, json={"code": 20003, "message": "Authenticate"})
             return httpx.Response(200, json={"sid": self.account_sid, "friendly_name": "Clinica"})
         if path == "/IncomingPhoneNumbers.json":
             return self._numbers(request, form)
