@@ -52,7 +52,7 @@ def test_a_file_with_no_voice_app_or_an_app_naming_a_class_not_served_is_refused
     tmp_path: Path,
 ) -> None:
     (tmp_path / "empty.py").write_text("VALUE = 1\n", encoding="utf-8")
-    with pytest.raises(CannotServe, match="holds one voice app"):
+    with pytest.raises(CannotServe, match="is read as the project's voice app, and holds none"):
         load_app(tmp_path / "empty.py")
     other = APP.replace(
         "from pinecall_agents.front_desk.agent import FrontDesk",

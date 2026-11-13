@@ -4,6 +4,14 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.11.33] — a tool's answer follows what its app said, and the overflow speaks the agent's language (2026-11-13)
+
+- **`pinecall start` asks the project's framework for its voice app before handing it one.** A project on
+  a framework from before voice apps, with an `app.ts`, `app.py` or `app.rb` of its own at the root, was started
+  with `--app` and its serve entry left with "Unknown option '--app'": such a project is served as it always
+  was. On a framework that knows voice apps, a file there that is none is refused in the framework's own
+  sentence, which names the way out.
+
 ## [0.11.32] — a passed call is answered at once, and the doctor reads a cluster (2026-11-12)
 
 - **`pinecall start` reloads on a save in `flows/`.** A voice app whose flows are files of their own

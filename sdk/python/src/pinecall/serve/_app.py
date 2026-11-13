@@ -54,7 +54,11 @@ def load_app(file: Path) -> VoiceApp:
         raise CannotServe(f"{path} did not load: {type(failed).__name__}: {failed}") from failed
     apps = [one for one in vars(module).values() if isinstance(one, VoiceApp)]
     if len(apps) != 1:
-        raise CannotServe(f'{path} holds one voice app at its top level: app = voice_app("…")')
+        raise CannotServe(
+            f"{path} is read as the project's voice app, and holds {len(apps) or 'none'} "
+            'at its top level: app = voice_app("…") there, once, '
+            "or give a file that is something else another name"
+        )
     return apps[0]
 
 

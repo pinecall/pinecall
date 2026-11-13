@@ -6,6 +6,7 @@ import { basename, dirname } from "node:path";
 import { UsageError } from "../errors.js";
 
 import { languageOf, serveCommand } from "./language.js";
+import { appFileOf } from "./layout.js";
 
 /** What a project's voice app says of itself. */
 export interface DescribedApp {
@@ -36,4 +37,17 @@ export async function describedApp(root: string, app: string, agents: readonly s
   if (code !== 0 && USAGE.test(err.trim())) return null;
   if (code !== 0) throw new UsageError(err.trim() || `the project's app could not be read: its serve entry left with ${code}`);
   return JSON.parse(out.trim().split("\n").at(-1) ?? "null") as DescribedApp | null;
+}
+
+/**
+ * The project's voice app as `start` hands it to the serve entry: the file at its root, when the project's own
+ * framework has a word for a voice app. One from before voice apps has none and its serve entry refuses `--app`
+ * as a flag nobody declared: such a project is served as it always was. A file there that is no voice app is
+ * refused in the framework's own sentence, which names the way out.
+ */
+export async function servedApp(root: string, agents: readonly string[], processEnv: NodeJS.ProcessEnv): Promise<string | undefined> {
+  const first = agents[0];
+  const file = first === undefined ? undefined : appFileOf(root, languageOf(first));
+  if (file === undefined) return undefined;
+  return (await describedApp(root, file, agents, processEnv)) === null ? undefined : file;
 }

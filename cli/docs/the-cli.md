@@ -414,6 +414,12 @@ restarted learns it back at once instead of sending your test call to production
 goes away is one line — `gateway  … — reconnecting`, then `gateway  back` — and never a stack per
 redial.
 
+**The project's voice app rides with its agents.** A file `app.ts` (`app.py`, `app.rb`) at the project's
+root is its voice app, and `start` hands it to the serve entry with the agents. It asks the project's own
+framework first: one from before voice apps is served as it always was, whatever that file holds; one
+that knows them refuses a file there that is no voice app, in a sentence that says so and that another
+name frees it.
+
 **A save reloads the class.** `start` watches each agent's folder, `agents/<name>/`, the project's
 `lib/` the agents share, its voice app's file and its `flows/` — not `node_modules`, `dist`, `.venv`, `test/` (the goldens', which
 `pinecall test --watch` follows), `docs/`, or a log written beside the agent; a script, a note or a

@@ -68,7 +68,7 @@ export async function loadApp(file: string): Promise<VoiceApp> {
   if (!existsSync(path)) throw new CannotServe(`no voice app at ${path}`);
   await useTypeScript();
   const module_ = (await import(pathToFileURL(path).href)) as { default?: unknown };
-  if (!isVoiceApp(module_.default)) throw new CannotServe(`${path} has no default-exported voice app: export default voiceApp("…")`);
+  if (!isVoiceApp(module_.default)) throw new CannotServe(`${path} is read as the project's voice app, and its default export is none: export default voiceApp("…") there, or give a file that is something else another name`);
   return module_.default;
 }
 

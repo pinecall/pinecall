@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.33 — a tool's answer follows what its app said, and the overflow speaks the agent's language (2026-11-13)
 
 - **A tool's answer reaches the model after what its app said before it.** The answer went back on the
   worker's own request while the app's commands (the prompt it rendered, the tools it opened, the state it

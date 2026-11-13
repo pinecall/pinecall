@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.11.33 — a tool's answer follows what its app said, and the overflow speaks the agent's language (2026-11-13)
+
+- **A file at the project's root that is no voice app says the way out.** `app.py` there is read as the
+  project's voice app; one that is something else (a Flask app) is refused by a sentence that says so, and
+  that another name frees it.
+
 ## 0.11.32 — a passed call is answered at once, and the doctor reads a cluster (2026-11-12)
 
 - **A call passed to a teammate is answered by the teammate, at once**, as in TypeScript: what the transfer

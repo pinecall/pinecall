@@ -8,7 +8,8 @@ import { countTools } from "../agents/service/index.js";
 import type { Context } from "../context.js";
 import { errorMessage, UsageError } from "../errors.js";
 import { languageOf } from "../project/language.js";
-import { type AgentHome, appFileOf } from "../project/layout.js";
+import { servedApp } from "../project/app.js";
+import type { AgentHome } from "../project/layout.js";
 import * as telephony from "../telephony/service.js";
 import { lineSentence as describeLine } from "../telephony/render.js";
 import { runOnce, serveStart, spawnServing, type Child } from "./child.js";
@@ -61,8 +62,8 @@ export async function start(ctx: Context, input: StartInput): Promise<number> {
     throw new UsageError(`\`pinecall start\` will not guess who this key is: ${errorMessage(failed)}`);
   }
   const first = homes[0]!;
-  // The project's voice app rides with its agents, in their language.
-  const app = appFileOf(first.root, languageOf(first.file));
+  // The project's voice app rides with its agents, in their language, when its framework knows one.
+  const app = await servedApp(first.root, homes.map((home) => home.file), ctx.processEnv);
   const args = [...homes.flatMap((home) => ["--file", home.file, "--slug", home.name]), ...(app === undefined ? [] : ["--app", app]), "--events"];
   const spawned = (): Child => spawnServing(serveStart(ctx.gateway(), first.file, "start", args, { root: first.root, inspect: input.inspect }, ctx.processEnv), { other: ctx.io.stderr, signals: process });
   const child = spawned();

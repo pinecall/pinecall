@@ -5,6 +5,15 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
+## 0.11.33 — a tool's answer follows what its app said, and the overflow speaks the agent's language (2026-11-13)
+
+- **A file at the project's root that is no voice app says the way out.** `app.ts` there is read as the
+  project's voice app; one that is something else (a server of your own) was refused as having "no
+  default-exported voice app". The sentence now says what the file is taken for, and that another name frees it.
+- With the runtime 0.11.33 a call passed to a teammate is answered on the teammate's prompt and tools: the
+  pass that still stalled now and then under 0.11.32 was the runtime's, a tool's answer read before the
+  commands sent ahead of it. Measured again on `gemini-3.5-flash-lite`: 36 passes of 36 answered at once.
+
 ## 0.11.32 — a passed call is answered at once, and the doctor reads a cluster (2026-11-12)
 
 - **A call passed to a teammate is answered by the teammate, at once.** The model had called a tool named for a

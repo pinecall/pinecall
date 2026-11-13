@@ -24,7 +24,10 @@ module Pinecall
           raise CannotServe, "#{path} did not load: #{e.message}"
         end
         made = VoiceApp.made - before
-        raise CannotServe, "#{path} makes one voice app: APP = Pinecall.voice_app(\"…\")" unless made.length == 1
+        unless made.length == 1
+          raise CannotServe, "#{path} is read as the project's voice app, and makes #{made.empty? ? 'none' : made.length}: " \
+                             'APP = Pinecall.voice_app("…") there, once, or give a file that is something else another name'
+        end
 
         made.first
       end
