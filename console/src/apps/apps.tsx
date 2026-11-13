@@ -280,7 +280,7 @@ function Fleet({ kind, tabs, base, title, search, nothing }: Kind): ReactNode {
           </>
         )}
       </PageHead>
-      {open !== undefined && talking && !making && !isOfAgents(open) && <TalkPanel agent={open.name} onClose={stopTalking} />}
+      {open !== undefined && talking && !making && !isOfAgents(open) && <TalkPanel agent={open.agent} onClose={stopTalking} />}
       {making && (
         <NewAgentPanel
           taken={new Set(agents.map((one) => one.slug))}
@@ -338,14 +338,14 @@ function Fleet({ kind, tabs, base, title, search, nothing }: Kind): ReactNode {
                   <NotAnswering key={open.name} app={open} base={base} onChanged={reread} onRemoved={leave} />
                 ) : (
                   <>
-                    {kind === "studio" && at === "configure" && <Configure key={open.name} agent={open.name} kind={kind} onSaved={reread} />}
-                    {kind === "studio" && at === "knowledge" && <KnowledgeTab key={open.name} agent={open.name} />}
-                    {kind === "studio" && at === "tools" && <StudioTools key={open.name} agent={open.name} onSaved={reread} />}
-                    {kind === "studio" && at === "advanced" && <AdvancedTab key={open.name} agent={open.name} kind={kind} />}
-                    {at === "channels" && <ChannelsTab key={open.name} agent={open.name} />}
-                    {at === "monitors" && <MonitorsBoard key={open.name} agent={open.name} />}
-                    {at === "test" && <TestTab key={open.name} agent={open.name} kind={kind} authors={names} />}
-                    {kind === "code" && at === "setup" && <Setup key={open.name} agent={open.name} />}
+                    {kind === "studio" && at === "configure" && <Configure key={open.name} agent={open.agent} kind={kind} onSaved={reread} />}
+                    {kind === "studio" && at === "knowledge" && <KnowledgeTab key={open.name} agent={open.agent} />}
+                    {kind === "studio" && at === "tools" && <StudioTools key={open.name} agent={open.agent} onSaved={reread} />}
+                    {kind === "studio" && at === "advanced" && <AdvancedTab key={open.name} agent={open.agent} kind={kind} />}
+                    {at === "channels" && <ChannelsTab key={open.name} agent={open.agent} />}
+                    {at === "monitors" && <MonitorsBoard key={open.name} agent={open.agent} />}
+                    {at === "test" && <TestTab key={open.name} agent={open.agent} kind={kind} authors={names} />}
+                    {kind === "code" && at === "setup" && <Setup key={open.name} agent={open.agent} />}
                     {kind === "code" && at === "releases" && <ReleasesTab key={open.name} app={open} names={names} onChanged={reread} />}
                   </>
                 )}

@@ -60,6 +60,14 @@ KIND_OF_SCOPE: dict[str, ParticipantKind] = {"supervise": "supervisor", "observe
 # 20 s after its last person left, LiveKit's departure timeout. A supervisor watching keeps the
 # room up, so the call is ended here: the caller gone as long as LiveKit waits for a last person.
 CALLER_RETURNS_S = 20.0
+# A visitor whose page went away (a tab closed, a reload, a link to another page of the site) leaves
+# the room themselves: LiveKit's client does it as its page is hidden, and the room says
+# `client_initiated`. Another page of the same site carries the conversation on within a second or
+# two; a tab closed never does. Until 0.11.38 they were waited for as long as a dropped line, five
+# minutes of "on a call now" for a visitor who was gone; in 0.11.37 the widget hung up instead, and a
+# visitor lost the conversation at every page of a site.
+VISITOR_LEFT_THE_PAGE_S = 30.0
+LEFT_THE_PAGE = rtc.DisconnectReason.Name(rtc.DisconnectReason.CLIENT_INITIATED).lower()
 # The longest a transfer asked outside a tool waits for the agent to finish its sentence.
 THE_ANNOUNCEMENT_S = 12.0
 # A code is four digits keyed within eight seconds (docs/protocol/codes.md); answers to a menu
@@ -70,10 +78,11 @@ CODE_WITHIN_S = 8.0
 
 @dataclass(frozen=True, slots=True)
 class Waits:
-    """How long a room waits: for a caller who dropped, for a visitor who left, for a code's four tones."""
+    """How long a room waits: a caller who dropped, a visitor who dropped or left the page, a code's tones."""
 
     caller_returns_s: float = CALLER_RETURNS_S
     visitor_returns_s: float = fleet.A_VISITOR_RETURNS_S
+    visitor_left_the_page_s: float = VISITOR_LEFT_THE_PAGE_S
     code_within_s: float = CODE_WITHIN_S
 
 
@@ -336,8 +345,7 @@ class CallRoom:
     # ends here, as a caller who hung up, and never as a room LiveKit closed; their widget's hang-up
     # ends it at once (widget.py), a reload does not.
     async def _wait_for_the_caller(self, hang_up: Callable[[], None], reason: str) -> None:
-        is_a_visitor = self.call.context.channel is Channel.web
-        wait_s = self.waits.visitor_returns_s if is_a_visitor else self.waits.caller_returns_s
+        wait_s = self._wait_s_for(reason)
         await asyncio.sleep(wait_s)
         self.returning = None
         logger.info(
@@ -347,6 +355,13 @@ class CallRoom:
             wait_s,
         )
         hang_up()
+
+    def _wait_s_for(self, reason: str) -> float:
+        if self.call.context.channel is not Channel.web:
+            return self.waits.caller_returns_s
+        if reason == LEFT_THE_PAGE:
+            return self.waits.visitor_left_the_page_s
+        return self.waits.visitor_returns_s
 
     def _on_track_published(self, publication: rtc.TrackPublication, participant: rtc.Participant) -> None:
         track = _track_of(publication)

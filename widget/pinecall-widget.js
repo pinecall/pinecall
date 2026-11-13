@@ -47,7 +47,7 @@
 // that follows one that ended (event cart.restored). README.md is the whole reference.
 
 // Pinned: a floating @2 took 2.23.0, which signals on /rtc/v1, a path Pinecall's gateway does not route.
-import { ParticipantKind, Room, RoomEvent, Track } from "https://cdn.jsdelivr.net/npm/livekit-client@2.22.3/+esm";
+import { LoggerNames, ParticipantKind, Room, RoomEvent, Track, setLogLevel } from "https://cdn.jsdelivr.net/npm/livekit-client@2.22.3/+esm";
 import { CallUs } from "./call-us.js";
 import { card } from "./cards.js";
 import { Dictation } from "./dictation.js";
@@ -102,6 +102,10 @@ const TEMPLATE = `
     <div class="edge edge-y" data-axis="y"></div>
     <div class="edge grip" data-axis="xy" role="separator"></div>
   </section>`;
+
+// LiveKit's server closes a leaving seat's socket with no closing frame, and the client writes every such
+// close as an error on the page's console: at a page change, a reload or a hang-up, the page looked broken.
+setLogLevel("silent", LoggerNames.Signal);
 
 /** What goes on pinecall.event: the name and the data, as JSON. */
 function packet(name, data) {
@@ -310,10 +314,6 @@ class PinecallWidget extends HTMLElement {
     // The send lights up with words to send.
     input.addEventListener("input", () => (this.$(".send").disabled = !input.value.trim()));
     this.$(".mic").addEventListener("click", () => (this.dictation.active ? this.dictation.stop() : this.dictation.start()));
-    // The page going away is the visitor hanging up, said at the gateway's door, which a closing tab
-    // still reaches: the call ends now and not when the wait for her runs out. A site that swaps its
-    // pages without loading them never leaves the page, and its conversation goes on.
-    addEventListener("pagehide", () => void this.hungUp());
     this.$(".field").dataset.state = "";
   }
 
@@ -404,6 +404,14 @@ class PinecallWidget extends HTMLElement {
     this.dispatchEvent(new CustomEvent("pinecall:open"));
   }
 
+  /** A voice call now, the panel open on it: a page's own "Talk" button. The microphone is asked inside the tap; refused, a chat. */
+  async talk() {
+    this.show();
+    if (this.opening) await this.opening.catch(() => undefined);
+    if (this.scope === "talk") return;
+    if (!(this.talks && (await this.startCall())) && !this.room) await this.conversation("chat");
+  }
+
   /** `autostart`: the opening click is a voice call, the microphone asked inside it; refused, a chat. */
   async start() {
     if (!this.$(".panel").hidden) return this.hide();
@@ -437,6 +445,7 @@ class PinecallWidget extends HTMLElement {
     this.$(".peek").hidden = true;
     this.$(".panel").hidden = true;
     this.panel.hold();
+    this.dispatchEvent(new CustomEvent("pinecall:close"));
     try {
       sessionStorage.removeItem(this.openKey);
     } catch {

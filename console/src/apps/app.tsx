@@ -20,19 +20,19 @@ import { Releases } from "./releases";
 
 export function AppOverview({ app, kind, base, served, names, onChanged }: { app: App; kind: "code" | "studio"; base: string; served: number; names: ReadonlyMap<string, string>; onChanged: () => void }): ReactNode {
   const credentials = useCredentials();
-  const counted = useInsights(30, { agent: app.name });
-  const rehearsed = useInsights(30, { agent: app.name, world: "sandbox" });
+  const counted = useInsights(30, { agent: app.agent });
+  const rehearsed = useInsights(30, { agent: app.agent, world: "sandbox" });
   const [report, setReport] = useState<Report | null>(null);
 
   // An app's turn and its minute are measured on its overview; a Studio agent's on Configure, beside what it runs on.
   useEffect(() => {
     if (kind !== "code") return undefined;
     let gone = false;
-    readReport(credentials, app.name).then((read) => !gone && setReport(read), () => undefined);
+    readReport(credentials, app.agent).then((read) => !gone && setReport(read), () => undefined);
     return () => {
       gone = true;
     };
-  }, [credentials, app.name, kind]);
+  }, [credentials, app.agent, kind]);
   const said = saidOf(app);
   const { hosted, held } = app;
 
@@ -112,7 +112,7 @@ export function AppOverview({ app, kind, base, served, names, onChanged }: { app
         />
       </section>
 
-      {kind === "code" && report !== null && <MeasuresCard report={report} measuring={measuringOf(app.name, report, counted, rehearsed)} />}
+      {kind === "code" && report !== null && <MeasuresCard report={report} measuring={measuringOf(app.agent, report, counted, rehearsed)} />}
 
       <section className="dash-card" aria-label="How it is running">
         <div className="dash-parts cfg-parts-flush">

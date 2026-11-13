@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+- **A visitor keeps the conversation from page to page, and a closed tab ends it in 30 seconds.**
+  0.11.37 had the widget hang up as its page went away, so a visitor lost the conversation at every
+  link of a site. The widget hangs up no more, and the room tells a visitor who left the page (the
+  LiveKit client leaves the room as its page is hidden: `client_initiated`) from one whose line
+  dropped: the first is waited for 30 seconds, which another page of the site carries the
+  conversation on within, the second five minutes, as before.
+- **An app of one agent is one row in the console.** Its row is the app's and the agent's at once: its
+  calls, tests, channels and settings are the agent's, its releases the app's. An app of several
+  agents lists them under it, as 0.11.37 did.
+- **The widget opens a voice call from a page's own button and says when its panel closes.** `talk()`
+  opens the panel straight into a voice call in the browser, for a page that draws its own "Talk";
+  `pinecall:close` is said as the panel closes. LiveKit's signal log is silent in it, as on
+  pinecall.io: an unclean close at every page change read as an error on the page's console.
+
 ## 0.11.37 — an app's own page dictates, the widget's header is a menu, and a page going away ends its call (2026-11-13)
 
 - **An app's own page dictates.** `POST /pinecall/dictation` at the page's name answers one dictation's

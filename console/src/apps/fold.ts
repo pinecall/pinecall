@@ -11,8 +11,10 @@ export interface App {
   held: HeldAgent | null;
   /** The hosted app whose processes hold this agent, when the row is one of an app's agents; null on an app's own row. */
   of: string | null;
-  /** The agents the app's processes hold under other names than its own: the rows listed under it. */
+  /** The agents the app's processes hold under other names than its own: the rows listed under it, two or more. */
   agents: readonly string[];
+  /** The agent this row's calls, tests, channels and settings are: its own name, or an app's one agent's. */
+  agent: string;
 }
 
 export interface Said {
@@ -22,10 +24,11 @@ export interface Said {
 }
 
 // A voice app holds several agents under names that are not its own. Until 0.11.37 each of them was a row
-// beside its app, "connected from your server": one app of two agents read as three apps.
+// beside its app, "connected from your server": one app of two agents read as three apps. An app of one
+// agent is that agent: one row, whose calls, tests and channels are the agent's.
 /**
  * One row per app, the stopped ones last: what the box hosts of that kind, each followed by the agents its
- * processes hold, and every other agent of that kind that is connected, which a server of yours holds.
+ * processes hold when it holds several, and every other agent of that kind that is connected.
  */
 export function appsOf(hosted: readonly Hosted[], held: readonly HeldAgent[], kind: "code" | "studio"): App[] {
   const code = hosted.filter((one) => one.kind === kind);
@@ -36,10 +39,13 @@ export function appsOf(hosted: readonly Hosted[], held: readonly HeldAgent[], ki
   const named = new Set([...code.map((one) => one.name), ...classes.map((one) => one.slug).filter((slug) => !theirs.has(slug))]);
   const apps = [...named].sort().map((name): App => {
     const app = code.find((one) => one.name === name) ?? null;
-    return { name, hosted: app, held: heldAs(name), of: null, agents: app === null ? [] : members(app) };
+    const its = app === null ? [] : members(app);
+    const only = its.length === 1 ? its[0] : undefined;
+    if (only !== undefined) return { name, hosted: app, held: heldAs(only), of: null, agents: [], agent: only };
+    return { name, hosted: app, held: heldAs(name), of: null, agents: its, agent: name };
   });
   const listed = [...apps.filter((one) => one.hosted?.stopped !== true), ...apps.filter((one) => one.hosted?.stopped === true)];
-  return listed.flatMap((app) => [app, ...app.agents.map((slug): App => ({ name: slug, hosted: null, held: heldAs(slug), of: app.name, agents: [] }))]);
+  return listed.flatMap((app) => [app, ...app.agents.map((slug): App => ({ name: slug, hosted: null, held: heldAs(slug), of: app.name, agents: [], agent: slug }))]);
 }
 
 /** Whether the row is an app whose calls are its agents': it holds agents, and none under its own name. */

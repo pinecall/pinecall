@@ -413,6 +413,25 @@ async def test_a_visitor_who_left_is_waited_for_a_visitors_time_and_not_a_caller
     await where.call.writing.close(1.0)
 
 
+# A visitor whose page went away left the room themselves, and another page of the site comes back
+# within seconds: waited for that long, and no longer a dropped line's time.
+@needs_the_database
+async def test_a_visitor_whose_page_went_away_is_waited_for_less_than_one_whose_line_dropped(
+    box: Box, server: Server
+) -> None:
+    waits = Waits(caller_returns_s=10.0, visitor_returns_s=10.0, visitor_left_the_page_s=0.01)
+    left = seat("web_visitor", attributes={"pinecall.scope": "chat"}, reason=rtc.DisconnectReason.CLIENT_INITIATED)
+    where, offline, _ = _room(box, server, channel=Channel.web, waits=waits)
+    ended: list[bool] = []
+    where.when_the_caller_is_gone(lambda: ended.append(True))
+    where.watch()
+    offline.emit("participant_disconnected", left)
+    await asyncio.sleep(0.05)
+    assert ended == [True]
+    where.stop()
+    await where.call.writing.close(1.0)
+
+
 # ── the other verbs ──
 
 

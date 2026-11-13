@@ -48,13 +48,13 @@ The header holds three things: the call, a menu, and **×**.
   - **The theme**, light or dark, unless the page forced a `theme`.
   - **Maximize** (not on a phone, not `inline`).
 
-Closing the panel is not hanging up: the conversation waits, and the next open carries it on where
-it was. **The page going away is hanging up**: a tab closed, a reload or a link that loads another
-page ends the call at once, said at the gateway's door with the call's own token, so no call waits
-on a visitor who left. Back on the page, a panel that was open opens again on a new conversation,
-with the lines of the one before still on screen. A site that swaps its pages without loading them
-(a client router) never leaves the page, and its conversation goes on from page to page. **New
-conversation** is hanging up too (and so is carrying another conversation on in its place).
+Closing the panel is not hanging up, and neither is the page going away (a reload, a link to another
+page of the site, a tab closed): the conversation waits **30 seconds**, and the next open carries it on
+where it was, on this page or another, its resume token kept in this browser. Past that the call
+ends, and the next open is a new conversation with the lines of the one before still on screen. A
+visitor whose line dropped is waited for five minutes. **New conversation** is hanging up: said at
+the gateway's door with the call's own token, the call ends at once (and so does carrying another
+conversation on in its place).
 
 The panel is the visitor's to size: they drag its edges or its corner, double-click the corner to
 reset, or maximize it (Escape restores); the size they leave is kept in this browser. On a phone
@@ -114,6 +114,7 @@ token. Use one tag per agent; several can share a page.
 | method | |
 |---|---|
 | `toggle()` | opens the panel, or closes it when open |
+| `talk()` | opens the panel straight into a voice call in the browser: a page's own "Talk" button; a microphone refused leaves the chat |
 | `event(name, data)` | tells the agent what the visitor did on the page ([below](#telling-the-agent-what-the-visitor-does)); rejects while no conversation is open |
 
 ## Your endpoints
@@ -428,6 +429,7 @@ reads, never words the model is told to obey.
 | event | `detail` | when |
 |---|---|---|
 | `pinecall:open` | | the panel opens |
+| `pinecall:close` | | the panel closes (the conversation waits) |
 | `pinecall:started` | `{ call, scope }` | a chat or a voice call has joined; a voice call from the chat, a **New conversation** or a carry-on is a new one |
 | `pinecall:ended` | `{ call }` | it left |
 | `pinecall:ui` | `{ action: "open", url }` | the visitor tapped a link of the page's own site in the conversation (`url` is its path and query). The event is cancelable: a page that routes it itself (a single-page app) calls `preventDefault()`, and the widget then leaves the link to it and, on a phone, steps aside. Not cancelled, the link opens in this tab and the conversation carries on on the next page |
