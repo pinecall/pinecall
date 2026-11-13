@@ -432,6 +432,26 @@ async def test_a_visitor_whose_page_went_away_is_waited_for_less_than_one_whose_
     await where.call.writing.close(1.0)
 
 
+# A phone put down is a call over: nobody comes back from a hang-up, and the session is closed already.
+@needs_the_database
+async def test_a_phone_caller_who_hung_up_ends_the_call_at_once_and_one_who_dropped_is_waited_for(
+    box: Box, server: Server
+) -> None:
+    hung_up = seat(
+        "sip_caller", kind=SIP, attributes={CALLER_NUMBER: THE_CALLER}, reason=rtc.DisconnectReason.CLIENT_INITIATED
+    )
+    for left, ends in ((hung_up, [True]), (_caller_dropped(), [])):
+        where, offline, _ = _room(box, server, waits=Waits(caller_returns_s=10.0))
+        ended: list[bool] = []
+        where.when_the_caller_is_gone(lambda ended=ended: ended.append(True))
+        where.watch()
+        offline.emit("participant_disconnected", left)
+        await asyncio.sleep(0.05)
+        assert ended == ends
+        where.stop()
+        await where.call.writing.close(1.0)
+
+
 # ── the other verbs ──
 
 

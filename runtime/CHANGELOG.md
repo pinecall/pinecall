@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **A phone put down ends its call at once.** A caller who hung up was waited for 20 seconds like one
+  whose line dropped: the console said "on a call" after the phone was down, and a room LiveKit closed
+  in that time could leave the call open. A leg that left because its caller hung up, was rejected
+  or lost its room ends the call when it leaves; only a dropped connection is waited for.
 - **`pinecall login` is approved in the browser again.** The console started over on 2026-11-10
   without its `/cli` page: the link `pinecall login` prints landed on the dashboard, nothing approved
   the terminal, and it waited for good. Every new user's first step stopped there. The page is back:

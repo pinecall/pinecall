@@ -68,6 +68,19 @@ CALLER_RETURNS_S = 20.0
 # visitor lost the conversation at every page of a site.
 VISITOR_LEFT_THE_PAGE_S = 30.0
 LEFT_THE_PAGE = rtc.DisconnectReason.Name(rtc.DisconnectReason.CLIENT_INITIATED).lower()
+# The three reasons livekit closes the session for as the caller leaves: they hung up, they were
+# rejected, the room was deleted. On a phone none of them comes back, and the session that would
+# hear them is closed already: until 0.11.39 the call was held 20 s all the same, shown "on a call"
+# to a console after the caller had put the phone down, and a room LiveKit closed in that time
+# could leave it open for the reaper.
+GONE_FOR_GOOD = frozenset(
+    rtc.DisconnectReason.Name(reason).lower()
+    for reason in (
+        rtc.DisconnectReason.CLIENT_INITIATED,
+        rtc.DisconnectReason.USER_REJECTED,
+        rtc.DisconnectReason.ROOM_DELETED,
+    )
+)
 # The longest a transfer asked outside a tool waits for the agent to finish its sentence.
 THE_ANNOUNCEMENT_S = 12.0
 # A code is four digits keyed within eight seconds (docs/protocol/codes.md); answers to a menu
@@ -346,7 +359,8 @@ class CallRoom:
     # ends it at once (widget.py), a reload does not.
     async def _wait_for_the_caller(self, hang_up: Callable[[], None], reason: str) -> None:
         wait_s = self._wait_s_for(reason)
-        await asyncio.sleep(wait_s)
+        if wait_s > 0:
+            await asyncio.sleep(wait_s)
         self.returning = None
         logger.info(
             "call %s: the caller left (%s) and did not come back in %.0f s: the call ends",
@@ -358,7 +372,7 @@ class CallRoom:
 
     def _wait_s_for(self, reason: str) -> float:
         if self.call.context.channel is not Channel.web:
-            return self.waits.caller_returns_s
+            return 0.0 if reason in GONE_FOR_GOOD else self.waits.caller_returns_s
         if reason == LEFT_THE_PAGE:
             return self.waits.visitor_left_the_page_s
         return self.waits.visitor_returns_s
