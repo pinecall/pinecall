@@ -150,7 +150,7 @@ Beside `src/`:
 
 | | |
 |---|---|
-| `../../examples/typescript/clinica-norte` | one tenant, written the way a customer writes one, on the one layout |
+| `../../examples/typescript/brightside-dental` | one tenant's voice app, written the way a customer writes one, on the one layout |
 | `test/` | mirrors `src/`, plus the three that pin the shape: the tree, the imports, the two public surfaces |
 | `scripts/build`, `scripts/check` | what is published, and what CI runs |
 | `docs/` | how to build an agent · `docs/decisions/` is the maintainer's notebook and **git-ignored** |

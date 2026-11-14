@@ -154,7 +154,7 @@ with Gateway() as pc:
 | how to test one | [docs/testing-an-agent.md](docs/testing-an-agent.md) |
 | running it in production | [docs/production.md](docs/production.md) |
 | the CLI, verb by verb | the one CLI's reference, at docs.pinecall.io |
-| a complete example agent | [examples/python/clinica_norte](../../examples/python/clinica_norte) |
+| a complete example app | [examples/python/brightside_dental](../../examples/python/brightside_dental) |
 | the wire itself | `src/pinecall/wire/`, the runtime's shapes this package speaks |
 
 ## Developing

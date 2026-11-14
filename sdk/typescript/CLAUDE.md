@@ -13,11 +13,11 @@ code, comments, commit messages and this file in English. What it is:
 pnpm install                     # from the repository's root: every TypeScript package, one lockfile
 pnpm test                        # the framework — from the sources
 pnpm lint                        # tsc over src and test
-pnpm --filter "@pinecall/example-clinica-norte" test   # the example, ../../examples/typescript
+pnpm --filter "@pinecall/example-brightside-dental" lint   # the example, ../../examples/typescript
 scripts/build                    # what is published: the wire's build, then dist/ (tsc) — no console in it
 scripts/check                    # build → lint → test, in that order — what CI runs
 pnpm vitest run test/agent       # one directory; `-t "a sentence"` for one test
-cd ../../examples/typescript/clinica-norte && node ../../../cli/bin/pinecall.js chat   # the example, through the CLI's checkout
+cd ../../examples/typescript/brightside-dental && node ../../../cli/bin/pinecall.js chat   # the example, through the CLI's checkout
 ```
 
 Nothing has to be built to lint or test: every package in the workspace exports its sources, and

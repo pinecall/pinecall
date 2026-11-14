@@ -17,8 +17,9 @@ deps: ## deptry: every import declared, every declaration imported
 test: ## the suite, the tree's rules included
 	uv run pytest -q
 
-examples: ## the example's own ring-0 suite, run the way its owner runs it
-	uv run pytest -q -p no:cacheprovider ../../examples/python/clinica_norte
+examples: ## the example loads: its app and its agents, the way the pinecall CLI reads them
+	cd ../../examples/python/brightside_dental && uv run --project ../../../sdk/python python -m pinecall.serve app --app app.py \
+		--file agents/clinic-front-desk/agent.py --slug clinic-front-desk --file agents/clinic-billing/agent.py --slug clinic-billing
 
 build: ## the wheel and the sdist a tag publishes, into dist/
 	uv build --out-dir dist
@@ -29,5 +30,5 @@ drift: ## what the runtime's wire (../../runtime) says that src/pinecall/wire do
 # Ring 1 needs the one CLI and a key, so it is not part of check. The CLI starts the project's own
 # interpreter, `.venv/bin/python`: the example's is this checkout's, so the package is this one.
 ring1: ## the example's goldens through the one pinecall CLI and the gateway; needs the CLI and a key
-	@ln -sfn ../../../sdk/python/.venv ../../examples/python/clinica_norte/.venv
-	cd ../../examples/python/clinica_norte && $(if $(wildcard ../../cli/bin/pinecall.js),node ../../../cli/bin/pinecall.js,pinecall) test
+	@ln -sfn ../../../sdk/python/.venv ../../examples/python/brightside_dental/.venv
+	cd ../../examples/python/brightside_dental && $(if $(wildcard ../../cli/bin/pinecall.js),node ../../../cli/bin/pinecall.js,pinecall) test

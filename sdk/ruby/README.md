@@ -133,7 +133,7 @@ assert_equal %w[free_slots], call.tools
 | how to test one | [docs/testing-an-agent.md](docs/testing-an-agent.md) |
 | running it in production | [docs/production.md](docs/production.md) |
 | the CLI, verb by verb | the one CLI's reference, at docs.pinecall.io |
-| a complete example agent | [examples/ruby/clinica_norte](../../examples/ruby/clinica_norte) |
+| a complete example app | [examples/ruby/brightside_dental](../../examples/ruby/brightside_dental) |
 | the wire itself | `lib/pinecall/wire/`, the runtime's shapes this gem speaks |
 
 ## Requirements

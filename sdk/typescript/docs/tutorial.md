@@ -289,4 +289,4 @@ Pinecall installs the project from its lockfile and runs it, a deploy never cuts
 | the four blocks, the two regions, and `render()` | [the-view.md](the-view.md) |
 | the rings, and what is worth a test | [testing-an-agent.md](testing-an-agent.md) |
 | running it on a server | [production.md](production.md) |
-| a whole agent: stages, ids, a confirmed booking | [examples/typescript/clinica-norte](../../../examples/typescript/clinica-norte) |
+| a whole voice app: a line, two agents, a hand-over, a flow | [examples/typescript/brightside-dental](../../../examples/typescript/brightside-dental) |

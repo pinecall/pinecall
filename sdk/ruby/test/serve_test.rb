@@ -8,7 +8,8 @@ require_relative "client/fake_gateway"
 # The entry the one CLI starts a Ruby agent with: the wire on stdout, its door from the environment,
 # a drained leave, and a prompt that needs nothing.
 class ServeTest < Minitest::Test
-  AGENT = File.expand_path("../../../examples/ruby/clinica_norte/agents/clinica-norte/agent.rb", __dir__)
+  # A staged agent, the shape these tests read; the example it came from left the repository on 2026-11-14.
+  AGENT = File.expand_path("fixtures/clinica-norte/agent.rb", __dir__)
   SLUG = "clinica-norte"
 
   def setup

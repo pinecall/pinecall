@@ -5,7 +5,6 @@ as a voice app. One `app.py` says who answers the number; two agents the call pa
 that calls the patient back the day before the visit; and the clinic they share. The same app, file
 for file, as the [TypeScript](../../typescript/brightside-dental/README.md) one, whose README walks a
 call through it, and the [Ruby](../../ruby/brightside_dental/README.md) one.
-[Clínica Norte](../clinica_norte/README.md) is the example for one agent in depth.
 
 ```text
 brightside_dental/
@@ -50,7 +49,7 @@ pinecall simulate --agent clinic-front-desk --persona hurried --judge   # a test
 ```
 
 In this checkout the interpreter is the SDK's: `ln -sfn ../../../sdk/python/.venv .venv`, as
-`make ring1` does for Clínica Norte. `make check` in `sdk/python` lints this folder and type-checks it,
+`make ring1` does. `make check` in `sdk/python` lints this folder and type-checks it,
 strictly, from its own root.
 
 An agent's slug is its folder's name, and a slug is one org's in the whole gateway: rename the folders,

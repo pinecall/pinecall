@@ -18,7 +18,7 @@ Three groups, named in one sentence: the parts of the product, the SDKs, the lib
 | `packages/room/` | the caller's side of a call, for a page's own UI (npm `@pinecall/room`) | `packages/room/CLAUDE.md` |
 | `packages/dot/` | **experimental**: the talking dot, its face, and the tutor that walks a page with a pointer, both sides (npm `@pinecall/dot`) | `packages/dot/CLAUDE.md` |
 | `packages/core/` | what the console and the supervisor app stand on (`@pinecall/core`, never published) | `console/CLAUDE.md` |
-| `examples/` | Clínica Norte, one agent in depth, and Brightside Dental, the voice app on pinecall.io's editor, each in every language (`typescript/`, `python/`, `ruby/`); and Brightside, the dot tutor's, in TypeScript | each example's `README.md` |
+| `examples/` | one example per language: Brightside Dental, the voice app on pinecall.io's editor (`typescript/brightside-dental`, `python/brightside_dental`, `ruby/brightside_dental`) | each example's `README.md` |
 | `infra/` | the charts, the images and the Terraform a runtime is deployed with; the runtime's `Makefile` drives them | `infra/README.md` |
 
 ## What holds across the folders
@@ -33,7 +33,7 @@ Three groups, named in one sentence: the parts of the product, the SDKs, the lib
   `pnpm-workspace.yaml`, one lockfile); install from the root. `runtime/` and `sdk/python/` are
   each a uv project of its own, with its own `uv.lock`. `sdk/ruby/`
   has its Gemfile. A `pnpm -r` run from a folder reaches every package of the workspace: filter it
-  (`--filter @pinecall/example-clinica-norte`).
+  (`--filter @pinecall/example-brightside-dental`).
 - **CI** is `.github/workflows/check.yml`: each package's own check, run when its folder or a root
   it stands on changed.
 - **Documents not written for the people who use Pinecall** — plans, briefs, notes — never enter

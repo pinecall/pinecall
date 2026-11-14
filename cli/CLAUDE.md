@@ -15,7 +15,7 @@ pnpm test                        # the suite — on the test machine, never on a
 scripts/build                    # what is published: dist/ (tsc)
 scripts/check                    # build → lint → test — what CI runs
 node bin/pinecall.js --help      # the CLI from its sources, through tsx
-cd ../examples/typescript/clinica-norte && node ../../../cli/bin/pinecall.js prompt --state <golden>
+cd ../examples/typescript/brightside-dental && node ../../../cli/bin/pinecall.js prompt --agent clinic-front-desk
 ```
 
 The framework is `@pinecall/agents`, `workspace:^` in `dependencies`: the root's workspace links

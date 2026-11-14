@@ -5,7 +5,6 @@ a voice app. One `app.rb` says who answers the number; two agents the call passe
 calls the patient back the day before the visit; and the clinic they share. The same app, file for
 file, as the [TypeScript](../../typescript/brightside-dental/README.md) one, whose README walks a call
 through it, and the [Python](../../python/brightside_dental/README.md) one.
-[Clínica Norte](../clinica_norte/README.md) is the example for one agent in depth.
 
 ```text
 brightside_dental/

@@ -8,6 +8,5 @@ cd "$(dirname "$0")/.."
 # its own.
 scripts/build
 pnpm lint
-pnpm --filter "@pinecall/example-clinica-norte" lint
+pnpm --filter "@pinecall/example-brightside-dental" lint
 pnpm test
-pnpm --filter "@pinecall/example-clinica-norte" test

@@ -112,8 +112,8 @@ tests/                       mirrors src/ one to one
   fakes/gateway.py           a gateway that is not there: a real socket, the lookup and log doors on 127.0.0.1
   fakes/kept.py              an app's flows doors in memory, on 127.0.0.1: its runs, its events, a call's stages
   wire/entries.py            entries of one made-up call, for the reducer's tests
-../../examples/python/clinica_norte/   the TypeScript and Ruby example in Python, in the CLI's layout: its agenda, its Jinja view,
-                             its ring-0 suite (`make examples`, part of check) and the same eleven goldens (`make ring1`)
+../../examples/python/brightside_dental/   the TypeScript and Ruby example in Python, in the CLI's layout: loaded by
+                             `make examples` (part of check), linted and type-checked by check, its goldens by `make ring1`
 scripts/wire_drift.py        `make drift`: what the runtime's wire says that this copy does not
 ```
 

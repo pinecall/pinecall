@@ -338,5 +338,5 @@ the agent stated appears in the evidence it was given.
 | the four blocks, the two regions, and the template | [the-view.md](the-view.md) |
 | the rings, and what is worth a test | [testing-an-agent.md](testing-an-agent.md) |
 | running it on a server | [production.md](production.md) |
-| a whole agent: stages, ids, a confirmed booking | [examples/python/clinica_norte](../../../examples/python/clinica_norte) |
+| a whole voice app: a line, two agents, a hand-over, a flow | [examples/python/brightside_dental](../../../examples/python/brightside_dental) |
 | every verb, and where the key comes from | the one CLI's reference, at docs.pinecall.io |

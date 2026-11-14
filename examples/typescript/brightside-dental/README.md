@@ -3,8 +3,7 @@
 The app on [pinecall.io](https://pinecall.io)'s editor, file for file: a dental clinic's phone line
 written as a voice app. One `app.ts` says who answers the number; two agents the call passes
 between; a flow that calls the patient back the day before the visit; and the clinic they share. It
-is the example to read for an app of more than one agent. [Clínica Norte](../clinica-norte/README.md)
-is the example for one agent in depth. The same app is written in
+is the one example of the repository. The same app is written in
 [Python](../../python/brightside_dental/README.md) and [Ruby](../../ruby/brightside_dental/README.md).
 
 ```text

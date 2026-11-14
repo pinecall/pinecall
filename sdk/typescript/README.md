@@ -67,7 +67,7 @@ checkout:
 ```bash
 pnpm install
 npm i -g pinecall            # the CLI; the example takes the framework from this checkout
-cd ../../examples/typescript/clinica-norte
+cd ../../examples/typescript/brightside-dental
 pinecall login               # sign this machine in through the browser, once
 pinecall start               # run the agent (this is the process you deploy); leave it running
 pinecall chat                # in another terminal: talk to the agent `start` holds

@@ -86,8 +86,8 @@ lib/pinecall/
   client/endpoints.rb        one base URL, its four doors: the apps' socket, two logs, a call's lookup
   testing.rb                 a gateway that is not there — what ring 0 mounts against
 sig/                         the public surface as RBS. `rake rbs` is part of the gate
-../../examples/ruby/clinica_norte/   the TypeScript example's agent in Ruby, in the CLI's layout: its agenda, its
-                             view, its ring-0 suite, and the same eleven goldens (`rake ring1`)
+../../examples/ruby/brightside_dental/   the TypeScript example in Ruby, in the CLI's layout: loaded by `rake examples`
+                             (part of check), its goldens by `rake ring1`; test/fixtures/ holds the staged agent serve_test reads
 test/                        mirrors lib/; `conformance_test.rb` holds the SDK to its wire: every
                              command sent by one method or said to be nobody's, every event folded
                              or ignored with a reason
