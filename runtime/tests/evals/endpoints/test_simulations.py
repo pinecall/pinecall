@@ -198,3 +198,44 @@ async def test_a_comparison_places_each_persona_against_the_agent_under_each_val
     many = {**body, "more_personas": ["a", "b", "c", "d", "e"]}
     too_many = await gateway.http.post("/v1/simulations/compare", json=many, headers=tenant.person)
     assert too_many.status_code == 400 and "10 calls at most" in too_many.text
+
+
+async def listed_calls(gateway: Gateway, tenant: Tenant, calls: list[str]) -> list[dict[str, object]]:
+    """The simulated calls' rows, once the list carries every one of them."""
+    runs: list[dict[str, object]] = []
+    for _ in range(200):
+        listed = await gateway.http.get("/v1/simulations", headers=tenant.server)
+        runs = [run for run in listed.json()["runs"] if run["call"] in calls]
+        if len(runs) == len(calls):
+            break
+        await asyncio.sleep(0.05)
+    return runs
+
+
+async def test_a_simulated_call_is_placed_again_as_it_was_on_a_new_call(
+    gateway: Gateway, tenant: Tenant, agent: str
+) -> None:
+    """The same caller on the same line about the same thing, under a call id of its own; and again from that one."""
+    scenario = {"goal": "I want to move my appointment to Friday.", "facts": {"name": "Ana"}}
+    body = {"agent": agent, "persona": "in-a-hurry", "voice": False, "turns": 1, "scenario": scenario}
+    async with holding(gateway, tenant, agent):
+        first = await gateway.http.post("/v1/simulations", json=body, headers=tenant.server)
+        assert first.status_code == 200, first.text
+        call = str(first.json()["call"])
+        again = await gateway.http.post(f"/v1/simulations/{call}/again", headers=tenant.server)
+        assert again.status_code == 200, again.text
+        second = str(again.json()["call"])
+        assert second != call and again.json()["voice"] is False
+        # What the second was placed with is the first's: it is placed again in its turn.
+        third = await gateway.http.post(f"/v1/simulations/{second}/again", headers=tenant.server)
+        assert third.status_code == 200, third.text
+        runs = await listed_calls(gateway, tenant, [call, second, str(third.json()["call"])])
+        assert [(run["agent"], run["persona"], run["comparison"]) for run in runs] == [(agent, "in-a-hurry", None)] * 3
+
+
+async def test_a_call_nobody_simulated_here_is_not_placed_again(gateway: Gateway, tenant: Tenant, agent: str) -> None:
+    """An id that is no simulated call of the key's scope is refused by its name, and nothing is counted."""
+    answer = await gateway.http.post("/v1/simulations/call_nobodysimulated/again", headers=tenant.server)
+    assert answer.status_code == 404
+    assert "no simulated call call_nobodysimulated here" in answer.text
+    assert await used_of(gateway, tenant, "simulations") == 0

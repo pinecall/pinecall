@@ -63,6 +63,7 @@ class CallFact(Model):
             "against",
             "comparison",
             "hearing",
+            "placed",
             "line",
         ),
         exported_by="calls.service.exporting.export_calls",
@@ -117,6 +118,11 @@ class CallFact(Model):
     # How a simulated spoken call was heard, measured against what its caller really said and when
     # (evals' `Hearing`): kept when the simulation ends. NULL for any other call.
     hearing: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # What a simulation was placed with besides its agent and its caller (evals' `Wanted`): the line,
+    # its turns, the room behind the caller, who played it, what it phoned about. Kept as it is placed,
+    # so the call can be placed again as it was. NULL for any other call, and for one simulated before
+    # this column existed.
+    placed: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     # What a list shows of the call, as its state said at the seal (`folds.facts.line_of`): a list reads
     # it instead of folding the log. NULL while the call is live, and for a call sealed before this
     # column existed, until `facts rebuild` writes it.

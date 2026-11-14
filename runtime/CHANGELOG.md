@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+- **The room behind the caller is muted before it is levelled up to a voice.** A simulated caller
+  with a television 30 dB under her was heard right and never answered: livekit's automatic gain,
+  with the caller quiet, raised the television to a voice's loudness in twelve seconds, it was taken
+  for her speaking again a quarter of a second after her turn closed, the reply it stopped was never
+  said, and thirty seconds of news became her next turn. A spoken call now mutes what sits 20 dB or
+  more under the caller's own loud level, before that gain hears it (`session/nearest_voice.py`):
+  the level is learnt from the call's own voice, nothing is muted until one was heard, and a caller
+  quiet for eight seconds of their own time is learnt again. No model and no vendor: a level, read
+  every 10 ms. A voice less than 20 dB under the caller's is still a second caller to it.
+- **A simulated call is placed again as it was.** `POST /v1/simulations/{call}/again` places the
+  same caller on the same line — written or spoken, its turns, the room behind it and how loud, who
+  plays it, what it phones about — on a new call. A call keeps what it was placed with in its facts
+  (migration 000027); the console's **Run again**, on a simulated call that is over, is that door.
+
 ## 0.11.39 — a terminal signs in again, a phone put down ends its call, and the console's call list is one row per call (2026-11-13)
 
 - **Two dependencies raised for advisories published on the day of the release.** `dnspython` 2.9.2

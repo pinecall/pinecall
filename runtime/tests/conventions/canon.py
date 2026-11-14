@@ -177,6 +177,8 @@ ENGINE_MODULES: dict[str, frozenset[str]] = {
             "recording",
             # The caller's audio cleared of the agent's own voice.
             "echo",
+            # The caller's audio with the room far under their voice muted.
+            "nearest_voice",
             # A call's time: its ceiling, a chat's quiet, the idle lines.
             "clock",
             # The call.started entry.

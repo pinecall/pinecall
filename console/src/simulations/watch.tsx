@@ -15,6 +15,7 @@ import { Recording, type TapeControl } from "../calls/recording";
 import { Icon } from "../shell/icons";
 import { CallSummary } from "../talk/summary";
 import { SidePanel } from "../ui/side-panel";
+import { RunAgain } from "./again";
 import type { Hearing, PersonaRun } from "./door";
 import { BeingSaid, lineOf, Transcript, withLine, type Line } from "./transcript";
 import "../talk/talk.css";
@@ -111,8 +112,8 @@ function useNow(ticking: boolean): number {
   return now;
 }
 
-/** The header's buttons, as Agents has its own: the results panel shown or folded, and while the call is on, the ear and the stop. */
-export function WatchActions({ watched, results, onResults }: { watched: Watched; results: boolean; onResults: () => void }): ReactNode {
+/** The header's buttons, as Agents has its own: the results panel shown or folded; while the call is on, the ear and the stop; once it is over, the same call again. */
+export function WatchActions({ watched, results, onResults, onAgain }: { watched: Watched; results: boolean; onResults: () => void; onAgain: (call: string) => void }): ReactNode {
   return (
     <div className="app-actions">
       {watched.spoken && !watched.over && <EarButton ear={watched.ear} />}
@@ -121,6 +122,7 @@ export function WatchActions({ watched, results, onResults }: { watched: Watched
         Results
       </button>
       {!watched.over && <Stop call={watched.call} spoken={watched.spoken} />}
+      {watched.over && <RunAgain call={watched.call} onStarted={onAgain} />}
     </div>
   );
 }

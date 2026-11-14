@@ -52,6 +52,7 @@ from runtime.calls.service.simulated import (
     keep_agent_values,
     keep_caller_heard,
     keep_caller_played,
+    keep_how_placed,
 )
 
 __all__ = [
@@ -87,6 +88,7 @@ __all__ = [
     "keep_caller_heard",
     "keep_caller_played",
     "keep_days",
+    "keep_how_placed",
     "keep_lent",
     "keep_opening",
     "list_calls_with",

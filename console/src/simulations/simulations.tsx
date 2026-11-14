@@ -125,13 +125,13 @@ function ComparisonRow({ id, runs }: { id: string; runs: PersonaRun[] }): ReactN
 }
 
 /** One call open: its buttons in the header, as Agents has its own, and its results docked beside it. */
-function OpenCall({ call, run, list }: { call: string; run: PersonaRun | undefined; list: ReactNode }): ReactNode {
+function OpenCall({ call, run, list, onAgain }: { call: string; run: PersonaRun | undefined; list: ReactNode; onAgain: (call: string) => void }): ReactNode {
   const watched = useWatched(call);
   const [results, setResults] = useState(true);
   return (
     <>
       <PageHead open={run?.persona ?? "A call"}>
-        <WatchActions watched={watched} results={results} onResults={() => setResults(!results)} />
+        <WatchActions watched={watched} results={results} onResults={() => setResults(!results)} onAgain={onAgain} />
       </PageHead>
       <div className="app-layout sim-layout">
         {list}
@@ -251,7 +251,7 @@ export function SimulationsPage(): ReactNode {
     </aside>
   );
 
-  if (call !== undefined) return <OpenCall key={call} call={call} run={runs?.find((run) => run.call === call)} list={list} />;
+  if (call !== undefined) return <OpenCall key={call} call={call} run={runs?.find((run) => run.call === call)} list={list} onAgain={(again) => void started([again])} />;
 
   return (
     <>

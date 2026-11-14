@@ -1,5 +1,6 @@
 """The simulation endpoints: a persona put on the agent, the simulated calls listed, a caller's line, a spoken call."""
 
+from collections.abc import Mapping
 from dataclasses import asdict
 from typing import Annotated, Any
 
@@ -30,6 +31,17 @@ async def simulate(body: schemas.SimulationRequest, actor: EvalsKey, parts: TheH
     """Put one of the agent's personas on it, written or spoken; the call's id at once."""
     against = check_agent_values(actor, body.against)
     started = await simulations.place_simulation(parts, actor, simulation_of(body), against=against, comparison=None)
+    return schemas.SimulationStarted(call=started.call, voice=started.spoken)
+
+
+# A new call of its own: one of a comparison's, placed again, is no row of that comparison's table.
+# The voice and models it ran on are checked again, as the first time: a key may have lost the scope.
+@router.post("/v1/simulations/{call}/again")
+async def simulate_again(call: str, actor: EvalsKey, parts: TheHarness) -> schemas.SimulationStarted:
+    """Place a simulated call again as it was placed: the same caller, line and room, on a new call."""
+    before = await simulations.find_placed(parts, actor, call)
+    against = check_values_named(actor, before.against)
+    started = await simulations.place_simulation(parts, actor, before.wanted, against=against, comparison=None)
     return schemas.SimulationStarted(call=started.call, voice=started.spoken)
 
 
@@ -96,7 +108,11 @@ async def place_voice_call(
 # A test room's rule: the sandbox's alone, only those values, and a key that edits the pipeline.
 def check_agent_values(actor: Actor, against: schemas.AgentValues | None) -> JsonObject:
     """The voice and models a run puts the agent on, checked as a test room's are; none said is none."""
-    named: dict[str, Any] = {} if against is None else against.model_dump(exclude_none=True)
+    return check_values_named(actor, {} if against is None else against.model_dump(exclude_none=True))
+
+
+def check_values_named(actor: Actor, named: Mapping[str, Any]) -> JsonObject:
+    """The same check of values already a mapping: a call's kept ones, when it is placed again."""
     if not named:
         return {}
     if KeyScope.pipeline not in actor.scopes:

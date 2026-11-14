@@ -14,12 +14,23 @@ from runtime.kit.repository import Repository
 
 # What no entry of a call's log says, kept in its row by whoever knows it: the vendors the call ran
 # on the box's own key (the seal), who played a simulated caller, what the agent ran on over its
-# settings and the comparison it was placed in, how a simulated call was heard (evals), and the
-# line a list shows (the seal). A fold never writes these. `persona` is both: folded from
+# settings and the comparison it was placed in, how a simulated call was placed and heard (evals),
+# and the line a list shows (the seal). A fold never writes these. `persona` is both: folded from
 # `call.started`, and kept by a simulation placed before its call starts. `caller_cost_usd` is
 # added to, never set (`add_caller_cost`).
 KEPT_COLUMNS = frozenset(
-    {"lent", "caller_llm", "caller_tts", "caller_voice", "against", "comparison", "hearing", "line", "persona"}
+    {
+        "lent",
+        "caller_llm",
+        "caller_tts",
+        "caller_voice",
+        "against",
+        "comparison",
+        "hearing",
+        "placed",
+        "line",
+        "persona",
+    }
 )
 
 

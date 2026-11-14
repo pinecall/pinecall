@@ -1,4 +1,4 @@
-"""What a simulated call keeps beside its fold: who played its caller, what that cost, how it was heard."""
+"""What a simulated call keeps beside its fold: how it was placed, who played its caller, its cost, how it was heard."""
 
 from collections.abc import Mapping
 from typing import Any
@@ -33,6 +33,12 @@ async def keep_caller_played(session: AsyncSession, call: str, *, llm: str, tts:
 async def keep_caller_heard(session: AsyncSession, call: str, hearing: Mapping[str, Any]) -> None:
     """Keep how a simulated spoken call was heard, against what its caller really said, with the call's facts."""
     await FactsRepository(session).keep(call, hearing=dict(hearing))
+
+
+# The caller is kept with it: the row exists before the call's first entry folds into it.
+async def keep_how_placed(session: AsyncSession, call: str, placed: Mapping[str, Any], *, persona: str) -> None:
+    """Keep what a simulation was placed with beside its agent and caller, so it can be placed again as it was."""
+    await FactsRepository(session).keep(call, placed=dict(placed), persona=persona)
 
 
 # The caller is kept with them: a comparison's table names each row's caller from the first read,

@@ -71,6 +71,16 @@ line in the world — ten at most, on every gateway together, `429` with `Retry-
 eleventh ([limits.md](../limits.md)). The answer is `{call, voice}` at once,
 the call minted by the platform, and the conversation goes on in the gateway: it is watched as any
 call is, and `GET /v1/simulations` lists it. Its tools run for real, as on any call.
+
+`POST /v1/simulations/{call}/again` places a simulated call again as it was placed, on a new call
+of its own: the same agent and caller, written or spoken, the same turns, the same room behind the
+caller at the same level, the same loss and pause, played on the same model and voice, and phoning
+about the same thing — what a caller of the library was briefed with the first time is kept, so it
+is not briefed again — on the voice and models the agent ran on for that call. It takes no body and
+answers `{call, voice}` as the first did, refused for what refuses any simulation. What a call was
+placed with is kept with its facts as it is placed; a call simulated before the runtime kept it
+(migration 000027) is `409`, and an id that is no simulated call of the key's environment and copies is `404`. A call
+of a comparison placed again is a run of its own, in no comparison.
 **A caller of the library is briefed before it phones.** Pinecall's personas are written for every
 business, so played as written they phone with nothing to say. When one is put on an agent — here,
 by `pinecall simulate`, or from Studio — the gateway gives it the one concrete thing it calls about,

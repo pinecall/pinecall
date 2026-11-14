@@ -60,6 +60,11 @@ export async function startSimulation(credentials: Credentials, wanted: Wanted):
   return StartedSchema.parse(await post(credentials, "/v1/simulations", wanted)).call;
 }
 
+/** The call placed again as it was (the same caller, line and room), on a new call: its id. */
+export async function placeAgain(credentials: Credentials, call: string): Promise<string> {
+  return StartedSchema.parse(await post(credentials, `/v1/simulations/${encodeURIComponent(call)}/again`, {})).call;
+}
+
 /** How a run stands: on the line, held by every judge, broken by one, or ended with nobody judging it. */
 export type Standing = "live" | "held" | "broke" | "unjudged";
 

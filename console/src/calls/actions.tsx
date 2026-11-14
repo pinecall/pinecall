@@ -1,12 +1,14 @@
-/** What a person does with a call that is over: keep it as a case, write it as a golden, judge it again, stop calling the number, or erase it. */
+/** What a person does with a call that is over: keep it as a case, write it as a golden, judge it again, run a simulated one again, stop calling the number, or erase it. */
 
 import { useState, type ReactNode } from "react";
 import { useNavigate } from "react-router";
 
 import { saidBy } from "@pinecall/core/api";
+import { A_SIMULATED_CALLER } from "@pinecall/core/calls";
 import { useCredentials } from "@pinecall/core/credentials";
 import { type CallScore } from "@pinecall/core/wire/events-call";
 import { useOrg } from "../lib/org";
+import { RunAgain } from "../simulations/again";
 import { eraseCall, judgeAgain, keepCall, optOut, promoteCall, type Promoted } from "./door";
 
 type Busy = "" | "judge" | "keep" | "promote" | "erase" | "list";
@@ -66,6 +68,8 @@ export function Actions({ agent, call, number, onJudged }: { agent: string; call
             {busy === "judge" ? "Judging…" : "Judge again"}
           </button>
         )}
+        {/* A simulated call is watched where simulations are: the new one opens there. */}
+        {mayJudge && number === A_SIMULATED_CALLER && <RunAgain call={call} onStarted={(again) => void navigate(`/simulations/${again}`)} />}
       </div>
       {judged && <p className="dash-quiet">Judged again. The verdict above is the new one, written on the call's log.</p>}
       {kept !== null && <p className="dash-quiet">Kept as {kept}, in Cases.</p>}

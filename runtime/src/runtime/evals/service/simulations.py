@@ -3,6 +3,7 @@
 import logging
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,7 +27,7 @@ from runtime.evals.service.callers import (
 )
 from runtime.evals.service.leg import describe
 from runtime.evals.service.simulated_calls import Simulation, keep_against, play_spoken, play_written
-from runtime.exceptions import Conflict, QuotaExceeded, TooManyRequests
+from runtime.exceptions import Conflict, NotFound, QuotaExceeded, TooManyRequests
 from runtime.fleet import service as fleet
 from runtime.judging import service as judging
 from runtime.kit.text import Json, JsonObject
@@ -83,6 +84,14 @@ class Started:
     spoken: bool
 
 
+@dataclass(frozen=True, slots=True)
+class PlacedBefore:
+    """A simulated call as it can be placed again: what it was placed with, and what its agent ran on for it."""
+
+    wanted: Wanted
+    against: JsonObject
+
+
 # ── placed ──
 
 
@@ -112,6 +121,10 @@ async def place_simulation(
         async with parts.sessions.begin() as session_:
             await admit_simulation(session_, parts, scope, wanted.agent, persona, spoken=wanted.spoken, waits=True)
         caller = await _brief(parts, scope, wanted, persona)
+        # What a caller of the library was briefed to phone about is kept as its scenario: placed again,
+        # it phones about the same thing and is not briefed a second time.
+        briefed = None if caller is persona else Scenario(caller.goal, dict(caller.facts))
+        placed = as_placed(replace(wanted, scenario=wanted.scenario or briefed))
         simulation = Simulation(
             call=call,
             agent=wanted.agent,
@@ -130,14 +143,72 @@ async def place_simulation(
         if wanted.spoken:
             async with parts.sessions.begin() as session_:
                 await claim_new_call(session_, call, wanted.agent, scope)
+                await calls.keep_how_placed(session_, call, placed, persona=wanted.persona)
             parts.simulations.play(call, play_spoken(parts, simulation))
         else:
             running = await open_written_call(parts, registration, simulation)
+            async with parts.sessions.begin() as session_:
+                await calls.keep_how_placed(session_, call, placed, persona=wanted.persona)
             parts.simulations.play(call, play_written(parts, running, simulation))
     except BaseException:
         parts.simulations.give_back(call)
         raise
     return Started(call, wanted.spoken)
+
+
+# ── placed again ──
+
+
+# The request as it was said, never what the persona filled in: a caller edited since is played as it
+# is now, on the line the call had.
+def as_placed(wanted: Wanted) -> JsonObject:
+    """What a simulation is placed with beside its agent and caller, as its call's facts keep it."""
+    played, scenario = wanted.played_by, wanted.scenario
+    return {
+        "spoken": wanted.spoken,
+        "turns": wanted.turns,
+        "interferer_db": wanted.interferer_db,
+        "packet_loss": wanted.packet_loss,
+        "ambience": wanted.ambience,
+        "pause_s": wanted.pause_s,
+        "played_by": None if played is None else {"llm": played.llm, "tts": played.tts, "voice": played.voice},
+        "scenario": None if scenario is None else {"goal": scenario.goal, "facts": dict(scenario.facts)},
+    }
+
+
+def as_wanted(agent: str, persona: str, placed: Mapping[str, Any]) -> Wanted:
+    """The simulation a call's facts kept, to place on a new call."""
+    played, scenario = placed.get("played_by"), placed.get("scenario")
+    return Wanted(
+        agent=agent,
+        persona=persona,
+        spoken=bool(placed["spoken"]),
+        turns=int(placed["turns"]),
+        interferer_db=placed.get("interferer_db"),
+        packet_loss=float(placed.get("packet_loss") or 0.0),
+        ambience=placed.get("ambience"),
+        pause_s=placed.get("pause_s"),
+        played_by=None if played is None else judging.Played(**played),
+        scenario=None if scenario is None else Scenario(str(scenario["goal"]), dict(scenario["facts"])),
+    )
+
+
+# Read in the key's env and the copies it lists, as the list of simulated calls is: a call of another
+# org, or of a colleague's copy of the sandbox, is not there to be placed again.
+async def find_placed(parts: Harness, actor: Actor, call: str) -> PlacedBefore:
+    """How the simulated call was placed; refused for a call nobody simulated here, or one that kept nothing."""
+    asked = calls.PersonaRunFilters(call=call, holders=calls.list_copies(actor))
+    async with parts.sessions.begin() as session_:
+        found = await calls.list_persona_runs(session_, actor.scope, asked, limit=1)
+    if not found.runs:
+        raise NotFound(f"no simulated call {call} here")
+    run = found.runs[0]
+    kept = run.facts
+    if kept.placed is None or kept.persona is None:
+        raise Conflict(
+            f"{call} was simulated before a call kept how it was placed: place it again from its caller's page"
+        )
+    return PlacedBefore(as_wanted(run.agent, kept.persona, kept.placed), dict(kept.against or {}))
 
 
 # Everything that can refuse a simulation is asked here, before a call is claimed or opened: a
