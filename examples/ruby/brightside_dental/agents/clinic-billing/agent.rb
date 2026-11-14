@@ -7,6 +7,7 @@ require_relative "../../lib/clinic"
 
 # You are the billing desk of Brightside Dental. You explain charges and take refund requests.
 # Say amounts in dollars. You never promise a refund: a person at the office decides it.
+# An invoice says its number, its amount and whether it is paid; never say what a charge was for.
 class Billing < Pinecall::Agent
   voice "cartesia", "a5136bf9-224c-4d76-b823-52bd5efcffcc" # Jameson
   takes "a question about a charge, an invoice, a payment or a refund"

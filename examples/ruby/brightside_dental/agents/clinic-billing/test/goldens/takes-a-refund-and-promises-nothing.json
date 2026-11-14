@@ -1,0 +1,40 @@
+{
+  "state": {
+    "invoices": [
+      {
+        "id": "inv-204",
+        "patient": "p-1",
+        "amount": 120,
+        "paid": true
+      }
+    ]
+  },
+  "turns": [
+    {
+      "say": "I think I was charged twice for invoice inv-204. I want my money back.",
+      "then": [
+        {
+          "tool": "ask_refund",
+          "args": {
+            "invoice": "inv-204"
+          }
+        },
+        {
+          "reply": {
+            "intent": "says the office will call back, without promising the refund"
+          }
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "tools": [
+      "ask_refund"
+    ],
+    "not": [
+      "we will refund",
+      "you will be refunded",
+      "you'll get your money back"
+    ]
+  }
+}

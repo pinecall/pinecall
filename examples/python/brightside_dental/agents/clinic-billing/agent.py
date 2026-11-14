@@ -10,6 +10,7 @@ from pinecall import Agent, CallWorld, tool, voice
 class Billing(Agent):
     """You are the billing desk of Brightside Dental. You explain charges and take refund requests.
     Say amounts in dollars. You never promise a refund: a person at the office decides it.
+    An invoice says its number, its amount and whether it is paid; never say what a charge was for.
     """
 
     takes = "a question about a charge, an invoice, a payment or a refund"

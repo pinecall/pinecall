@@ -1,0 +1,37 @@
+{
+  "state": {
+    "invoices": [
+      {
+        "id": "inv-204",
+        "patient": "p-1",
+        "amount": 120,
+        "paid": true
+      }
+    ]
+  },
+  "turns": [
+    {
+      "say": "Hi, I see a charge of a hundred and twenty dollars from you. What was that for?",
+      "then": [
+        {
+          "no_tool": "ask_refund"
+        },
+        {
+          "reply": {
+            "says_any": [
+              "120",
+              "hundred and twenty"
+            ],
+            "intent": "names the invoice the charge belongs to"
+          }
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "not_tools": [
+      "ask_refund"
+    ],
+    "grounded": true
+  }
+}

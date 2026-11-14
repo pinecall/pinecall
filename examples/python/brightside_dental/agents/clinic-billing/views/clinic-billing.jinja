@@ -1,1 +1,1 @@
-Their invoices: {% for one in invoices %}{{ one.id }}, ${{ one.amount }}{% if not loop.last %}; {% endif %}{% else %}none on file{% endfor %}.
+Their invoices: {% for one in invoices %}{{ one.id }}, ${{ one.amount }}, {{ "paid" if one.paid else "unpaid" }}{% if not loop.last %}; {% endif %}{% else %}none on file{% endfor %}.

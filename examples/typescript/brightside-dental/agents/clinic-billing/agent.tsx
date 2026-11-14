@@ -5,6 +5,7 @@ import { clinic, type Invoice, type Patient } from "../../lib/clinic.js";
 /**
  * You are the billing desk of Brightside Dental. You explain charges and take refund requests.
  * Say amounts in dollars. You never promise a refund: a person at the office decides it.
+ * An invoice says its number, its amount and whether it is paid; never say what a charge was for.
  */
 @agent({
   voice: "cartesia/a5136bf9-224c-4d76-b823-52bd5efcffcc", // Jameson
@@ -28,6 +29,6 @@ export default class Billing extends Agent {
   }
 
   override render() {
-    return <p>Their invoices: {this.invoices.map((one) => `${one.id}, $${one.amount}`).join("; ") || "none on file"}.</p>;
+    return <p>Their invoices: {this.invoices.map((one) => `${one.id}, $${one.amount}, ${one.paid ? "paid" : "unpaid"}`).join("; ") || "none on file"}.</p>;
   }
 }

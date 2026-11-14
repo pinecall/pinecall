@@ -1,1 +1,1 @@
-Their invoices: <%= invoices.empty? ? "none on file" : invoices.map { |one| "#{one[:id]}, $#{one[:amount]}" }.join("; ") %>.
+Their invoices: <%= invoices.empty? ? "none on file" : invoices.map { |one| "#{one[:id]}, $#{one[:amount]}, #{one[:paid] ? "paid" : "unpaid"}" }.join("; ") %>.

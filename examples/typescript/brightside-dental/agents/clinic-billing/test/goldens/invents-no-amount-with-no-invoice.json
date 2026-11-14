@@ -1,0 +1,23 @@
+{
+  "turns": [
+    {
+      "say": "How much do I owe you right now?",
+      "then": [
+        {
+          "no_tool": "askRefund"
+        },
+        {
+          "reply": {
+            "intent": "says it has no invoice on file for the caller and names no amount"
+          }
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "not_tools": [
+      "askRefund"
+    ],
+    "grounded": true
+  }
+}
