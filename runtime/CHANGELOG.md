@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **While smart interruptions decide, an agent's word count does not.** An agent that kept
+  `turn.min_interruption_words` (or `min_interruption_ms`) with the model on waited for those words
+  again, and nothing said the model had stopped deciding. With `smart_interruptions` on both are not
+  read; they are what decides with it off. The console greys them out while it is on, and puts voice
+  isolation in a card of its own, "What it hears".
+
 ## 0.11.40 — a call hears the nearest voice, a simulated television is a real one, and a caller stops the agent by a model's word (2026-11-15)
 
 - **The room behind the caller is taken down by a model, then muted, before it is levelled up to a

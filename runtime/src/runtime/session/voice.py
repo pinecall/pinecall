@@ -144,13 +144,6 @@ def context_of(declaration: Declaration, ears: Ears) -> NotGivenOr[STTContextOpt
     return {"keyterms": keyterms(declaration, {})}
 
 
-# With the model judging, the ears' words are not waited for: it has already said this is no noise.
-# An agent that says its own count keeps it.
-def _words_to_interrupt(policy: TurnPolicy, turn: Turn | None, judged: bool) -> int:
-    said = turn is not None and turn.min_interruption_words is not None
-    return 0 if judged and not said else policy.min_words
-
-
 # The session's ears for who speaks: the detector alone, or under the model's word while the agent speaks.
 def _listen_through(detector: vad.VAD, call: Call, floor: FloorModel | None) -> vad.VAD:
     return detector if floor is None else HeardOverTheAgent(detector, floor, lambda: call.agent_speaking)
@@ -195,18 +188,21 @@ def _text_transforms_of(declaration: Declaration) -> NotGivenOr[Sequence[transfo
 # stacked on the others as the least silence before it is asked: never both, which would wait twice.
 # `judged` is a call whose overlaps a model judges (taking_the_floor.py): the session is told of the
 # caller's speech over the agent only once it is a floor-take, so it waits for no word of the ears,
-# unless the agent itself says how many it wants.
+# and the agent's own counts (`min_interruption_words`, `min_interruption_ms`) are what decides with
+# the model off: an agent that kept "two words" with the model on waited for two words again, and no
+# screen said the model had stopped deciding (2026-11-15).
 def _spoken_turns(policy: TurnPolicy, turn: Turn | None, ears: Running, *, judged: bool = False) -> TurnHandlingOptions:
     interruption: InterruptionOptions = {
-        "min_words": _words_to_interrupt(policy, turn, judged),
+        # With the model judging, the ears' words are not waited for: it has already said this is no noise.
+        "min_words": 0 if judged else policy.min_words,
         "mode": "vad",
         "false_interruption_timeout": policy.false_interruption_s,
         "resume_false_interruption": True,
     }
-    if policy.min_speech_s is not None:
-        interruption["min_duration"] = policy.min_speech_s
-    elif judged:
+    if judged:
         interruption["min_duration"] = A_FLOOR_TAKE_IS_HEARD_S
+    elif policy.min_speech_s is not None:
+        interruption["min_duration"] = policy.min_speech_s
     handling: TurnHandlingOptions = {
         # Ears that end the turn themselves decide it; the local detector stacked on them waits
         # its whole delay after a pause in the middle of a sentence.

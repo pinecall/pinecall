@@ -318,10 +318,12 @@ async def test_a_call_the_model_judges_waits_for_no_word_of_the_ears(box: Box) -
     assert isinstance(judged.live.vad, HeardOverTheAgent)  # pyright: ignore[reportUnknownMemberType]
     interruption = judged.live.options.interruption
     assert (interruption.get("min_words"), interruption.get("min_duration")) == (0, A_FLOOR_TAKE_IS_HEARD_S)
-    # An agent that says its own count of words, or how long, keeps them.
+    # An agent's own count of words, or how long, is what decides with the model off, never beside it.
     declared = Declaration(slug="clinica-norte", turn=Turn(min_interruption_words=3, min_interruption_ms=900))
-    kept = spoken_call(box, declared, floor=model).live.options.interruption
-    assert (kept.get("min_words"), kept.get("min_duration")) == (3, 0.9)
+    judged_anyway = spoken_call(box, declared, floor=model).live.options.interruption
+    assert (judged_anyway.get("min_words"), judged_anyway.get("min_duration")) == (0, A_FLOOR_TAKE_IS_HEARD_S)
+    off = Declaration(slug="clinica-norte", smart_interruptions=False, turn=Turn(min_interruption_words=3))
+    assert spoken_call(box, off, floor=model).live.options.interruption.get("min_words") == 3
 
 
 @needs_the_database

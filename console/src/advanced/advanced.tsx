@@ -36,12 +36,13 @@ const END_OF_TURN = [
   { value: "livekit", label: "LiveKit's detector", detail: "LiveKit's own end-of-turn model" },
 ];
 
-type Part = "start" | "stop" | "quiet" | "voicemail" | "fallbacks" | "call";
+type Part = "hear" | "start" | "stop" | "quiet" | "voicemail" | "fallbacks" | "call";
 
 // Each card, and the fields a class may declare in it: a card with none left open has nothing to edit.
 const PARTS: readonly { part: Part; title: string; about: string; fields: readonly string[] }[] = [
+  { part: "hear", title: "What it hears", about: "What reaches the agent of the caller's line, before anything is decided.", fields: ["voice_isolation"] },
   { part: "start", title: "When it starts speaking", about: "How the agent decides the caller has finished.", fields: ["stt", "turn"] },
-  { part: "stop", title: "When it stops speaking", about: "Words that only agree, like “okay” or “sí”, never stop it. A noise that brings no words lets it carry on from where it paused.", fields: ["turn", "voice_isolation", "smart_interruptions"] },
+  { part: "stop", title: "When it stops speaking", about: "What makes it stop when the caller speaks over it. Words that only agree, like “okay” or “mm-hmm”, never take its turn, and a noise lets it carry on from where it paused.", fields: ["smart_interruptions", "turn"] },
   { part: "quiet", title: "When nobody talks", about: "Only counts while the agent is waiting on the caller, never while it speaks, a tool runs or a person has the line.", fields: ["silence_timeout_s", "idle"] },
   { part: "voicemail", title: "Voicemail", about: "On calls the agent places. The model decides from what it hears, so a person is never treated as a machine by a tone.", fields: ["voicemail"] },
   { part: "fallbacks", title: "Fallbacks", about: "Who takes over, in order, when the vendor a call runs on fails. Each speaks the voice Pinecall has for the language. Set here, they replace Pinecall's own.", fields: ["stt_fallbacks", "tts_fallbacks"] },
@@ -178,29 +179,38 @@ export function AdvancedTab({ agent, kind }: { agent: string; kind: "code" | "st
             </Setting>
           </div>
         );
-      case "stop":
+      case "hear":
         return (
           <div className="adv-grid">
-            <Setting icon="type" title="Words to interrupt it" about={`How many words the caller says before the agent stops. ${WORDS_TO_INTERRUPT} unless set.`} aside={mark("turn")}>
-              <Slider value={draft.words} label="Words to interrupt it" min={0} max={10} step={1} rest={WORDS_TO_INTERRUPT} disabled={off("turn")} onChange={(words) => put({ words })} />
-            </Setting>
-            <Setting icon="clock" title="Speech to interrupt it" about={`Milliseconds the caller must speak over the agent before it stops. ${INTERRUPT_MS} unless set.`} aside={mark("turn")}>
-              <Slider value={draft.interruptMs} label="Speech to interrupt it" min={0} max={2000} step={50} rest={INTERRUPT_MS} disabled={off("turn")} onChange={(interruptMs) => put({ interruptMs })} />
-            </Setting>
-            <Setting
-              icon="brain"
-              title="Smart interruptions"
-              about="A small model hears in the caller's voice whether they are taking the floor or only agreeing, so the agent stops within a fraction of a second for a real interruption and talks through an “mm-hmm”. Off, it waits for the words above."
-              aside={mark("smart_interruptions") ?? <Toggle on={draft.smartInterruptions} label="Smart interruptions" disabled={readOnly} onChange={(smartInterruptions) => put({ smartInterruptions })} />}
-            />
             <Setting
               icon="ear"
               title="Voice isolation"
-              about="A small model takes down the voices far from the caller's microphone, like a television or people nearby, before the agent hears the call. Off, only what is clearly quieter than the caller is muted."
+              about="A small model takes down the voices far from the caller's microphone, like a television or people nearby. Off, only what is clearly quieter than the caller is muted."
               aside={mark("voice_isolation") ?? <Toggle on={draft.voiceIsolation} label="Voice isolation" disabled={readOnly} onChange={(voiceIsolation) => put({ voiceIsolation })} />}
             />
           </div>
         );
+      case "stop": {
+        // With the model deciding, the counts below are not read: they are what decides with it off.
+        const judged = draft.smartInterruptions;
+        const byCount = judged ? "Smart interruptions decides while it is on: this is used with it off." : null;
+        return (
+          <div className="adv-grid">
+            <Setting
+              icon="brain"
+              title="Smart interruptions"
+              about="A small model hears in the caller's voice whether they are taking the floor or only agreeing, so the agent stops within a fraction of a second for a real interruption and talks through an “mm-hmm”."
+              aside={mark("smart_interruptions") ?? <Toggle on={judged} label="Smart interruptions" disabled={readOnly} onChange={(smartInterruptions) => put({ smartInterruptions })} />}
+            />
+            <Setting icon="type" title="Words to interrupt it" about={byCount ?? `How many words the caller says before the agent stops. ${WORDS_TO_INTERRUPT} unless set.`} aside={mark("turn")}>
+              <Slider value={draft.words} label="Words to interrupt it" min={0} max={10} step={1} rest={WORDS_TO_INTERRUPT} disabled={off("turn") || judged} onChange={(words) => put({ words })} />
+            </Setting>
+            <Setting icon="clock" title="Speech to interrupt it" about={byCount ?? `Milliseconds the caller must speak over the agent before it stops. ${INTERRUPT_MS} unless set.`} aside={mark("turn")}>
+              <Slider value={draft.interruptMs} label="Speech to interrupt it" min={0} max={2000} step={50} rest={INTERRUPT_MS} disabled={off("turn") || judged} onChange={(interruptMs) => put({ interruptMs })} />
+            </Setting>
+          </div>
+        );
+      }
       case "quiet":
         return (
           <div className="adv-grid">
