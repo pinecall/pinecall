@@ -3,6 +3,7 @@
 # an environment, and each keeps its own uv.lock. Ruby has its Gemfile.
 packages:
   - cli
+  - mcp
   - console
   - sdk/typescript
   - packages/*

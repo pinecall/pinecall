@@ -6,3 +6,4 @@ export { SignUp, VERIFY } from "./signup";
 export { Verify } from "./verify";
 export { NoProduction } from "./no-production";
 export { Terminal } from "./terminal";
+export { Connect, keepWhatWasAsked, whatWasAsked } from "./connect";

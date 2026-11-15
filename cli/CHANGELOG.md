@@ -4,6 +4,24 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+- **Pinecall's MCP server is hosted: `https://mcp.pinecall.io/mcp`.** An assistant that takes a
+  server by its address — Claude and ChatGPT on the web, Claude Code, Cursor, VS Code, Codex, Gemini
+  CLI — is given that one, the person signs in to Pinecall in a browser and approves it, and its 35
+  tools act in their org with nothing installed and no key copied.
+  [Connect an assistant](docs/mcp/connecting.md) has each assistant's steps. It is this package's
+  tools over HTTP (`pinecall/hosted`, served by the repository's `mcp/`), without the ten that act
+  on a machine; `pinecall mcp` is unchanged.
+- **`agent` with action `list` names the org's agents held now**, and the process holding each: what
+  `pinecall agent list` prints, for an assistant that has no project folder to read the names from.
+- **A tool asks for the project's folder only when it reads it.** `personas` (but `generate` with
+  `save`), `docs attach` and `detach`, and `test` with `case` or `dataset` take the agent by its
+  name from any folder, as `calls` and `cases` did; until now they refused an agent that was not in
+  the open project.
+- **A host is told which tools only read** (`readOnlyHint`): `whoami`, `calls`, `call`, `pipeline`,
+  `providers`, `voices`, `alerts`, `usage`, `carriers`, `callbacks`, `docs_search`, `get_doc`.
+
 ## [0.11.40] — a call hears the nearest voice, a simulated television is a real one, and a caller stops the agent by a model's word (2026-11-15)
 
 - **An agent's settings that carry `voice_isolation` or `smart_interruptions` are read.** The CLI

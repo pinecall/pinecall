@@ -15,6 +15,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | method | path | scope | what |
 |---|---|---|---|
 | `GET` | `/.well-known/pinecall` | — | What this gateway is and how it signs people in, before anybody holds a key. |
+| `GET` | `/.well-known/oauth-authorization-server` | — | Where an app asks to act as a person, exchanges its code, registers and revokes (RFC 8414). |
 | `GET` | `/metrics` | loopback | What the gateway counted and holds, as Prometheus text; refused to anything that came through Caddy. |
 | `GET` | `/v1/agents` | calls | The org's held agents in the environment: one row per slug, one per scope for a team reader, each `kind` `class` or `studio`. |
 | `GET` | `/v1/agents/{slug}/calls` | calls | An agent's own log: its registrations, its declarations, its errors. It never ends. |
@@ -228,6 +229,11 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `GET` | `/v1/login/pairings/{code}` | — | Which terminal a browser is about to sign in, and whether it is answered. |
 | `POST` | `/v1/login/pairings/{code}` | — | Sign the terminal in as the person this browser is. |
 | `GET` | `/v1/login/pairings/{code}/key` | — | The terminal's key, once; held up to `wait_s` for an approval, then 202. |
+| `GET` | `/v1/oauth/authorization` | — | Who asks to act as the person this browser is, and where their approval would be sent. |
+| `POST` | `/v1/oauth/authorization` | — | Let the app act as the person this browser is; the address to send it back to, with its code. |
+| `POST` | `/v1/oauth/register` | — | An app's id, made of what it calls itself and where it may be sent back; nothing is kept. |
+| `POST` | `/v1/oauth/revoke` | — | Stop the key an app holds, at the app's own word; 200 whatever the token was. |
+| `POST` | `/v1/oauth/token` | — | The key an approval minted, for the code and the verifier of its challenge; once. |
 | `POST` | `/v1/login/reset` | — | Mail a one-use link that sets the password, where one can go. |
 | `GET` | `/v1/login/sso` | — | 302 to the org's provider, with a state, a nonce and a PKCE challenge. |
 | `GET` | `/v1/login/sso/callback` | — | The code exchanged, the person seated, and 302 to the console with a login code. |

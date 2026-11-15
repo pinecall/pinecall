@@ -40,6 +40,8 @@
 
 .login-link, .login-resend { padding: 0; border: 0; background: none; color: var(--quiet); font-size: 12.5px; cursor: pointer; }
 .login-link:hover, .login-resend:hover:not(:disabled) { color: var(--ink); }
+/* The way out under a page's one button (an app asking to connect, refused). */
+.login-go + .login-link { display: block; margin: 14px auto 0; }
 .login-resend:disabled { cursor: default; }
 .login-forgot { margin: -6px 0 14px; font-size: 12.5px; color: var(--quiet); }
 

@@ -10,6 +10,7 @@ Three groups, named in one sentence: the parts of the product, the SDKs, the lib
 |---|---|---|
 | `runtime/` | the gateway and the worker (PyPI `pinecall-runtime`, import `runtime`), the wire's source (`runtime/src/runtime/wire/`) | `runtime/CLAUDE.md` |
 | `cli/` | the `pinecall` CLI (npm `pinecall`), never imports the framework but through `client` and `wire` | `cli/CLAUDE.md` |
+| `mcp/` | the MCP server as Pinecall hosts it (`mcp.pinecall.io`): the CLI's tools over HTTP, behind the gateway's sign-in; private, an image, never published | `mcp/README.md` |
 | `console/` | the page the gateway serves, both envs in it; built into the runtime's wheel | `console/CLAUDE.md` |
 | `widget/` | one agent as one button on any page; served by the gateway | `widget/README.md` |
 | `sdk/typescript/` | the TypeScript framework (npm `@pinecall/agents`) | `sdk/typescript/CLAUDE.md` |

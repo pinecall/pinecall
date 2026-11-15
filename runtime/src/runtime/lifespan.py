@@ -47,7 +47,9 @@ from runtime.platform.service.attempts import AttemptThrottle
 from runtime.providers.service.health import VendorHealth
 from runtime.providers.service.speech import SAMPLES_A_MINUTE
 from runtime.providers.service.transcription import TRANSCRIPTIONS_A_MINUTE
+from runtime.signin.service.clients import Clients
 from runtime.signin.service.codes import LoginCodes
+from runtime.signin.service.connections import Connections
 from runtime.signin.service.google import Newcomers
 from runtime.signin.service.oidc import Oidc
 from runtime.signin.service.pairings import Pairings
@@ -74,6 +76,8 @@ class State(TypedDict):
     key_cache: KeyCache
     login_codes: LoginCodes
     pairings: Pairings
+    clients: Clients
+    connections: Connections
     sign_ups: SignUps
     newcomers: Newcomers
     oidc: Oidc
@@ -170,6 +174,8 @@ async def lifespan(app: FastAPI, outside: Outside = THE_INTERNET) -> AsyncGenera
             key_cache=key_cache,
             login_codes=LoginCodes(sessions, vault),
             pairings=Pairings(sessions, vault, handles.signal),
+            clients=Clients(handles.http, vault),
+            connections=Connections(sessions, vault),
             sign_ups=SignUps(sessions, vault, accepting=handles.settings.signup),
             newcomers=Newcomers(sessions, vault),
             oidc=Oidc(handles.http, sessions, vault),

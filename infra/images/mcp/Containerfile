@@ -1,0 +1,28 @@
+# The hosted MCP server (mcp/ in the repository): the CLI's tools over HTTP. Built from one commit's
+# tree (the context `make mcp-image` sends) and run from the workspace's own sources through tsx,
+# the loader a checkout runs the CLI on: nothing is compiled, and what runs is what the suites ran.
+
+ARG NODE=docker.io/library/node:24-slim
+
+# The workspace installed from its lockfile: the server, the CLI it stands on and the framework the
+# CLI reads the wire from, with what they need to run and nothing they need to be tested.
+FROM ${NODE} AS workspace
+WORKDIR /srv/pinecall
+RUN corepack enable
+COPY . .
+RUN pnpm install --frozen-lockfile --prod --filter "@pinecall/mcp-server..."
+
+FROM ${NODE}
+# The system's roots: Node carries its own, and what it starts may not.
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+ENV NODE_ENV=production
+WORKDIR /srv/pinecall
+COPY --from=workspace /srv/pinecall/package.json /srv/pinecall/pnpm-workspace.yaml ./
+COPY --from=workspace /srv/pinecall/node_modules node_modules
+COPY --from=workspace /srv/pinecall/cli cli
+COPY --from=workspace /srv/pinecall/sdk/typescript sdk/typescript
+COPY --from=workspace /srv/pinecall/mcp mcp
+# Node's image's own user, uid 1000: the one charts/mcp runs the pod as.
+USER node
+EXPOSE 8787
+ENTRYPOINT ["node", "mcp/bin/serve.js"]

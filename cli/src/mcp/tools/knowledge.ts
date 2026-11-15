@@ -31,7 +31,7 @@ export const docs = tool({
       return { ...done, said: render.pulled(done, ctx.cwd) };
     }
     if (args.action === "eval") return (await service.evalDocs(ctx, { agent: args.agent, base: args.base, k: args.k }))[0];
-    const base = args.base ?? ctx.agent(`docs ${args.action}`, { agent: args.agent }).name;
+    const base = args.base ?? ctx.slug(`docs ${args.action}`, { agent: args.agent });
     if (args.action === "attach") {
       const done = await service.attachBase(ctx, service.AttachBaseInput.parse({ base, k: args.k, mode: args.mode, minScore: args.min_score, agent: args.agent, team: args.team === true }));
       return { ...done, said: render.attached(done) };
@@ -68,6 +68,7 @@ export const memory = tool({
 
 export const remember = tool({
   name: "remember",
+  machine: true,
   description: "Hold memory's writing to its cases: each written call in agents/<agent>/test/memory/ run through one extraction, and what it kept checked by code.",
   schema: { agent: AGENT, grep: z.string().optional().describe("only cases whose name holds this") },
   manual:

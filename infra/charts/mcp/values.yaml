@@ -1,0 +1,24 @@
+# The hosted MCP server (mcp/ in the repository): the CLI's tools over HTTP, so an assistant is
+# connected by a URL and a sign-in, with nothing installed. Released apart from the runtime
+# (`make mcp`), at its own image, on the runtime's Gateway (charts/edge). It holds no secret: every
+# request carries the key of whoever asks, proven at the gateway.
+#
+# Given the same values files as every chart: `domain` is the cluster's (the gateway's public name,
+# where a person signs in and where every tool acts), `ingress.gkePolicies` the front door's.
+image:
+  repository: ""
+  tag: ""
+  digest: ""
+
+domain: ""
+
+mcp:
+  # The name the server is reached at, a name of the cluster with a certificate in the Gateway's map
+  # (terraform: `names`). Empty, the chart refuses.
+  name: ""
+  # One: what a server keeps between two requests of a key (a written call open, a run in flight)
+  # is in its memory. More than one needs each key's requests sent to the same pod.
+  replicas: 1
+
+ingress:
+  gkePolicies: false

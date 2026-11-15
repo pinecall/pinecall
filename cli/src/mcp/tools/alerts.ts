@@ -49,6 +49,7 @@ export const webhook = tool({
 
 export const alerts = tool({
   name: "alerts",
+  reads: true,
   description: "What the org was told in the environment, newest first: every alert kept — a monitor fired, the spend unusual, a quota out, a vendor that failed a call, a hosted app down — whether or not a webhook is set, and whether each was mailed.",
   schema: {
     limit: z.number().int().min(1).max(200).optional().describe("how many, newest first; 50 when left out, 200 at most"),

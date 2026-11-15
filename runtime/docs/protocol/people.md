@@ -138,6 +138,79 @@ same person, labelled with its `device` and dying with the browser's key. The te
 /v1/login/pairings/{code}/key?wait_s=25`, which the gateway holds until a browser approves (up to 25 s, the most it holds): `202 {}` when the wait ran out with nobody approved, `{key}` once, `404` after. Without `wait_s` it answers at once. A word
 lives ten minutes; one collected, dead or invented is the same `404`, and a second approval `409`.
 
+## An app connected as you — `/v1/oauth/…`
+
+An assistant (Claude, ChatGPT, an editor) that reaches Pinecall through an MCP server is signed in
+the way a terminal is, a browser approving it, with OAuth 2.1's words so that any of them does it
+unaided. The gateway is the authorization server; the token it gives is a key of the person's, the
+same kind a terminal gets. It keeps no table for any of it: a registration is its own id, a code is
+a one-use secret, the key is a row of the keys.
+
+`GET /.well-known/oauth-authorization-server`, no key, read by any page (RFC 8414):
+
+```json
+{"issuer": "https://cloud.pinecall.io",
+ "authorization_endpoint": "https://cloud.pinecall.io/connect",
+ "token_endpoint": "https://cloud.pinecall.io/v1/oauth/token",
+ "registration_endpoint": "https://cloud.pinecall.io/v1/oauth/register",
+ "revocation_endpoint": "https://cloud.pinecall.io/v1/oauth/revoke",
+ "response_types_supported": ["code"], "grant_types_supported": ["authorization_code"],
+ "token_endpoint_auth_methods_supported": ["none"], "code_challenge_methods_supported": ["S256"],
+ "scopes_supported": ["pinecall"], "client_id_metadata_document_supported": true,
+ "authorization_response_iss_parameter_supported": true}
+```
+
+**Who the app is.** Its `client_id` is one of two things. An `https` address is a Client ID
+Metadata Document: the gateway fetches it (a name that resolves onto the internet alone, asked at
+the address checked, 64 KiB at most) and takes its `client_name` and `redirect_uris` when the
+document's own `client_id` is that address. Or the app registers, `POST /v1/oauth/register
+{client_name, redirect_uris}` with no key (RFC 7591; whatever else it says of itself is ignored):
+`201 {client_id: "pcc_…", client_name, redirect_uris, token_endpoint_auth_method: "none", …}`. The id
+is the registration itself, sealed under the vault, so nothing is kept and a stranger registering a
+million writes nothing. Either way an app names one to ten addresses it may be sent back to:
+`https` anywhere, `http` on the person's own machine alone (`127.0.0.1`, `localhost`, `::1`, at any
+port of the one registered), or the app's own scheme (`cursor://…`); never `javascript:`, `data:`
+or `file:`, never one with a fragment. Anything else is `400` `invalid_redirect_uri`; an id that is
+neither kind, or a registration this gateway never sealed, `400` `invalid_client`.
+
+**The approval.** The app sends the person's browser to `/connect` with OAuth's parameters
+(`response_type=code`, `client_id`, `redirect_uri`, `code_challenge`, `code_challenge_method=S256`,
+`state`; `scope` and `resource` are accepted and change nothing). That is the console's page: it
+signs the person in first if it must, then asks `GET /v1/oauth/authorization?client_id=…&redirect_uri=…&code_challenge=…`
+with the person's key, which checks all three and answers what the page shows, `{client_name,
+redirect_host}`. On **Connect** the page posts `POST /v1/oauth/authorization {client_id,
+redirect_uri, code_challenge, code_challenge_method, state, org}` with the person's key (`org` is
+another org of theirs, when they chose one): the gateway mints a key for that person in that org,
+labelled with the app's name, keeps it sealed under a one-use code that lives five minutes, and
+answers `{redirect, org}`, the app's address with `code`, `state` and `iss` added to its query. The
+page sends the browser there. A server's token is `403`: an app is connected as a person. A person
+who says no is sent back with `error=access_denied` by the page itself.
+
+**The exchange.** `POST /v1/oauth/token`, a form, no key (RFC 6749 section 4.1.3):
+`grant_type=authorization_code`, `code`, `code_verifier`, `client_id`, and `redirect_uri` when the
+app sends it. The verifier's SHA-256 must be the challenge the code was approved with, and the
+`client_id` the one it was given to:
+
+```json
+{"access_token": "pk_…", "token_type": "Bearer", "scope": "pinecall"}
+```
+
+answered once, `Cache-Control: no-store`. The key is a sign-in like any other of the person's: it
+opens what their role opens, in both envs by the `pinecall-env` header, is listed with their other
+sign-ins (`GET /v1/me/keys`), and is kept thirty days from its last use. So there is no refresh
+token and no `expires_in`: an app that goes a month unused is answered `401` and asks the person
+again. A refusal carries OAuth's words beside the sentence, `{"detail": …, "error": "invalid_grant",
+"error_description": …}`, always `400`: `invalid_grant` for a code spent, expired, another app's or
+not this verifier's (a wrong guess leaves the code to its own app), `invalid_request` for a field
+missing or a challenge that is not `S256`, `unsupported_grant_type` for any other grant.
+
+**The end.** `POST /v1/oauth/revoke`, a form with `token`, no key (RFC 7009): the key opens nothing
+from then on; `200 {}` whatever the token was. The person ends it too, where they end any sign-in.
+
+A page of the app's own may post the three forms from any origin (no credentials are involved, and
+the gateway answers `Access-Control-Allow-Origin: *` there); every other endpoint keeps to the
+origins the box allows.
+
 ## A forgotten password — `POST /v1/login/reset {email, turnstile}`
 
 No key. Always `202 {}`, for an address known or not (`403` first where the platform has Turnstile

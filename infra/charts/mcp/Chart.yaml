@@ -1,0 +1,5 @@
+apiVersion: v2
+name: mcp
+description: Pinecall's MCP server, hosted — the CLI's tools over HTTP at a name of its own, for an assistant's connector.
+type: application
+version: 0.1.0

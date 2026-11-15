@@ -12,6 +12,7 @@ METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE")
 PREFLIGHT_KEPT_S = 600
 READ_HEADERS = ("authorization", "last-event-id", "accept", "range")
 READ_EXPOSED = ("content-range", "accept-ranges", "content-length")
+SAY_HEADERS = ("content-type",)
 TOO_LARGE = "the body is over {most} MiB, more than any endpoint takes"
 
 type Origins = Callable[[Scope], tuple[str, ...]]
@@ -48,8 +49,11 @@ class AllowedOrigins:
             expose_headers=READ_EXPOSED,
             max_age=PREFLIGHT_KEPT_S,
         )
-        # A token in the URL and an empty body: no header a browser asks leave for, no credentials.
-        self.says = CORSMiddleware(app, allow_origins=("*",), allow_methods=("POST",), max_age=PREFLIGHT_KEPT_S)
+        # A token in the URL or a body of the page's own, never a key: no credentials, and the one
+        # header a browser asks leave for is the body's type.
+        self.says = CORSMiddleware(
+            app, allow_origins=("*",), allow_methods=("POST",), allow_headers=SAY_HEADERS, max_age=PREFLIGHT_KEPT_S
+        )
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         """Route an allowed origin's request through CORS, and anything else straight in."""

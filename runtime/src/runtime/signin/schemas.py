@@ -1,7 +1,7 @@
 """The bodies of the sign-in endpoints: login, codes, pairings, sign-up, the org's provider, Google, the gateway."""
 
 import httpx
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from runtime.accounts.schemas import KeyIssued, MemberRow
 from runtime.enums import MemberStatus, Role
@@ -156,6 +156,99 @@ class KeyCollected(Row):
     """GET /v1/login/pairings/{code}/key."""
 
     key: str
+
+
+# ── an app connected as a person (OAuth 2.1) ──
+
+# The console's page a person approves an app on: the authorization endpoint the metadata names.
+THE_CONNECT_PAGE = "/connect"
+OAUTH_TOKEN = "/v1/oauth/token"
+OAUTH_REGISTER = "/v1/oauth/register"
+OAUTH_REVOKE = "/v1/oauth/revoke"
+
+
+class AuthorizationServer(Row):
+    """GET /.well-known/oauth-authorization-server: where an app asks, exchanges, registers and revokes (RFC 8414)."""
+
+    issuer: str
+    authorization_endpoint: str
+    token_endpoint: str
+    registration_endpoint: str
+    revocation_endpoint: str
+    response_types_supported: list[str] = ["code"]
+    grant_types_supported: list[str] = ["authorization_code"]
+    token_endpoint_auth_methods_supported: list[str] = ["none"]
+    revocation_endpoint_auth_methods_supported: list[str] = ["none"]
+    code_challenge_methods_supported: list[str] = ["S256"]
+    scopes_supported: list[str]
+    client_id_metadata_document_supported: bool = True
+    authorization_response_iss_parameter_supported: bool = True
+
+    @classmethod
+    def at(cls, base: str, scope: str) -> "AuthorizationServer":
+        """The gateway at this address, as an authorization server."""
+        return cls(
+            issuer=base,
+            authorization_endpoint=f"{base}{THE_CONNECT_PAGE}",
+            token_endpoint=f"{base}{OAUTH_TOKEN}",
+            registration_endpoint=f"{base}{OAUTH_REGISTER}",
+            revocation_endpoint=f"{base}{OAUTH_REVOKE}",
+            scopes_supported=[scope],
+        )
+
+
+# What an app says of itself beyond these two is its own to keep: RFC 7591 lets it say a dozen more.
+class RegisterClient(Schema):
+    """POST /v1/oauth/register: what the app calls itself, and where it may be sent back."""
+
+    model_config = ConfigDict(extra="ignore", populate_by_name=True, str_strip_whitespace=True)
+
+    client_name: str | None = None
+    redirect_uris: list[str]
+
+
+class ClientRegistered(Row):
+    """POST /v1/oauth/register: the app's id, and what was kept of what it said (RFC 7591)."""
+
+    client_id: str
+    client_name: str
+    redirect_uris: list[str]
+    grant_types: list[str] = ["authorization_code"]
+    response_types: list[str] = ["code"]
+    token_endpoint_auth_method: str = "none"
+
+
+class ConnectionAsked(Row):
+    """GET /v1/oauth/authorization: who asks to act as you, and where your approval is sent."""
+
+    client_name: str
+    redirect_host: str
+
+
+class ApproveConnection(Schema):
+    """POST /v1/oauth/authorization: the app's request as its link carried it, and the org it may act in."""
+
+    client_id: str = Field(min_length=1)
+    redirect_uri: str = Field(min_length=1)
+    code_challenge: str = Field(min_length=1)
+    code_challenge_method: str = "S256"
+    state: str | None = None
+    org: str | None = None
+
+
+class ConnectionApproved(Row):
+    """POST /v1/oauth/authorization: the app's address, with its code, for the browser to go to."""
+
+    redirect: str
+    org: str
+
+
+class TokenIssued(Row):
+    """POST /v1/oauth/token: the key the app acts with (RFC 6749 section 5.1)."""
+
+    access_token: str
+    token_type: str = "Bearer"
+    scope: str
 
 
 # ── sign-up ──

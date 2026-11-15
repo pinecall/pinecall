@@ -34,6 +34,7 @@ const A_STAGE = (what: string): z.ZodOptional<z.ZodString> => z.string().optiona
 
 export const runtime = tool({
   name: "runtime",
+  machine: true,
   description:
     "The runtime on this machine: `recommend` reads the machine and says the stack that fits it, `up` runs `pinecall-runtime setup` on that stack or the stages given (Docker, the schema, this machine signed in, open models), `status` says what it printed and whether it answers, `down` stops it.",
   schema: {

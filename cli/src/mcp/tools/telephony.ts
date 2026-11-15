@@ -8,6 +8,7 @@ import { AGENT } from "./fields.js";
 
 export const line = tool({
   name: "line",
+  machine: true,
   description: "Who answers the agent's number right now and who could take it; which phone is the person's own, so their calls reach their copy.",
   schema: {
     action: z.enum(["show", "from", "forget", "claim", "release"]).describe("show whose process a ring lands in; from says which phone is the person's own; forget drops it; claim takes the line for this copy; release gives it back"),
@@ -60,6 +61,7 @@ export const numbers = tool({
 
 export const carriers = tool({
   name: "carriers",
+  reads: true,
   description: "The org's carrier accounts — Twilio, a SIP peer, WhatsApp — and one account's networks and how outbound calls leave. Never a secret.",
   schema: { action: z.enum(["list", "show"]).describe("list the org's carrier accounts, or show one"), account: z.string().optional().describe("`show`: the account's id") },
   manual: "`carriers` lists the org's carrier accounts and shows one. Adding one takes its secret, and the rule is that no key is printed or passed through an assistant, so it is never a tool: give the person the command to type in their own terminal, `pinecall carriers add twilio --account-sid AC… --user SK…` (`sip` and `whatsapp` the same way), which reads the secret with nothing echoed.",
@@ -88,6 +90,7 @@ export const dial = tool({
 
 export const callbacks = tool({
   name: "callbacks",
+  reads: true,
   description: "The callers waiting to be called back, oldest first: who, on which channel, through what (the overflow, the agent's own tool, the widget).",
   schema: { agent: z.string().optional().describe("only this agent's"), after: z.number().int().min(0).optional().describe("where the page before ended") },
   manual: "`callbacks` lists the people waiting for a call back, each with the call it came from.",

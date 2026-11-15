@@ -16,6 +16,7 @@ import { needed } from "./fields.js";
 
 export const project = tool({
   name: "project",
+  machine: true,
   description: "The project the tools act on (`show`), another folder opened (`open`), a new project written (`new`), or an agent or a golden added to it (`generate`).",
   schema: {
     action: z.enum(["show", "open", "new", "generate"]).describe("show the project the tools act on; open another folder; new writes a project, and its first agent with `agent`; generate adds an agent or a golden to it"),

@@ -1,0 +1,5 @@
+{
+  // `pnpm lint`: the sources and the tests, type-checked and nothing written.
+  "extends": "./tsconfig.json",
+  "include": ["src", "test"]
+}

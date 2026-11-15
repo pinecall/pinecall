@@ -33,7 +33,7 @@ which reads the secret with nothing echoed —
 What cannot be undone is not a tool: erasing data, forgetting a contact, dropping a base, a number
 or a carrier, removing a deployed app. Those stay \`pinecall\` verbs a person types.`;
 
-/** The instructions a host gives the model: the journey, then each stage's tools by name. */
-export function instructions(stages: readonly Stage[]): string {
-  return [JOURNEY, "", "## The tools, by stage", "", ...stages.map((one) => `- **${one.stage}**: ${one.tools.map((tool) => `\`${tool.name}\``).join(", ")}`)].join("\n");
+/** The instructions a host gives the model: the journey (the machine's own unless another is told), then each stage's tools by name. */
+export function instructions(stages: readonly Stage[], journey: string = JOURNEY): string {
+  return [journey, "", "## The tools, by stage", "", ...stages.map((one) => `- **${one.stage}**: ${one.tools.map((tool) => `\`${tool.name}\``).join(", ")}`)].join("\n");
 }

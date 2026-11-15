@@ -11,6 +11,7 @@ export const NOT_SIGNED_IN = "this machine is not signed in: call `login` with a
 
 export const login = tool({
   name: "login",
+  machine: true,
   description: "Sign this machine in to a gateway: `start` returns a link for the person to open; `status` waits for their approval.",
   schema: {
     action: z.enum(["start", "status"]).describe("start opens a sign-in and answers its link; status waits for the person to approve it"),
@@ -39,6 +40,7 @@ export const login = tool({
 
 export const whoami = tool({
   name: "whoami",
+  reads: true,
   description: "Which org, gateway and environment the open project's key acts in, and whether production is allowed.",
   schema: {},
   manual:

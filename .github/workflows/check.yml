@@ -39,7 +39,7 @@ jobs:
         id: filter
         with:
           # Each TypeScript package also stands on the root's workspace and lockfile, cli on the
-          # framework it imports, console on core, and each SDK on its example. A change to this
+          # framework it imports, mcp on the cli whose tools it serves, console on core, and each SDK on its example. A change to this
           # file runs everything.
           filters: |
             workflow: &workflow
@@ -68,6 +68,11 @@ jobs:
               - *node
               - sdk/typescript/**
               - cli/**
+            mcp:
+              - *node
+              - sdk/typescript/**
+              - cli/**
+              - mcp/**
             room:
               - *node
               - packages/room/**
@@ -92,6 +97,7 @@ jobs:
           CORE: ${{ steps.filter.outputs.core }}
           AGENTS: ${{ steps.filter.outputs.agents }}
           CLI: ${{ steps.filter.outputs.cli }}
+          MCP: ${{ steps.filter.outputs.mcp }}
           ROOM: ${{ steps.filter.outputs.room }}
           DOT: ${{ steps.filter.outputs.dot }}
         run: |
@@ -105,6 +111,7 @@ jobs:
           row core packages/core "$CORE" "pnpm check"
           row agents sdk/typescript "$AGENTS" scripts/check
           row cli cli "$CLI" scripts/check
+          row mcp mcp "$MCP" scripts/check
           row room packages/room "$ROOM" scripts/check
           row dot packages/dot "$DOT" scripts/check
           echo "matrix=[$(IFS=,; echo "${rows[*]}")]" >> "$GITHUB_OUTPUT"
@@ -170,6 +177,8 @@ jobs:
           done
           helm template hosting ../infra/charts/hosting -f ../infra/values/hosting-example.yaml \
             --set image.tag=ci --output-dir "$rendered"
+          helm template mcp ../infra/charts/mcp -f ../infra/values/example.yaml \
+            --set image.tag=ci --set mcp.name=mcp.voice.example.com --output-dir "$rendered"
           # The same charts on a cluster that runs the Prometheus Operator, not Google's collector.
           operator="$RUNNER_TEMP/rendered-operator"
           for chart in postgres pinecall; do

@@ -43,8 +43,10 @@ name, one module per noun (`evals/service/goldens.ts`, `evals/commands/dataset.t
 `dev/` and `mcp/` are engines and hold modules of their own. `dev/`: `child`, `serving`, `screen`,
 `screens`, `console`, `start`, `companion`, `render`, `commands` and `handlers/` (the console's
 screens). `mcp/`: `server`, `session`, `tool`, `instructions`, `scrub`, `site`, `commands`,
-`tools/` (one module per domain, over its service), `install/` and `agent-host/` (an agent held in
-a thread). An engine module may read `api/`; a tool never does.
+`hosted` (the server as Pinecall hosts it: the package's one export, `pinecall/hosted`, which the
+repository's `mcp/` serves over HTTP), `tools/` (one module per domain, over its service),
+`install/` and `agent-host/` (an agent held in a thread). An engine module may read `api/`; a tool
+never does.
 
 The domains, bottom up; a domain imports a domain below it — its `service`, or its `render` for a
 shared mark — never one above, and never another's `commands`:

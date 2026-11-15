@@ -1,0 +1,99 @@
+# The hosted MCP server: one Deployment, its Service, and its name on the cluster's Gateway. A new
+# pod answers before the old one is told to stop; the old one ends the requests it holds and hangs
+# up the written calls it kept open.
+{{- $name := required "mcp.name: the name the server is reached at" .Values.mcp.name }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pinecall-mcp
+spec:
+  replicas: {{ .Values.mcp.replicas }}
+  selector: { matchLabels: { app: pinecall-mcp } }
+  strategy:
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  template:
+    metadata: { labels: { app: pinecall-mcp } }
+    spec:
+      nodeSelector: { pinecall.io/pool: core }
+      # Node's image's own user.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+      # The load balancer lets go of a stopping pod in seconds, not at once (30 s served on), then a
+      # tool call in flight is given the 50 s it may wait.
+      terminationGracePeriodSeconds: 100
+      containers:
+        - name: mcp
+          image: {{ required "image.repository" .Values.image.repository }}:{{ required "image.tag: the commit the image was built from" .Values.image.tag }}{{ with .Values.image.digest }}@{{ . }}{{ end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          env:
+            - name: PINECALL_MCP_PORT
+              value: "8787"
+            - name: PINECALL_MCP_URL
+              value: {{ printf "https://%s" $name | quote }}
+            # The gateway by its public name: a link a tool answers points there, and a person approves there.
+            - name: PINECALL_URL
+              value: {{ printf "https://%s" (required "domain" .Values.domain) | quote }}
+          ports: [{ name: http, containerPort: 8787 }]
+          lifecycle:
+            preStop: { sleep: { seconds: 30 } }
+          readinessProbe:
+            httpGet: { path: /health, port: 8787 }
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket: { port: 8787 }
+            initialDelaySeconds: 30
+          # The sources are compiled as they are loaded, into /tmp.
+          volumeMounts: [{ name: tmp, mountPath: /tmp }]
+          resources:
+            requests: { cpu: 50m, memory: 256Mi }
+      volumes:
+        - { name: tmp, emptyDir: { sizeLimit: 256Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pinecall-mcp
+spec:
+  selector: { app: pinecall-mcp }
+  ports: [{ name: http, port: 8787, targetPort: 8787 }]
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: pinecall-mcp
+spec:
+  parentRefs: [{ name: pinecall, sectionName: https }]
+  hostnames: [{{ $name | quote }}]
+  rules:
+    - backendRefs: [{ name: pinecall-mcp, port: 8787 }]
+{{- if .Values.ingress.gkePolicies }}
+---
+# GKE's own policies on the backend: a tool call may wait 50 s before it answers, so a request is
+# given two minutes, and the pod's health is read at its own path.
+apiVersion: networking.gke.io/v1
+kind: GCPBackendPolicy
+metadata:
+  name: pinecall-mcp
+spec:
+  default:
+    timeoutSec: 120
+    connectionDraining: { drainingTimeoutSec: 60 }
+  targetRef: { group: "", kind: Service, name: pinecall-mcp }
+---
+apiVersion: networking.gke.io/v1
+kind: HealthCheckPolicy
+metadata:
+  name: pinecall-mcp
+spec:
+  default:
+    config:
+      type: HTTP
+      httpHealthCheck: { port: 8787, requestPath: /health }
+  targetRef: { group: "", kind: Service, name: pinecall-mcp }
+{{- end }}

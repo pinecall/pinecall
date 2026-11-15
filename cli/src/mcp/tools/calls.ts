@@ -10,6 +10,7 @@ export const ENDED = (call: string): string => `${call} has ended, and a desk mo
 
 export const calls = tool({
   name: "calls",
+  reads: true,
   description: "The agent's newest calls: each one's id, channel, length, how it ended, its cost and its verdicts.",
   schema: { agent: AGENT, limit: z.number().int().min(1).max(100).optional().describe("how many, newest first; 20 when left out") },
   manual: "`calls` lists the agent's newest calls with their ids; `call` reads one whole.",
@@ -18,6 +19,7 @@ export const calls = tool({
 
 export const call = tool({
   name: "call",
+  reads: true,
   description: "One call's log, entry by entry — every turn, tool call, result, state change, metric and verdict — a page at a time.",
   schema: {
     call: z.string().describe("the call's id"),

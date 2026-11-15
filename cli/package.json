@@ -1,7 +1,7 @@
 {
   "name": "pinecall",
   "version": "0.11.40",
-  "description": "The pinecall CLI: an agent's project in any language — prompt, chat, test, simulate, start, deploy — against the Pinecall gateway",
+  "description": "The pinecall CLI: an agent's project in any language \u2014 prompt, chat, test, simulate, start, deploy \u2014 against the Pinecall gateway",
   "license": "Apache-2.0",
   "author": "Pinecall <hello@pinecall.io>",
   "repository": {
@@ -12,6 +12,13 @@
   "type": "module",
   "bin": {
     "pinecall": "./bin/pinecall.js"
+  },
+  "exports": {
+    "./hosted": {
+      "types": "./src/mcp/hosted.ts",
+      "import": "./src/mcp/hosted.ts",
+      "default": "./src/mcp/hosted.ts"
+    }
   },
   "files": [
     "dist",
@@ -45,6 +52,12 @@
   "publishConfig": {
     "bin": {
       "pinecall": "./dist/main.js"
+    },
+    "exports": {
+      "./hosted": {
+        "types": "./dist/mcp/hosted.d.ts",
+        "import": "./dist/mcp/hosted.js"
+      }
     }
   },
   "packageManager": "pnpm@11.2.2",

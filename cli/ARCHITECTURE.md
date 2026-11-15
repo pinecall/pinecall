@@ -272,32 +272,33 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `mcp/agent-host/held.ts` | 172 | An agent the MCP server holds: in a thread of its own, or attached to the process that already holds it, and reloaded on a save. |
 | `mcp/agent-host/thread.ts` | 154 | An agent served in a worker thread of this process: the project's own serve entry, its `main` called with the thread's streams. |
 | `mcp/commands.ts` | 51 | `pinecall mcp`: the MCP server an assistant runs this CLI as, and `install`, which adds it to every assistant here. |
+| `mcp/hosted.ts` | 166 | The server as Pinecall hosts it: the tools that need no machine, each call run on the key its request carried. |
 | `mcp/install/configs.ts` | 56 | Somebody else's config file, with exactly one entry changed: Pinecall's. Their servers, settings and comments stay. |
 | `mcp/install/hosts.ts` | 75 | The assistants `pinecall mcp install` writes into: where each keeps its MCP servers, in which format, under which key. |
 | `mcp/install/installing.ts` | 57 | `pinecall mcp install`: Pinecall written into every assistant on this machine, listed, or taken out — and what was done, line by line. |
-| `mcp/instructions.ts` | 36 | The server's instructions: the journey from nothing to an agent answering, and the tools by stage. Each tool's manual rides its own description. |
+| `mcp/instructions.ts` | 39 | The server's instructions: the journey from nothing to an agent answering, and the tools by stage. Each tool's manual rides its own description. |
 | `mcp/scrub.ts` | 15 | No secret crosses a model: every answer and every refusal of the MCP server passes here first. |
-| `mcp/server.ts` | 89 | The MCP server: every tool registered on one stdio connection, each answer scrubbed, each failure one sentence. |
+| `mcp/server.ts` | 94 | The MCP server: every tool registered on one stdio connection, each answer scrubbed, each failure one sentence. |
 | `mcp/session.ts` | 184 | One MCP server's state — the project it works in, what it holds, what is in flight — and the Context each tool call runs with. |
 | `mcp/site.ts` | 97 | Pinecall's own docs as the MCP server reads them: the site's one file cut into pages and sections, searched here. |
-| `mcp/tool.ts` | 60 | A tool of the MCP server: what a model reads about it, what it takes, and the service it calls. |
-| `mcp/tools/accounts.ts` | 80 | The `login`, `whoami` and `team` tools: the accounts domain, over its service. |
-| `mcp/tools/agents.ts` | 123 | The `agent`, `lexicon`, `pipeline`, `voices` and `voice_sample` tools: the agents domain, over its service. |
-| `mcp/tools/alerts.ts` | 74 | The `monitors`, `webhook`, `alerts` and `telemetry` tools: the alerts domain, over its service. |
-| `mcp/tools/calls.ts` | 146 | The `calls`, `call`, `chat` and `supervise` tools: the calls domain, over its service. |
-| `mcp/tools/dev.ts` | 99 | The tools that hold the agent and look at it: `start`, `stop`, `status`, its `prompt`, and the `console_url`. |
-| `mcp/tools/evals.ts` | 295 | The `test`, `runs`, `eval`, `cases`, `simulate` and `personas` tools: the evals domain, over its service. |
+| `mcp/tool.ts` | 68 | A tool of the MCP server: what a model reads about it, what it takes, and the service it calls. |
+| `mcp/tools/accounts.ts` | 82 | The `login`, `whoami` and `team` tools: the accounts domain, over its service. |
+| `mcp/tools/agents.ts` | 127 | The `agent`, `lexicon`, `pipeline`, `voices` and `voice_sample` tools: the agents domain, over its service. |
+| `mcp/tools/alerts.ts` | 75 | The `monitors`, `webhook`, `alerts` and `telemetry` tools: the alerts domain, over its service. |
+| `mcp/tools/calls.ts` | 148 | The `calls`, `call`, `chat` and `supervise` tools: the calls domain, over its service. |
+| `mcp/tools/dev.ts` | 103 | The tools that hold the agent and look at it: `start`, `stop`, `status`, its `prompt`, and the `console_url`. |
+| `mcp/tools/evals.ts` | 320 | The `test`, `runs`, `eval`, `cases`, `simulate` and `personas` tools: the evals domain, over its service. |
 | `mcp/tools/fields.ts` | 22 | The fields many tools take, declared once so every schema says them in the same words. |
 | `mcp/tools/hosting.ts` | 55 | The `deploy` tool: the hosting domain, over its service. |
 | `mcp/tools/index.ts` | 41 | Every tool the MCP server offers, by the stage a person meets it at. |
-| `mcp/tools/judging.ts` | 98 | The `judges`, `judging` and `usage` tools: the judging domain, and the bill it makes, over the services. |
-| `mcp/tools/knowledge.ts` | 76 | The `docs`, `memory` and `remember` tools: the knowledge domain, over its service. |
-| `mcp/tools/providers.ts` | 13 | The `providers` tool: the providers domain, over its service. |
-| `mcp/tools/runtime.ts` | 158 | The `runtime` tool: the runtime on this machine — what fits it, `pinecall-runtime setup` run from here, what it printed, and stopped. |
-| `mcp/tools/scaffold.ts` | 78 | The `project` tool: which project the tools act on, opening another, writing a new one, generating into it. |
-| `mcp/tools/site.ts` | 50 | The docs tools: `docs_search` finds the sections of docs.pinecall.io that answer a question, `get_doc` reads a page whole. |
+| `mcp/tools/judging.ts` | 99 | The `judges`, `judging` and `usage` tools: the judging domain, and the bill it makes, over the services. |
+| `mcp/tools/knowledge.ts` | 77 | The `docs`, `memory` and `remember` tools: the knowledge domain, over its service. |
+| `mcp/tools/providers.ts` | 14 | The `providers` tool: the providers domain, over its service. |
+| `mcp/tools/runtime.ts` | 159 | The `runtime` tool: the runtime on this machine — what fits it, `pinecall-runtime setup` run from here, what it printed, and stopped. |
+| `mcp/tools/scaffold.ts` | 79 | The `project` tool: which project the tools act on, opening another, writing a new one, generating into it. |
+| `mcp/tools/site.ts` | 52 | The docs tools: `docs_search` finds the sections of docs.pinecall.io that answer a question, `get_doc` reads a page whole. |
 | `mcp/tools/studio.ts` | 43 | The `studio` tool: the studio domain, over its service. |
-| `mcp/tools/telephony.ts` | 78 | The `line`, `numbers`, `carriers` and `callbacks` tools: the telephony domain, over its service. |
+| `mcp/tools/telephony.ts` | 98 | The `line`, `numbers`, `carriers`, `dial` and `callbacks` tools: the telephony domain, over its service. |
 
 ## 4. What a verb is started with
 

@@ -15,4 +15,5 @@ tests/out/
 .local/
 .lab/
 .image.tar.gz
+.mcp.image.tar.gz
 .suite/

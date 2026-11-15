@@ -70,7 +70,7 @@ tf-check:         ## every root module formatted and valid, with no backend reac
 # ENV is an org's env (production or sandbox) and `make fleet` alone takes one. Until 2026-11-12 it
 # named the cluster, so a target of a cluster that is given ENV, on the command line or by the
 # environment, refuses: obeyed, it would act on the default cluster, whatever ENV said.
-OF_A_CLUSTER = tf-init tf-fence tf-plan tf-apply values image suite diff edge postgres deploy-guards deploy rollback hosting restore-from-box logs
+OF_A_CLUSTER = tf-init tf-fence tf-plan tf-apply values image suite diff edge postgres deploy-guards deploy rollback hosting mcp restore-from-box logs
 $(OF_A_CLUSTER): cluster-not-env
 cluster-not-env:
 ifneq ($(filter command environment,$(origin ENV)),)
@@ -263,6 +263,27 @@ hosting:          ## CLUSTER=…: charts/hosting released on the hosting cluster
 	  -f $(OPS)/values/hosting-$(CLUSTER).yaml $(IMAGE) \
 	  --wait --timeout 15m
 
+# The hosted MCP server (mcp/ in the repository, charts/mcp): the CLI's tools over HTTP at a name of
+# its own (`mcp.name` in the operator's values, a name of the cluster in Terraform's `names`), so an
+# assistant is connected by a URL and a sign-in. Its own image and its own release, beside the
+# runtime's and never part of it: it holds no secret, and a restart loses only the written calls it
+# kept open. Then asked at its name: its health, and the document an assistant finds the sign-in by.
+MCP_DIGEST = $$(gcloud artifacts docker images describe $(REGISTRY)/mcp:$(TAG) --project $(PROJECT) --format='value(image_summary.digest)' 2>/dev/null)
+mcp-image:        ## the hosted MCP server's image, TAG=<commit>, built from that commit and checked by Cloud Build
+	git -C .. archive --format=tar.gz -o runtime/.mcp.image.tar.gz '$(TAG)^{commit}'
+	gcloud builds submit .mcp.image.tar.gz --config $(INFRA)/images/mcp/cloudbuild.yaml \
+	  --service-account $(BUILDER) --substitutions _IMAGE=$(REGISTRY)/mcp:$(TAG) \
+	  --project $(PROJECT) --region $(REGION); status=$$?; rm -f .mcp.image.tar.gz; exit $$status
+
+mcp:              ## CLUSTER=…: charts/mcp released at TAG=<commit> (make mcp-image first), then asked at its name
+	@[ -n "$(MCP_DIGEST)" ] || \
+	  { echo "make mcp: no image $(REGISTRY)/mcp:$(TAG); make mcp-image TAG=$(TAG) first" >&2; exit 2; }
+	$(HELM) upgrade --install pinecall-mcp $(CHARTS)/mcp $(CHART_VALUES) \
+	  --set image.repository=$(REGISTRY)/mcp --set image.tag=$(TAG) --set image.digest=$(MCP_DIGEST) \
+	  --rollback-on-failure --timeout 10m
+	@name=$$($(HELM) get values pinecall-mcp -a -o json | python3 -c 'import json, sys; print(json.load(sys.stdin)["mcp"]["name"])'); \
+	  curl -fsS "https://$$name/health" && echo && curl -fsS "https://$$name/.well-known/oauth-protected-resource" && echo
+
 # A box's database into the cluster's Postgres, once, at its cutover (and its rehearsal on
 # staging): the box's schema `public` and its rows, dumped on the box and streamed into the
 # Postgres pod, never onto this laptop; the cluster's own schema emptied first and its two
@@ -291,4 +312,4 @@ logs:             ## CLUSTER=…: the gateways' and the workers' logs of the las
 	kubectl --context $(CONTEXT) logs --since=1h --prefix --max-log-requests 20 \
 	  -l 'app in (pinecall-gateway,worker,overflow)'
 
-.PHONY: hosting check test db hooks local local-gateway local-worker local-down tf-check tf-init tf-fence tf-plan tf-apply values image suite diff edge postgres deploy-guards deploy rollback fleet restore-from-box logs cluster-not-env
+.PHONY: hosting mcp mcp-image check test db hooks local local-gateway local-worker local-down tf-check tf-init tf-fence tf-plan tf-apply values image suite diff edge postgres deploy-guards deploy rollback fleet restore-from-box logs cluster-not-env

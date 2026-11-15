@@ -1,0 +1,13 @@
+# The hosted MCP server's image, built by Cloud Build from one commit's tree (the context
+# `make mcp-image` sends) and checked before it is pushed: as the image's own user, on a root it
+# cannot write, every module loads and the tools are there.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    env: ["DOCKER_BUILDKIT=1"]
+    args: ["build", "-f", "infra/images/mcp/Containerfile", "-t", "${_IMAGE}", "."]
+  - name: gcr.io/cloud-builders/docker
+    args: ["run", "--rm", "--read-only", "--tmpfs", "/tmp", "${_IMAGE}", "--check"]
+images:
+  - "${_IMAGE}"
+options:
+  logging: CLOUD_LOGGING_ONLY

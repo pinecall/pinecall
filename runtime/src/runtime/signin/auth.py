@@ -1,12 +1,16 @@
 """Sign-in's dependencies: the getters of what sign-in keeps between two requests, and where a request came from."""
 
+from collections.abc import Mapping
 from typing import Annotated
+from urllib.parse import parse_qsl
 
 from fastapi import Depends, Request
 from starlette.requests import HTTPConnection
 
 from runtime.platform import service as platform
+from runtime.signin.service.clients import Clients
 from runtime.signin.service.codes import LoginCodes
+from runtime.signin.service.connections import Connections
 from runtime.signin.service.google import Newcomers
 from runtime.signin.service.oidc import Oidc
 from runtime.signin.service.pairings import Pairings
@@ -25,6 +29,25 @@ def pairings_of(connection: HTTPConnection) -> Pairings:
     """The terminals waiting to be signed in."""
     pairings: Pairings = connection.state.pairings
     return pairings
+
+
+def clients_of(connection: HTTPConnection) -> Clients:
+    """The apps that may ask to act as a person."""
+    clients: Clients = connection.state.clients
+    return clients
+
+
+def connections_of(connection: HTTPConnection) -> Connections:
+    """The approvals waiting for their app to exchange them."""
+    connections: Connections = connection.state.connections
+    return connections
+
+
+# OAuth's own endpoints are posted to as a form (RFC 6749 section 4.1.3), the one body here that is no JSON.
+async def read_form(request: Request) -> Mapping[str, str]:
+    """A form's fields as an app posted them, the first of each name."""
+    fields = parse_qsl((await request.body()).decode("utf-8", "replace"), keep_blank_values=True)
+    return dict(reversed(fields))
 
 
 def sign_ups_of(connection: HTTPConnection) -> SignUps:
@@ -70,6 +93,9 @@ def client_of(request: Request) -> str:
 
 TheLoginCodes = Annotated[LoginCodes, Depends(login_codes_of)]
 ThePairings = Annotated[Pairings, Depends(pairings_of)]
+TheClients = Annotated[Clients, Depends(clients_of)]
+TheConnections = Annotated[Connections, Depends(connections_of)]
+TheForm = Annotated[Mapping[str, str], Depends(read_form)]
 TheSignUps = Annotated[SignUps, Depends(sign_ups_of)]
 TheNewcomers = Annotated[Newcomers, Depends(newcomers_of)]
 TheOidc = Annotated[Oidc, Depends(oidc_of)]

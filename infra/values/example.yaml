@@ -66,3 +66,9 @@ gateway:
   dbPool: 20
   # Google's load balancer's ranges, and its own address (modules/edge's ingress_address).
   trustedProxies: 35.191.0.0/16,130.211.0.0/22,203.0.113.1/32
+
+# The hosted MCP server (charts/mcp, released by `make mcp`, never by `make deploy`): the name an
+# assistant's connector is given, one of the cluster's `names` in Terraform after the first. Left
+# out, nothing is released and the chart refuses.
+# mcp:
+#   name: mcp.voice.example.com

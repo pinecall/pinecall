@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# What CI runs: the types, then the suite.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+pnpm lint
+pnpm test

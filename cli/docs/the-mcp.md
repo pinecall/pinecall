@@ -4,6 +4,13 @@
 Claude Code, Claude Desktop, Codex, Cursor, Windsurf, Antigravity, Gemini CLI — launches it, and its
 tools take a person from an empty folder to an agent on Pinecall without a terminal.
 
+The same tools are also hosted by Pinecall at `https://mcp.pinecall.io/mcp`, for an assistant that
+takes a server by its address — Claude and ChatGPT on the web among them: a URL and a sign-in in a
+browser, nothing installed. That server has no folder, so it leaves out the ten tools that act on
+this machine; [Connect an assistant](mcp/connecting.md) says how to add it to each assistant, and
+[The hosted server](#the-hosted-server), below, what it leaves out. This page is the server on your
+own machine.
+
 The server starts no process of its own but `pinecall-runtime`, for the `runtime` tool: what needs
 a browser, an editor or a speaker hands the link, the text or the file back instead. Every tool acts in the **sandbox** unless it says `prod`
 (below). No tool takes a vendor key, a carrier secret or an app's secret, and no answer carries a
@@ -102,7 +109,7 @@ Every parameter, and a real call of each: [The agent's settings](mcp/settings.md
 
 | tool | actions | what it does |
 |---|---|---|
-| `agent` | `show` · `set` · `clear` · `history` · `diff` · `rollback` · `knowledge` | the agent's settings — voice, models, language, greeting, turn-taking, recording, memory policy — each change a version, checked as `pinecall agent set` checks it; `knowledge` reads or writes what it knows by heart. A write is refused naming an app written as code, which its code alone sets |
+| `agent` | `list` · `show` · `set` · `clear` · `history` · `diff` · `rollback` · `knowledge` | `list` names every agent of the org a process holds now in the env asked, and which process: the names every other tool takes as `agent`; the rest is the agent's settings — voice, models, language, greeting, turn-taking, recording, memory policy — each change a version, checked as `pinecall agent set` checks it; `knowledge` reads or writes what it knows by heart. A write is refused naming an app written as code, which its code alone sets |
 | `lexicon` | `show` · `add` · `hear` · `rm` · `history` | how the voice says a word, and the words the ears must catch; a write is refused naming an app written as code |
 | `voices` | — | a vendor's voices in a language, the id first |
 | `voice_sample` | — | a line said by the gateway in a voice, saved as a WAV under `.pinecall/voices/`, with its timings |
@@ -188,6 +195,29 @@ Every parameter, and a real call of each: [Going live, and the docs](mcp/going-l
 
 A refusal is one sentence that names what to do next: no project names `project`, no sign-in names
 `login` (and the gateway a project's `pinecall.json` runs it at); `stop` with no agent held names `start`.
+
+## The hosted server
+
+`https://mcp.pinecall.io/mcp` is these tools behind HTTP, run by Pinecall: an assistant is given the
+address, the person signs in to Pinecall in a browser and approves it, and every call runs on the
+sign-in that approval made, in the org they chose ([Connect an assistant](mcp/connecting.md)). It is
+built from this package (`pinecall/hosted`) by the repository's `mcp/`.
+
+It works on no folder and starts nothing, so:
+
+- **Ten tools are not in it**, the ones that act on the machine a server runs on: `login`,
+  `project`, `runtime`, `start`, `stop`, `status`, `prompt`, `voice_sample`, `line`, `remember`.
+- **The agent is always named.** With no project to read the one agent from, a tool that acts on an
+  agent is refused naming `agent` with action `list`, which says the ones the org holds now.
+- **What reads or writes an agent's files is refused**, in one sentence naming this server:
+  `docs` `push`, `pull` and `eval`, `memory` `eval`, `test` on the golden files (`case` and `dataset`
+  play the org's cases there), `runs` `promote`, `cases` `pull`, `personas` `generate` with `save`,
+  and `deploy` `deploy`.
+- **`whoami` says `key_from: this connection's sign-in`**, and the gateway is Pinecall Cloud.
+
+A host is told which tools change nothing (`whoami`, `calls`, `call`, `pipeline`, `providers`,
+`voices`, `alerts`, `usage`, `carriers`, `callbacks`, `docs_search`, `get_doc`), so it may call
+those without asking the person first; this server says the same.
 
 ## Not in the MCP
 

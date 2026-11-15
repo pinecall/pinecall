@@ -66,6 +66,7 @@ export const judging = tool({
 
 export const usage = tool({
   name: "usage",
+  reads: true,
   description: "What the org has used of its limits this month in the environment — minutes, messages, evals, simulations, bought numbers — whose keys its calls run on, and whether its judges cost it evals.",
   schema: {},
   manual:

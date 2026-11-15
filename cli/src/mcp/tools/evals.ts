@@ -56,10 +56,10 @@ export const test = tool({
       cases: args.case,
       version: args.version,
     });
-    const home = ctx.agent("test", { agent: reached.slug });
-    // The files play unless only the cases were asked for, as `pinecall test` decides it.
-    const goldens = input.files ? service.matching(await service.goldensIn([home.goldens]), args.grep) : [];
-    if (goldens.length === 0 && !service.playsCases(input)) throw new ToolRefused(`no golden${args.grep === undefined ? "" : ` matching ${args.grep}`} in ${home.goldens}`);
+    // The files play unless only the cases were asked for, as `pinecall test` decides it: the folder is read only then.
+    const folder = input.files ? ctx.agent("test", { agent: reached.slug }).goldens : undefined;
+    const goldens = folder === undefined ? [] : service.matching(await service.goldensIn([folder]), args.grep);
+    if (goldens.length === 0 && !service.playsCases(input)) throw new ToolRefused(`no golden${args.grep === undefined ? "" : ` matching ${args.grep}`} in ${folder ?? "the files"}`);
     let id: string | null = null;
     let begun: (started: string) => void = () => undefined;
     const idKnown = new Promise<string>((known) => (begun = known));
@@ -262,10 +262,13 @@ export const personas = tool({
   manual:
     "`personas` keeps the callers a model plays against the agent. Pinecall's library comes first — realism (in-a-hurry, wrong-number, interrupts, elderly-slow…) and a red team (prompt-leak, data-leak, harmful…) — each off until `on`; the nightly plays what is on. The agent's own are a goal, a manner, facts, and `expects`: what the agent should do, one verifiable line each, judged at hang-up and never told to the caller. `interrupts` and `pause_s` make a spoken caller talk over the agent and hesitate, so barge-in is tested for real; `backchannels` has it murmur an mm-hmm while the agent speaks, `speed` slows or hurries its voice, and `ambience` with `background_noise` puts a television, a café, an office or a street behind it. `generate` writes callers from the agent's prompt, tools and knowledge (one eval each, none on the org's own judge key); show them to the person and `save` the ones they keep. A class that declares `personas` owns the roster: the list says `fixed`, its own are code beside the class (`agents/<agent>/harness.*`, `ownPersona`), `save` appends code there for the class to import into `own`, and `add`, `edit`, `rm`, `on` and `off` are refused naming the class. `simulate` runs one.",
   handler: async (args, ctx) => {
-    const home = ctx.agent("personas", { agent: args.agent });
-    const agent = home.name;
+    const agent = ctx.slug("personas", { agent: args.agent });
     if (args.action === "list") return { personas: await service.listPersonas(ctx, agent) };
-    if (args.action === "generate") return await service.generatePersonas(ctx, agent, service.GenerateInput.parse({ n: args.n, about: args.about, fromCall: args.from_call, template: args.template, save: args.save === true }), home);
+    if (args.action === "generate") {
+      const input = service.GenerateInput.parse({ n: args.n, about: args.about, fromCall: args.from_call, template: args.template, save: args.save === true });
+      // Kept as code only where the class owns its roster: the agent's folder is asked for when they are saved.
+      return await service.generatePersonas(ctx, agent, input, input.save ? ctx.agent("personas", { agent: args.agent }) : undefined);
+    }
     const name = needed(args.name, "name");
     if (args.action === "show") return await service.getPersona(ctx, agent, name);
     if (args.action === "on" || args.action === "off") return await service.switchPersona(ctx, agent, name, args.action === "on");

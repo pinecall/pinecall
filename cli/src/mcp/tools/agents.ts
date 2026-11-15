@@ -11,9 +11,9 @@ import { AGENT } from "./fields.js";
 
 export const agent = tool({
   name: "agent",
-  description: "The agent's settings — voice, models, language, greeting, memory policy, knowledge by heart: read, set, cleared, history, diff, rollback.",
+  description: "The org's agents held now (`list`), and one agent's settings — voice, models, language, greeting, memory policy, knowledge by heart: read, set, cleared, history, diff, rollback.",
   schema: {
-    action: z.enum(["show", "set", "clear", "history", "diff", "rollback", "knowledge"]).describe("show reads the settings; set writes the fields named as a new version; clear takes fields out; history lists the versions; diff compares with the team's or production's; rollback brings a version back; knowledge reads or writes what the agent knows by heart"),
+    action: z.enum(["list", "show", "set", "clear", "history", "diff", "rollback", "knowledge"]).describe("list says every agent of the org held now, and the process holding it; show reads the settings; set writes the fields named as a new version; clear takes fields out; history lists the versions; diff compares with the team's or production's; rollback brings a version back; knowledge reads or writes what the agent knows by heart"),
     agent: AGENT,
     settings: service.SettingsInput.strict().optional().describe("`set`: the fields to set, named as `pinecall agent set` names its flags, with the values the flags take: strings (`voice`, `tts`, `llm` as `vendor/model`, `language`, `greeting`, `hangup`), numbers (`temperature`, `endpointing-ms`, `min-interruption-words`, `eot-threshold`, `min-interruption-ms`, `silence-timeout` in seconds 5 to 3600, `idle-after` in seconds 5 to 60, `idle-times` 1 to 10, `llm-timeout` in seconds, `max-duration` in minutes 1 to 60 or the string `off`), `voicemail` as the words left on a machine or the string `silent`, `on`/`off` strings (`record`, `greeting-interruptible`), `end-of-turn` one of stt, livekit, smart-turn, objects for the `*-options`, arrays of strings for `remember`, `forget`, `idle-say` (the lines said when the caller goes quiet), `stt-fallback` and `tts-fallback` (`vendor` or `vendor/model`, in order). A field that is none of these is refused by name"),
     fields: z.array(z.enum(service.FIELDS)).optional().describe("`clear`: the fields to take out of your corner (the team's holds again for each)"),
@@ -25,8 +25,9 @@ export const agent = tool({
     note: z.string().optional().describe("a note kept with the version written"),
   },
   manual:
-    "`agent` reads and writes the agent's settings in the sandbox — the voice, the models, the language, the greeting, the memory policy, what it knows by heart — each change a new version, changed without a deploy. They are your own settings unless `team` writes the team's. `history`, `diff` and `rollback` read and undo versions. A model is named as `vendor/model`, a vendor, a model, or a tier (`haiku`). `realtime` is the model a voice call runs on alone, one that hears and speaks itself (`providers` lists them under `realtime`; xAI's `grok-voice-3.0`), with `realtime-options` its keyword arguments (`{\"voice\": \"eve\"}`) on the org's own key; the `llm` keeps answering the written calls and never names such a model. `greeting` is the words, `improvise` for the model's own opening, or `improvise:…` with an instruction; `hangup` is when, in words, or `any`; `end-of-turn` is who ends the caller's turn. `temperature` is the model's; `llm-builds` and `llm-options` (and the `stt`, `tts` and `judge` twins) are a class of the vendor's plugin and its keyword arguments, run only on the org's own key for that vendor. `judge` is the model this agent's calls are judged on, named as `llm` is, over the org's (`judging`); on the org's own key for the vendor — a local model's server through `judge-options` `{\"base_url\": …}` — its evals are never billed. On an app written as code, in the sandbox, a write changes whatever its class does not declare, and what it declares is refused naming the field; in production every write is refused naming it (reading stays).",
+    "`agent list` names every agent of the org a process holds now in the env asked — a terminal's, a hosted app's, Studio's — and which: the names every other tool takes as `agent`. `agent` reads and writes the agent's settings in the sandbox — the voice, the models, the language, the greeting, the memory policy, what it knows by heart — each change a new version, changed without a deploy. They are your own settings unless `team` writes the team's. `history`, `diff` and `rollback` read and undo versions. A model is named as `vendor/model`, a vendor, a model, or a tier (`haiku`). `realtime` is the model a voice call runs on alone, one that hears and speaks itself (`providers` lists them under `realtime`; xAI's `grok-voice-3.0`), with `realtime-options` its keyword arguments (`{\"voice\": \"eve\"}`) on the org's own key; the `llm` keeps answering the written calls and never names such a model. `greeting` is the words, `improvise` for the model's own opening, or `improvise:…` with an instruction; `hangup` is when, in words, or `any`; `end-of-turn` is who ends the caller's turn. `temperature` is the model's; `llm-builds` and `llm-options` (and the `stt`, `tts` and `judge` twins) are a class of the vendor's plugin and its keyword arguments, run only on the org's own key for that vendor. `judge` is the model this agent's calls are judged on, named as `llm` is, over the org's (`judging`); on the org's own key for the vendor — a local model's server through `judge-options` `{\"base_url\": …}` — its evals are never billed. On an app written as code, in the sandbox, a write changes whatever its class does not declare, and what it declares is refused naming the field; in production every write is refused naming it (reading stays).",
   handler: async (args, ctx) => {
+    if (args.action === "list") return { apps: await service.listApps(ctx) };
     const options = service.WriteOptions.parse({ agent: args.agent, team: args.team === true, note: args.note });
     switch (args.action) {
       case "set":
@@ -84,6 +85,7 @@ export const lexicon = tool({
 
 export const pipeline = tool({
   name: "pipeline",
+  reads: true,
   description: "What the agent hears, decides and speaks with — the vendors and models of each stage — and the latency each measured.",
   schema: { agent: AGENT },
   manual: "`pipeline` reads the three stages a call runs on (ears, model, voice), which vendor and model each is, and the medians the agent's recent calls measured.",
@@ -92,6 +94,7 @@ export const pipeline = tool({
 
 export const voices = tool({
   name: "voices",
+  reads: true,
   description: "A voice vendor's voices in a language: the id an agent's voice setting takes, the name, gender and accent.",
   schema: {
     tts: z.string().optional().describe("the vendor; the gateway's own voice vendor when left out"),
@@ -104,6 +107,7 @@ export const voices = tool({
 
 export const voiceSample = tool({
   name: "voice_sample",
+  machine: true,
   description: "Have the gateway say a line in a voice, as a call would, and save it as a WAV the person can play; with how long the vendor took.",
   schema: {
     voice: z.string().describe("the voice's id, from `voices`"),

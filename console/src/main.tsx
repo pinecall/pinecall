@@ -24,7 +24,7 @@ import { forgetThisBrowser } from "./lib/notifier";
 import { OrgProvider } from "./lib/org";
 import { inWorld, pageHere, WORLD, WORLD_BASE } from "./lib/world";
 import { RowMenus } from "./ui/row-menu";
-import { Accept, Login, SignUp, Terminal, Verify, VERIFY } from "./login";
+import { Accept, Connect, keepWhatWasAsked, Login, SignUp, Terminal, Verify, VERIFY, whatWasAsked } from "./login";
 import { MonitorsPage } from "./monitors/monitors";
 import { BillingPage } from "./billing/billing";
 import { CarriersPage } from "./box/carriers";
@@ -103,7 +103,8 @@ function Console({ startingWith }: { startingWith: string | null }): ReactNode {
       createBrowserRouter(
         [
           // A terminal's `pinecall login` is approved here, production's page as the CLI builds it, outside the shell.
-          ...(WORLD === "production" ? [{ path: "cli", element: <Terminal /> }] : []),
+          // An app asking to act as a person (an assistant's connector) is approved here: the gateway's OAuth authorization endpoint.
+          ...(WORLD === "production" ? [{ path: "cli", element: <Terminal /> }, { path: "connect", element: <Connect /> }] : []),
           {
             path: "/",
             element: <Shell onLeave={leave} />,
@@ -159,6 +160,10 @@ if (root === null) throw new Error("the page has no #root");
 const mount = root;
 
 void theKeyToStartWith().then((start) => {
+  // An app waiting for its answer survives a sign-in that left the page: kept before it, gone back to after.
+  if (start === null) keepWhatWasAsked();
+  const waiting = start === null ? null : whatWasAsked();
+  if (waiting !== null) return void window.location.replace(waiting);
   createRoot(mount).render(
     <StrictMode>
       <Console startingWith={start} />

@@ -24,22 +24,27 @@ interface Answer {
 /** One line per call, for the host's log: the tool, how long, how it ended — never its arguments or its answer. */
 export type Trace = (line: string) => void;
 
-/** How a server is built: its stages of tools, a session of its own, and where its trace goes. */
+/** How a server is built: its stages of tools, a session of its own, where its trace goes, the journey it tells and what it says of every tool. */
 export interface ServerOptions {
   stages?: readonly Stage[];
   session?: Session;
   trace?: Trace;
+  /** The first words of its instructions; the machine's own journey when left out. */
+  journey?: string;
+  /** What a host is told of every tool beside its schema, as the protocol's `_meta`. */
+  meta?: Record<string, unknown>;
 }
 
 /** A server over these tools, one session for its life. */
 export function createServer(version: string, processEnv: NodeJS.ProcessEnv, options: ServerOptions = {}): McpServer {
   const stages = options.stages ?? STAGES;
-  const server = new McpServer({ name: "pinecall", version }, { instructions: instructions(stages) });
+  const server = new McpServer({ name: "pinecall", version }, { instructions: instructions(stages, options.journey) });
   const session = options.session ?? new Session(processEnv, () => declaredRoots(server));
   const trace = options.trace ?? (() => undefined);
   for (const one of stages.flatMap((stage) => stage.tools)) {
     // The manual rides the description: the one place a host shows the model what a tool is for.
-    server.registerTool(one.name, { description: `${one.description}\n\n${one.manual}`, inputSchema: one.schema }, async (args: unknown) => await answered(session, one, args, trace));
+    const said = { description: `${one.description}\n\n${one.manual}`, inputSchema: one.schema, ...(one.reads ? { annotations: { readOnlyHint: true } } : {}), ...(options.meta === undefined ? {} : { _meta: options.meta }) };
+    server.registerTool(one.name, said, async (args: unknown) => await answered(session, one, args, trace));
   }
   return server;
 }

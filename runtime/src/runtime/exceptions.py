@@ -19,6 +19,14 @@ class ValidationError(PinecallError):
     status = 400
 
 
+class OAuthRefusal(ValidationError):
+    """An OAuth request refused: `error` is the code its RFC names the refusal by, beside the sentence."""
+
+    def __init__(self, error: str, message: str) -> None:
+        super().__init__(message)
+        self.error = error
+
+
 class Unauthorized(PinecallError):
     """No key, a wrong one, or wrong credentials."""
 

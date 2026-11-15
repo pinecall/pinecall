@@ -352,6 +352,33 @@ secret store's (`given_secrets`), the runtime reached at `http://pinecall-gatewa
 ops key. A notifier that signs pushes does it as `modules/notify`'s identity
 (`firebase_project`).
 
+## The MCP server, hosted
+
+The repository's `mcp/` is the CLI's tools over HTTP, so an assistant (Claude, ChatGPT, an editor)
+is connected to a runtime by an address and a sign-in in a browser
+([what it is](../mcp/README.md)). It is released beside the runtime and never with it: its own image
+(`images/mcp`), its own chart (`charts/mcp`), one pod, no secret and no volume. The gateway signs
+people in, so it needs nothing of the operator's but a name.
+
+- **The name** is one of the cluster's `names` in its Terraform variables, after the first (which
+  stays `PINECALL_DOMAIN`): `names = ["cloud.example.com", "mcp.example.com"]`. `modules/edge` gives
+  each name a certificate of its own in the Gateway's map and its record, so adding it reissues
+  nothing: the plan is five additions. A name in `services` would instead reissue the one
+  certificate every service is served on.
+- **The values**: `mcp: { name: mcp.example.com }` in the operator's values file. The chart reads
+  `domain` for the gateway, as every chart does.
+- **The release**, from `runtime/`:
+
+```
+$ make mcp-image TAG=<commit>                 # the image at that commit, checked before it is pushed
+$ make mcp CLUSTER=<cluster> TAG=<commit>     # charts/mcp released; then its health and its metadata, asked at its name
+```
+
+`make deploy` does not release it and it does not need the runtime's image: a release of one never
+moves the other. Going back is `helm rollback pinecall-mcp`. A new pod answers before the old one is
+told to stop; what the old one kept for its keys (a written call left open, a run being waited on)
+is hung up with it.
+
 ## Staging, made and destroyed
 
 Staging is made for a proof and destroyed after it: the runtime's own releases first, so no object is left waiting on a controller Terraform removes,

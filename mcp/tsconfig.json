@@ -1,0 +1,13 @@
+{
+  // The CLI's own preset and strictness: this package is the CLI's tools behind HTTP, read from its sources.
+  "extends": "@pinecall/agents/tsconfig.tenant.json",
+  "compilerOptions": {
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["src"]
+}

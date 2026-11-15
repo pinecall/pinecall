@@ -25,6 +25,10 @@ interface Declared<Shape extends z.ZodRawShape> {
   handler: (args: z.infer<z.ZodObject<Shape>>, ctx: ToolContext) => Promise<unknown>;
   /** The values of its answer no scrubbing may hide: a console link's one-use code, and nothing else. */
   reveals?: (result: unknown) => string[];
+  /** It acts on the machine the server runs on — a folder, a process, a file, a sign-in kept there: never offered by a hosted server. */
+  machine?: true;
+  /** It changes nothing, whatever it is asked: a host may call it without asking the person first. */
+  reads?: true;
 }
 
 /** A tool as the server lists it: its schema checks what a host sends before the handler sees it. */
@@ -35,6 +39,8 @@ export interface Tool {
   schema: z.ZodRawShape;
   call(args: unknown, ctx: ToolContext): Promise<unknown>;
   reveals?: ((result: unknown) => string[]) | undefined;
+  machine: boolean;
+  reads: boolean;
 }
 
 /** Declare a tool; its handler receives arguments already checked against its schema, `prod` taken out. */
@@ -51,6 +57,8 @@ export function tool<Shape extends z.ZodRawShape>(declared: Declared<Shape>): To
       return declared.handler(rest as z.infer<z.ZodObject<Shape>>, ctx);
     },
     reveals: declared.reveals,
+    machine: declared.machine === true,
+    reads: declared.reads === true,
   };
 }
 

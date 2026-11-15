@@ -15,7 +15,7 @@ from runtime import api
 from runtime.accounts.auth import resolve_actor
 from runtime.auth import ActorMiddleware
 from runtime.config import Settings
-from runtime.exceptions import PinecallError, ServiceUnavailable, TooManyRequests, Unauthorized
+from runtime.exceptions import OAuthRefusal, PinecallError, ServiceUnavailable, TooManyRequests, Unauthorized
 from runtime.handles import THE_INTERNET, Handles, Outside
 from runtime.kit.middleware import AllowedOrigins, BodyCeiling, NamesUnder
 from runtime.lifespan import lifespan
@@ -37,7 +37,9 @@ A_PAGES_READS = re.compile(
     r"^/v1/(calls/[^/]+/(events|state|recording)|codes/[^/]+|lines/[^/]+|agents/[^/]+/public/[^/]+)$"
 )
 # And says its own hang-up: the one POST a page makes with a token, as its tab closes.
-A_PAGE_HANGS_UP = re.compile(r"^/v1/calls/[^/]+/hangup$")
+# And an app that connects as a person from a page of its own registers, exchanges and revokes there:
+# it holds no key yet, and what it posts is its own code.
+A_PAGE_SAYS = re.compile(r"^/v1/(calls/[^/]+/hangup|oauth/(token|register|revoke))$")
 # The most any request carries, above every endpoint's own cap: a body past it is refused as it
 # streams in, never held whole in memory.
 LARGEST_BODY = 32 * 1024 * 1024
@@ -57,7 +59,11 @@ async def answer_refusal(_request: Request, error: Exception) -> Response:
     headers = {"WWW-Authenticate": "Bearer"} if isinstance(error, Unauthorized) else None
     if isinstance(error, TooManyRequests) and error.retry_after_s is not None:
         headers = {"Retry-After": str(error.retry_after_s)}
-    return JSONResponse({"detail": str(error)}, status_code=status, headers=headers)
+    said: dict[str, str] = {"detail": str(error)}
+    # An app reads a refusal of OAuth's by the words its RFC gives it (RFC 6749 section 5.2).
+    if isinstance(error, OAuthRefusal):
+        said |= {"error": error.error, "error_description": str(error)}
+    return JSONResponse(said, status_code=status, headers=headers)
 
 
 async def answer_busy(request: Request, error: Exception) -> Response:
@@ -100,7 +106,7 @@ def create_app(outside: Outside = THE_INTERNET) -> FastAPI:
         origins=_origins_of,
         headers=ALLOWED_HEADERS,
         any_page=A_PAGES_READS,
-        any_page_says=A_PAGE_HANGS_UP,
+        any_page_says=A_PAGE_SAYS,
     )
     app.add_middleware(BodyCeiling, most=LARGEST_BODY)
     app.add_middleware(NamesUnder, domain=_pages_domain_of, prefix="/v1/pages", own="/pinecall/", files="/files")

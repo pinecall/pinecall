@@ -10,6 +10,7 @@ const LONGEST_PAGE = 30_000;
 
 export const docsSearch = tool({
   name: "docs_search",
+  reads: true,
   description: "Search Pinecall's own docs (docs.pinecall.io) and answer the sections that best match, each with its address and a snippet.",
   schema: {
     question: z.string().min(2).describe("what you want to know, in a few words"),
@@ -22,6 +23,7 @@ export const docsSearch = tool({
 
 export const getDoc = tool({
   name: "get_doc",
+  reads: true,
   description: "Read one page of docs.pinecall.io whole, by its address or its path (such as concepts/tools).",
   schema: {
     page: z.string().describe("the page's address, or its path on the site"),

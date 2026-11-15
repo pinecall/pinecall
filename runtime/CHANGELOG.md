@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **The gateway is an OAuth 2.1 authorization server, so an assistant is connected as a person.**
+  An MCP server in front of a gateway (the repository's `mcp/`, `charts/mcp`) is given to Claude,
+  ChatGPT or an editor as an address; the assistant finds the gateway from it and does the rest
+  unaided. `GET /.well-known/oauth-authorization-server` says where (RFC 8414); an app is a Client ID
+  Metadata Document or registers at `POST /v1/oauth/register` (RFC 7591), and its registration is
+  its own id, sealed, so no row is written for an app nobody approved; the person approves on the
+  console's new page `/connect`, choosing the org when they have several (`GET` and `POST
+  /v1/oauth/authorization`); the app exchanges its one-use code with its PKCE verifier at `POST
+  /v1/oauth/token` for a key of that person's, labelled with the app's name and listed with their
+  other sign-ins; `POST /v1/oauth/revoke` ends it (RFC 7009). There is no refresh token: the key is
+  kept thirty days from its last use, as every sign-in is. A refusal of these endpoints carries
+  OAuth's `error` and `error_description` beside `detail`. No migration.
 - **A sign-in dies thirty days after its last use.** Every sign-in mints a key for its person and
   none had a date, so each one opened the org for ever: production held 314 live ones for 17 people,
   204 of them unused for a month. A person's key is now minted with thirty days to live and given

@@ -13,6 +13,7 @@ import { AGENT } from "./fields.js";
 
 export const start = tool({
   name: "start",
+  machine: true,
   description: "Hold the project's agent so it answers calls: in a thread of this server, reloaded on every save, or attached to a process already holding it.",
   schema: { agent: AGENT },
   manual:
@@ -32,6 +33,7 @@ export const start = tool({
 
 export const stop = tool({
   name: "stop",
+  machine: true,
   description: "Stop holding the agent: its thread drains its live calls and leaves.",
   schema: { agent: AGENT },
   manual: "`stop` lets the agent go: a thread drains the calls it holds and leaves; an attached process is left running, since this server did not start it.",
@@ -45,6 +47,7 @@ export const stop = tool({
 
 export const status = tool({
   name: "status",
+  machine: true,
   description: "What this server holds: each agent, how (thread or attached), its app, the version answering, and why the newest save did not load.",
   schema: {},
   manual: "`status` leads with what is wrong, if anything: the sentence a save that does not load was refused with, or how the thread answering ended when it died. Otherwise each agent held, its app id and the version answering, and `framework` when the agent runs on the one this server lent the project.",
@@ -53,6 +56,7 @@ export const status = tool({
 
 export const prompt = tool({
   name: "prompt",
+  machine: true,
   description: "Print the exact prompt the model reads when a call opens, or in a given state: offline, no key, no call.",
   schema: {
     agent: z.string().optional().describe("the agent's name; the project's only agent when left out"),
