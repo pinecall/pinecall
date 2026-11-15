@@ -5,7 +5,7 @@
 :root[data-theme="dark"] { color-scheme: dark; }
 
 :root {
-  --ground: light-dark(#f4f4f7, #0e0f15);
+  --ground: light-dark(#f4f4f74d, #0e0f15);
   --panel: light-dark(#ffffff, #1a1b24);
   --raised: light-dark(#ececf1, #262733);
   --line: light-dark(#e1e2e9, #24252f);
