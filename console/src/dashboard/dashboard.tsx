@@ -8,6 +8,7 @@ import { useInsights, type WindowDays } from "../lib/insights";
 import { useOrg } from "../lib/org";
 import { NoticesButton } from "../shell/notices";
 import { PageHead } from "../shell/page-head";
+import { ThemeButton } from "../shell/theme";
 import { Below } from "./below";
 import { FleetCards, useAlerts } from "./fleet";
 import { HarnessCards } from "./harness";
@@ -72,6 +73,7 @@ export function Dashboard(): ReactNode {
     <>
       <PageHead>
         <NoticesButton />
+        <ThemeButton />
       </PageHead>
       <div className="dash-home">
         <FleetCards live={live} alerts={alerts} />

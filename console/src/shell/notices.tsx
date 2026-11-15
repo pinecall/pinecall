@@ -53,9 +53,8 @@ export function NoticesButton(): ReactNode {
 
   if (told !== false) return null;
   return (
-    <button type="button" className="sh-notices" disabled={turning} onClick={() => void turnOn()}>
+    <button type="button" className="sh-notices" aria-label="Turn on notifications" title="Turn on notifications" disabled={turning} onClick={() => void turnOn()}>
       <Icon name="bell" size={15} />
-      Turn on notifications
     </button>
   );
 }
