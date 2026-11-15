@@ -115,6 +115,7 @@ A module of a domain that is none of its seven files is named here, and in
 | `session` | `recording.py` | `Recorder`: the call's file and the other voices |
 | `session` | `echo.py` | the caller's audio cleared of the agent's own voice |
 | `session` | `nearest_voice.py` | the caller's audio with what sits far under their own voice muted: the room behind them |
+| `session` | `far_voices.py` | the voices far from the caller's microphone taken down by a model, where the box has it: loaded once a process, a stream a call |
 | `session` | `clock.py` | a call's time: its ceiling, a chat's quiet, the idle lines |
 | `session` | `started.py` | the `call.started` entry |
 | `live` | `served.py` | `Served`, a call this gateway serves, and `Calls`: each one's socket, pump and commands, every org's count |
@@ -130,6 +131,7 @@ A module of a domain that is none of its seven files is named here, and in
 stage of a call, on whose key, told what, at what price. One row, one table of keys and one
 registry of plugins, read by twenty of its modules; where an org's traces go (`telemetry`) and what
 this machine can run (`machine`) stand apart and were decided into it.
+| `evals` | `sounds/` | the sounds a simulated caller's room is made of (a newscast across a living room), each with where it comes from, read by `service/ambience.py` and by no other module |
 | `judging` | `library/` | the judges and personas the box ships: pages a person can read, read by `service/library.py` and by no other module |
 | `studio` | `export/` | the files of an exported project that are the same for every agent (the request helper, the package and its tsconfig, the README, AGENTS.md), read by `service/export.py` and by no other module |
 

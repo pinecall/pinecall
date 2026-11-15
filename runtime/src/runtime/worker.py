@@ -16,6 +16,7 @@ from runtime.kit.loops import Loops
 from runtime.kit.signals import stop_on_a_signal
 from runtime.livekit import key_pair
 from runtime.providers import service as providers
+from runtime.session import service as session
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +78,7 @@ def prewarm(proc: JobProcess) -> None:
         spans=jobs.trace_to(settings.otlp_endpoint, headers, fleet=settings.fleet, pii=settings.otlp_pii),
         recordings=builders.build_recordings(settings, httpx.AsyncClient()),
         told=told,
+        far_voices=session.load_far_voices(settings.far_voices_library, settings.far_voices_model),
     )
 
 

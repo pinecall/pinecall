@@ -21,6 +21,7 @@ from runtime.providers.stage import Running, Speaking, Thinking
 from runtime.session import echo, history, prompt, recording
 from runtime.session.agent import CallAgent, agent_of
 from runtime.session.call import Call
+from runtime.session.far_voices import FarVoicesModel
 from runtime.session.hearing import TurnPolicy, keyterms
 from runtime.session.hold import HoldMusic
 from runtime.session.line import Line
@@ -69,6 +70,8 @@ class Place:
     melody: HoldMusic | None = None
     # The one participant the session listens to: the caller's leg, or the visitor who talks.
     participant: str | None = None
+    # The model that takes down the voices far from the caller's microphone, where the process has one.
+    far_voices: FarVoicesModel | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,6 +112,7 @@ class Session:
         self.line = line
         self.room = place.room
         self.participant = place.participant
+        self.far_voices = place.far_voices
         # Said on the call's first entry, and the model is told it. A written call has a room too when a
         # page's chat holds it; until 0.11.38 a room meant spoken, and a visitor typing in the widget's
         # chat was answered as on a phone call ("I'm on a phone call, so I can't see the page").
@@ -408,12 +412,16 @@ class Session:
     # `record` is said: left unset, livekit asks its cloud; the call's own recorder is ours. A
     # visitor who left may come back (docs/protocol/tokens.md): their call waits, not livekit. No
     # session host: it hands every participant the raw turns, the tools and the prompt (projections.md).
-    # The room behind the caller is muted before livekit's gain levels it up to a voice (nearest_voice.py);
-    # the gain is said, since livekit drops its own once it is handed a processor.
+    # The room behind the caller is taken down and muted before livekit's gain levels it up to a voice
+    # (far_voices.py, nearest_voice.py); the gain is said, since livekit drops its own once it is handed
+    # a processor.
     def room_options(self) -> RoomOptions:
         """How livekit takes the room: the one participant heard, its audio, and who leaving ends it."""
         spoken = is_spoken(self.live, self.built)
-        nearest = NearestVoice(caller_has_the_floor=lambda: not self.call.agent_speaking)
+        nearest = NearestVoice(
+            caller_has_the_floor=lambda: not self.call.agent_speaking,
+            far_voices=None if self.far_voices is None or not spoken else self.far_voices.open_stream(),
+        )
         return RoomOptions(
             participant_identity=or_not_given(self.participant),
             close_on_disconnect=self.call.context.channel is not Channel.web,

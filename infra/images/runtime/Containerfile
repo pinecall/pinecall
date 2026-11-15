@@ -3,7 +3,8 @@
 # nothing else: the build's context is that commit's tree (`make image` sends `git archive`), so
 # what no commit holds cannot be in it. Three stages: the console and the widget from the
 # lockfile, the wheel with those pages inside, and the image that installs it with the voice
-# plugins and Smart Turn v3's weights, so a pod never reaches the internet to start. Nothing secret
+# plugins, Smart Turn v3's weights and the model that takes far voices down, so a pod never reaches
+# the internet to start. Nothing secret
 # is in it: every key comes from the pod's environment at run time.
 
 # Each base by the digest of its multi-architecture index: the tag says which one, the digest is
@@ -57,6 +58,25 @@ digest = hashlib.sha256(open(path, 'rb').read()).hexdigest(); \
 sys.exit(f'{path}: sha256 {digest}, not {sys.argv[2]}') if digest != sys.argv[2] else print(path)" \
   "${SMART_TURN_REVISION}" "${SMART_TURN_SHA256}"
 ENV SMART_TURN_MODEL=/opt/models/hub/models--pipecat-ai--smart-turn-v3/snapshots/${SMART_TURN_REVISION}/smart-turn-v3.2-cpu.onnx
+# The model that takes down the voices far from a caller's microphone (session/far_voices.py): Hush,
+# a DeepFilterNet3 fine-tuned on background speakers, Apache 2.0. Its library and its weights come
+# from its repository at one commit, each refused unless its hash matches, as Smart Turn's weights
+# are; the library is that repository's own build for Linux x86_64, whose source is in the same
+# commit (native/weya_nc_build). A worker reads the two paths and loads them as its process is
+# readied; a machine that sets neither takes its calls without the model.
+ARG FAR_VOICES_REVISION=9f6414e91461a8f4bdf9840c0cdcdcb7da986339
+ARG FAR_VOICES_LIBRARY_SHA256=c4a5915c92e9500a49e6cd14804e6e88319277de2ef7d4d5cf6c0ac4456f3bbf
+ARG FAR_VOICES_MODEL_SHA256=45632ccaa82b71bb743d6caa7c78e983fe2f2790a3af7f6ec48e6ed7ba085df6
+RUN python -c "import hashlib, pathlib, sys, urllib.request; \
+source = 'https://raw.githubusercontent.com/pulp-vision/Hush/' + sys.argv[1] + '/deployment/'; \
+files = (('library.so', 'lib/libweya_nc.so'), ('weights.tar.gz', 'models/advanced_dfnet16k_model_best_onnx.tar.gz')); \
+fetched = {name: urllib.request.urlopen(source + path).read() for name, path in files}; \
+wrong = [name for name, want in zip(fetched, sys.argv[2:]) if hashlib.sha256(fetched[name]).hexdigest() != want]; \
+home = pathlib.Path('/opt/models/far-voices'); home.mkdir(parents=True); \
+sys.exit(f'{wrong}: not the bytes their sha256 names') if wrong else [(home / name).write_bytes(data) for name, data in fetched.items()]" \
+  "${FAR_VOICES_REVISION}" "${FAR_VOICES_LIBRARY_SHA256}" "${FAR_VOICES_MODEL_SHA256}"
+ENV PINECALL_FAR_VOICES_LIBRARY=/opt/models/far-voices/library.so \
+    PINECALL_FAR_VOICES_MODEL=/opt/models/far-voices/weights.tar.gz
 ENV HF_HUB_OFFLINE=1 PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 RUN useradd --uid 10001 --create-home --shell /usr/sbin/nologin pinecall
 USER 10001

@@ -25,9 +25,15 @@ def test_every_ambience_but_the_television_is_a_few_seconds_that_loop() -> None:
         assert len(sound_of(ambience, b"")) == RATE * SECONDS * 2
 
 
-def test_the_television_is_the_chatter_as_read() -> None:
-    chatter = bytes(range(0, 200, 2))
-    assert sound_of("television", chatter) == chatter
+# 2026-11: it was the chatter as read, one clean voice turned down, which no room sounds like.
+def test_the_television_is_a_newscast_across_a_room_whatever_the_chatter() -> None:
+    television = sound_of("television", b"")
+    assert television == sound_of("television", bytes(range(0, 200, 2)))
+    levels = rms_by_second(television)
+    # A minute of it, speech in every second, never at full scale.
+    assert 55 <= len(levels) <= 65
+    assert min(levels) > 200
+    assert np.abs(np.frombuffer(television, dtype=np.int16)).max() < 30000
 
 
 def test_the_same_cafe_is_heard_every_run() -> None:

@@ -10,6 +10,7 @@ from runtime.session import commands, text, voice
 from runtime.session.call import Call, CallContext, Platform, ToolUse
 from runtime.session.clock import end_when_quiet, keep_time, watch_the_quiet
 from runtime.session.commands import Restage
+from runtime.session.far_voices import FarVoicesModel, load_far_voices
 from runtime.session.history import CLOCK_TOOL, Resumption, history_of
 from runtime.session.hold import HoldMusic, runtime_melody
 from runtime.session.room import CallRoom
@@ -31,6 +32,7 @@ __all__ = [
     "Call",
     "CallContext",
     "CallRoom",
+    "FarVoicesModel",
     "Heard",
     "HoldMusic",
     "OnEnded",
@@ -48,6 +50,7 @@ __all__ = [
     "hear",
     "history_of",
     "keep_time",
+    "load_far_voices",
     "open_spoken",
     "open_written",
     "result_text",

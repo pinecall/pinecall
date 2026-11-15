@@ -17,7 +17,7 @@ const ROOMS: readonly { value: Ambience | ""; title: string; about: string }[] =
   { value: "cafe", title: "Café", about: "Tables talking at once" },
   { value: "street", title: "Street", about: "Traffic, rising and fading" },
   { value: "office", title: "Office", about: "A steady hum" },
-  { value: "television", title: "Television", about: "One voice competing" },
+  { value: "television", title: "Television", about: "A newscast across the room" },
 ];
 
 // The turns a caller improvises before it hangs up.

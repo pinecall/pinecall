@@ -117,6 +117,10 @@ class Settings(BaseSettings):
     otlp_pii: bool = Field(False, alias="PINECALL_OTLP_PII")
     timezone: str = Field("UTC", alias="PINECALL_TIMEZONE")
 
+    # ── the room behind a caller: the model that takes far voices down, as a library and its weights ──
+    far_voices_library: Path | None = Field(None, alias="PINECALL_FAR_VOICES_LIBRARY")
+    far_voices_model: Path | None = Field(None, alias="PINECALL_FAR_VOICES_MODEL")
+
     # ── retrieval budgets; None is the session's default ──
     voice_lookup_budget_ms: int | None = Field(None, alias="PINECALL_VOICE_LOOKUP_BUDGET_MS")
     text_lookup_budget_ms: int | None = Field(None, alias="PINECALL_TEXT_LOOKUP_BUDGET_MS")

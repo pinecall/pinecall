@@ -80,13 +80,23 @@ def test_the_television_is_silent_once_the_caller_stops() -> None:
 
 
 def test_a_voice_as_loud_as_the_callers_is_not_muted() -> None:
-    """Fifteen dB under the caller is somebody at the caller's side: it passes."""
+    """Six dB under the caller is somebody at the caller's side: it passes."""
     stops = int(RATE * 6.0)
-    came = speech_like(5, 11.0, A_VOICE * 10 ** (-12 / 20))
+    came = speech_like(5, 11.0, A_VOICE * 10 ** (-6 / 20))
     came[:stops] += speech_like(7, 6.0, A_VOICE)
     heard = Line().through(came)
     after = slice(stops + RATE, None)
     assert np.mean(heard[after] != 0) > 0.5
+
+
+# 2026-11-15: at 20 dB a television 18 under the caller passed whole.
+def test_a_television_eighteen_db_under_the_caller_is_silent_too() -> None:
+    """What a caller would call "on, not loud" is under the bar once the caller is known."""
+    stops = int(RATE * 6.0)
+    came = speech_like(5, 11.0, A_VOICE * 10 ** (-18 / 20))
+    came[:stops] += speech_like(7, 6.0, A_VOICE)
+    heard = Line().through(came.astype(np.int16).astype(np.float64))
+    assert not heard[stops + int(RATE * (HELD_S + 0.35)) :].any()
 
 
 def test_the_room_is_heard_again_after_the_caller_was_quiet_for_long() -> None:

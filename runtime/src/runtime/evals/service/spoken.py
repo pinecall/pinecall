@@ -39,8 +39,9 @@ HANGS_UP_WITHIN_S = 10.0
 # A cold worker has been measured at 15 s before it publishes its audio. Past the fleet's last offer and
 # the overflow's joining: a caller that gave up before them heard nobody.
 THE_AGENT_MAY_TAKE_S = fleet.AN_AGENT_JOINS_WITHIN_S
-# The background voice a noisy line carries.
-A_TELEVISION = (
+# What a café's tables say, read once in the caller's own voice and then eight of it at once: a murmur
+# nobody follows. A television is a broadcast of its own (ambience.py).
+A_TABLES_TALK = (
     "A continuación, el resumen deportivo de la jornada. El equipo local venció por dos goles a "
     "uno en un partido disputado hasta el último minuto, y el entrenador destacó el esfuerzo de "
     "sus jugadores en la rueda de prensa posterior al encuentro."
@@ -142,7 +143,7 @@ class SpokenLine:
         acts = self._spoken.acts
         if acts.interferer_db is None:
             return b""
-        chatter = await synthesize(speech, A_TELEVISION) if acts.ambience in ambience.VOICED else b""
+        chatter = await synthesize(speech, A_TABLES_TALK) if acts.ambience in ambience.VOICED else b""
         return await asyncio.to_thread(ambience.sound_of, acts.ambience, chatter)
 
     # The agent joins before its session is built; its published audio means it listens.

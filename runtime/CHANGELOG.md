@@ -2,15 +2,28 @@
 
 ## Unreleased
 
-- **The room behind the caller is muted before it is levelled up to a voice.** A simulated caller
-  with a television 30 dB under her was heard right and never answered: livekit's automatic gain,
-  with the caller quiet, raised the television to a voice's loudness in twelve seconds, it was taken
-  for her speaking again a quarter of a second after her turn closed, the reply it stopped was never
-  said, and thirty seconds of news became her next turn. A spoken call now mutes what sits 20 dB or
-  more under the caller's own loud level, before that gain hears it (`session/nearest_voice.py`):
-  the level is learnt from the call's own voice, nothing is muted until one was heard, and a caller
-  quiet for eight seconds of their own time is learnt again. No model and no vendor: a level, read
-  every 10 ms. A voice less than 20 dB under the caller's is still a second caller to it.
+- **The room behind the caller is taken down by a model, then muted, before it is levelled up to a
+  voice.** A simulated caller with a television 30 dB under her was heard right and never answered:
+  livekit's automatic gain, with the caller quiet, raised the television to a voice's loudness in
+  twelve seconds, it was taken for her speaking again a quarter of a second after her turn closed,
+  the reply it stopped was never said, and thirty seconds of news became her next turn. A spoken
+  call's audio now goes, before that gain, through two steps. A model that takes down the voices
+  far from the microphone (`session/far_voices.py`: Hush, a DeepFilterNet3 fine-tuned on background
+  speakers, Apache 2.0, on a CPU, its library and weights in the image and named by
+  `PINECALL_FAR_VOICES_LIBRARY` and `PINECALL_FAR_VOICES_MODEL`; a box without them skips the step).
+  Then what sits 12 dB or more under the caller's own loud level is muted
+  (`session/nearest_voice.py`): a level read every 10 ms, learnt from the call's own voice, nothing
+  muted until one was heard, a caller quiet for eight seconds of their own time learnt again.
+  Measured on a real newscast across a real living room: 24 dB under the caller it is silent, 18 dB
+  under it is silent but for the words it said before the caller's first, 12 dB under it still
+  passes in part; the caller's words transcribe the same. It costs about 0.7 ms of one core for
+  each 10 ms of a line that carries a room, and the audio reaches the ears 10 ms later.
+- **A simulated caller's television is a television.** It was the caller's own vendor reading a
+  paragraph, in Spanish, turned down: one clean voice, which to a microphone is a second person
+  speaking quietly into the phone, and nothing that hears a room can tell that from the caller. It
+  is a real newscast in English (Voice of America, public domain) through the measured response of a
+  living room, from a small speaker to a microphone on the couch (CC0): `evals/sounds/`, with where
+  each comes from. A café still reads its tables in the caller's voice.
 - **A simulated call is placed again as it was.** `POST /v1/simulations/{call}/again` places the
   same caller on the same line — written or spoken, its turns, the room behind it and how loud, who
   plays it, what it phones about — on a new call. A call keeps what it was placed with in its facts

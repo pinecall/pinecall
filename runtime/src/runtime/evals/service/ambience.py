@@ -2,11 +2,13 @@
 
 from collections.abc import Callable, Mapping
 from functools import lru_cache
+from importlib import resources
+from pathlib import Path
 
 import numpy as np
 
 from runtime.kit import noise
-from runtime.kit.pcm import as_pcm
+from runtime.kit.pcm import LOUDEST, as_pcm, decode
 
 # The room's rate, as the caller's leg publishes it.
 RATE = 48_000
@@ -29,8 +31,25 @@ DISTANCES = 3
 FURTHER_BY = 0.5
 
 
-def _television(chatter: bytes) -> bytes:
-    return chatter
+# A television is a broadcast heard across a room: a real newscast, in English, through the measured
+# response of a living room, from a small speaker to a microphone on the couch (sounds/SOURCES.md).
+# Until 2026-11 it was the chatter as the caller's own vendor read it, one clean voice turned down:
+# to a microphone, a second person speaking quietly into the phone. A room's voice arrives with the
+# room on it, and that is what tells it from the caller; a line with none of it tested nothing a
+# call has, and nothing that hears a room could pass it.
+THE_TELEVISION = "television.ogg"
+
+
+def _television(_chatter: bytes) -> bytes:
+    return _a_newscast_across_the_room()
+
+
+# Decoded once a process: a minute at the room's rate, read by every simulated caller that has one.
+@lru_cache(maxsize=1)
+def _a_newscast_across_the_room() -> bytes:
+    with resources.as_file(resources.files("runtime.evals") / "sounds" / THE_TELEVISION) as clip:
+        pieces = [piece[0] for piece in decode(Path(clip), "mono", rate=RATE)]
+    return as_pcm(np.concatenate(pieces) * LOUDEST)
 
 
 def _cafe(chatter: bytes) -> bytes:
@@ -69,8 +88,8 @@ SOUNDS: Mapping[str, Callable[[bytes], bytes]] = {
     "office": _office,
     "street": _street,
 }
-# The ambiences that are a voice: they need the chatter synthesized before they are made.
-VOICED = frozenset({"television", "cafe"})
+# The ambiences made of a voice read for the call: they need the chatter synthesized before they are made.
+VOICED = frozenset({"cafe"})
 
 
 # Blocking, for a thread (`asyncio.to_thread`): a café is eight voices resampled, an office a hum.

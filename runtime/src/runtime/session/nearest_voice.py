@@ -7,6 +7,8 @@ from typing import override
 import numpy as np
 from livekit import rtc
 
+from runtime.session.far_voices import FarVoices
+
 # One microphone cannot tell two voices apart without a model; it can tell which one is near. The
 # caller speaks into the microphone and a television, a colleague or a waiting room is across the
 # room, so the room's voices arrive well under the caller's own. On 2026-11-14 a simulated caller
@@ -15,19 +17,24 @@ from livekit import rtc
 # reply it stopped was never said, and thirty seconds of news became her next turn. livekit levels
 # the caller's audio (its automatic gain) and, with the caller quiet, levelled the television up to
 # a voice's loudness in twelve seconds; so the room is muted here, before that gain hears it.
-# Muted, never turned down: what is turned down the gain turns up again.
+# Muted, never turned down: what is turned down the gain turns up again. Where the box has the model
+# that takes far voices down (far_voices.py) the frame goes through it first, so a room that is not
+# faint falls under the bar too.
 # What it cannot do: a voice as loud as the caller's at the microphone is a second caller to it,
 # and a person the caller hands the phone to from across the room is heard only once the caller has
 # been quiet for a while (FORGOTTEN_AFTER_S).
 
 # A level is taken every 10 ms: shorter than any syllable, as long as the canceller's own slice.
 SLICES_PER_SECOND = 100
-# How far under the caller's loud level a sound is the room's. Measured on that call's audio laid
-# again over its television at 30, 20 and 15 dB under her: at this bar every word of hers was
-# transcribed as without it, the television 30 under was silent from the end of her turn, and the
-# one 20 or 15 under still passed. A lower bar mutes more of the room and more of a quiet caller;
-# Vapi's filter of the same kind takes 15 by default and calls 20 the conservative end.
-UNDER_THE_VOICE_DB = 20.0
+# How far under the caller's loud level a sound is the room's. At 20 a television 30 dB under the
+# caller was silent and one 18 under passed whole (2026-11-15, a simulated call nobody answered). At
+# 12, on a real newscast across a real living room: one 24 under was silent with no model before it,
+# and with the model one 18 under was too, but for the words it said before the caller's first; one
+# 12 under still passed in part. What the bar costs the caller was measured on three minutes of
+# people speaking on air, in English and Spanish: no word lost at 20, 15 or 12, with 0 to 9 % of the
+# audio muted, all of it between words. A broadcast is levelled as a phone's own microphone is, and
+# a caller who trails off is where a lower bar would show first.
+UNDER_THE_VOICE_DB = 12.0
 # The caller's loud level is this percentile of the levels that carried their voice: above the
 # consonants, under a cough.
 LOUD = 85
@@ -49,9 +56,11 @@ FORGOTTEN_AFTER_S = 8.0
 class NearestVoice(rtc.FrameProcessor[rtc.AudioFrame]):
     """One call's line, each frame as it came or silent: silent when nothing in it is near the caller's own level."""
 
-    def __init__(self, caller_has_the_floor: Callable[[], bool]) -> None:
+    def __init__(self, caller_has_the_floor: Callable[[], bool], far_voices: FarVoices | None = None) -> None:
         """A line nobody was heard on yet: everything passes until a voice is known."""
         self.caller_has_the_floor = caller_has_the_floor
+        # The model's stream for this call, where the box has the model: heard through before the level is read.
+        self.far_voices = far_voices
         self.muting = True
         # The levels, in dB, of the slices that carried the voice, over VOICE_OVER_S of them.
         self.voiced: deque[float] = deque(maxlen=round(VOICE_OVER_S * SLICES_PER_SECOND))
@@ -81,6 +90,8 @@ class NearestVoice(rtc.FrameProcessor[rtc.AudioFrame]):
     # a word is in the frame its vowel is in more often than not, and costs no delay to keep.
     def hear(self, frame: rtc.AudioFrame) -> rtc.AudioFrame:
         """The frame as it came while it carries the caller's voice or follows it closely, else silence as long."""
+        if self.far_voices is not None:
+            frame = self.far_voices.clear(frame)
         levels = levels_of(frame)
         near = levels[levels >= self.bar]
         if near.size:
@@ -109,6 +120,8 @@ class NearestVoice(rtc.FrameProcessor[rtc.AudioFrame]):
     @override
     def _close(self) -> None:
         self.voiced.clear()
+        if self.far_voices is not None:
+            self.far_voices.close()
 
 
 # Digital silence has no level: it is left out, so a line that carries nothing teaches nothing.
