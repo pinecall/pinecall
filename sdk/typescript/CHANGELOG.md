@@ -5,7 +5,7 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
-## Unreleased
+## 0.11.40 — a call hears the nearest voice, a simulated television is a real one, and a caller stops the agent by a model's word (2026-11-15)
 
 - A class may declare `voiceIsolation` (on unless `false`): whether a spoken call goes through the runtime's model that takes down the voices far from the caller. `voice_isolation` on `AgentConfig` and on the settings' body.
 - A class may declare `smartInterruptions` (on unless `false`): whether a caller speaking over the agent stops it by the runtime's model, which hears a floor-take from an "mm-hmm" in the voice itself, or by two words of the transcript. `smart_interruptions` on `AgentConfig` and on the settings' body.

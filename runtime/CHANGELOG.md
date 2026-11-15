@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.40 — a call hears the nearest voice, a simulated television is a real one, and a caller stops the agent by a model's word (2026-11-15)
 
 - **The room behind the caller is taken down by a model, then muted, before it is levelled up to a
   voice.** A simulated caller with a television 30 dB under her was heard right and never answered:

@@ -4,6 +4,10 @@ All notable changes to `@pinecall/room`. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## 0.11.40 — a call hears the nearest voice, a simulated television is a real one, and a caller stops the agent by a model's word (2026-11-15)
+
+- Released with the runtime: nothing of this package changed.
+
 ## 0.11.39 — a terminal signs in again, a phone put down ends its call, and the console's call list is one row per call (2026-11-13)
 
 - Released with the runtime: nothing of this package changed.

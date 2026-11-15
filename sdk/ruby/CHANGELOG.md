@@ -4,7 +4,7 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
-## Unreleased
+## [0.11.40] — a call hears the nearest voice, a simulated television is a real one, and a caller stops the agent by a model's word (2026-11-15)
 
 - A class may declare `voice_isolation` (on unless `false`): whether a spoken call goes through the runtime's model that takes down the voices far from the caller.
 - A class may declare `smart_interruptions` (on unless `false`): whether a caller speaking over the agent stops it by the runtime's model or by two words of the transcript.
