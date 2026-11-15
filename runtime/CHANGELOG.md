@@ -2,17 +2,6 @@
 
 ## Unreleased
 
-- **A murmur is agreement in any language, and a letter alone is no word.** A Spanish caller's
-  "ajá" came back from a multilingual transcriber as "Uh-huh." in English, which the Spanish list of
-  agreement did not have: said over the agent it took the floor, with smart interruptions or without
-  them. "uh-huh", "mm-hmm", "mhm", "hmm" and their kin are agreement whatever the agent's language,
-  and a turn over the agent made only of single letters ("t", "c t", what the ears make of an "mm")
-  takes no turn.
-- **A person's own account.** `GET /v1/me` answers the person behind a key (name, address, role,
-  whether a password opens their account), `PATCH /v1/me {name}` changes what the org calls them,
-  `PUT /v1/me/password {current, password}` changes their password, proven by the one they have,
-  and ends every other sign-in of theirs, and `GET /v1/me/keys` lists the keys their own sign-ins
-  left, the one of the request marked. The console's **User settings** is these four.
 - **While smart interruptions decide, an agent's word count does not.** An agent that kept
   `turn.min_interruption_words` (or `min_interruption_ms`) with the model on waited for those words
   again, and nothing said the model had stopped deciding. With `smart_interruptions` on both are not
