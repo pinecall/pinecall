@@ -7,6 +7,7 @@ from pathlib import Path
 from livekit.agents import (
     AgentStateChangedEvent,
     SpeechCreatedEvent,
+    UserStateChangedEvent,
     stt,
 )
 from livekit.agents.utils import http_context
@@ -66,6 +67,32 @@ async def test_a_backchannel_over_the_agents_voice_never_reaches_the_model(box: 
     finals = [event for event in over_the_agent if event.type is stt.SpeechEventType.FINAL_TRANSCRIPT]
     assert [event.alternatives[0].text for event in finals] == ["sí, pero el martes no puedo"]
     assert len([event for event in after_it if event.type is stt.SpeechEventType.FINAL_TRANSCRIPT]) == 2
+
+
+# 2026-11-15: a murmur the model took for a floor-take paused the agent, and the "Mhmm." the ears wrote
+# a moment later was no longer said over a speaking agent: it became the caller's turn, and was answered.
+@needs_the_database
+async def test_agreement_that_paused_the_agent_is_still_agreement_and_an_answer_to_a_finished_one_is_not(
+    box: Box,
+) -> None:
+    session = spoken_call(box, NOBODY, hears=("sí, claro",))
+    await session.start()
+    async with http_context.open():
+        speaking = AgentStateChangedEvent(old_state="thinking", new_state="speaking")
+        quiet = AgentStateChangedEvent(old_state="speaking", new_state="listening")
+        # The caller is heard, and the agent goes quiet for them.
+        session.live.emit("agent_state_changed", speaking)
+        session.live.emit("user_state_changed", UserStateChangedEvent(old_state="listening", new_state="speaking"))
+        session.live.emit("agent_state_changed", quiet)
+        over_it = [event async for event in session.agent.stt_node(no_audio(), ModelSettings())]
+        # The agent finishes its sentence with nobody speaking: "sí, claro" is the answer to it.
+        session.live.emit("user_state_changed", UserStateChangedEvent(old_state="speaking", new_state="listening"))
+        session.live.emit("agent_state_changed", speaking)
+        session.live.emit("agent_state_changed", quiet)
+        after_it = [event async for event in session.agent.stt_node(no_audio(), ModelSettings())]
+    await session.close()
+    assert not [event for event in over_it if event.type is stt.SpeechEventType.FINAL_TRANSCRIPT]
+    assert len([event for event in after_it if event.type is stt.SpeechEventType.FINAL_TRANSCRIPT]) == 1
 
 
 @needs_the_database

@@ -162,6 +162,12 @@ class Overlap:
         """What was judged of the speech that just ended says nothing of the next."""
         self.recent.clear()
 
+    # The resampler is livekit's own handle: let go while the call still has its room, not as the
+    # process exits, when livekit has nothing left to free it with.
+    def close(self) -> None:
+        """Let go of what the stream held."""
+        self.resampler = None
+
     def _at_the_models_rate(self, frame: rtc.AudioFrame) -> list[rtc.AudioFrame]:
         if frame.sample_rate == RATE:
             return [frame]
@@ -240,6 +246,7 @@ class HeardStream(vad.VADStream):
             feeding.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await feeding
+            self.overlap.close()
             await self.found.aclose()
 
     # Both hear every frame: the detector to find speech, the model to say what the speech is.

@@ -41,6 +41,9 @@ def test_what_only_agrees_depends_on_the_agents_language() -> None:
     assert policy_for("pt-BR").is_a_backchannel("aham, certo")
     assert policy_for(None).is_a_backchannel("vale")
     assert policy_for(None).is_a_backchannel("yep")
+    # What the ears write for a murmur, and the agreement the floor model takes for a floor-take.
+    assert policy_for("en").is_a_backchannel("Mhmm.")
+    assert policy_for("es").is_a_backchannel("entiendo, okey")
     assert policy_for("es").min_words == 2
     assert policy_for("es", Turn(min_interruption_words=1)).min_words == 1
     assert policy_for("es").min_speech_s is None

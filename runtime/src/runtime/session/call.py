@@ -1,6 +1,7 @@
 """What a call is while it runs, spoken or written: its state, what the app's commands write, what it reaches."""
 
 import contextlib
+import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
@@ -34,6 +35,9 @@ from runtime.wire.parts import EndedBy, EndReason, EventSource, PlatformTool, St
 SPEECH = "sp_"
 # A callback the agent took during a call; others come from the widget or an overflow.
 BY_THE_AGENT = "agent"
+# How long after the agent went quiet for a caller their words are still words said over it: the
+# ears write an "mm-hmm" within a second of it, and a reply paused for no reason goes on after one.
+SPOKEN_OVER_FOR_S = 3.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -238,11 +242,21 @@ class Call:
         self.ended: tuple[EndReason, EndedBy] | None = None
         # As the session's agent_state events say, not as livekit's internals hold it.
         self.agent_speaking = False
+        # When it went quiet because the caller spoke over it, by the monotonic clock; None once it
+        # speaks again, or when it stopped by itself.
+        self.spoken_over_at: float | None = None
         # What it said lately, so its own voice heard back is not taken for the caller's.
         self.agent_words = AgentWords()
         self.open_tools = frozenset(tool.name for tool in declaration.tools)
         # Every request the model was sent, kept on a call an eval run opened and on no other.
         self.requests: list[JsonObject] = []
+
+    # The agent goes quiet the moment a caller is heard taking the floor, before any word of theirs
+    # is written (taking_the_floor.py). What they said may still be agreement, and it is judged as
+    # agreement for as long as the reply it paused can still go on.
+    def was_spoken_over(self) -> bool:
+        """Whether the agent went quiet for the caller a moment ago, and has not spoken since."""
+        return self.spoken_over_at is not None and time.monotonic() - self.spoken_over_at <= SPOKEN_OVER_FOR_S
 
     def speech(self) -> str:
         """A new speech id, `sp_<n>`."""

@@ -32,6 +32,9 @@
   setting `smart_interruptions`, on unless `false`, declared in the class or set under it, and a
   test room's value like `voice_isolation`; an agent that says its own
   `turn.min_interruption_words` keeps it. A box without the model stops on the words, as before.
+  The agent goes quiet before the ears have written a word, so agreement that paused it ("vale",
+  "Mhmm") is still judged as said over it: it is nobody's turn, and the reply goes on where it was
+  paused. "entiendo", "okey" and "mhmm" are agreement too.
 - **The model is a setting of the agent, and a simulation runs with it or without.** `voice_isolation`
   (on unless `false`): in the class (`voiceIsolation` in TypeScript), in the settings
   (`PUT /v1/agents/{slug}/settings`, the console's Advanced, under "When it stops speaking"), and
