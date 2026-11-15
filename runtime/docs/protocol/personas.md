@@ -106,12 +106,13 @@ run alone, over the persona's own; each unsaid stays the persona's, and a `tts` 
 drops the persona's voice for one of that vendor's the agent does not have. A model, a vendor or a
 voice the deployment lacks is `400` before the answer, as when a persona is written.
 
-`against` `{stt?, llm?, tts?, voice?, language?, temperature?, end_of_turn?, voice_isolation?}` runs **the agent** on another
+`against` `{stt?, llm?, tts?, voice?, language?, temperature?, end_of_turn?, voice_isolation?, smart_interruptions?}` runs **the agent** on another
 voice or model for this call alone, over its settings, as the console's test room does: each stage as
 `vendor/model`, a voice of the voice vendor's, a language, a temperature, who ends the caller's turn
 (`stt`, `livekit`, `smart-turn`), and whether the call's audio goes through the model that takes down the
 voices far from the caller (`voice_isolation`, `true` or `false`: the same caller and room with the model and
-without it); nothing named is the agent's own. The sandbox's alone (`403` in production), those knobs alone (`422` for any other), and a
+without it), and whether a caller speaking over the agent stops it by the model that hears a floor-take
+in their voice or by the transcript's words (`smart_interruptions`); nothing named is the agent's own. The sandbox's alone (`403` in production), those knobs alone (`422` for any other), and a
 key that opens `pipeline` (`403` otherwise); a model the deployment lacks or nobody keyed is refused as
 the settings would refuse it. The call keeps what it ran on: the runs' rows carry it as `against`.
 

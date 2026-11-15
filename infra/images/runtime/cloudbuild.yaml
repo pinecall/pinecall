@@ -1,7 +1,7 @@
 # The runtime's image, built whole by Cloud Build from one commit's tree (the context `make image`
 # sends), checked before it is pushed: the package answers, every installed voice plugin imports
-# for livekit's preload, Smart Turn's weights are on the image offline, and the far-voices model
-# loads and takes a frame as the image's own user.
+# for livekit's preload, Smart Turn's weights are on the image offline, and a call's two small models
+# each load and take a frame as the image's own user.
 steps:
   - name: gcr.io/cloud-builders/docker
     # BuildKit: the last stage mounts uv and the wheel for one step instead of keeping them.
@@ -26,7 +26,13 @@ steps:
         assert model is not None, 'the far-voices model did not load';
         frame = rtc.AudioFrame(data=bytes(2400), sample_rate=24000, num_channels=1, samples_per_channel=1200);
         stream = model.open_stream(); assert stream.clear(frame) is not frame and not stream.broken, 'the far-voices model took no frame';
-        print('far voices: a frame taken')
+        print('far voices: a frame taken');
+        from runtime.session.taking_the_floor import load_floor_model;
+        floor = load_floor_model(pathlib.Path(os.environ['PINECALL_FLOOR_MODEL']));
+        assert floor is not None, 'the floor model did not load';
+        overlap = floor.open_stream(); overlap.hear(frame, agent_speaks=True); overlap.hear(frame, agent_speaks=True);
+        assert len(overlap.recent) > 0, 'the floor model judged no frame';
+        print('the floor: a frame judged')
 images:
   - "${_IMAGE}"
 options:

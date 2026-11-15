@@ -15,6 +15,7 @@ from runtime.session.history import CLOCK_TOOL, Resumption, history_of
 from runtime.session.hold import HoldMusic, runtime_melody
 from runtime.session.room import CallRoom
 from runtime.session.session import Heard, OnEnded, Place, Session
+from runtime.session.taking_the_floor import FloorModel, load_floor_model
 from runtime.session.tools import END_CALL, result_text
 from runtime.session.widget import HANGUP, Reading, Widget
 from runtime.session.writing import WRITTEN_WITHIN_S, Writing
@@ -33,6 +34,7 @@ __all__ = [
     "CallContext",
     "CallRoom",
     "FarVoicesModel",
+    "FloorModel",
     "Heard",
     "HoldMusic",
     "OnEnded",
@@ -51,6 +53,7 @@ __all__ = [
     "history_of",
     "keep_time",
     "load_far_voices",
+    "load_floor_model",
     "open_spoken",
     "open_written",
     "result_text",

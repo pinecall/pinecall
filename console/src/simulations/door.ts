@@ -160,7 +160,8 @@ export function setupName(against: AgentValues): string {
 /** What a column changes beside its name, in a line: `hears nova-3 · speaks sonic-2`; empty when nothing. */
 export function setupUnder(against: AgentValues): string {
   const isolation = against.voice_isolation === undefined ? null : against.voice_isolation ? "voice isolation on" : "voice isolation off";
-  const parts = [isolation, against.llm === undefined ? null : against.stt === undefined ? null : `hears ${modelOf(against.stt)}`, against.llm === undefined ? null : against.tts === undefined ? null : `speaks ${modelOf(against.tts)}`, against.voice === undefined ? null : `voice ${against.voice}`];
+  const interruptions = against.smart_interruptions === undefined ? null : against.smart_interruptions ? "smart interruptions on" : "smart interruptions off";
+  const parts = [isolation, interruptions, against.llm === undefined ? null : against.stt === undefined ? null : `hears ${modelOf(against.stt)}`, against.llm === undefined ? null : against.tts === undefined ? null : `speaks ${modelOf(against.tts)}`, against.voice === undefined ? null : `voice ${against.voice}`];
   return parts.filter((part) => part !== null).join(" · ");
 }
 

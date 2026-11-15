@@ -44,6 +44,7 @@ class SettingsBody(WireModel):
     memory: MemoryConfig | None = None
     record: bool | None = None
     voice_isolation: bool | None = None
+    smart_interruptions: bool | None = None
     max_duration_s: int | None = None
     llm_timeout_s: float | None = None
     temperature: float | None = None

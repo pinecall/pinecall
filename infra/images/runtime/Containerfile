@@ -3,8 +3,8 @@
 # nothing else: the build's context is that commit's tree (`make image` sends `git archive`), so
 # what no commit holds cannot be in it. Three stages: the console and the widget from the
 # lockfile, the wheel with those pages inside, and the image that installs it with the voice
-# plugins, Smart Turn v3's weights and the model that takes far voices down, so a pod never reaches
-# the internet to start. Nothing secret
+# plugins, Smart Turn v3's weights and a call's two small models (the one that takes far voices
+# down, the one that says who takes the floor), so a pod never reaches the internet to start. Nothing secret
 # is in it: every key comes from the pod's environment at run time.
 
 # Each base by the digest of its multi-architecture index: the tag says which one, the digest is
@@ -77,6 +77,17 @@ sys.exit(f'{wrong}: not the bytes their sha256 names') if wrong else [(home / na
   "${FAR_VOICES_REVISION}" "${FAR_VOICES_LIBRARY_SHA256}" "${FAR_VOICES_MODEL_SHA256}"
 ENV PINECALL_FAR_VOICES_LIBRARY=/opt/models/far-voices/library.so \
     PINECALL_FAR_VOICES_MODEL=/opt/models/far-voices/weights.tar.gz
+# The model that tells a caller taking the floor from one agreeing (session/taking_the_floor.py):
+# Pipecat's backchannel detector, BSD-2-Clause, one ONNX file, fetched as Smart Turn's weights are:
+# at one commit of its repository on Hugging Face, refused unless its hash matches.
+ARG FLOOR_REVISION=4896f4774cdf1a9c5b581b0cd4a0c4000e8bb854
+ARG FLOOR_SHA256=3e5d47740e5f75211cc78c5df701be9afe7b76c4115144212a18598766909240
+RUN python -c "import hashlib, sys, huggingface_hub as hub; \
+path = hub.hf_hub_download('pipecat-ai/backchannel-detector', 'backchannel-fp32.onnx', revision=sys.argv[1]); \
+digest = hashlib.sha256(open(path, 'rb').read()).hexdigest(); \
+sys.exit(f'{path}: sha256 {digest}, not {sys.argv[2]}') if digest != sys.argv[2] else print(path)" \
+  "${FLOOR_REVISION}" "${FLOOR_SHA256}"
+ENV PINECALL_FLOOR_MODEL=/opt/models/hub/models--pipecat-ai--backchannel-detector/snapshots/${FLOOR_REVISION}/backchannel-fp32.onnx
 ENV HF_HUB_OFFLINE=1 PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 RUN useradd --uid 10001 --create-home --shell /usr/sbin/nologin pinecall
 USER 10001

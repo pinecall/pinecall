@@ -51,3 +51,11 @@ def test_a_room_may_run_its_call_with_the_voice_isolated_or_not() -> None:
     assert settings.check_test_values({"voice_isolation": False}, env=Env.sandbox) == {"voice_isolation": False}
     with pytest.raises(ValidationError, match="true or false"):
         settings.check_test_values({"voice_isolation": "off"}, env=Env.sandbox)
+
+
+def test_a_room_may_run_its_call_with_the_model_that_judges_interruptions_or_without() -> None:
+    """The same caller stopped by the model's word or by the ears' words: true or false, nothing else."""
+    asked = {"smart_interruptions": False}
+    assert settings.check_test_values(asked, env=Env.sandbox) == asked
+    with pytest.raises(ValidationError, match="true or false"):
+        settings.check_test_values({"smart_interruptions": 0}, env=Env.sandbox)

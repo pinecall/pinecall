@@ -23,6 +23,7 @@ from runtime.providers.stage import Pipeline, Running, TurnModel
 from runtime.session.call import Call, ToolUse
 from runtime.session.room import CallRoom
 from runtime.session.session import Place, Session
+from runtime.session.taking_the_floor import FloorModel
 from runtime.session.text import text_session
 from runtime.session.voice import voice_session
 from runtime.telephony.service.legs import CALLER_NUMBER, Legs, Trunk
@@ -240,6 +241,7 @@ def spoken_call(
     realtime: str | None = None,
     server: Server | None = None,
     hears: tuple[str, ...] = (),
+    floor: FloorModel | None = None,
 ) -> Session:
     """A phone call's session on acme's stages, in its room when a server is given."""
     assert box.log.call is not None
@@ -253,7 +255,8 @@ def spoken_call(
         tts=Running(ACME, "k"),
         realtime=None if realtime is None else Running(realtime, "k", model="voice-1"),
     )
-    return voice_session(call, stages, Place() if server is None else Place(room=a_room(box, call, server)))
+    place = Place(floor=floor) if server is None else Place(room=a_room(box, call, server), floor=floor)
+    return voice_session(call, stages, place)
 
 
 async def no_audio() -> AsyncIterator[rtc.AudioFrame]:

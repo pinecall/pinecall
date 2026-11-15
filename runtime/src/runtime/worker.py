@@ -79,6 +79,7 @@ def prewarm(proc: JobProcess) -> None:
         recordings=builders.build_recordings(settings, httpx.AsyncClient()),
         told=told,
         far_voices=session.load_far_voices(settings.far_voices_library, settings.far_voices_model),
+        floor=session.load_floor_model(settings.floor_model),
     )
 
 

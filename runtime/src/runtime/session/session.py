@@ -31,6 +31,7 @@ from runtime.session.nearest_voice import NearestVoice
 from runtime.session.room import CallRoom, RoomCommand
 from runtime.session.stages import NAME_OF, Built, is_spoken, opening_turn, sign_calls, write_switches
 from runtime.session.started import start_of
+from runtime.session.taking_the_floor import FloorModel
 from runtime.session.tools import Toolbox
 from runtime.session.writing import WRITTEN_WITHIN_S
 from runtime.wire import events as wire
@@ -72,6 +73,8 @@ class Place:
     participant: str | None = None
     # The model that takes down the voices far from the caller's microphone, where the process has one.
     far_voices: FarVoicesModel | None = None
+    # The model that tells a caller taking the floor from one agreeing, where the process has one.
+    floor: FloorModel | None = None
 
 
 @dataclass(frozen=True, slots=True)

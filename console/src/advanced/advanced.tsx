@@ -41,7 +41,7 @@ type Part = "start" | "stop" | "quiet" | "voicemail" | "fallbacks" | "call";
 // Each card, and the fields a class may declare in it: a card with none left open has nothing to edit.
 const PARTS: readonly { part: Part; title: string; about: string; fields: readonly string[] }[] = [
   { part: "start", title: "When it starts speaking", about: "How the agent decides the caller has finished.", fields: ["stt", "turn"] },
-  { part: "stop", title: "When it stops speaking", about: "Words that only agree, like “okay” or “sí”, never stop it. A noise that brings no words lets it carry on from where it paused.", fields: ["turn", "voice_isolation"] },
+  { part: "stop", title: "When it stops speaking", about: "Words that only agree, like “okay” or “sí”, never stop it. A noise that brings no words lets it carry on from where it paused.", fields: ["turn", "voice_isolation", "smart_interruptions"] },
   { part: "quiet", title: "When nobody talks", about: "Only counts while the agent is waiting on the caller, never while it speaks, a tool runs or a person has the line.", fields: ["silence_timeout_s", "idle"] },
   { part: "voicemail", title: "Voicemail", about: "On calls the agent places. The model decides from what it hears, so a person is never treated as a machine by a tone.", fields: ["voicemail"] },
   { part: "fallbacks", title: "Fallbacks", about: "Who takes over, in order, when the vendor a call runs on fails. Each speaks the voice Pinecall has for the language. Set here, they replace Pinecall's own.", fields: ["stt_fallbacks", "tts_fallbacks"] },
@@ -187,6 +187,12 @@ export function AdvancedTab({ agent, kind }: { agent: string; kind: "code" | "st
             <Setting icon="clock" title="Speech to interrupt it" about={`Milliseconds the caller must speak over the agent before it stops. ${INTERRUPT_MS} unless set.`} aside={mark("turn")}>
               <Slider value={draft.interruptMs} label="Speech to interrupt it" min={0} max={2000} step={50} rest={INTERRUPT_MS} disabled={off("turn")} onChange={(interruptMs) => put({ interruptMs })} />
             </Setting>
+            <Setting
+              icon="brain"
+              title="Smart interruptions"
+              about="A small model hears in the caller's voice whether they are taking the floor or only agreeing, so the agent stops within a fraction of a second for a real interruption and talks through an “mm-hmm”. Off, it waits for the words above."
+              aside={mark("smart_interruptions") ?? <Toggle on={draft.smartInterruptions} label="Smart interruptions" disabled={readOnly} onChange={(smartInterruptions) => put({ smartInterruptions })} />}
+            />
             <Setting
               icon="ear"
               title="Voice isolation"

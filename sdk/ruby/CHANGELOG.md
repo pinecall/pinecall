@@ -7,6 +7,7 @@ maintainer's call.
 ## Unreleased
 
 - A class may declare `voice_isolation` (on unless `false`): whether a spoken call goes through the runtime's model that takes down the voices far from the caller.
+- A class may declare `smart_interruptions` (on unless `false`): whether a caller speaking over the agent stops it by the runtime's model or by two words of the transcript.
 
 ## [0.11.39] — a terminal signs in again, a phone put down ends its call, and the console's call list is one row per call (2026-11-13)
 

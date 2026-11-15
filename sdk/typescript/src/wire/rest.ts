@@ -177,6 +177,7 @@ export const TuningBodySchema = z.strictObject({
   memory: MemoryConfigSchema.nullish(),
   record: z.boolean().nullish(),
   voice_isolation: z.boolean().nullish(),
+  smart_interruptions: z.boolean().nullish(),
   max_duration_s: z.int().nullish(),
   knowledge: z.string().nullish(),
   bases: z.array(DocsConfigSchema).nullish(),

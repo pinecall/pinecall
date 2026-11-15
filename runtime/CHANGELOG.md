@@ -18,6 +18,20 @@
   under it is silent but for the words it said before the caller's first, 12 dB under it still
   passes in part; the caller's words transcribe the same. It costs about 0.7 ms of one core for
   each 10 ms of a line that carries a room, and the audio reaches the ears 10 ms later.
+- **A caller stops the agent by what a model hears in their voice, not by two words of the
+  transcript.** Until now the ears had to write two words before the agent stopped, 0.8 to 1.1 s
+  after the caller began, and an "mm-hmm" written as two words stopped it as a sentence would.
+  While the agent speaks, a small model now listens to the caller's audio and says whether they
+  are taking the floor or only agreeing (`session/taking_the_floor.py`: Pipecat's backchannel
+  detector, BSD-2-Clause, on a CPU, in the image and named by `PINECALL_FLOOR_MODEL`); the session
+  is told of their speech only once it is a floor-take, and then waits for no word. Measured on
+  synthetic voices over the agent's real answers: every interruption of 32 in English and of 32 in
+  Spanish called, half of them within 0.3 s; no "mm", "ajá", "uh-huh" or "yeah" called one.
+  Agreement said as a word is taken for a floor-take, more so in Spanish, which the model was not
+  trained on ("sí, sí", "vale", "entiendo", "I see"): the agent stops for those. It is the agent's
+  setting `smart_interruptions`, on unless `false`, declared in the class or set under it, and a
+  test room's value like `voice_isolation`; an agent that says its own
+  `turn.min_interruption_words` keeps it. A box without the model stops on the words, as before.
 - **The model is a setting of the agent, and a simulation runs with it or without.** `voice_isolation`
   (on unless `false`): in the class (`voiceIsolation` in TypeScript), in the settings
   (`PUT /v1/agents/{slug}/settings`, the console's Advanced, under "When it stops speaking"), and

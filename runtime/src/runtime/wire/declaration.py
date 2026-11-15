@@ -269,6 +269,10 @@ class AgentConfig(WireModel):
     # Whether a spoken call's audio goes through the model that takes down the voices far from the
     # caller's microphone (a television, a colleague), where the box has it. Unset, it does.
     voice_isolation: bool | None = None
+    # Whether a caller who speaks over the agent stops it by what a model hears in their voice (taking
+    # the floor, or only agreeing), where the box has the model; false leaves it to the ears' words.
+    # Unset, it does.
+    smart_interruptions: bool | None = None
     # The longest a voice call runs, in seconds (0 for no limit), and how long a turn waits for the model's first word.
     max_duration_s: int | None = None
     llm_timeout_s: float | None = None

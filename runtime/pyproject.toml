@@ -35,6 +35,9 @@ dependencies = [
   # Smart Turn v3, the row's alternative to livekit's own end-of-turn model: 8 MB of ONNX read
   # off the caller's audio on the worker's CPU, no transcript.
   "smart-turn-livekit[livekit]>=0.4,<1",
+  # The model that tells a caller taking the floor from one agreeing runs on it (session/taking_the_floor.py);
+  # livekit's own voice detector and Smart Turn already bring it.
+  "onnxruntime>=1.20,<2",
   "livekit-api>=1.2,<2",
   # A livekit client's room configuration is parsed with protobuf's own reader.
   "protobuf>=6,<8",

@@ -50,6 +50,11 @@ def resolve(
             declaration.voice_isolation,
             declaration.voice_isolation if settings.voice_isolation is None else settings.voice_isolation,
         ),
+        smart_interruptions=keep(
+            "smart_interruptions",
+            declaration.smart_interruptions,
+            declaration.smart_interruptions if settings.smart_interruptions is None else settings.smart_interruptions,
+        ),
         max_duration_s=keep(
             "max_duration_s",
             declaration.max_duration_s,

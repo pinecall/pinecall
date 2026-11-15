@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from functools import cache
 from typing import Literal
 
-from livekit.agents import NOT_GIVEN, NotGivenOr, inference, llm
+from livekit.agents import NOT_GIVEN, NotGivenOr, inference, llm, vad
 from livekit.agents.voice import AgentSession, STTContextOptions
 from livekit.agents.voice import text_transforms as transforms
 from livekit.agents.voice.agent_session import DEFAULT_TTS_TEXT_TRANSFORMS
@@ -22,6 +22,7 @@ from runtime.session.line import Line
 from runtime.session.lookups import VOICE_LOOKUP_MS, Lookups
 from runtime.session.session import TOOL_STEPS, OnEnded, Place, Session
 from runtime.session.stages import Built, write_switches
+from runtime.session.taking_the_floor import FloorModel, HeardOverTheAgent
 from runtime.wire import events as wire
 
 # The local end-of-turn model: left unset, livekit may pick the hosted one and send the
@@ -37,6 +38,10 @@ SMART_TURN: TurnModel = "smart-turn-v3"
 MIN_SPEECH_S = 0.25
 # livekit's own longest wait for a detector that is unsure the caller is done.
 MAX_SILENCE_S = 3.0
+# How long the caller speaks over the agent before it stops, once the model has called the floor
+# taken: livekit's half second was a guard against a noise, which the model's call already is, and
+# its own call comes 0.2 to 0.3 s after the caller begins.
+A_FLOOR_TAKE_IS_HEARD_S = 0.2
 # The least silence before the detector is asked, where the agent sets none. livekit's 0.3 s (0.5
 # for its own detector) closed the turn inside a caller's sentence: on 2026-11-07 the pauses between
 # "Yes, please." and "Go ahead and book it." ran 0.35 to 0.5 s, and at 500 ms four lines of five were
@@ -67,13 +72,15 @@ def voice_session(
     ears = providers.build_ears(stages.stt, declaration.turn, keyterms(declaration, {}), speech_detector())
     voice = providers.build_voice(stages.tts)
     write_switches(call.writing, (thinking, ears, voice))
+    # The agent's own setting (`smart_interruptions`, on unless said) on a box that has the model.
+    floor = place.floor if declaration.smart_interruptions else None
     live: AgentSession[Call] = AgentSession(
         userdata=call,
         llm=thinking,
         stt=ears,
         tts=voice,
-        turn_handling=_spoken_turns(policy, declaration.turn, stages.stt),
-        vad=speech_detector(),
+        turn_handling=_spoken_turns(policy, declaration.turn, stages.stt, judged=floor is not None),
+        vad=_listen_through(speech_detector(), call, floor),
         # Word timings reach transcription_node only from an aligned voice.
         use_tts_aligned_transcript=True,
         tts_text_transforms=_text_transforms_of(declaration),
@@ -137,6 +144,18 @@ def context_of(declaration: Declaration, ears: Ears) -> NotGivenOr[STTContextOpt
     return {"keyterms": keyterms(declaration, {})}
 
 
+# With the model judging, the ears' words are not waited for: it has already said this is no noise.
+# An agent that says its own count keeps it.
+def _words_to_interrupt(policy: TurnPolicy, turn: Turn | None, judged: bool) -> int:
+    said = turn is not None and turn.min_interruption_words is not None
+    return 0 if judged and not said else policy.min_words
+
+
+# The session's ears for who speaks: the detector alone, or under the model's word while the agent speaks.
+def _listen_through(detector: vad.VAD, call: Call, floor: FloorModel | None) -> vad.VAD:
+    return detector if floor is None else HeardOverTheAgent(detector, floor, lambda: call.agent_speaking)
+
+
 # One detector per process, as livekit makes its own: each session streams to it on its own.
 @cache
 def speech_detector() -> inference.VAD:
@@ -174,15 +193,20 @@ def _text_transforms_of(declaration: Declaration) -> NotGivenOr[Sequence[transfo
 # caller finished a phone number the ears had already closed (2026-11-06).
 # The agent's endpointing reaches the ears that end the turn (Flux's timeout), and the detector
 # stacked on the others as the least silence before it is asked: never both, which would wait twice.
-def _spoken_turns(policy: TurnPolicy, turn: Turn | None, ears: Running) -> TurnHandlingOptions:
+# `judged` is a call whose overlaps a model judges (taking_the_floor.py): the session is told of the
+# caller's speech over the agent only once it is a floor-take, so it waits for no word of the ears,
+# unless the agent itself says how many it wants.
+def _spoken_turns(policy: TurnPolicy, turn: Turn | None, ears: Running, *, judged: bool = False) -> TurnHandlingOptions:
     interruption: InterruptionOptions = {
-        "min_words": policy.min_words,
+        "min_words": _words_to_interrupt(policy, turn, judged),
         "mode": "vad",
         "false_interruption_timeout": policy.false_interruption_s,
         "resume_false_interruption": True,
     }
     if policy.min_speech_s is not None:
         interruption["min_duration"] = policy.min_speech_s
+    elif judged:
+        interruption["min_duration"] = A_FLOOR_TAKE_IS_HEARD_S
     handling: TurnHandlingOptions = {
         # Ears that end the turn themselves decide it; the local detector stacked on them waits
         # its whole delay after a pause in the middle of a sentence.

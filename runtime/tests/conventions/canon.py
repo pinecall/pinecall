@@ -182,6 +182,8 @@ ENGINE_MODULES: dict[str, frozenset[str]] = {
             "nearest_voice",
             # The voices far from the caller's microphone taken down by a model.
             "far_voices",
+            # Whether a caller speaking over the agent takes the floor or only agrees: a model's word.
+            "taking_the_floor",
             # A call's time: its ceiling, a chat's quiet, the idle lines.
             "clock",
             # The call.started entry.

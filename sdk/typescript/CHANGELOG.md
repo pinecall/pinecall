@@ -8,6 +8,7 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 ## Unreleased
 
 - A class may declare `voiceIsolation` (on unless `false`): whether a spoken call goes through the runtime's model that takes down the voices far from the caller. `voice_isolation` on `AgentConfig` and on the settings' body.
+- A class may declare `smartInterruptions` (on unless `false`): whether a caller speaking over the agent stops it by the runtime's model, which hears a floor-take from an "mm-hmm" in the voice itself, or by two words of the transcript. `smart_interruptions` on `AgentConfig` and on the settings' body.
 
 ## 0.11.39 — a terminal signs in again, a phone put down ends its call, and the console's call list is one row per call (2026-11-13)
 

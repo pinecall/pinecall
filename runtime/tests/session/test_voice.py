@@ -1,7 +1,9 @@
 """Tests for a session opened for a spoken call: the pipeline, the turn options, the keyterms."""
 
+from collections.abc import Mapping, Sequence
 from typing import cast, override
 
+import numpy as np
 import pytest
 from livekit.agents.voice import AgentSession
 from livekit.agents.voice.agent_session import DEFAULT_TTS_TEXT_TRANSFORMS
@@ -16,7 +18,8 @@ from runtime.session.hearing import FALSE_INTERRUPTION_TIMEOUT_S, MIN_WORDS, key
 from runtime.session.nearest_voice import NearestVoice
 from runtime.session.session import Place, Session
 from runtime.session.stages import is_spoken
-from runtime.session.voice import SILENCE_S
+from runtime.session.taking_the_floor import FloorModel, HeardOverTheAgent
+from runtime.session.voice import A_FLOOR_TAKE_IS_HEARD_S, SILENCE_S
 from runtime.wire import events as wire
 from runtime.wire.commands import CallHold, CallUnhold, ReleaseVerb, StateSet, TakeoverVerb
 from tests.conftest import needs_the_database
@@ -298,3 +301,34 @@ async def test_a_spoken_call_goes_through_the_model_unless_its_agent_says_not_to
     assert model.opened == 1
     # A box with no model: the level alone, whatever the agent says.
     assert heard_through(spoken_call(box, NOBODY)).far_voices is None
+
+
+class NeverAsked:
+    """A floor model no test runs: the session is only built on it."""
+
+    def run(self, output_names: Sequence[str] | None, input_feed: Mapping[str, np.ndarray]) -> list[np.ndarray]:
+        raise AssertionError("no audio is heard in these tests")
+
+
+@needs_the_database
+async def test_a_call_the_model_judges_waits_for_no_word_of_the_ears(box: Box) -> None:
+    """On a box that has the model the detector is heard through it, and a floor-take needs no transcript."""
+    model = FloorModel(NeverAsked(), {}, [])
+    judged = spoken_call(box, NOBODY, floor=model)
+    assert isinstance(judged.live.vad, HeardOverTheAgent)  # pyright: ignore[reportUnknownMemberType]
+    interruption = judged.live.options.interruption
+    assert (interruption.get("min_words"), interruption.get("min_duration")) == (0, A_FLOOR_TAKE_IS_HEARD_S)
+    # An agent that says its own count of words, or how long, keeps them.
+    declared = Declaration(slug="clinica-norte", turn=Turn(min_interruption_words=3, min_interruption_ms=900))
+    kept = spoken_call(box, declared, floor=model).live.options.interruption
+    assert (kept.get("min_words"), kept.get("min_duration")) == (3, 0.9)
+
+
+@needs_the_database
+async def test_an_agent_that_turns_smart_interruptions_off_is_stopped_by_the_ears_words(box: Box) -> None:
+    """The setting off, or a box with no model: the detector alone, and the two words."""
+    model = FloorModel(NeverAsked(), {}, [])
+    off = spoken_call(box, Declaration(slug="clinica-norte", smart_interruptions=False), floor=model)
+    for session in (off, spoken_call(box, NOBODY)):
+        assert not isinstance(session.live.vad, HeardOverTheAgent)  # pyright: ignore[reportUnknownMemberType]
+        assert session.live.options.interruption.get("min_words") == MIN_WORDS
