@@ -57,6 +57,14 @@ export const MENU: readonly Group[] = [
   },
 ];
 
+/** A phone's tab bar: the rows most opened away from a desk; the rest are behind its Menu. */
+export const TABS: readonly Row[] = [
+  { path: "/", name: "Home", icon: "dashboard" },
+  { path: "/calls", name: "Calls", icon: "calls" },
+  { path: "/agents", name: "Agents", icon: "agents" },
+  { path: "/quality", name: "Quality", icon: "quality" },
+];
+
 /** The box's own pages, in the menu only for those who run it. */
 export const OPERATOR_MENU: Group = {
   title: "Box",

@@ -7,6 +7,7 @@ import { saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { count } from "../lib/format";
 import { useOrg } from "../lib/org";
+import { usePhone } from "../lib/phone";
 import { PageHead } from "../shell/page-head";
 import { readOrg, readOrgs, saveShape, USUAL, WORLDS, type OneOrg, type Org, type Shape, type World, type WorldQuotas } from "./door";
 import { ABOUT } from "./limit-fields";
@@ -187,6 +188,8 @@ function OrgView({ org, onChanged }: { org: OneOrg; onChanged: () => Promise<voi
 }
 
 export function OrgsPage(): ReactNode {
+  // A phone opens on the list, a tap away from each one; a desk opens the first beside it.
+  const phone = usePhone();
   const credentials = useCredentials();
   const { org: asked } = useParams();
   const { orgs: memberships } = useOrg();
@@ -226,7 +229,7 @@ export function OrgsPage(): ReactNode {
   }, [reread]);
 
   const first = orgs?.[0];
-  if (asked === undefined && first !== undefined) return <Navigate to={`${HOME}/${encodeURIComponent(first.slug)}`} replace />;
+  if (!phone && asked === undefined && first !== undefined) return <Navigate to={`${HOME}/${encodeURIComponent(first.slug)}`} replace />;
 
   const typed = filter.trim().toLowerCase();
   const shown = (orgs ?? []).filter((one) => `${one.slug} ${one.name}`.toLowerCase().includes(typed));

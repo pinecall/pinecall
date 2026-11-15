@@ -43,6 +43,12 @@
 .tel-rules { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0 2px 0 20px; color: var(--quiet); font-size: 13px; line-height: 1.55; }
 
 @media (max-width: 760px) {
-  .tel-row { flex-wrap: wrap; }
+  /* A row's words take the whole line; its state and its buttons go under them. */
+  .tel-row { flex-wrap: wrap; row-gap: 10px; }
+  .tel-row .tst-row-main { flex: 1 1 100%; row-gap: 8px; }
+  .tel-row .tst-row-words { flex: 1 1 100%; }
+  .tel-row .tst-row-name { flex-wrap: wrap; }
+  .tel-status { width: auto; }
+  .tel-row .app-button { height: 34px; margin-left: auto; }
   .tel-pick { width: 100%; }
 }

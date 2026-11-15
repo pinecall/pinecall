@@ -7,6 +7,7 @@ import { saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { useOrg } from "../lib/org";
 import { WORLD } from "../lib/world";
+import { usePhone } from "../lib/phone";
 import { Icon } from "../shell/icons";
 import { PageHead } from "../shell/page-head";
 import { AddNumberPanel } from "./add-number";
@@ -44,6 +45,8 @@ export function useNumbers(): { rows: NumberRow[] | null; carriers: Carrier[]; c
 }
 
 export function NumbersPage(): ReactNode {
+  // A phone opens on the list, a tap away from each one; a desk opens the first beside it.
+  const phone = usePhone();
   const navigate = useNavigate();
   const { number: asked } = useParams();
   const { agents } = useOrg();
@@ -58,7 +61,7 @@ export function NumbersPage(): ReactNode {
   const shownRows = (rows ?? []).filter((one) => wanted === "" || `${one.route.number ?? ""} ${shown(one.route.number)} ${one.route.agent}`.toLowerCase().includes(wanted));
 
   // The menu's row names the page, and the page opens on the first of its list, in the address like any other.
-  if (rows !== null && asked === undefined && rows[0]?.route.number != null) return <Navigate to={`${HOME}/${encodeURIComponent(rows[0].route.number)}`} replace />;
+  if (!phone && rows !== null && asked === undefined && rows[0]?.route.number != null) return <Navigate to={`${HOME}/${encodeURIComponent(rows[0].route.number)}`} replace />;
   if (rows !== null && asked !== undefined && open === undefined) return <Navigate to={HOME} replace />;
 
   const add = (

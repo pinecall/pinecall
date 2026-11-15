@@ -22,6 +22,7 @@ import "../configure/configure.css";
 import "../quality/quality.css";
 import "../test/test.css";
 import "./cases.css";
+import { usePhone } from "../lib/phone";
 
 const HOME = "/cases";
 const AGENT = "agent";
@@ -47,6 +48,8 @@ const NOTHING: Record<Show, string> = {
 type Item = { kind: "group"; at: number; group: CaseGroup } | { kind: "case"; at: number; kept: EvalCase };
 
 function Cases({ agent, show, openGroup, open, go }: { agent: string; show: Show; openGroup: string | null; open: string | null; go: (changes: Record<string, string>) => void }): ReactNode {
+  // A phone opens on the list, a tap away from each one; a desk opens the first beside it.
+  const phone = usePhone();
   const credentials = useCredentials();
   const [listed, setListed] = useState<Listed | null>(null);
   const [groups, setGroups] = useState<CaseGroup[] | null>(null);
@@ -126,7 +129,7 @@ function Cases({ agent, show, openGroup, open, go }: { agent: string; show: Show
 
   // The menu's row names the page, and the page opens on the first of its list, in the address like any other.
   const first = days[0]?.items[0];
-  if (read && openGroup === null && open === null && first !== undefined) return <Navigate to={{ pathname: HOME, search: toOpen(first) }} replace />;
+  if (!phone && read && openGroup === null && open === null && first !== undefined) return <Navigate to={{ pathname: HOME, search: toOpen(first) }} replace />;
 
   /** Everything the list shows, dismissed with no reason given: the doors take one at a time, and one refused does not stop the rest. */
   const dismissAll = async (): Promise<void> => {

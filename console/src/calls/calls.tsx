@@ -5,6 +5,7 @@ import { Navigate, useNavigate, useParams } from "react-router";
 
 import { Icon } from "../shell/icons";
 import { useOrg } from "../lib/org";
+import { usePhone } from "../lib/phone";
 import { PageHead } from "../shell/page-head";
 import { useGrouped } from "./grouped";
 import { ThreadList } from "./list";
@@ -27,6 +28,8 @@ function holding(threads: readonly Thread[], call: string | undefined): Thread |
 }
 
 export function CallsPage(): ReactNode {
+  // A phone opens on the list, a tap away from each one; a desk opens the first beside it.
+  const phone = usePhone();
   const { call: chosen } = useParams();
   const url = useCallsUrl();
   const { lines: read } = useOrg();
@@ -48,7 +51,7 @@ export function CallsPage(): ReactNode {
   };
 
   const views = (
-    <div className="dash-switch" role="group" aria-label="How the calls are listed">
+    <div className="dash-switch calls-listed" role="group" aria-label="How the calls are listed">
       <button type="button" className={url.table ? "" : "dash-switch-on"} aria-pressed={!url.table} onClick={() => url.ask("view", "")}>
         Threads
       </button>
@@ -68,12 +71,12 @@ export function CallsPage(): ReactNode {
   }
 
   // The menu's row names the page, and the page opens on the first of its list, in the address like any other.
-  if (chosen === undefined && first !== undefined) return <Navigate to={`/calls/${encodeURIComponent(first.latest.call)}${url.search}`} replace />;
+  if (!phone && chosen === undefined && first !== undefined) return <Navigate to={`/calls/${encodeURIComponent(first.latest.call)}${url.search}`} replace />;
 
   const person = holding(everyone, chosen);
   return (
     <>
-      <PageHead open={chosen === undefined ? undefined : person === undefined ? "A call" : titleOf(person)}>
+      <PageHead open={chosen === undefined ? undefined : person === undefined ? "A call" : titleOf(person)} back={`/calls${url.search}`}>
         {views}
         {chosen !== undefined && (
           <button type="button" className={details ? "app-button calls-toggle calls-toggle-on" : "app-button calls-toggle"} aria-pressed={details} onClick={() => setDetails(!details)}>

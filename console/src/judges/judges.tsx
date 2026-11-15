@@ -7,6 +7,7 @@ import { saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { percent } from "../lib/format";
 import { useOrg } from "../lib/org";
+import { usePhone } from "../lib/phone";
 import { toneOf } from "../quality/rules";
 import { useScores } from "../quality/use-scores";
 import { PageHead } from "../shell/page-head";
@@ -46,6 +47,8 @@ function Item({ judge, held, open, to }: { judge: JudgeRow; held: Held | undefin
 }
 
 function Judges({ agent, open, ask }: { agent: string; open: string | null; ask: (name: string, value: string) => void }): ReactNode {
+  // A phone opens on the list, a tap away from each one; a desk opens the first beside it.
+  const phone = usePhone();
   const credentials = useCredentials();
   const { lines } = useOrg();
   const [judges, setJudges] = useState<JudgeRow[] | null>(null);
@@ -107,7 +110,7 @@ function Judges({ agent, open, ask }: { agent: string; open: string | null; ask:
 
   // The menu's row names the page, and the page opens on the first of its list, in the address like any other.
   const first = groups[0]?.judges[0];
-  if (open === null && first !== undefined) return <Navigate to={{ pathname: HOME, search: addressOf(first.name) }} replace />;
+  if (!phone && open === null && first !== undefined) return <Navigate to={{ pathname: HOME, search: addressOf(first.name) }} replace />;
 
   return (
     <>

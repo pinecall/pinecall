@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { Navigate, useSearchParams } from "react-router";
 
 import { useOrg } from "../lib/org";
+import { usePhone } from "../lib/phone";
 import { PageHead } from "../shell/page-head";
 import { isPinecalls, type Persona } from "../simulations/door";
 import { CallerFormPanel, ProposePanel } from "../test/caller-panel";
@@ -31,6 +32,8 @@ const OF = "of";
 type Writing = { kind: "form"; agent: string; was: Persona | undefined; among?: readonly string[] } | { kind: "generate"; agent: string } | { kind: "ask" };
 
 function Personas({ agent, open, go }: { agent: string; open: { name: string; of: string } | null; go: (changes: Record<string, string>) => void }): ReactNode {
+  // A phone opens on the list, a tap away from each one; a desk opens the first beside it.
+  const phone = usePhone();
   const { agents, agentsRead } = useOrg();
   const slugs = useMemo(() => (agent !== "" ? [agent] : agents.map((one) => one.slug).sort()), [agent, agents]);
   const { rosters, setCallers } = useRosters(slugs);
@@ -78,8 +81,8 @@ function Personas({ agent, open, go }: { agent: string; open: { name: string; of
   // The menu's row names the page, and the page opens on the first of its list, in the address like any other.
   const firstMine = yours[0];
   const firstTheirs = pinecalls[0];
-  if (open === null && firstMine !== undefined) return <Navigate to={{ pathname: HOME, search: addressOf(firstMine.slug, firstMine.persona.name) }} replace />;
-  if (open === null && firstTheirs !== undefined) return <Navigate to={{ pathname: HOME, search: addressOf(shelf, firstTheirs.name) }} replace />;
+  if (!phone && open === null && firstMine !== undefined) return <Navigate to={{ pathname: HOME, search: addressOf(firstMine.slug, firstMine.persona.name) }} replace />;
+  if (!phone && open === null && firstTheirs !== undefined) return <Navigate to={{ pathname: HOME, search: addressOf(shelf, firstTheirs.name) }} replace />;
 
   const runsOf = (one: { persona: Persona; agent: string }): ReturnType<typeof callsOf> => (agent === "" && isPinecalls(one.persona) ? newestCallsOf(rosters.values(), one.persona.name) : callsOf(rosters.get(one.agent)?.runs ?? [], one.persona.name));
 

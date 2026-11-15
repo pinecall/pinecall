@@ -12,6 +12,7 @@ import { KnowledgeTab } from "../configure/knowledge";
 import { StudioTools } from "../configure/tools";
 import { useOrg } from "../lib/org";
 import { inWorld, WORLD } from "../lib/world";
+import { usePhone } from "../lib/phone";
 import { Icon, type IconName } from "../shell/icons";
 import { PageHead } from "../shell/page-head";
 import { useAway } from "../shell/use-away";
@@ -217,6 +218,8 @@ function wantNew(wanted: boolean): void {
 }
 
 function Fleet({ kind, tabs, base, title, search, nothing }: Kind): ReactNode {
+  // A phone opens on the list, a tap away from each one; a desk opens the first beside it.
+  const phone = usePhone();
   const credentials = useCredentials();
   const navigate = useNavigate();
   const { agents, agentsRead } = useOrg();
@@ -258,13 +261,15 @@ function Fleet({ kind, tabs, base, title, search, nothing }: Kind): ReactNode {
   const shown = apps.filter((one) => one.name.toLowerCase().includes(filter.trim().toLowerCase()));
   const read = hosted !== null && agentsRead;
   // An address may name an app's one agent (the Goldens page's "Test tab" does): its row is the app's.
-  const open = apps.find((one) => one.name === asked) ?? apps.find((one) => one.agent === asked) ?? apps[0];
+  const named = apps.find((one) => one.name === asked) ?? apps.find((one) => one.agent === asked);
+  // A phone with nothing asked shows the list alone.
+  const open = named ?? (phone && asked === undefined ? undefined : apps[0]);
   // An app's agent has no releases of its own, and an app of several agents has no settings, channels or tests of its own.
   const shownTabs = open === undefined ? tabs : open.of !== null ? tabs.filter((one) => one.path !== "releases") : isOfAgents(open) ? tabs.filter((one) => one.path === "" || one.path === "releases") : tabs;
   const at = shownTabs.some((one) => one.path === tab) ? tab : undefined;
 
   // The menu's row names the page, and the page opens on the first of its list, in the address like any other.
-  if (read && asked === undefined && apps[0] !== undefined) return <Navigate to={`${base}/${encodeURIComponent(apps[0].name)}`} replace />;
+  if (!phone && read && asked === undefined && apps[0] !== undefined) return <Navigate to={`${base}/${encodeURIComponent(apps[0].name)}`} replace />;
 
   const leave = (): void => {
     reread();

@@ -154,3 +154,20 @@
 
 @media (max-width: 760px) { .tst-row-when, .tst-head-stands { display: none; } }
 @media (prefers-reduced-motion: reduce) { .tst-status-playing::before, .tst-new-menu { animation: none; } }
+
+/* A phone: a section's head keeps its words whole and puts its button under them; a row's state may take a line of its own. */
+@media (max-width: 760px) {
+  .tst-list { padding: 16px 14px; }
+  .tst-head { flex-wrap: wrap; row-gap: 10px; }
+  .tst-head-words { flex: 1 1 calc(100% - 50px); }
+  .tst-head:has(> .tst-head-mark) > :not(.tst-head-mark):not(.tst-head-words) { margin-left: 50px; }
+  .tst-row-main { flex-wrap: wrap; row-gap: 4px; padding: 12px; }
+  .tst-row-name { font-size: 14.5px; }
+  .tst-row-under { font-size: 13px; }
+  .tst-tools .app-button, .tst-search { height: 40px; }
+  .tst-run { opacity: 1; width: 36px; height: 36px; }
+  /* A row's state goes under its words, lined up with them, so the name keeps the width. */
+  .tst-row { flex-wrap: wrap; }
+  .tst-row-main > .tst-status { flex: 1 1 100%; width: auto; padding-left: 44px; }
+  .tst-row > .tst-status { flex: 1 1 100%; width: auto; padding: 0 12px 12px 56px; }
+}

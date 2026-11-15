@@ -9,6 +9,7 @@ import { More } from "../apps/apps";
 import { ConfirmButton } from "../apps/confirm";
 import { NewBase } from "../configure/new-base";
 import { ago } from "../lib/format";
+import { usePhone } from "../lib/phone";
 import { Icon } from "../shell/icons";
 import { PageHead } from "../shell/page-head";
 import { SidePanel } from "../ui/side-panel";
@@ -64,6 +65,8 @@ function Actions({ base, onRemoved }: { base: string; onRemoved: () => Promise<v
 }
 
 export function KnowledgePage({ memory = false }: { memory?: boolean }): ReactNode {
+  // A phone opens on the list, a tap away from each one; a desk opens the first beside it.
+  const phone = usePhone();
   const credentials = useCredentials();
   const navigate = useNavigate();
   const { base: asked } = useParams();
@@ -91,7 +94,7 @@ export function KnowledgePage({ memory = false }: { memory?: boolean }): ReactNo
   const first = bases?.[0];
 
   // The menu's row names the page, and the page opens on the first of its list, in the address like any other.
-  if (!memory && open === undefined && first !== undefined) return <Navigate to={baseAt(first.base)} replace />;
+  if (!phone && !memory && open === undefined && first !== undefined) return <Navigate to={baseAt(first.base)} replace />;
 
   const leave = async (): Promise<void> => {
     await reread();

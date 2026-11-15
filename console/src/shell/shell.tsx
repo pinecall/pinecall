@@ -1,9 +1,10 @@
-/** The frame of every page: the sidebar with the organization, the world and the one menu; a header is each page's own. */
+/** The frame of every page: the sidebar with the organization, the world and the one menu; a header is each page's own. On a phone the sidebar is a drawer and a bar of tabs sits at the foot. */
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router";
 
 import { useOrg } from "../lib/org";
+import { usePhone } from "../lib/phone";
 import { inWorld, pageHere, WORLD, type World } from "../lib/world";
 import { useFirstAgent } from "../apps/first-agent";
 import { NoProduction } from "../login";
@@ -11,7 +12,7 @@ import { BrandMark, useBrand, wornBy } from "../login/way-in";
 import { SIDE_SLOT } from "../ui/side-panel";
 import { Icon } from "./icons";
 import { Me } from "./me";
-import { MENU, OPERATOR_MENU, rowOfPage } from "./menu";
+import { MENU, OPERATOR_MENU, rowOfPage, TABS } from "./menu";
 import { OrgPicker } from "./org-picker";
 import { PageHead } from "./page-head";
 import "./shell.css";
@@ -68,11 +69,12 @@ function useFolded(): [boolean, () => void] {
   return [folded, flip];
 }
 
-function Sidebar({ folded, onFold, onLeave }: { folded: boolean; onFold: () => void; onLeave: () => void }): ReactNode {
+// `onPick` hears every link followed in it: a phone's drawer shuts on it, even onto the page already open.
+function Sidebar({ folded, onFold, onLeave, onPick }: { folded: boolean; onFold: () => void; onLeave: () => void; onPick: () => void }): ReactNode {
   const { live, operator } = useOrg();
   const brand = useBrand();
   return (
-    <nav className="sh-side" aria-label="Console">
+    <nav className="sh-side" aria-label="Console" onClick={(event) => event.target instanceof Element && event.target.closest("a") !== null && onPick()}>
       <div className="sh-top">
         <Link to="/" className="sh-logo login-brand" style={brand === null ? undefined : wornBy(brand)} aria-label="Dashboard">
           {brand !== null && <BrandMark brand={brand} small={folded} />}
@@ -102,7 +104,7 @@ function Sidebar({ folded, onFold, onLeave }: { folded: boolean; onFold: () => v
         <NavLink to="/notifications" className="sh-icon" aria-label="Notifications" title="Notifications">
           <Icon name="bell" size={15} />
         </NavLink>
-        <button type="button" className="sh-icon" aria-label={folded ? "Open the sidebar" : "Fold the sidebar"} title={folded ? "Open the sidebar" : "Fold the sidebar"} onClick={onFold}>
+        <button type="button" className="sh-icon sh-fold" aria-label={folded ? "Open the sidebar" : "Fold the sidebar"} title={folded ? "Open the sidebar" : "Fold the sidebar"} onClick={onFold}>
           <Icon name="panel" size={15} />
         </button>
       </div>
@@ -110,21 +112,67 @@ function Sidebar({ folded, onFold, onLeave }: { folded: boolean; onFold: () => v
   );
 }
 
+/** A phone's foot: the pages most opened away from a desk, and the whole menu behind the last tab. */
+function TabBar({ drawer, onMenu }: { drawer: boolean; onMenu: () => void }): ReactNode {
+  const { live } = useOrg();
+  const { pathname } = useLocation();
+  const here = rowOfPage(pathname)?.path;
+  const onATab = TABS.some((tab) => tab.path === here);
+  return (
+    <nav className="sh-tabs" aria-label="Most used">
+      {TABS.map((tab) => (
+        <NavLink key={tab.path} to={tab.path} end={tab.path === "/"} className={({ isActive }) => (isActive && !drawer ? "sh-tab sh-tab-on" : "sh-tab")}>
+          <Icon name={tab.icon} size={20} />
+          <span>{tab.name}</span>
+          {tab.path === "/calls" && live.length > 0 && <span className="sh-tab-count">{live.length}</span>}
+        </NavLink>
+      ))}
+      <button type="button" className={drawer || !onATab ? "sh-tab sh-tab-on" : "sh-tab"} aria-expanded={drawer} onClick={onMenu}>
+        <Icon name="menu" size={20} />
+        <span>Menu</span>
+      </button>
+    </nav>
+  );
+}
+
+/** The drawer of a phone: open from the tab bar, shut by any page opened, a tap beside it or Escape. */
+function useDrawer(): [boolean, (open: boolean) => void] {
+  const [open, setOpen] = useState(false);
+  const { pathname } = useLocation();
+  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+  return [open, setOpen];
+}
+
 export function Shell({ onLeave }: { onLeave: () => void }): ReactNode {
   const { whose } = useOrg();
   const [folded, onFold] = useFolded();
+  const phone = usePhone();
+  const [drawer, setDrawer] = useDrawer();
   useFirstAgent();
   // A person may hold a key and not production: the page says so, and opens the sandbox.
   if (WORLD === "production" && whose !== null && !whose.production) return <NoProduction said="Your organization has not let you into production yet." />;
+  // A phone has no room to fold: its sidebar is the drawer, whole.
+  const narrow = folded && !phone;
+  const frame = ["sh-frame", narrow ? "sh-frame-folded" : "", phone && drawer ? "sh-frame-drawer" : ""].filter(Boolean).join(" ");
   return (
-    <div className={folded ? "sh-frame sh-frame-folded" : "sh-frame"}>
-      <Sidebar folded={folded} onFold={onFold} onLeave={onLeave} />
+    <div className={frame}>
+      <Sidebar folded={narrow} onFold={onFold} onLeave={onLeave} onPick={() => setDrawer(false)} />
+      {phone && drawer && <button type="button" className="sh-scrim" aria-label="Close the menu" onClick={() => setDrawer(false)} />}
       <div className="sh-page">
         <div className="sh-body">
           <Outlet />
         </div>
       </div>
       <aside id={SIDE_SLOT} className="sh-aside" />
+      {phone && <TabBar drawer={drawer} onMenu={() => setDrawer(!drawer)} />}
     </div>
   );
 }

@@ -51,6 +51,9 @@
 .ui-panel .prv-foot-wide { justify-content: space-between; }
 
 @media (max-width: 760px) {
+  .prv-tabs, .prv-opening, .prv-kinds { max-width: 100%; }
+  .prv-settings { padding-inline: 2px; }
+  .prv-hours { flex-wrap: wrap; }
   .prv-who { display: none; }
   .prv-ask { flex-wrap: wrap; }
   .prv-ask .ui-select { flex: 1 1 100%; margin-left: 0; }

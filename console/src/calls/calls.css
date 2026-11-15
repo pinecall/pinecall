@@ -107,3 +107,12 @@ button.calls-tab { border-inline: 0; background: transparent; font: inherit; fon
 @media (prefers-reduced-motion: reduce) {
   .calls-face-live::after, .calls-face-asking::after { animation: none; }
 }
+
+/* A phone reading one call: how the list is drawn waits until it goes back to the list. */
+@media (max-width: 760px) {
+  .sh-head[data-open] .calls-listed { display: none; }
+  .calls-search { flex: 1 1 100%; min-width: 0; }
+  .calls-filters .calls-grow { display: none; }
+  .calls-filters > .calls-chips { flex: 1 1 100%; }
+  .calls-filters .ui-agent-pick, .calls-filters .calls-pick { flex: 1 1 0; min-width: 0; }
+}

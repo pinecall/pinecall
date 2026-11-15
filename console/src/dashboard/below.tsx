@@ -72,7 +72,7 @@ function AgentsAndApps({ counted }: { counted: Insights | null }): ReactNode {
                   <span className="dash-agent-name">{app.name}</span>
                   <span className="dash-agent-state dash-quiet dash-clip">
                     {!left && <span className={`app-dot app-dot-${said.mood}`} aria-hidden="true" />}
-                    {left ? "Not connected now" : `${said.state}, ${kind === "studio" ? "agent" : "app"}`}
+                    <span className="dash-clip">{left ? "Not connected now" : `${said.state}, ${kind === "studio" ? "agent" : "app"}`}</span>
                   </span>
                 </span>
                 <span className="dash-num">{numbers === undefined ? "—" : count(numbers.calls)}</span>

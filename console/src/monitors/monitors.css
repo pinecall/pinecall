@@ -38,5 +38,8 @@
 
 @media (max-width: 760px) {
   .mon-hook-form { flex-wrap: wrap; }
-  .mon-status { min-width: 0; }
+  .mon-hook-form .cfg-input, .mon-hook-form .mon-hook-secret { flex: 1 1 100%; }
+  .mon-hook-set { flex-wrap: wrap; }
+  .mon-status { flex: 1 1 100%; min-width: 0; justify-content: flex-end; padding-left: 44px; }
+  .mon-line { flex-wrap: wrap; }
 }

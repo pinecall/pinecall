@@ -1,4 +1,4 @@
-/* The frame: a quiet sidebar with its groups in mono, a hairline, and the header a page may wear. */
+/* The frame: a quiet sidebar with its groups in mono, a hairline, and the header a page may wear; on a phone, a drawer, a tab bar and a header that wraps. */
 
 .sh-frame { display: flex; height: 100vh; overflow-x: clip; background: var(--ground); }
 
@@ -72,6 +72,7 @@
 .sh-in-sandbox { display: inline-flex; flex: none; align-items: center; gap: 5px; height: 24px; padding: 0 9px 0 7px; border-radius: 6px; background: color-mix(in srgb, var(--warn) 15%, transparent); color: var(--warn); font-size: 12.5px; font-weight: 500; }
 .sh-crumbs { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 400; }
 .sh-crumbs svg { color: var(--quiet); }
+.sh-crumb-icon { display: inline-flex; }
 .sh-crumb { color: var(--quiet); }
 .sh-crumb:hover { color: var(--ink); }
 .sh-crumb-gap { color: var(--quiet); }
@@ -102,11 +103,46 @@
 .sh-frame-folded .sh-org-menu { right: auto; width: 232px; }
 .sh-frame-folded .sh-me { flex-direction: column; justify-content: center; margin-inline: -8px; padding-inline: 0; }
 
+/* What only a phone draws. */
+.sh-tabs, .sh-scrim, .sh-back { display: none; }
+
+/* A phone: the page scrolls as a whole, the sidebar is a drawer over it, and five tabs sit at the foot. */
 @media (max-width: 760px) {
-  .sh-frame { flex-direction: column; height: auto; min-height: 100vh; }
-  .sh-side { flex: none; border-right: 0; border-bottom: 1px solid var(--line); }
-  .sh-menu { overflow-y: visible; }
-  .sh-page { overflow-y: visible; }
-  .sh-head, .sh-body { padding-left: 16px; padding-right: 16px; }
-  .sh-head { margin-inline: -16px; }
+  html:has(.sh-frame-drawer) { overflow: hidden; }
+  .sh-frame { display: block; height: auto; min-height: 100dvh; overflow-x: clip; }
+
+  .sh-side { position: fixed; z-index: 50; inset: 0 auto 0 0; width: min(304px, 86vw); padding: calc(12px + env(safe-area-inset-top)) 10px calc(10px + env(safe-area-inset-bottom)); border-right: 1px solid var(--line); background: linear-gradient(var(--ground), var(--ground)), var(--panel); transform: translateX(-100%); visibility: hidden; transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s 0.26s; }
+  .sh-frame-drawer .sh-side { transform: none; visibility: visible; box-shadow: 24px 0 60px rgb(0 0 0 / 0.35); transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1); }
+  .sh-scrim { display: block; position: fixed; z-index: 49; inset: 0; padding: 0; border: 0; background: rgb(0 0 0 / 0.45); animation: sh-scrim-in 0.2s ease-out; }
+  .sh-top { margin-top: 0; }
+  .sh-rule { margin-top: 0; }
+  .sh-row { height: 44px; font-size: 15px; }
+  .sh-org-pick { height: 44px; }
+  .sh-world { height: 34px; font-size: 13px; }
+  .sh-icon { width: 40px; height: 40px; }
+  .sh-fold { display: none; }
+  .sh-me-menu { width: calc(100% + 6px); }
+
+  .sh-page { overflow: visible; padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+  .sh-page:has(.sh-head) { --head: 0px; }
+  .sh-body { padding: 16px 16px 24px; }
+
+  /* The header wraps: where it is on the first line, a page's own buttons under it when they do not fit. */
+  .sh-head { flex-wrap: wrap; column-gap: 10px; row-gap: 8px; height: auto; min-height: calc(52px + env(safe-area-inset-top)); margin: -16px -16px 16px; padding: calc(8px + env(safe-area-inset-top)) 16px 8px; background: linear-gradient(var(--ground), var(--ground)), var(--panel); }
+  .sh-crumbs { flex: 1 1 auto; min-width: 0; min-height: 36px; font-size: 16px; }
+  .sh-crumb-org, .sh-crumb-org + .sh-crumb-gap { display: none; }
+  .sh-head[data-open] .sh-crumb-row, .sh-head[data-open] .sh-crumb-icon { display: none; }
+  .sh-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sh-fill { display: none; }
+  .sh-back { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 36px; height: 36px; margin-left: -8px; border-radius: 8px; color: var(--ink); }
+  .sh-back:active { background: var(--panel); }
+  .sh-notices { height: 36px; padding: 0 10px; }
+  .sh-tools { margin-left: auto; }
+
+  .sh-tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); position: fixed; z-index: 25; inset: auto 0 0; padding-bottom: env(safe-area-inset-bottom); border-top: 1px solid var(--line); background: linear-gradient(var(--ground), var(--ground)), var(--panel); }
+  .sh-tab { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; height: 56px; padding: 0; border: 0; background: transparent; color: var(--quiet); font-size: 11px; font-weight: 500; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .sh-tab-on { color: var(--accent-ink); }
+  .sh-tab-count { position: absolute; top: 5px; left: calc(50% + 6px); min-width: 17px; height: 17px; padding: 0 5px; border-radius: 9px; background: var(--good); color: var(--on-solid); font-size: 10.5px; font-weight: 600; line-height: 17px; text-align: center; }
 }
+@keyframes sh-scrim-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .sh-side, .sh-frame-drawer .sh-side { transition: none; } .sh-scrim { animation: none; } }
