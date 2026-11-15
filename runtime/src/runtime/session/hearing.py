@@ -77,6 +77,11 @@ BACKCHANNELS: dict[str, frozenset[str]] = {
     "ca": frozenset({"sí", "vale", "d'acord", "clar", "entesos", "ok", "mm", "aha", "eh"}),
 }
 
+# A murmur is no word of any language, and a transcriber that hears several writes it in whichever it
+# guessed: a Spanish caller's "ajá" came back as "Uh-huh." with the language `en` (2026-11-15), and
+# the Spanish list did not have it, so it took the floor. These are agreement whatever the language.
+MURMURED = frozenset({"uh-huh", "mm-hmm", "mhm", "mhmm", "mmhmm", "mm", "mmm", "hm", "hmm", "uh", "aha", "ajá"})
+
 # Whisper's invention: on a fraction of a second of noise it writes one phrase over and over
 # ("I'm going to make sure that" forty times, gpu.pinecall.io 2026-10-17). A phrase of three words
 # or more said three times running is not a caller, whoever is speaking.
@@ -108,10 +113,12 @@ class TurnPolicy:
     # How long the caller speaks over the agent before it stops; None leaves livekit's own.
     min_speech_s: float | None = None
 
+    # A word of one letter alone is what the ears make of a murmur ("t", "c t" for an "mm"): over the
+    # agent, a turn of nothing else is nobody taking the floor.
     def is_a_backchannel(self, text: str) -> bool:
-        """Whether every word said is somebody agreeing."""
+        """Whether every word said is somebody agreeing, a murmur, or a letter the ears made of one."""
         words = words_of(text)
-        return bool(words) and all(word in self.backchannels for word in words)
+        return bool(words) and all(word in self.backchannels or word in MURMURED or len(word) == 1 for word in words)
 
 
 def loops(text: str) -> bool:

@@ -44,6 +44,19 @@ def test_what_only_agrees_depends_on_the_agents_language() -> None:
     # What the ears write for a murmur, and the agreement the floor model takes for a floor-take.
     assert policy_for("en").is_a_backchannel("Mhmm.")
     assert policy_for("es").is_a_backchannel("entiendo, okey")
+
+
+# 2026-11-15: a Spanish caller's "ajá" was written "Uh-huh." in English, and an "mm" as "t" and "c t".
+def test_a_murmur_is_agreement_in_any_language_and_a_letter_alone_is_no_word() -> None:
+    spanish = policy_for("es")
+    assert spanish.is_a_backchannel("Uh-huh.")
+    assert spanish.is_a_backchannel("Mm-hmm, sí.")
+    assert spanish.is_a_backchannel("t")
+    assert spanish.is_a_backchannel("c t.")
+    # A word of the caller's own still takes the floor, and so does a letter beside one.
+    assert not spanish.is_a_backchannel("day.")
+    assert not spanish.is_a_backchannel("a ver")
+    assert not policy_for("en").is_a_backchannel("I wait")
     assert policy_for("es").min_words == 2
     assert policy_for("es", Turn(min_interruption_words=1)).min_words == 1
     assert policy_for("es").min_speech_s is None
