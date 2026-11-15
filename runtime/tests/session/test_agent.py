@@ -7,7 +7,6 @@ from pathlib import Path
 from livekit.agents import (
     AgentStateChangedEvent,
     SpeechCreatedEvent,
-    UserStateChangedEvent,
     stt,
 )
 from livekit.agents.utils import http_context
@@ -24,6 +23,7 @@ from runtime.session.call import Call, ToolUse
 from runtime.session.commands import CallCommand, apply
 from runtime.session.hold import HoldMusic
 from runtime.session.session import Place, Session
+from runtime.session.taking_the_floor import FloorModel
 from runtime.session.text import text_session
 from runtime.session.voice import voice_session
 from runtime.wire.commands import AgentReply, AgentSay, CallHangup, CallHold, StateSet, ToolsSet
@@ -40,6 +40,7 @@ from tests.session.conftest import (
     POINTING,
     TALKING,
     Box,
+    NeverAsked,
     a_session,
     context_of,
     hear,
@@ -52,47 +53,43 @@ from tests.session.conftest import (
 )
 
 
-# The ears hear agreement over the agent's voice: it never reaches the model, and what takes the floor does.
+# What the caller says over the agent is theirs or agreement by the model's word on their voice, never
+# by its text: a whole sentence the model called agreement is nobody's turn, and the same sentence it
+# called theirs is the caller's. Until 2026-11-15 a list of words decided it.
 @needs_the_database
-async def test_a_backchannel_over_the_agents_voice_never_reaches_the_model(box: Box) -> None:
-    session = spoken_call(box, NOBODY, hears=("sí, claro", "sí, pero el martes no puedo"))
+async def test_what_is_said_over_the_agent_is_the_callers_by_the_models_word_and_never_by_its_text(box: Box) -> None:
+    session = spoken_call(box, NOBODY, hears=("sí, pero el martes no puedo",), floor=FloorModel(NeverAsked(), {}, []))
     await session.start()
+    said = session.call.said_over
+    assert said is not None
     # The ears open the job's HTTP session, as a vendor's do: outside a job, the test opens it.
     async with http_context.open():
         session.live.emit("agent_state_changed", AgentStateChangedEvent(old_state="thinking", new_state="speaking"))
+        said.began()
+        said.was_agreement()
+        agreement = [event async for event in session.agent.stt_node(no_audio(), ModelSettings())]
+        said.began()
+        said.is_the_callers()
+        theirs = [event async for event in session.agent.stt_node(no_audio(), ModelSettings())]
+    await session.close()
+    assert not [event for event in agreement if event.type is stt.SpeechEventType.FINAL_TRANSCRIPT]
+    finals = [event for event in theirs if event.type is stt.SpeechEventType.FINAL_TRANSCRIPT]
+    assert [event.alternatives[0].text for event in finals] == ["sí, pero el martes no puedo"]
+
+
+# A call with no model on it has nothing that heard the caller's voice: every word the ears write
+# reaches the session, "sí, claro" as much as a sentence, and livekit's count of words stops the agent.
+@needs_the_database
+async def test_on_a_call_no_model_judges_every_word_the_ears_write_reaches_the_session(box: Box) -> None:
+    session = spoken_call(box, NOBODY, hears=("sí, claro", "sí, pero el martes no puedo"))
+    await session.start()
+    assert session.call.said_over is None
+    async with http_context.open():
+        session.live.emit("agent_state_changed", AgentStateChangedEvent(old_state="thinking", new_state="speaking"))
         over_the_agent = [event async for event in session.agent.stt_node(no_audio(), ModelSettings())]
-        session.live.emit("agent_state_changed", AgentStateChangedEvent(old_state="speaking", new_state="listening"))
-        after_it = [event async for event in session.agent.stt_node(no_audio(), ModelSettings())]
     await session.close()
     finals = [event for event in over_the_agent if event.type is stt.SpeechEventType.FINAL_TRANSCRIPT]
-    assert [event.alternatives[0].text for event in finals] == ["sí, pero el martes no puedo"]
-    assert len([event for event in after_it if event.type is stt.SpeechEventType.FINAL_TRANSCRIPT]) == 2
-
-
-# 2026-11-15: a murmur the model took for a floor-take paused the agent, and the "Mhmm." the ears wrote
-# a moment later was no longer said over a speaking agent: it became the caller's turn, and was answered.
-@needs_the_database
-async def test_agreement_that_paused_the_agent_is_still_agreement_and_an_answer_to_a_finished_one_is_not(
-    box: Box,
-) -> None:
-    session = spoken_call(box, NOBODY, hears=("sí, claro",))
-    await session.start()
-    async with http_context.open():
-        speaking = AgentStateChangedEvent(old_state="thinking", new_state="speaking")
-        quiet = AgentStateChangedEvent(old_state="speaking", new_state="listening")
-        # The caller is heard, and the agent goes quiet for them.
-        session.live.emit("agent_state_changed", speaking)
-        session.live.emit("user_state_changed", UserStateChangedEvent(old_state="listening", new_state="speaking"))
-        session.live.emit("agent_state_changed", quiet)
-        over_it = [event async for event in session.agent.stt_node(no_audio(), ModelSettings())]
-        # The agent finishes its sentence with nobody speaking: "sí, claro" is the answer to it.
-        session.live.emit("user_state_changed", UserStateChangedEvent(old_state="speaking", new_state="listening"))
-        session.live.emit("agent_state_changed", speaking)
-        session.live.emit("agent_state_changed", quiet)
-        after_it = [event async for event in session.agent.stt_node(no_audio(), ModelSettings())]
-    await session.close()
-    assert not [event for event in over_it if event.type is stt.SpeechEventType.FINAL_TRANSCRIPT]
-    assert len([event for event in after_it if event.type is stt.SpeechEventType.FINAL_TRANSCRIPT]) == 1
+    assert [event.alternatives[0].text for event in finals] == ["sí, claro", "sí, pero el martes no puedo"]
 
 
 @needs_the_database

@@ -2,10 +2,11 @@
 
 import asyncio
 import time
-from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 
+import numpy as np
 import pytest
 from livekit import rtc
 from livekit.agents import llm, metrics, stt
@@ -257,6 +258,13 @@ def spoken_call(
     )
     place = Place(floor=floor) if server is None else Place(room=a_room(box, call, server), floor=floor)
     return voice_session(call, stages, place)
+
+
+class NeverAsked:
+    """A floor model no test runs: the session is only built on it."""
+
+    def run(self, output_names: Sequence[str] | None, input_feed: Mapping[str, np.ndarray]) -> list[np.ndarray]:
+        raise AssertionError("no audio is heard in these tests")
 
 
 async def no_audio() -> AsyncIterator[rtc.AudioFrame]:

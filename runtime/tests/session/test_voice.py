@@ -1,9 +1,7 @@
 """Tests for a session opened for a spoken call: the pipeline, the turn options, the keyterms."""
 
-from collections.abc import Mapping, Sequence
 from typing import cast, override
 
-import numpy as np
 import pytest
 from livekit.agents.voice import AgentSession
 from livekit.agents.voice.agent_session import DEFAULT_TTS_TEXT_TRANSFORMS
@@ -30,6 +28,7 @@ from tests.fakes.talker import SayingRealtime, TalkerRealtime
 from tests.session.conftest import (
     NOBODY,
     Box,
+    NeverAsked,
     a_session,
     kinds,
     settled,
@@ -301,13 +300,6 @@ async def test_a_spoken_call_goes_through_the_model_unless_its_agent_says_not_to
     assert model.opened == 1
     # A box with no model: the level alone, whatever the agent says.
     assert heard_through(spoken_call(box, NOBODY)).far_voices is None
-
-
-class NeverAsked:
-    """A floor model no test runs: the session is only built on it."""
-
-    def run(self, output_names: Sequence[str] | None, input_feed: Mapping[str, np.ndarray]) -> list[np.ndarray]:
-        raise AssertionError("no audio is heard in these tests")
 
 
 @needs_the_database

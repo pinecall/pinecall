@@ -22,7 +22,7 @@ from runtime.session import echo, history, prompt, recording
 from runtime.session.agent import CallAgent, agent_of
 from runtime.session.call import Call
 from runtime.session.far_voices import FarVoicesModel
-from runtime.session.hearing import TurnPolicy, keyterms
+from runtime.session.hearing import keyterms
 from runtime.session.hold import HoldMusic
 from runtime.session.line import Line
 from runtime.session.listener import Listener
@@ -97,7 +97,6 @@ class Session:
         built: tuple[Built, ...],
         lookups: Lookups,
         line: Line,
-        policy: TurnPolicy,
         *,
         running: Mapping[Stage, Running],
         place: Place,
@@ -125,7 +124,7 @@ class Session:
         self.on_ended = on_ended
         self.blocks = prompt.Blocks(call.declaration.prompt, call.declaration.knowledge or "")
         toolbox = Toolbox(lookups, line, leave=lambda: self.hang_up("agent_hung_up", "agent"))
-        self.agent = CallAgent(live, self.blocks, lookups, toolbox.tools(call), line, policy)
+        self.agent = CallAgent(live, self.blocks, lookups, toolbox.tools(call), line)
         self.started_at = time.time()
         self.closed = False
         # Set once close() wrote call.ended and sealed; the chat endpoint closes its socket on it.

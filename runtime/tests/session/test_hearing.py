@@ -1,4 +1,4 @@
-"""Tests for how a turn is taken: backchannels and false interruptions."""
+"""Tests for how a turn is taken: the counts that stop the agent, false interruptions, echoes and loops."""
 
 from runtime.agents.declaration import Turn
 from runtime.session.commands import apply
@@ -27,27 +27,11 @@ async def test_interruptions_are_judged_locally_and_a_reply_a_sound_stopped_goes
     assert options.preemptive_generation.get("enabled") is False
 
 
-def test_agreement_alone_is_a_backchannel_and_anything_that_takes_the_floor_is_not() -> None:
-    spanish = policy_for("es-ES")
-    assert spanish.is_a_backchannel("sí, claro")
-    assert spanish.is_a_backchannel("Mm, ok.")
-    assert not spanish.is_a_backchannel("sí, pero el martes no puedo")
-    assert not spanish.is_a_backchannel("")
-
-
-def test_what_only_agrees_depends_on_the_agents_language() -> None:
-    assert policy_for("en-US").is_a_backchannel("uh-huh, right")
-    assert not policy_for("en-US").is_a_backchannel("vale")
-    assert policy_for("pt-BR").is_a_backchannel("aham, certo")
-    assert policy_for(None).is_a_backchannel("vale")
-    assert policy_for(None).is_a_backchannel("yep")
-    # What the ears write for a murmur, and the agreement the floor model takes for a floor-take.
-    assert policy_for("en").is_a_backchannel("Mhmm.")
-    assert policy_for("es").is_a_backchannel("entiendo, okey")
-    assert policy_for("es").min_words == 2
-    assert policy_for("es", Turn(min_interruption_words=1)).min_words == 1
-    assert policy_for("es").min_speech_s is None
-    assert policy_for("es", Turn(min_interruption_ms=800)).min_speech_s == 0.8
+def test_the_counts_that_stop_the_agent_are_its_own_where_it_says_them_and_livekits_where_it_does_not() -> None:
+    assert policy_for().min_words == 2
+    assert policy_for(Turn(min_interruption_words=1)).min_words == 1
+    assert policy_for().min_speech_s is None
+    assert policy_for(Turn(min_interruption_ms=800)).min_speech_s == 0.8
 
 
 @needs_the_database

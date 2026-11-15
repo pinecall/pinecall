@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- **The floor model must hold its word for 200 ms, where it was 100.** The model is trained on
+  English alone, and on a Spanish call it took a murmur for a floor-take three times in ten. An
+  interruption holds its floor score near 0.9 for as long as it lasts, in either language; a murmur
+  crosses 0.8 for an instant. Replayed on the recordings of 2026-11-15's simulated calls: at 100 ms,
+  3 of 76 English murmurs and 9 of 31 Spanish ones stopped the agent; at 200 ms, 2 and 3, with no
+  interruption lost (49 of 51 in English, 21 of 21 in Spanish). The agent goes quiet a median
+  440 ms after the caller begins, where it was 340.
+- **No list of words decides who has the floor.** Until now a turn heard over the agent and made
+  only of words from a list per language ("ok", "vale", "mhm": Spanish, English, Portuguese,
+  Catalan) was dropped by its text, with the floor model on or off, and the same list let a reply
+  the model had paused go on. A list is not what heard the caller: the Spanish "ajá" the ears wrote
+  as "Uh-huh." was on none of them. The lists are gone. On a call the floor model judges, what the
+  ears write of a speech over the agent follows the model's word on that speech: kept while it has
+  none, passed on in the ears' order once it is the caller's, dropped when it ended as agreement,
+  whatever its words (`SaidOverTheAgent`, `session/taking_the_floor.py`). On a call with no model
+  (`smart_interruptions: false`, or a box without it) every word the ears write reaches the
+  session and livekit's count decides: `turn.min_interruption_words` words stop the agent, "sí,
+  claro" among them. What a caller now meets: a murmur the model itself takes for a floor-take
+  stops the agent and is answered as a turn, where the list used to let the reply go on. On the
+  simulated calls of 2026-11-15 that was 1 murmur on 25 English calls and 12 on 9 Spanish ones.
 - **While smart interruptions decide, an agent's word count does not.** An agent that kept
   `turn.min_interruption_words` (or `min_interruption_ms`) with the model on waited for those words
   again, and nothing said the model had stopped deciding. With `smart_interruptions` on both are not

@@ -75,8 +75,6 @@ class Listener:
         self.last_heard = time.monotonic()
         self.ended_for_good = False
         self.components: tuple[Built, ...] = ()
-        # Whether the caller is speaking now, as the session's state says it.
-        self.caller_speaking = False
         # When the caller last stopped speaking, until the agent's first turn after it is written.
         self.heard_stopped_at: float | None = None
         # When the caller last went quiet, as the session's state says it: what a realtime model's
@@ -114,17 +112,11 @@ class Listener:
             case UserStateChangedEvent():
                 if event.old_state == "speaking" and event.new_state != "speaking":
                     self.went_quiet_at = event.created_at
-                self.caller_speaking = event.new_state == "speaking"
                 writing.write("user.state", wire.UserStateChanged(state=event.new_state))
             case AgentStateChangedEvent():
                 if self.call.agent_speaking and event.new_state != "speaking":
                     self.call.agent_words.stop()
-                    # Quiet with the caller speaking is quiet for the caller: an agent that finished
-                    # its sentence went quiet with nobody speaking.
-                    self.call.spoken_over_at = time.monotonic() if self.caller_speaking else None
                 self.call.agent_speaking = event.new_state == "speaking"
-                if self.call.agent_speaking:
-                    self.call.spoken_over_at = None
                 self.line.floor(speaking=self.call.agent_speaking)
                 writing.write("agent.state", wire.AgentStateChanged(state=event.new_state))
             case SpeechCreatedEvent():

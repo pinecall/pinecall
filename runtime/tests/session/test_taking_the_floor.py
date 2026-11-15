@@ -1,12 +1,13 @@
 """Who takes the floor: what the model is told of the agent, its word on a call's audio, what the session is told."""
 
-from collections.abc import Mapping, Sequence
+import asyncio
+from collections.abc import AsyncGenerator, Mapping, Sequence
 from pathlib import Path
 from typing import override
 
 import numpy as np
 from livekit import rtc
-from livekit.agents import vad
+from livekit.agents import stt, vad
 
 from runtime.session.taking_the_floor import (
     CHUNK,
@@ -18,9 +19,12 @@ from runtime.session.taking_the_floor import (
     FloorModel,
     HeardOverTheAgent,
     HeardStream,
+    SaidOverTheAgent,
     load_floor_model,
     quiet,
 )
+from tests.conftest import until
+from tests.session.conftest import speech_event
 
 A_STATE = {"gru_state": (2, 1, 4)}
 OUTPUTS = ["intent", "vad", "vap", "gru_state_out"]
@@ -98,10 +102,10 @@ def test_the_model_is_told_how_long_since_the_agent_began_and_stopped() -> None:
     assert (again[1], again[2]) == (0.0, 0.0)
 
 
-def test_the_floor_is_taken_once_the_model_has_said_so_for_a_tenth_of_a_second() -> None:
-    """Two chunks of 40 ms are four frames: not yet. The third makes five, and the floor is taken."""
+def test_the_floor_is_taken_once_the_model_has_said_so_for_a_fifth_of_a_second() -> None:
+    """Four chunks of 40 ms are eight frames: not yet. The fifth makes ten, and the floor is taken."""
     overlap = FloorModel(Says(FLOOR_TAKE), A_STATE, OUTPUTS).open_stream()
-    overlap.hear(frame_of(CHUNK * 2), agent_speaks=True)
+    overlap.hear(frame_of(CHUNK * 4), agent_speaks=True)
     assert not overlap.taken
     overlap.hear(frame_of(CHUNK), agent_speaks=True)
     assert overlap.taken
@@ -138,18 +142,20 @@ async def test_speech_over_the_agent_is_told_only_once_it_is_a_floor_take() -> N
     stream = heard.stream()
     assert isinstance(stream, HeardStream)
     assert stream.tell(an_event(vad.VADEventType.START_OF_SPEECH, 0.25)) == []
+    assert heard.said.word == "none yet"
     told = stream.tell(an_event(vad.VADEventType.INFERENCE_DONE, 0.3))
     assert [(one.type, one.speaking, one.speech_duration) for one in told] == [
         (vad.VADEventType.INFERENCE_DONE, False, 0.0)
     ]
     # The model changes its mind: the start the session was not told comes first, as long as the speech is now.
     says.answer = FLOOR_TAKE
-    stream.overlap.hear(frame_of(CHUNK * 3), agent_speaks=True)
+    stream.overlap.hear(frame_of(CHUNK * 5), agent_speaks=True)
     told = stream.tell(an_event(vad.VADEventType.INFERENCE_DONE, 0.45))
     assert [(one.type, one.speech_duration) for one in told] == [
         (vad.VADEventType.START_OF_SPEECH, 0.45),
         (vad.VADEventType.INFERENCE_DONE, 0.45),
     ]
+    assert heard.said.word == "theirs"
     # From then on the detector's events pass as they come.
     after = an_event(vad.VADEventType.END_OF_SPEECH, 1.0, speaking=False)
     assert stream.tell(after) == [after]
@@ -164,11 +170,78 @@ async def test_a_murmur_that_ends_was_never_speech_to_the_session() -> None:
     assert stream.tell(an_event(vad.VADEventType.START_OF_SPEECH, 0.25)) == []
     assert not stream.tell(an_event(vad.VADEventType.INFERENCE_DONE, 0.6))[0].speaking
     assert stream.tell(an_event(vad.VADEventType.END_OF_SPEECH, 0.7, speaking=False)) == []
+    assert heard.said.word == "agreement"
     # The next speech, with the agent quiet, is told as it comes.
     stream.heard.agent_speaks = lambda: False
     start = an_event(vad.VADEventType.START_OF_SPEECH, 0.25)
     assert stream.tell(start) == [start]
+    assert heard.said.word == "theirs"
     await stream.aclose()
+
+
+async def the_ears(*events: stt.SpeechEvent, then: asyncio.Event | None = None) -> AsyncGenerator[stt.SpeechEvent]:
+    """Ears that write these events and, given something to wait for, stay open until it."""
+    for event in events:
+        yield event
+    if then is not None:
+        await then.wait()
+
+
+async def test_what_the_ears_write_of_a_speech_is_kept_until_the_model_has_a_word_on_it() -> None:
+    """Kept while it has none; passed on in the ears' order the moment it is the caller's, the ears writing no more."""
+    said = SaidOverTheAgent(lambda: True)
+    said.began()
+    over = asyncio.Event()
+    passed: list[stt.SpeechEvent] = []
+
+    async def read() -> None:
+        async for event in said.only_the_callers(the_ears(speech_event("no"), speech_event("espera"), then=over)):
+            passed.append(event)
+
+    reading = asyncio.create_task(read())
+    await until(lambda: len(said.kept) == 2)
+    assert passed == []
+    said.is_the_callers()
+    await until(lambda: len(passed) == 2)
+    assert [event.alternatives[0].text for event in passed] == ["no", "espera"]
+    over.set()
+    await reading
+
+
+async def test_the_words_of_a_speech_that_was_agreement_are_nobodys_turn_whatever_they_are() -> None:
+    """A whole sentence the model called agreement is dropped as a murmur is; the ears' own end of speech passes."""
+    said = SaidOverTheAgent(lambda: True)
+    said.began()
+    end = stt.SpeechEvent(type=stt.SpeechEventType.END_OF_SPEECH)
+    over = asyncio.Event()
+    passed: list[stt.SpeechEvent] = []
+
+    async def read() -> None:
+        async for event in said.only_the_callers(the_ears(speech_event("sí, pero el martes no puedo"), end, then=over)):
+            passed.append(event)
+
+    reading = asyncio.create_task(read())
+    await until(lambda: len(said.kept) == 2)
+    said.was_agreement()
+    await until(lambda: bool(passed))
+    over.set()
+    await reading
+    assert passed == [end]
+    # What the ears write of it after the model's word is dropped as well.
+    assert [event async for event in said.only_the_callers(the_ears(speech_event("Uh-huh.")))] == []
+
+
+async def test_nothing_is_said_over_an_agent_that_is_not_speaking() -> None:
+    """Agreement was over the agent's words: once it is quiet, what the ears write is the caller's answer."""
+    speaks = [True]
+    said = SaidOverTheAgent(lambda: speaks[0])
+    said.began()
+    said.was_agreement()
+    assert [event async for event in said.only_the_callers(the_ears(speech_event("ok")))] == []
+    speaks[0] = False
+    answer = speech_event("ok")
+    assert [event async for event in said.only_the_callers(the_ears(answer))] == [answer]
+    assert said.word == "theirs"
 
 
 async def test_speech_that_outlasts_any_murmur_or_the_agent_is_the_callers() -> None:

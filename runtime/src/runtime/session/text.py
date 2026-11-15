@@ -6,7 +6,6 @@ from runtime.enums import Medium, Stage
 from runtime.providers import service as providers
 from runtime.providers.stage import Running
 from runtime.session.call import Call
-from runtime.session.hearing import policy_for
 from runtime.session.line import Line
 from runtime.session.lookups import TEXT_LOOKUP_MS, Lookups
 from runtime.session.session import TOOL_STEPS, OnEnded, Place, Session
@@ -38,7 +37,6 @@ def text_session(
         (model,),
         Lookups(call, lookup_budget_ms or TEXT_LOOKUP_MS),
         Line(call, live, place.melody),
-        policy_for(call.declaration.language, call.declaration.turn),
         running={Stage.llm: thinking},
         place=place,
         medium=Medium.text,

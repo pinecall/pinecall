@@ -1,4 +1,4 @@
-"""What the ears are told: the words that only agree, what the ears make up, the agent heard back, the keyterms."""
+"""What the ears are told: the counts that stop the agent, what the ears make up, the agent heard back, the keyterms."""
 
 import time
 from collections import deque
@@ -12,70 +12,6 @@ from runtime.kit.text import JsonObject, a_mapping, words_of
 MIN_WORDS = 2
 # Silence before an interruption is judged false: livekit's 2 s sound like a dropped call.
 FALSE_INTERRUPTION_TIMEOUT_S = 1.0
-
-# A turn made of these alone is somebody agreeing, and does not take the floor. livekit's own
-# backchannel detector is hosted only. Per language: "vale" takes the floor in English.
-BACKCHANNELS: dict[str, frozenset[str]] = {
-    "es": frozenset(
-        {
-            "aha",
-            "ajá",
-            "ah",
-            "ajam",
-            "bien",
-            "bueno",
-            "claro",
-            "dale",
-            "eh",
-            "em",
-            "entiendo",
-            "exacto",
-            "hm",
-            "hmm",
-            "mm",
-            "mmm",
-            "mhm",
-            "mhmm",
-            "ok",
-            "okay",
-            "okey",
-            "perfecto",
-            "sí",
-            "si",
-            "vale",
-            "ya",
-            "uh",
-            "uhu",
-            "uhum",
-        }
-    ),
-    "en": frozenset(
-        {
-            "aha",
-            "ah",
-            "hm",
-            "hmm",
-            "mm",
-            "mmm",
-            "mhm",
-            "mhmm",
-            "mmhmm",
-            "ok",
-            "okay",
-            "yeah",
-            "yes",
-            "yep",
-            "right",
-            "sure",
-            "uh",
-            "uh-huh",
-            "gotcha",
-            "exactly",
-        }
-    ),
-    "pt": frozenset({"aham", "ah", "sim", "tá", "certo", "claro", "ok", "beleza", "hum", "uhum"}),
-    "ca": frozenset({"sí", "vale", "d'acord", "clar", "entesos", "ok", "mm", "aha", "eh"}),
-}
 
 # Whisper's invention: on a fraction of a second of noise it writes one phrase over and over
 # ("I'm going to make sure that" forty times, gpu.pinecall.io 2026-10-17). A phrase of three words
@@ -100,18 +36,12 @@ MOST_TERMS = 50
 
 @dataclass(frozen=True, slots=True)
 class TurnPolicy:
-    """What the caller must say to take the floor, in the agent's language."""
+    """What the caller must say to take the floor, on a call no model judges their voice on."""
 
-    backchannels: frozenset[str]
     min_words: int = MIN_WORDS
     false_interruption_s: float = FALSE_INTERRUPTION_TIMEOUT_S
     # How long the caller speaks over the agent before it stops; None leaves livekit's own.
     min_speech_s: float | None = None
-
-    def is_a_backchannel(self, text: str) -> bool:
-        """Whether every word said is somebody agreeing."""
-        words = words_of(text)
-        return bool(words) and all(word in self.backchannels for word in words)
 
 
 def loops(text: str) -> bool:
@@ -157,15 +87,14 @@ class AgentWords:
         return bool(heard) and sum(word in recent for word in heard) / len(heard) >= ECHO_SHARE
 
 
-# One per call, made where its turn options are built and handed to its agent: until 2026-11 the call
-# made a second one without the agent's turn, read for agreement alone.
-def policy_for(language: str | None, turn: Turn | None = None) -> TurnPolicy:
-    """The policy of the agent's language (`es-ES` is `es`) and of what it says about turns; else every list."""
-    tag = (language or "").split("-", 1)[0].lower()
-    words = BACKCHANNELS.get(tag) or frozenset[str]().union(*BACKCHANNELS.values())
+# Until 2026-11-15 it also held a list of words per language that only agree ("ok", "vale", "mhm"),
+# and a turn made of them over the agent was dropped by its text. Words written by hand are not what
+# heard the caller: with a model on the call its word on the audio decides (taking_the_floor.py), and
+# without one the counts here do.
+def policy_for(turn: Turn | None = None) -> TurnPolicy:
+    """The policy of what the agent says about turns, livekit's counts where it says nothing."""
     said = turn or Turn()
     return TurnPolicy(
-        backchannels=words,
         min_words=MIN_WORDS if said.min_interruption_words is None else said.min_interruption_words,
         min_speech_s=None if said.min_interruption_ms is None else said.min_interruption_ms / 1000,
     )

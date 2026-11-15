@@ -40,7 +40,7 @@ MIN_SPEECH_S = 0.25
 MAX_SILENCE_S = 3.0
 # How long the caller speaks over the agent before it stops, once the model has called the floor
 # taken: livekit's half second was a guard against a noise, which the model's call already is, and
-# its own call comes 0.2 to 0.3 s after the caller begins.
+# its own call comes about 0.4 s after the caller begins.
 A_FLOOR_TAKE_IS_HEARD_S = 0.2
 # The least silence before the detector is asked, where the agent sets none. livekit's 0.3 s (0.5
 # for its own detector) closed the turn inside a caller's sentence: on 2026-11-07 the pauses between
@@ -60,14 +60,12 @@ def voice_session(
 ) -> Session:
     """A voice call: its three stages built, the turn taken as a phone line needs; or the realtime model it names."""
     declaration = call.declaration
-    policy = policy_for(declaration.language, declaration.turn)
+    policy = policy_for(declaration.turn)
     lookups = Lookups(call, lookup_budget_ms or VOICE_LOOKUP_MS)
     if stages.realtime is not None:
         alone, voices = _realtime_session(call, stages.realtime, stages.tts, tool_steps or TOOL_STEPS)
         line = Line(call, alone, place.melody)
-        return Session(
-            alone, voices, lookups, line, policy, running={}, place=place, medium=Medium.voice, on_ended=on_ended
-        )
+        return Session(alone, voices, lookups, line, running={}, place=place, medium=Medium.voice, on_ended=on_ended)
     thinking = providers.build_thinking(stages.llm)
     ears = providers.build_ears(stages.stt, declaration.turn, keyterms(declaration, {}), speech_detector())
     voice = providers.build_voice(stages.tts)
@@ -92,7 +90,6 @@ def voice_session(
         (thinking, ears, voice),
         lookups,
         Line(call, live, place.melody),
-        policy,
         running={Stage.llm: stages.llm, Stage.stt: stages.stt, Stage.tts: stages.tts},
         place=place,
         medium=Medium.voice,
@@ -144,9 +141,14 @@ def context_of(declaration: Declaration, ears: Ears) -> NotGivenOr[STTContextOpt
     return {"keyterms": keyterms(declaration, {})}
 
 
-# The session's ears for who speaks: the detector alone, or under the model's word while the agent speaks.
+# The session's ears for who speaks: the detector alone, or under the model's word while the agent
+# speaks. The call keeps that word, for what the ears write of the same speech (the agent's stt_node).
 def _listen_through(detector: vad.VAD, call: Call, floor: FloorModel | None) -> vad.VAD:
-    return detector if floor is None else HeardOverTheAgent(detector, floor, lambda: call.agent_speaking)
+    if floor is None:
+        return detector
+    heard = HeardOverTheAgent(detector, floor, lambda: call.agent_speaking)
+    call.said_over = heard.said
+    return heard
 
 
 # One detector per process, as livekit makes its own: each session streams to it on its own.

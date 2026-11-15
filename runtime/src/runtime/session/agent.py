@@ -13,7 +13,7 @@ from livekit.agents.voice import Agent, AgentSession, ModelSettings, SpeechHandl
 from runtime.providers.stage import Speaking, Thinking
 from runtime.session import stages
 from runtime.session.call import Call
-from runtime.session.hearing import TurnPolicy, loops
+from runtime.session.hearing import loops
 from runtime.session.line import Line
 from runtime.session.lookups import Lookups
 from runtime.session.prompt import Blocks, as_asked, request
@@ -53,7 +53,6 @@ class CallAgent(Agent):
         lookups: Lookups,
         tools: list[llm.Tool | llm.Toolset],
         line: Line,
-        policy: TurnPolicy,
         *,
         thinking: NotGivenOr[Thinking] = NOT_GIVEN,
         voice: NotGivenOr[Speaking] = NOT_GIVEN,
@@ -69,7 +68,6 @@ class CallAgent(Agent):
         self.blocks = blocks
         self.lookups = lookups
         self.line = line
-        self.policy = policy
         # Whether the agent said anything since the caller last spoke, its own words or a tool's
         # announcement: then no tool it calls is announced. Tools chained in one answer, each a
         # round of the model's, are announced once.
@@ -117,7 +115,6 @@ class CallAgent(Agent):
             self.lookups,
             list(self.tools),
             self.line,
-            self.policy,
             thinking=self.thinking if thinking is None else thinking,
             voice=self.voice if voice is None else voice,
             carry=carry,
@@ -199,16 +196,17 @@ class CallAgent(Agent):
                 self.call.agent_words.spoke(str(delta))
             yield delta
 
-    # Before the turn detector, and before livekit counts the words that interrupt: the last point
-    # to drop what is not the caller's at no cost of a model. The ears looping is never the caller;
-    # the echo the canceller left (echo.py) is caught by its words; the agreement only while the
-    # agent speaks, since after it stops "ok" is an answer. An agent that went quiet for the caller the
-    # moment they were heard taking the floor (taking_the_floor.py) has not stopped: the "vale" that
-    # paused it is still agreement, nobody's turn, and the reply goes on where it was paused.
+    # Before the turn detector, and before livekit stops the agent on a transcript: the last point to
+    # drop what is not the caller's. What they said over the agent in agreement is dropped by the
+    # model's word on their voice, never by its text (taking_the_floor.py), on a call that has the
+    # model; the ears looping is never the caller; the echo the canceller left (echo.py) is caught by
+    # its words, which are the agent's own.
     @override
     async def stt_node(self, audio: AsyncIterable[rtc.AudioFrame], model_settings: ModelSettings) -> Heard:
-        """What the ears heard, but agreement and the agent's own voice heard back."""
-        async for event in Agent.default.stt_node(self, audio, model_settings):
+        """What the ears heard, but what the model called agreement, their looping, and the agent heard back."""
+        written = Agent.default.stt_node(self, audio, model_settings)
+        said = self.call.said_over
+        async for event in written if said is None else said.only_the_callers(written):
             if not self._is_not_the_callers(event):
                 yield event
 
@@ -216,8 +214,6 @@ class CallAgent(Agent):
         text = event.alternatives[0].text if event.alternatives else ""
         call = self.call
         if loops(text):
-            return True
-        if (call.agent_speaking or call.was_spoken_over()) and self.policy.is_a_backchannel(text):
             return True
         return (call.agent_speaking or call.agent_words.just_stopped()) and call.agent_words.echoes(text)
 

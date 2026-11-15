@@ -42,7 +42,7 @@ type Part = "hear" | "start" | "stop" | "quiet" | "voicemail" | "fallbacks" | "c
 const PARTS: readonly { part: Part; title: string; about: string; fields: readonly string[] }[] = [
   { part: "hear", title: "What it hears", about: "What reaches the agent of the caller's line, before anything is decided.", fields: ["voice_isolation"] },
   { part: "start", title: "When it starts speaking", about: "How the agent decides the caller has finished.", fields: ["stt", "turn"] },
-  { part: "stop", title: "When it stops speaking", about: "What makes it stop when the caller speaks over it. Words that only agree, like “okay” or “mm-hmm”, never take its turn, and a noise lets it carry on from where it paused.", fields: ["smart_interruptions", "turn"] },
+  { part: "stop", title: "When it stops speaking", about: "What makes it stop when the caller speaks over it. A noise lets it carry on from where it paused.", fields: ["smart_interruptions", "turn"] },
   { part: "quiet", title: "When nobody talks", about: "Only counts while the agent is waiting on the caller, never while it speaks, a tool runs or a person has the line.", fields: ["silence_timeout_s", "idle"] },
   { part: "voicemail", title: "Voicemail", about: "On calls the agent places. The model decides from what it hears, so a person is never treated as a machine by a tone.", fields: ["voicemail"] },
   { part: "fallbacks", title: "Fallbacks", about: "Who takes over, in order, when the vendor a call runs on fails. Each speaks the voice Pinecall has for the language. Set here, they replace Pinecall's own.", fields: ["stt_fallbacks", "tts_fallbacks"] },

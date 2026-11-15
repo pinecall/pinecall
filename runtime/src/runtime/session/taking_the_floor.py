@@ -6,13 +6,13 @@ import dataclasses
 import importlib
 import logging
 from collections import deque
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import AsyncGenerator, AsyncIterator, Callable, Mapping, Sequence
 from pathlib import Path
-from typing import Protocol, override
+from typing import Literal, Protocol, override
 
 import numpy as np
 from livekit import rtc
-from livekit.agents import vad
+from livekit.agents import stt, vad
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +31,13 @@ logger = logging.getLogger(__name__)
 # While the agent speaks, the session is told of the caller's speech when the model calls it a
 # floor-take, or once it has lasted so long that it is no agreement whatever the model says; the
 # rest of the time the detector's events pass as they come.
+# The ears write a speech after it was said, and after the model's word on it: the "mm-hmm" the
+# session was never told of comes back as a transcript half a second later, and livekit stops the
+# agent on any transcript that arrives over it. Until 2026-11-15 a list of words per language said
+# which transcripts were agreement. A list is not what heard the speech: it did not know the "ajá"
+# the ears wrote as "Uh-huh.", and no list of any length is the caller's voice. What the ears write
+# of the caller's last speech over the agent follows the model's word on that speech (SaidOverTheAgent
+# below), as livekit holds the transcripts of an overlap for its own hosted detector.
 
 # The model's own rate, the samples it takes at a time (40 ms) and the frames it answers per chunk.
 RATE = 16_000
@@ -38,10 +45,17 @@ CHUNK = 640
 FRAME_S = 0.02
 # Its five answers per frame, in its order: two ways of agreeing, two of taking the floor, no speech.
 CONTINUER, ASSESSMENT, NEGATIVE, FLOOR_TAKE, NON_SPEECH = range(5)
-# How sure it must be, over this many frames together (100 ms): at 0.8 the murmurs measured crossed
-# 9 % of the time in English, and the interruptions 84 % within 0.3 s and 97 % within 0.6.
+# How sure it must be, and for how many frames together (200 ms). An interruption holds the model's
+# floor score near 0.9 for as long as it lasts; a murmur crosses 0.8 for an instant and falls. The
+# model is trained on English alone (its page says so), and how long it holds its word is what tells
+# the two apart in a language it never heard. Measured on the recordings of 2026-11-15's simulated
+# calls, the caller's channel replayed through the model: held for 100 ms, as it was until then, 3 of
+# 76 English murmurs and 9 of 31 Spanish ones were called a floor-take (the Spanish calls of that day
+# stopped their agent as often); held for 200 ms, 2 and 3, and every interruption called before is
+# still called (49 of 51 in English, 21 of 21 in Spanish), a median 440 ms after the caller began
+# where it was 340. Held for 300 ms, one Spanish interruption of the 21 is lost.
 TAKEN_AT = 0.8
-JUDGED_OVER = 5
+JUDGED_OVER = 10
 # Speech over the agent this long is the caller's whatever the model says: no murmur measured ran
 # past 0.9 s, and its own page uses the same backstop.
 NO_MURMUR_LASTS_S = 1.2
@@ -195,6 +209,95 @@ class Overlap:
             self.recent.append(float(frame[NEGATIVE] + frame[FLOOR_TAKE]))
 
 
+# The model's word on the caller's last speech over the agent: theirs, agreement, or none yet.
+Word = Literal["theirs", "agreement", "none yet"]
+
+
+class SaidOverTheAgent:
+    """What the ears wrote of the caller's last speech over the agent, passed on by the model's word on that speech."""
+
+    def __init__(self, agent_speaks: Callable[[], bool]) -> None:
+        """A call nobody has spoken over: what the ears write is the caller's."""
+        self.agent_speaks = agent_speaks
+        self.word: Word = "theirs"
+        # What the ears wrote of a speech the model has no word on yet, in their order.
+        self.kept: list[stt.SpeechEvent] = []
+        # What is the caller's after all, until whoever reads the ears takes it.
+        self.released: deque[stt.SpeechEvent] = deque()
+        self.judged = asyncio.Event()
+
+    def began(self) -> None:
+        """A speech began over the agent: the model has no word on it yet."""
+        self.word = "none yet"
+
+    def is_the_callers(self) -> None:
+        """The speech is the caller's: what the ears wrote of it is passed on, in their order."""
+        self.word = "theirs"
+        self._let_go(self.kept)
+
+    # The ears' own start and end of a speech are no words: they pass, so no start is left without its end.
+    def was_agreement(self) -> None:
+        """The speech ended as it began, agreement: the words the ears wrote of it are nobody's turn."""
+        self.word = "agreement"
+        self._let_go([event for event in self.kept if not carries_words(event)])
+
+    # Read between the ears and the session (the agent's stt_node). The model's word comes from the
+    # voice detector's task, sometimes after the ears' last event of the speech: what was kept is
+    # passed on as the word comes, not when the ears next write.
+    async def only_the_callers(self, written: AsyncGenerator[stt.SpeechEvent]) -> AsyncIterator[stt.SpeechEvent]:
+        """The ears' events, each once its speech has the model's word: but the words of a speech that was agreement."""
+        coming: asyncio.Task[stt.SpeechEvent | None] | None = None
+        async with contextlib.aclosing(written):
+            try:
+                while True:
+                    if coming is None:
+                        coming = asyncio.ensure_future(anext(written, None))
+                    word = asyncio.ensure_future(self.judged.wait())
+                    try:
+                        await asyncio.wait({coming, word}, return_when=asyncio.FIRST_COMPLETED)
+                    finally:
+                        word.cancel()
+                    self.judged.clear()
+                    ended = False
+                    if coming.done():
+                        event, coming = coming.result(), None
+                        ended = event is None
+                        if event is not None:
+                            self._take(event)
+                    while self.released:
+                        yield self.released.popleft()
+                    if ended:
+                        return
+            finally:
+                # The read still waiting is the ears' own: it ends before they are closed.
+                if coming is not None:
+                    coming.cancel()
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await coming
+
+    # Nothing is said over an agent that is not speaking: whatever was kept is the caller's by then.
+    def _take(self, event: stt.SpeechEvent) -> None:
+        if not self.agent_speaks():
+            self.is_the_callers()
+        if event.type is stt.SpeechEventType.RECOGNITION_USAGE:
+            self.released.append(event)
+        elif self.word == "none yet":
+            self.kept.append(event)
+        elif self.word == "theirs" or not carries_words(event):
+            self.released.append(event)
+
+    def _let_go(self, events: list[stt.SpeechEvent]) -> None:
+        self.released.extend(events)
+        self.kept.clear()
+        if self.released:
+            self.judged.set()
+
+
+def carries_words(event: stt.SpeechEvent) -> bool:
+    """Whether an event of the ears says anything the caller would have said."""
+    return bool(event.alternatives and event.alternatives[0].text.strip())
+
+
 class HeardOverTheAgent(vad.VAD):
     """The voice detector as the session hears it: over the agent, only the speech the model calls a floor-take."""
 
@@ -204,6 +307,8 @@ class HeardOverTheAgent(vad.VAD):
         self.detector = detector
         self.floor_model = model
         self.agent_speaks = agent_speaks
+        # The model's word on each speech, for whoever reads what the ears write of it.
+        self.said = SaidOverTheAgent(agent_speaks)
 
     @property
     @override
@@ -258,24 +363,33 @@ class HeardStream(vad.VADStream):
             else:
                 self.found.flush()
                 self.held = None
+                self.heard.said.is_the_callers()
         self.found.end_input()
 
     def tell(self, event: vad.VADEvent) -> list[vad.VADEvent]:
         """What the session is told of one event of the detector's: it, nothing, or the start it was not told before."""
+        said = self.heard.said
         if event.type is vad.VADEventType.START_OF_SPEECH:
             if not self.heard.agent_speaks():
+                said.is_the_callers()
                 return [event]
             self.held = event
             self.overlap.forget()
+            said.began()
             return []
         if self.held is None:
+            # Agreement was over the agent's words: once it is quiet, nothing is said over it.
+            if not self.heard.agent_speaks():
+                said.is_the_callers()
             return [event]
         if event.type is vad.VADEventType.END_OF_SPEECH:
             # It ended as it began, agreement: the session never knew of it.
             self.held = None
+            said.was_agreement()
             return []
         if self._is_the_callers_now(event):
             start, self.held = self.held, None
+            said.is_the_callers()
             return [dataclasses.replace(start, speech_duration=event.speech_duration, timestamp=event.timestamp), event]
         return [quiet(event)]
 
