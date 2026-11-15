@@ -2,7 +2,7 @@
 
 from collections.abc import Iterable
 from dataclasses import dataclass, replace
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,14 +18,21 @@ from runtime.kit.crypto import fingerprint
 from runtime.kit.time import now
 from runtime.scoping import box_wide
 
+# A person's key is a sign-in: it is kept while it is used and dies this long after its last use, so
+# the sign-ins nobody came back to do not pile up live. A server's token has the date it was made
+# with, or none.
+A_SIGN_IN_IS_KEPT = timedelta(days=30)
+
 
 class KeyExpired(Unauthorized):
-    """The key was found but is past its expiry."""
+    """The key was found but is past its expiry: a server's token past its date, or a sign-in nobody used."""
 
-    def __init__(self, at: datetime) -> None:
+    def __init__(self, at: datetime, *, a_sign_in: bool = False) -> None:
+        when = at.isoformat(timespec="seconds")
         super().__init__(
-            f"this key expired at {at.isoformat(timespec='seconds')}: it opens nothing now, "
-            "and a new one is made in the console"
+            f"this sign-in ended at {when}, {A_SIGN_IN_IS_KEPT.days} days after it was last used: sign in again"
+            if a_sign_in
+            else f"this key expired at {when}: it opens nothing now, and a new one is made in the console"
         )
 
 
@@ -99,7 +106,7 @@ async def verify_key(session: AsyncSession, secret: str) -> Verified | None:
         if key is None:
             return None
         if key.expires_at is not None and key.expires_at <= now():
-            raise KeyExpired(key.expires_at)
+            raise KeyExpired(key.expires_at, a_sign_in=key.is_a_persons)
         membership = None
         if key.subject is not None:
             membership = await MemberRepository(session).find_membership(key.subject)
@@ -108,7 +115,7 @@ async def verify_key(session: AsyncSession, secret: str) -> Verified | None:
                 return None
             if membership.org != key.org and not membership.operator:
                 return None
-        await keys.touch(key)
+        await keys.touch(key, kept=A_SIGN_IN_IS_KEPT if key.is_a_persons else None)
     return Verified(key, membership)
 
 

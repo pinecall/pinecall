@@ -162,15 +162,14 @@ async def sign_in_with_code(
 
 
 async def another_device_key(session: AsyncSession, actor: Actor, *, device: str | None = None) -> accounts.Issued:
-    """The same person's key for another device, never outliving the key that asked."""
+    """The same person's key for another device: a sign-in of its own, kept while that device uses it."""
     if actor.person is None:
         raise NotAPersons()
     membership = await accounts.find_membership(session, actor.person.id)
     # Somebody who runs the box and is visiting an org has no seat in it to sign a device in to.
     if membership is None or membership.org != actor.org or membership.status is not MemberStatus.active:
         raise Forbidden("the person this key was minted for is no longer an active member of this org")
-    parent = await accounts.get_key(session, actor.key_id)
-    return await accounts.issue_person_key(session, membership.member, parent=parent, label=device)
+    return await accounts.issue_person_key(session, membership.member, label=device)
 
 
 # A person of the box is let into any org, as an admin; anybody else only into an org of theirs. Either

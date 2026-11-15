@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 
-import { patch, put, read, type Credentials } from "@pinecall/core/api";
+import { patch, post, put, read, type Credentials } from "@pinecall/core/api";
 
 const MeSchema = z.looseObject({
   email: z.string(),
@@ -39,4 +39,9 @@ export type SignIn = z.infer<typeof SignInSchema>;
 
 export async function readSignIns(credentials: Credentials): Promise<SignIn[]> {
   return z.array(SignInSchema).parse(await read(credentials, "/v1/me/keys"));
+}
+
+/** End every other sign-in of the person's to this org; how many ended. */
+export async function signOutOthers(credentials: Credentials): Promise<number> {
+  return z.looseObject({ revoked: z.number() }).parse(await post(credentials, "/v1/me/keys/revoke", {})).revoked;
 }

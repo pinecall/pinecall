@@ -33,3 +33,9 @@ async def change_me(body: schemas.ChangeMe, seat: TheOwnSeat, cache: TheKeyCache
 async def list_sign_ins(actor: PersonKey, session: Session) -> list[schemas.SignInRow]:
     """The keys your own sign-ins to this org left, the latest used first, and which one this request came with."""
     return [schemas.SignInRow.of(one) for one in await keys.list_sign_ins(session, actor)]
+
+
+@router.post("/v1/me/keys/revoke")
+async def revoke_other_sign_ins(actor: PersonKey, cache: TheKeyCache, session: Session) -> schemas.SignInsRevoked:
+    """End every other sign-in of yours to this org, from the next request on; the one asking stays."""
+    return schemas.SignInsRevoked(revoked=await keys.revoke_other_sign_ins(session, cache, actor))

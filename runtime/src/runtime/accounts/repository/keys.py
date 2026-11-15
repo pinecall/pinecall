@@ -31,11 +31,15 @@ class ApiKeyRepository(Repository[ApiKey]):
         """Every key of the org, oldest first, the revoked ones too."""
         return await self.all(self.statement().where(ApiKey.org == org).order_by(ApiKey.created_at, ApiKey.id))
 
-    async def touch(self, key: ApiKey) -> None:
-        """Note the key was used, at most once a minute."""
-        last = key.last_used_at
-        if last is None or last < now() - timedelta(minutes=1):
-            await self.update(key, last_used_at=now())
+    async def touch(self, key: ApiKey, *, kept: timedelta | None = None) -> None:
+        """Note the key was used, at most once a minute; a key kept only while used lives that long from now."""
+        last, moment = key.last_used_at, now()
+        if last is not None and last >= moment - timedelta(minutes=1):
+            return
+        if kept is None:
+            await self.update(key, last_used_at=moment)
+        else:
+            await self.update(key, last_used_at=moment, expires_at=moment + kept)
 
     async def revoke_tree(self, hash_: str) -> list[str]:
         """Revoke the key and every copy made of it, however deep; the fingerprints stopped."""
@@ -46,9 +50,10 @@ class ApiKeyRepository(Repository[ApiKey]):
         stopped = roots.union(copies)
         return await self._revoke(ApiKey.id.in_(select(stopped.c.id)))
 
-    async def revoke_of_member(self, member_id: str) -> list[str]:
-        """Every live key minted for the member is revoked; the rows stay, the log names them. The fingerprints."""
-        return await self._revoke(ApiKey.subject == member_id)
+    async def revoke_of_member(self, member_id: str, *, keep: str | None = None) -> list[str]:
+        """Every live key minted for the member is revoked, but the one kept; the rows stay. The fingerprints."""
+        theirs = ApiKey.subject == member_id
+        return await self._revoke(theirs if keep is None else theirs & (ApiKey.id != keep))
 
     async def revoke_of_person(self, person_id: str, *, keep: str | None = None) -> list[str]:
         """Every live key of any seat of the person is revoked, but the one kept. Run box-wide by the caller."""

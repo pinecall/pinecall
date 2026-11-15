@@ -3,7 +3,10 @@
 A person has one key per device, minted when they sign in, and it acts as them: the scopes of
 their role, the org they signed into, and the environment each request names (`pinecall-env`, the
 sandbox when unsaid; production only with production access, read from their row on every
-request). A server has a token of its own, made by a person for one environment. The endpoints below mint,
+request). It is kept while it is used: minted with thirty days to live, given thirty again by each
+use, and `401 this sign-in ended at …` once thirty days pass with none, when that device signs in
+again. A server has a token of its own, made by a person for one environment, with the date it was
+made with or none. The endpoints below mint,
 list and stop both, and manage the people they belong to. Every refusal is `{"detail": "…"}` with
 its status; a key, a password or a link is in exactly one answer, the one that made it.
 
@@ -67,7 +70,9 @@ with no password (`has_password` false: they only ever signed in through Google 
 provider) is `409` and sets one through the link of a forgotten password. `GET /v1/me/keys` lists
 the live keys their own sign-ins to this org left, the latest used first, as
 `{fingerprint, label, created_at, last_used_at, current}`: `current` is the key of this request, and
-any of them is stopped with `POST /v1/keys/{fingerprint}/revoke`. The address is not changed here.
+any of them is stopped with `POST /v1/keys/{fingerprint}/revoke`. `POST /v1/me/keys/revoke` stops
+every one of them but the key that asked, `{revoked: n}`, from the next request on. The address is
+not changed here.
 
 ## Signing in — `POST /v1/login`
 
@@ -94,8 +99,9 @@ five a minute alone hold `POST /v1/login/reset` and `POST /v1/login/sso/discover
 platform's own Caddy the place is the person's address. A code is never counted, being one use and
 minted by a page already signed in, and no password door asks for a Turnstile token.
 
-A code gives a copy of the key that minted it: the same org, environment, scopes and person, dying when
-it dies, labelled `console` unless `device` says. A code is spent once and lives five minutes;
+A code gives a copy of the key that minted it: the same org, environment, scopes and person, revoked
+when it is, labelled `console` unless `device` says. A server's copy dies on its date; a person's is
+a sign-in of its own, kept its thirty days from each use. A code is spent once and lives five minutes;
 spent, dead or invented it is `404`. Every endpoint that mints a key answers the same shape, the key
 this once:
 

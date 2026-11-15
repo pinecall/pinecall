@@ -1,12 +1,16 @@
 """Keys: what an issued key opens, the scopes a role gives, and a key stopped the moment it is revoked."""
 
+from datetime import timedelta
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from runtime.accounts.repository.keys import ApiKeyRepository
 from runtime.accounts.service import actor, invitations, keys, members
 from runtime.accounts.service.key_cache import KeyCache
 from runtime.enums import ROLE_SCOPES, SERVER_SCOPES, KeyScope, Role
 from runtime.kit.crypto import fingerprint
+from runtime.kit.time import now
 from tests.conftest import Gateway, Tenant, needs_the_database, needs_the_services
 
 pytestmark = needs_the_database
@@ -104,3 +108,57 @@ async def test_a_person_reads_their_own_sign_ins_and_which_one_is_this(
     assert revoked.status_code == 200, revoked.text
     left = (await gateway.http.get("/v1/me/keys", headers=tenant.person)).json()
     assert [row["fingerprint"] for row in left] == [fingerprint(tenant.person_key)]
+
+
+async def test_a_sign_in_is_kept_a_month_from_its_last_use_and_a_servers_token_has_no_date(
+    sessions: async_sessionmaker[AsyncSession], tenant: Tenant
+) -> None:
+    """A person's key is minted a month out and each use gives it a month again; unused past it, it opens nothing."""
+    month = actor.A_SIGN_IN_IS_KEPT
+    async with sessions.begin() as session:
+        seat = await members.get_member(session, tenant.org, tenant.member)
+        issued = await keys.issue_person_key(session, seat.member, label="a browser")
+        assert issued.row.expires_at is not None
+        assert month - timedelta(minutes=1) < issued.row.expires_at - now() <= month
+        server = await actor.verify_key(session, tenant.server_key)
+        assert server is not None and server.key.expires_at is None
+    async with sessions.begin() as session:
+        key = await ApiKeyRepository(session).find(issued.row.id)
+        assert key is not None
+        await ApiKeyRepository(session).update(
+            key, last_used_at=now() - timedelta(days=29), expires_at=now() + timedelta(days=1)
+        )
+    async with sessions.begin() as session:
+        used = await actor.verify_key(session, issued.secret)
+        assert used is not None and used.key.expires_at is not None
+        assert month - timedelta(minutes=1) < used.key.expires_at - now() <= month
+        await ApiKeyRepository(session).update(used.key, expires_at=now() - timedelta(seconds=1))
+    async with sessions.begin() as session:
+        with pytest.raises(
+            actor.KeyExpired, match=r"this sign-in ended at .*30 days after it was last used: sign in again"
+        ):
+            await actor.verify_key(session, issued.secret)
+        mine = await keys.list_sign_ins(session, actor.actor_of(used, used.key.env))
+        assert issued.row.hash not in {one.fingerprint for one in mine}
+
+
+@needs_the_services
+async def test_a_person_ends_every_other_sign_in_of_theirs_and_keeps_the_one_asking(
+    gateway: Gateway, sessions: async_sessionmaker[AsyncSession], tenant: Tenant
+) -> None:
+    """POST /v1/me/keys/revoke stops the person's other keys at once; this one and the org's server go on."""
+    async with sessions.begin() as session:
+        seat = await members.get_member(session, tenant.org, tenant.member)
+        phone = await keys.issue_person_key(session, seat.member, label="a phone")
+        browser = await keys.issue_person_key(session, seat.member, label="a browser")
+    theirs = {"Authorization": f"Bearer {phone.secret}"}
+    assert (await gateway.http.get("/v1/me", headers=theirs)).status_code == 200
+    ended = await gateway.http.post("/v1/me/keys/revoke", headers=tenant.person)
+    assert ended.status_code == 200, ended.text
+    assert ended.json() == {"revoked": 2}
+    assert (await gateway.http.get("/v1/me", headers=theirs)).status_code == 401
+    assert (await gateway.http.get("/v1/me", headers={"Authorization": f"Bearer {browser.secret}"})).status_code == 401
+    left = (await gateway.http.get("/v1/me/keys", headers=tenant.person)).json()
+    assert [row["fingerprint"] for row in left] == [fingerprint(tenant.person_key)]
+    assert (await gateway.http.get("/v1/agents", headers=tenant.server)).status_code == 200
+    assert (await gateway.http.post("/v1/me/keys/revoke", headers=tenant.person)).json() == {"revoked": 0}

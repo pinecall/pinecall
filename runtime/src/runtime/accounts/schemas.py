@@ -85,6 +85,12 @@ class SignInRow(Row):
     current: bool
 
 
+class SignInsRevoked(Row):
+    """POST /v1/me/keys/revoke: how many of your other sign-ins to this org ended."""
+
+    revoked: int
+
+
 class ChangeMember(Schema):
     """PATCH /v1/members/{id}: what is named changes, what is left out stays."""
 

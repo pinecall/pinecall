@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **A sign-in dies thirty days after its last use.** Every sign-in mints a key for its person and
+  none had a date, so each one opened the org for ever: production held 314 live ones for 17 people,
+  204 of them unused for a month. A person's key is now minted with thirty days to live and given
+  thirty again by each use (`A_SIGN_IN_IS_KEPT`, `accounts/service/actor.py`); unused past them it is
+  `401 this sign-in ended at …` and the device signs in again. Migration `000028` gives the keys there
+  are the date of their last use, so the ones nobody came back to expire with it. A server's token
+  is untouched. `POST /v1/me/keys/revoke` ends every other sign-in of the person's to the org, and
+  the console's User settings lists the sign-ins by device with that button.
 - **The floor model must hold its word for 200 ms, where it was 100.** The model is trained on
   English alone, and on a Spanish call it took a murmur for a floor-take three times in ten. An
   interruption holds its floor score near 0.9 for as long as it lasts, in either language; a murmur

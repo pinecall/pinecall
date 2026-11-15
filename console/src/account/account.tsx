@@ -8,12 +8,12 @@ import { discovered } from "@pinecall/core/the-floor";
 import { ConfirmButton } from "../apps/confirm";
 import { revokeKey } from "../settings/door";
 import { ago } from "../lib/format";
-import { API_BASE } from "../lib/key";
+import { API_BASE, DEVICE } from "../lib/key";
 import { useOrg } from "../lib/org";
 import { Icon, type IconName } from "../shell/icons";
 import { PageHead } from "../shell/page-head";
 import { Field } from "../ui/setting";
-import { changePassword, readMe, readSignIns, rename, type Me, type SignIn } from "./door";
+import { changePassword, readMe, readSignIns, rename, signOutOthers, type Me, type SignIn } from "./door";
 import "../dashboard/dashboard.css";
 import "../configure/configure.css";
 import "../test/test.css";
@@ -140,22 +140,79 @@ function Password({ me, onChanged }: { me: Me; onChanged: () => void }): ReactNo
   );
 }
 
-function SignIns({ signIns, onRevoke }: { signIns: readonly SignIn[] | null; onRevoke: (fingerprint: string) => void }): ReactNode {
+/** The sign-ins one device name left, the latest used first. */
+interface Device {
+  name: string;
+  signIns: SignIn[];
+}
+
+/** One row per device name, in the order of the list: the device used last comes first. */
+function byDevice(signIns: readonly SignIn[]): Device[] {
+  const devices = new Map<string, SignIn[]>();
+  for (const one of signIns) {
+    const name = one.label === null ? "A sign-in" : one.label === DEVICE ? "A browser" : one.label;
+    devices.set(name, [...(devices.get(name) ?? []), one]);
+  }
+  return [...devices].map(([name, theirs]) => ({ name, signIns: theirs }));
+}
+
+const used = (one: SignIn): string => (one.last_used_at === null ? "Never used" : `Used ${ago(at(one.last_used_at))}`);
+
+function SignInRow({ name, one, inner, onRevoke }: { name: string; one: SignIn; inner: boolean; onRevoke: (fingerprint: string) => void }): ReactNode {
   return (
-    <Card icon="server" title="Where you are signed in" about="Each sign-in to this organization: a browser, the CLI, a phone. Sign one out and that device asks you again." tone="set-tone-good">
-      {signIns === null && <p className="dash-quiet tst-none">Reading…</p>}
-      {(signIns ?? []).map((one) => (
-        <div key={one.fingerprint} className="tst-row set-row">
-          <span className="tst-row-words">
-            <span className="tst-row-name">
-              <span className="dash-clip">{one.label ?? "A sign-in"}</span>
-              {one.current && <span className="tst-tag">This device</span>}
-            </span>
-            <span className="tst-row-under dash-clip">Signed in {ago(at(one.created_at))}</span>
+    <div className={`tst-row set-row${inner ? " set-row-inner" : ""}`}>
+      <span className="tst-row-words">
+        <span className="tst-row-name">
+          <span className="dash-clip">{name}</span>
+          {one.current && <span className="tst-tag">This device</span>}
+        </span>
+        {!inner && <span className="tst-row-under dash-clip">Signed in {ago(at(one.created_at))}</span>}
+      </span>
+      <span className="tst-row-when">{used(one)}</span>
+      {!one.current && <ConfirmButton label="Sign out" asks="Sign it out?" danger onConfirm={() => onRevoke(one.fingerprint)} />}
+    </div>
+  );
+}
+
+function DeviceRows({ device, onRevoke }: { device: Device; onRevoke: (fingerprint: string) => void }): ReactNode {
+  const [latest] = device.signIns;
+  if (latest === undefined) return null;
+  if (device.signIns.length === 1) return <SignInRow name={device.name} one={latest} inner={false} onRevoke={onRevoke} />;
+  return (
+    <details className="acc-device">
+      <summary className="tst-row set-row">
+        <span className="tst-row-words">
+          <span className="tst-row-name">
+            <span className="dash-clip">{device.name}</span>
+            {device.signIns.some((one) => one.current) && <span className="tst-tag">This device</span>}
           </span>
-          <span className="tst-row-when">{one.last_used_at === null ? "Never used" : `Used ${ago(at(one.last_used_at))}`}</span>
-          {!one.current && <ConfirmButton label="Sign out" asks="Sign it out?" danger onConfirm={() => onRevoke(one.fingerprint)} />}
+          <span className="tst-row-under dash-clip">Signed in {device.signIns.length} times</span>
+        </span>
+        <span className="tst-row-when">{used(latest)}</span>
+        <span className="acc-fold" aria-hidden="true" />
+      </summary>
+      {device.signIns.map((one) => (
+        <SignInRow key={one.fingerprint} name={`Signed in ${ago(at(one.created_at))}`} one={one} inner onRevoke={onRevoke} />
+      ))}
+    </details>
+  );
+}
+
+function SignIns({ signIns, onRevoke, onRevokeOthers }: { signIns: readonly SignIn[] | null; onRevoke: (fingerprint: string) => void; onRevokeOthers: () => void }): ReactNode {
+  const others = (signIns ?? []).filter((one) => !one.current).length;
+  return (
+    <Card icon="server" title="Where you are signed in" about="Each device signed in to this organization as you: a browser, the CLI, a phone. One that goes 30 days without being used is signed out by itself." tone="set-tone-good">
+      {signIns === null && <p className="dash-quiet tst-none">Reading…</p>}
+      {others > 0 && (
+        <div className="acc-others">
+          <span className="acc-note">
+            {others === 1 ? "1 other sign-in" : `${others} other sign-ins`} besides this one.
+          </span>
+          <ConfirmButton label="Sign out everywhere else" asks="Sign them all out?" danger onConfirm={onRevokeOthers} />
         </div>
+      )}
+      {byDevice(signIns ?? []).map((device) => (
+        <DeviceRows key={device.name} device={device} onRevoke={onRevoke} />
       ))}
     </Card>
   );
@@ -178,6 +235,10 @@ export function AccountPage(): ReactNode {
     setRefused(null);
     revokeKey(credentials, fingerprint).then(rereadSignIns, (failed: unknown) => (setRefused(saidBy(failed)), rereadSignIns()));
   };
+  const revokeOthers = (): void => {
+    setRefused(null);
+    signOutOthers(credentials).then(rereadSignIns, (failed: unknown) => (setRefused(saidBy(failed)), rereadSignIns()));
+  };
 
   return (
     <>
@@ -192,7 +253,7 @@ export function AccountPage(): ReactNode {
           <>
             <Profile me={me} onRenamed={(renamed) => (setMe(renamed), rereadWhose())} />
             <Password me={me} onChanged={rereadSignIns} />
-            <SignIns signIns={signIns} onRevoke={revoke} />
+            <SignIns signIns={signIns} onRevoke={revoke} onRevokeOthers={revokeOthers} />
           </>
         )}
       </div>

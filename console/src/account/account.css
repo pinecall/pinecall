@@ -6,4 +6,11 @@
 .acc-foot { display: flex; grid-column: 1 / -1; align-items: center; gap: 12px; min-height: 28px; }
 .acc-done { color: var(--good); font-size: 13px; }
 .acc-note { padding: 4px 2px; color: var(--quiet); font-size: 13px; line-height: 1.5; }
+/* The sign-ins, a row per device: one signed in several times opens into its sign-ins. */
+.acc-others { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.acc-device > .tst-row { margin-top: 6px; }
+.acc-device > summary { cursor: pointer; list-style: none; }
+.acc-device > summary::-webkit-details-marker { display: none; }
+.acc-fold::after { content: "Show"; color: var(--quiet); font-size: 12.5px; font-weight: 500; }
+.acc-device[open] .acc-fold::after { content: "Hide"; }
 @media (max-width: 760px) { .acc-form { grid-template-columns: minmax(0, 1fr); } }

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from runtime.accounts.models import ApiKey, Member, Person
 from runtime.accounts.repository.keys import ApiKeyRepository
 from runtime.accounts.repository.members import MemberRepository
+from runtime.accounts.service.actor import A_SIGN_IN_IS_KEPT
 from runtime.accounts.service.key_cache import KeyCache
 from runtime.actor import Actor
 from runtime.actor import Person as PersonBehind
@@ -145,6 +146,8 @@ class SignIn:
 async def issue_key(session: AsyncSession, issue: Issue) -> Issued:
     """Mint a key: the row keeps its fingerprint, the secret is handed back this once."""
     secret = f"{KEY_PREFIX[issue.env]}{random_token(KEY_BYTES)}"
+    # A key minted for a person is a sign-in, whatever it was copied from: its date is its last use's.
+    expires_at = issue.expires_at if issue.subject is None else now() + A_SIGN_IN_IS_KEPT
     key = ApiKey(
         id=random_id(ID_PREFIX),
         hash=fingerprint(secret),
@@ -155,17 +158,15 @@ async def issue_key(session: AsyncSession, issue: Issue) -> Issued:
         subject=issue.subject,
         name=issue.name,
         created_by=issue.created_by,
-        expires_at=issue.expires_at,
+        expires_at=expires_at,
         parent=issue.parent,
     )
     await ApiKeyRepository(session).add(key)
     return Issued(key, secret)
 
 
-async def issue_person_key(
-    session: AsyncSession, member: Member, *, parent: ApiKey | None = None, label: str | None = None
-) -> Issued:
-    """A person's key: the role's scopes, both envs, never outliving the key it came from."""
+async def issue_person_key(session: AsyncSession, member: Member, *, label: str | None = None) -> Issued:
+    """A person's key: the role's scopes, both envs, kept for as long as it goes on being used."""
     return await issue_key(
         session,
         Issue(
@@ -176,7 +177,6 @@ async def issue_person_key(
             subject=member.id,
             name=member.name,
             created_by=member.id,
-            expires_at=None if parent is None else parent.expires_at,
         ),
     )
 
@@ -273,6 +273,15 @@ async def revoke_member_keys(session: AsyncSession, cache: KeyCache, member_id: 
     """Every live key minted for the member is revoked, and the member forgotten by every gateway."""
     await ApiKeyRepository(session).revoke_of_member(member_id)
     cache.forget_after_commit(session, subject=member_id)
+
+
+async def revoke_other_sign_ins(session: AsyncSession, cache: KeyCache, actor: Actor) -> int:
+    """Every sign-in of the actor's to this org ends but the one asking; how many ended, none for a server's token."""
+    if actor.person is None:
+        return 0
+    stopped = await ApiKeyRepository(session).revoke_of_member(actor.person.id, keep=actor.key_id)
+    _forget(session, cache, stopped)
+    return len(stopped)
 
 
 # A key keeps the name of who it was minted for, as the org's list of keys shows it.
