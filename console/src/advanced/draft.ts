@@ -19,6 +19,7 @@ export interface Draft {
   ttsFallbacks: readonly string[];
   minutes: string;
   record: boolean;
+  voiceIsolation: boolean;
   llmTimeout: string;
 }
 
@@ -48,6 +49,7 @@ export function draftOf(config: TuningBody): Draft {
     ttsFallbacks: config.tts_fallbacks ?? [],
     minutes: config.max_duration_s == null ? "" : String(config.max_duration_s / 60),
     record: config.record ?? true,
+    voiceIsolation: config.voice_isolation ?? true,
     llmTimeout: shown(config.llm_timeout_s),
   };
 }
@@ -102,5 +104,6 @@ export function bodyOf(config: TuningBody, draft: Draft, was: Draft): TuningBody
   const minutes = number(draft.minutes);
   put("max_duration_s", minutes === null ? null : Math.round(minutes * 60));
   if (draft.record !== was.record) next.record = draft.record;
+  if (draft.voiceIsolation !== was.voiceIsolation) next.voice_isolation = draft.voiceIsolation;
   return next;
 }

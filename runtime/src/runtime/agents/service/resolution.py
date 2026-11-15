@@ -45,6 +45,11 @@ def resolve(
         turn=keep("turn", declaration.turn, settings.turn),
         memory=keep("memory", declaration.memory, settings.memory),
         record=keep("record", declaration.record, declaration.record if settings.record is None else settings.record),
+        voice_isolation=keep(
+            "voice_isolation",
+            declaration.voice_isolation,
+            declaration.voice_isolation if settings.voice_isolation is None else settings.voice_isolation,
+        ),
         max_duration_s=keep(
             "max_duration_s",
             declaration.max_duration_s,

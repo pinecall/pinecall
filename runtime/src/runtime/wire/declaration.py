@@ -266,6 +266,9 @@ class AgentConfig(WireModel):
     hangup: HangupConfig | None = None
     # Sent as null, a setting is the org's settings' again; `uses_knowledge` null is false.
     record: bool | None = True
+    # Whether a spoken call's audio goes through the model that takes down the voices far from the
+    # caller's microphone (a television, a colleague), where the box has it. Unset, it does.
+    voice_isolation: bool | None = None
     # The longest a voice call runs, in seconds (0 for no limit), and how long a turn waits for the model's first word.
     max_duration_s: int | None = None
     llm_timeout_s: float | None = None

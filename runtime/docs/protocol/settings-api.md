@@ -86,7 +86,7 @@ model's server among them through `judge_options` `{"base_url": …}`, its evals
 `{reply}`, an empty reply the model opening on its prompt alone, and `allow_interruptions`, false
 unless set), `hangup {when}`, `turn {min_interruption_words, endpointing_ms, eot_threshold,
 eager_eot_threshold, min_interruption_ms}` (the last is how long the caller must speak over the
-agent before it stops; unset, livekit's own half second), `memory {remember, forget}`, `record`, `max_duration_s` (voice calls; `0` is
+agent before it stops; unset, livekit's own half second), `memory {remember, forget}`, `record`, `voice_isolation` (whether a spoken call's audio goes through the model that takes down the voices far from the caller's microphone, on a runtime that has it: on unless `false`), `max_duration_s` (voice calls; `0` is
 no limit), `llm_timeout_s` (how long a turn waits for the model's first word, livekit's retries
 included; past it the caller hears a short sentence asking them to say it again, in the agent's
 language (Spanish, English, Portuguese; English otherwise), and the call's log says `error {code:

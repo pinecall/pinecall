@@ -194,6 +194,8 @@ class AgentConfig(WireModel):
     memory: MemoryConfig | None = None
     hangup: HangupConfig | None = None
     record: bool = True
+    # Whether a spoken call goes through the model that takes down far voices; unset, it does.
+    voice_isolation: bool | None = None
     # The longest a voice call runs, in seconds (0: no limit); how long a turn waits for the model.
     max_duration_s: int | None = None
     llm_timeout_s: float | None = None

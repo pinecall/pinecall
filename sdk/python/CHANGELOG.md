@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- A class may declare `voice_isolation` (on unless `False`): whether a spoken call goes through the runtime's model that takes down the voices far from the caller.
+
 ## 0.11.39 — a terminal signs in again, a phone put down ends its call, and the console's call list is one row per call (2026-11-13)
 
 - Released with the runtime: nothing of this package changed.

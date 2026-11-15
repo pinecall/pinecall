@@ -58,6 +58,9 @@ class AgentSettings:
     turn: Turn | None = None
     memory: MemoryPolicy | None = None
     record: bool | None = None
+    # Whether a spoken call's audio goes through the model that takes down the voices far from the
+    # caller's microphone; unset, it does.
+    voice_isolation: bool | None = None
     max_duration_s: int | None = None
     llm_timeout_s: float | None = None
     knowledge: str | None = None

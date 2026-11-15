@@ -276,6 +276,8 @@ export const AgentConfigSchema = z.strictObject({
   memory: MemoryConfigSchema.nullish(),
   hangup: HangupConfigSchema.nullish(),
   record: z.boolean().nullish(),
+  /** Whether a spoken call's audio goes through the model that takes down the voices far from the caller's microphone, on a runtime that has it; unset, it does. */
+  voice_isolation: z.boolean().nullish(),
   /** The longest a voice call runs, in seconds (0 for no limit), and how long a turn waits for the model's first word. */
   max_duration_s: z.int().nullish(),
   llm_timeout_s: z.number().nullish(),

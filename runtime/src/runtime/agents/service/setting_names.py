@@ -65,6 +65,7 @@ SETTINGS: tuple[SettingNames, ...] = (
     SettingNames("hangup", "hangup", ("hangup",)),
     SettingNames("memory", "memory", ("memory",), words=True),
     SettingNames("record", "record", ("record",)),
+    SettingNames("voice_isolation", "voice_isolation", ("voice_isolation",), in_a_test=("voice_isolation",)),
     SettingNames("max_duration_s", "max_duration_s", ("max_duration_s",)),
     SettingNames("llm_timeout_s", "llm_timeout_s", ("llm_timeout_s",)),
     SettingNames("silence_timeout_s", "silence_timeout_s", ("silence_timeout_s",)),
@@ -98,7 +99,8 @@ JUDGE_FIELDS: tuple[str, ...] = next(one.set_by for one in SETTINGS if one.name 
 # A `words` key sets the opening's words, what is remembered and the knowledge; the rest is the pipeline's.
 WORDS_FIELDS: frozenset[str] = frozenset(name for one in SETTINGS if one.words for name in one.set_by)
 PIPELINE_ONLY: tuple[str, ...] = tuple(name for name in FIELDS if name not in WORDS_FIELDS)
-# What a test room may change for its own call: the voice, the models and the language they run in.
+# What a test room may change for its own call: the voice, the models, the language they run in, and
+# whether the room behind the caller is taken down by the model.
 TEST_FIELDS: frozenset[str] = frozenset(name for one in SETTINGS for name in one.in_a_test)
 
 

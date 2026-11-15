@@ -274,6 +274,7 @@ VALUE_OF: Mapping[str, Callable[[wire.AgentConfig], object]] = {
     "docs": _bases_of,
     "memory": lambda sent: _memory_of(sent.memory),
     "record": lambda sent: sent.record,
+    "voice_isolation": lambda sent: sent.voice_isolation,
     "max_duration_s": lambda sent: sent.max_duration_s,
     "llm_timeout_s": lambda sent: sent.llm_timeout_s,
     "silence_timeout_s": lambda sent: sent.silence_timeout_s,

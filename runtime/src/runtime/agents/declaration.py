@@ -180,6 +180,8 @@ class Declaration:
     memory: MemoryPolicy | None = None
     hangup: Hangup | None = None
     record: bool = True
+    # Whether a spoken call's audio goes through the model that takes down far voices, where the box has it.
+    voice_isolation: bool = True
     max_duration_s: int = LONGEST_VOICE_CALL_S
     llm_timeout_s: float | None = None
     silence_timeout_s: int | None = None

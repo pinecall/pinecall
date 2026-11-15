@@ -418,9 +418,12 @@ class Session:
     def room_options(self) -> RoomOptions:
         """How livekit takes the room: the one participant heard, its audio, and who leaving ends it."""
         spoken = is_spoken(self.live, self.built)
+        # The model is the agent's own setting (`voice_isolation`, on unless said) on a box that has
+        # it; the level that mutes what is far under the caller is read either way.
+        model = self.far_voices if spoken and self.call.declaration.voice_isolation else None
         nearest = NearestVoice(
             caller_has_the_floor=lambda: not self.call.agent_speaking,
-            far_voices=None if self.far_voices is None or not spoken else self.far_voices.open_stream(),
+            far_voices=None if model is None else model.open_stream(),
         )
         return RoomOptions(
             participant_identity=or_not_given(self.participant),

@@ -237,7 +237,7 @@ def check_test_values(body: Mapping[str, Any] | None, *, env: Env) -> dict[str, 
     stray = sorted(set(body) - TEST_FIELDS)
     if stray:
         raise ValidationError(
-            f"a test room changes only the voice and the models, so {', '.join(stray)} "
+            f"a test room changes only the voice, the models and the voice isolation, so {', '.join(stray)} "
             f"{'is' if len(stray) == 1 else 'are'} not its to set"
         )
     for name, value in body.items():
@@ -298,5 +298,8 @@ def _check_test_kind(name: str, value: object) -> None:
     elif name == "end_of_turn":
         if value not in END_OF_TURNS:
             raise ValidationError(f"a test room's {name} is one of {', '.join(END_OF_TURNS)}")
+    elif name == "voice_isolation":
+        if not isinstance(value, bool):
+            raise ValidationError(f"a test room's {name} is true or false")
     elif not isinstance(value, str):
         raise ValidationError(f"a test room's {name} is text")

@@ -13,7 +13,7 @@ import { PageHead } from "../shell/page-head";
 import { Board } from "./board";
 import { CheckCall } from "./check";
 import { Composer, type Typical } from "./composer";
-import { readRuns, setupKey, standingOf, type PersonaRun, type Standing } from "./door";
+import { readRuns, setupKey, setupUnder, standingOf, type PersonaRun, type Standing } from "./door";
 import { ResultsPanel, useWatched, WatchActions, WatchBody } from "./watch";
 import "../dashboard/dashboard.css";
 import "../apps/apps.css";
@@ -84,7 +84,9 @@ function CallerMark({ run }: { run: PersonaRun }): ReactNode {
 
 function RunRow({ run }: { run: PersonaRun }): ReactNode {
   const standing = standingOf(run);
-  const under = standing === "live" ? "on the line now" : [ago(run.started_at), lengthOf(run.started_at, run.ended_at), run.score !== null && run.score.judged > 0 ? `${run.score.held}/${run.score.judged} held` : null].filter((part) => part !== null).join(" · ");
+  // What the call ran on over the agent's settings, when anything: "voice isolation off" tells two runs of one caller apart.
+  const ranOn = run.against == null || setupUnder(run.against) === "" ? null : setupUnder(run.against);
+  const under = standing === "live" ? "on the line now" : [ago(run.started_at), lengthOf(run.started_at, run.ended_at), run.score !== null && run.score.judged > 0 ? `${run.score.held}/${run.score.judged} held` : null, ranOn].filter((part) => part !== null).join(" · ");
   return (
     <NavLink to={`${HOME}/${run.call}`} className={rowClass}>
       <CallerMark run={run} />

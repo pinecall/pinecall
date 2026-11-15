@@ -18,6 +18,12 @@
   under it is silent but for the words it said before the caller's first, 12 dB under it still
   passes in part; the caller's words transcribe the same. It costs about 0.7 ms of one core for
   each 10 ms of a line that carries a room, and the audio reaches the ears 10 ms later.
+- **The model is a setting of the agent, and a simulation runs with it or without.** `voice_isolation`
+  (on unless `false`): in the class (`voiceIsolation` in TypeScript), in the settings
+  (`PUT /v1/agents/{slug}/settings`, the console's Advanced, under "When it stops speaking"), and
+  among what a test room may change for one call, so `POST /v1/simulations` takes
+  `against {voice_isolation}` in the sandbox and the console's form places the same caller with the
+  model, without it, or as the agent is set. Off, a call is told from its room by level alone.
 - **A simulated caller's television is a television.** It was the caller's own vendor reading a
   paragraph, in Spanish, turned down: one clean voice, which to a microphone is a second person
   speaking quietly into the phone, and nothing that hears a room can tell that from the caller. It

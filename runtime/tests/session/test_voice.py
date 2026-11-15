@@ -1,6 +1,6 @@
 """Tests for a session opened for a spoken call: the pipeline, the turn options, the keyterms."""
 
-from typing import override
+from typing import cast, override
 
 import pytest
 from livekit.agents.voice import AgentSession
@@ -11,7 +11,9 @@ from runtime.calls.log.store import Store
 from runtime.kit.text import JsonObject
 from runtime.providers.service.stages import LLMWithRequest
 from runtime.session.commands import apply
+from runtime.session.far_voices import FarVoices, FarVoicesModel
 from runtime.session.hearing import FALSE_INTERRUPTION_TIMEOUT_S, MIN_WORDS, keyterms
+from runtime.session.nearest_voice import NearestVoice
 from runtime.session.session import Place, Session
 from runtime.session.stages import is_spoken
 from runtime.session.voice import SILENCE_S
@@ -260,3 +262,39 @@ async def test_a_release_gives_the_ears_back_first_and_then_the_voice(box: Box, 
     await session.end("caller_hung_up", "caller")
     assert switched[:2] == ["ears", "voice"]
     assert "supervisor.released" in await kinds(store, call)
+
+
+class AModel:
+    """A far-voices model that opens a stream and counts them."""
+
+    def __init__(self) -> None:
+        """No stream opened yet."""
+        self.opened = 0
+
+    def open_stream(self) -> FarVoices:
+        self.opened += 1
+        return FarVoices(cast(FarVoicesModel, self))
+
+
+def heard_through(session: Session) -> NearestVoice:
+    """What the session hands livekit to hear the caller through."""
+    audio = session.room_options().audio_input
+    assert not isinstance(audio, bool) and audio is not None
+    gate = getattr(audio, "noise_cancellation", None)
+    assert isinstance(gate, NearestVoice)
+    return gate
+
+
+@needs_the_database
+async def test_a_spoken_call_goes_through_the_model_unless_its_agent_says_not_to(box: Box) -> None:
+    """On a box that has the model a call opens a stream of it; `voice_isolation` false leaves the level alone."""
+    model = AModel()
+    isolated = spoken_call(box, NOBODY)
+    isolated.far_voices = cast(FarVoicesModel, model)
+    assert heard_through(isolated).far_voices is not None
+    plain = spoken_call(box, Declaration(slug="clinica-norte", voice_isolation=False))
+    plain.far_voices = cast(FarVoicesModel, model)
+    assert heard_through(plain).far_voices is None
+    assert model.opened == 1
+    # A box with no model: the level alone, whatever the agent says.
+    assert heard_through(spoken_call(box, NOBODY)).far_voices is None

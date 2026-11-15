@@ -13,7 +13,7 @@ module Pinecall
       AS_WRITTEN = %i[phone whatsapp web channel_rules].freeze
 
       # The settings a class may declare. Must match the TypeScript package's `ENVIRONMENT`.
-      ENVIRONMENT = %i[language timezone voice llm realtime stt judge greeting hangup turn says hears knowledge docs memory record judges
+      ENVIRONMENT = %i[language timezone voice llm realtime stt judge greeting hangup turn says hears knowledge docs memory record voice_isolation judges
                        personas widget idle voicemail stt_fallbacks tts_fallbacks bases monitors].freeze
 
       # The ones written as the wire's own fields, keyword by keyword: `docs base: "…"`, `judges on: [...]`.
@@ -143,7 +143,7 @@ module Pinecall
         end
 
         # `language "es"`, `says [{ word: "GSA", spoken: "ge ese a" }]`, `record false`, `bases [{ base: "faq" }, { base: "prices" }]`.
-        %i[language timezone says record bases monitors].each do |field|
+        %i[language timezone says record voice_isolation bases monitors].each do |field|
           define_method(field) do |value = NOTHING|
             return environment[field] if value.equal?(NOTHING)
 

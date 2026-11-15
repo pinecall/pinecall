@@ -4,6 +4,10 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## Unreleased
+
+- A class may declare `voice_isolation` (on unless `false`): whether a spoken call goes through the runtime's model that takes down the voices far from the caller.
+
 ## [0.11.39] — a terminal signs in again, a phone put down ends its call, and the console's call list is one row per call (2026-11-13)
 
 - Released with the runtime: nothing of this package changed.

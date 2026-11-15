@@ -27,6 +27,8 @@ export interface Wanted {
   packet_loss?: number;
   /** Spoken alone: what plays behind the caller; the persona's own when left out. */
   ambience?: Ambience;
+  /** The sandbox's alone: what the agent runs on for this call over its settings (here, with or without voice isolation). */
+  against?: AgentValues;
 }
 
 const StartedSchema = z.strictObject({ call: z.string(), voice: z.boolean() });
@@ -125,7 +127,7 @@ export async function readLimits(credentials: Credentials): Promise<Limits> {
 }
 
 /** What a comparison is placed with: one simulation's wants, more callers beside the first, and the agent's values for each column. */
-export interface Compared extends Wanted {
+export interface Compared extends Omit<Wanted, "against"> {
   more_personas: string[];
   against: AgentValues[];
   /** How many times each caller rings under each setup. */
@@ -157,7 +159,8 @@ export function setupName(against: AgentValues): string {
 
 /** What a column changes beside its name, in a line: `hears nova-3 · speaks sonic-2`; empty when nothing. */
 export function setupUnder(against: AgentValues): string {
-  const parts = [against.llm === undefined ? null : against.stt === undefined ? null : `hears ${modelOf(against.stt)}`, against.llm === undefined ? null : against.tts === undefined ? null : `speaks ${modelOf(against.tts)}`, against.voice === undefined ? null : `voice ${against.voice}`];
+  const isolation = against.voice_isolation === undefined ? null : against.voice_isolation ? "voice isolation on" : "voice isolation off";
+  const parts = [isolation, against.llm === undefined ? null : against.stt === undefined ? null : `hears ${modelOf(against.stt)}`, against.llm === undefined ? null : against.tts === undefined ? null : `speaks ${modelOf(against.tts)}`, against.voice === undefined ? null : `voice ${against.voice}`];
   return parts.filter((part) => part !== null).join(" · ");
 }
 

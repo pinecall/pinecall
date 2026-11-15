@@ -53,6 +53,8 @@ export interface AgentDeclaration {
   memory?: Declared["memory"];
   /** Whether the calls keep their audio. */
   record?: Declared["record"];
+  /** Whether a spoken call's audio goes through the model that takes down the voices far from the caller (a television, a colleague); on unless `false`. */
+  voiceIsolation?: Declared["voiceIsolation"];
   /** The longest a voice call runs, in minutes (1 to 60), or `"off"` for no limit. */
   maxDuration?: number | "off";
   /** How long a turn waits for the model's first word, in seconds. */
@@ -90,7 +92,7 @@ type Field = keyof AgentDeclaration;
 // Written out so a name nobody declared is told from one: a type's keys are gone once compiled.
 const FIELDS: ReadonlySet<string> = new Set<Field>([
   "doc", "slug", "stt", "llm", "voice", "realtime", "judge", "language", "timezone", "greeting", "hangup", "turn", "says", "hears",
-  "knowledge", "docs", "bases", "monitors", "memory", "record", "maxDuration", "llmTimeout", "silenceTimeout", "idle",
+  "knowledge", "docs", "bases", "monitors", "memory", "record", "voiceIsolation", "maxDuration", "llmTimeout", "silenceTimeout", "idle",
   "voicemail", "sttFallbacks", "ttsFallbacks", "judges", "personas", "hold", "scenes", "widget", "takes", "tasks", "events",
   "visibility",
 ]);

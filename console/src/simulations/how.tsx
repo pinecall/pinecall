@@ -1,4 +1,4 @@
-/** How a caller calls: typed, spoken or spoken over a room, for how many turns; and what that asks of the door. */
+/** How a caller calls: typed, spoken or spoken over a room, for how many turns, with the agent's voice isolation or its opposite; and what that asks of the door. */
 
 import type { ReactNode } from "react";
 
@@ -27,9 +27,19 @@ const LENGTHS: readonly { turns: number; name: string }[] = [
   { turns: 30, name: "Long" },
 ];
 
+// Whether the agent's audio goes through the model that takes down far voices, for this call alone: the same caller with it and without.
+const ISOLATIONS: readonly { value: Isolation; name: string }[] = [
+  { value: "own", name: "Agent's setting" },
+  { value: "on", name: "On" },
+  { value: "off", name: "Off" },
+];
+
 // The room's level is dB under the caller's voice: fewer is louder. The slider reads the other way, as a volume does.
 const FAINTEST_DB = 30;
 const LOUDEST_DB = 5;
+
+/** The agent's own setting, or the model on or off for this call whatever the setting says. */
+export type Isolation = "own" | "on" | "off";
 
 export interface How {
   line: Line;
@@ -38,14 +48,17 @@ export interface How {
   /** Packets lost, percent. */
   loss: number;
   turns: number;
+  isolation: Isolation;
 }
 
-export const USUAL_HOW: How = { line: "call", room: "cafe", db: 15, loss: 0, turns: 15 };
+export const USUAL_HOW: How = { line: "call", room: "cafe", db: 15, loss: 0, turns: 15, isolation: "own" };
 
 /** What a call placed this way carries besides who rings whom. */
-export function askedBy(how: How): Pick<Wanted, "voice" | "turns" | "interferer_db" | "packet_loss" | "ambience"> {
+export function askedBy(how: How): Pick<Wanted, "voice" | "turns" | "interferer_db" | "packet_loss" | "ambience" | "against"> {
   const noise = how.line === "noisy" ? { interferer_db: how.db, packet_loss: how.loss / 100, ...(how.room === "" ? {} : { ambience: how.room }) } : {};
-  return { voice: how.line !== "chat", turns: how.turns, ...noise };
+  // Only a spoken call has audio to isolate, and only a choice that is not the agent's own is said.
+  const isolation = how.line === "chat" || how.isolation === "own" ? {} : { against: { voice_isolation: how.isolation === "on" } };
+  return { voice: how.line !== "chat", turns: how.turns, ...noise, ...isolation };
 }
 
 function loudness(db: number): string {
@@ -54,8 +67,9 @@ function loudness(db: number): string {
   return "Faint";
 }
 
-export function HowTheyCall({ title, how, onChange }: { title: string; how: How; onChange: (how: How) => void }): ReactNode {
-  const { line, room, db, loss, turns } = how;
+/** `isolates` is whether this form may run a call with the voice isolation its agent is not set to: the sandbox's, one call at a time. */
+export function HowTheyCall({ title, how, onChange, isolates = false }: { title: string; how: How; onChange: (how: How) => void; isolates?: boolean }): ReactNode {
+  const { line, room, db, loss, turns, isolation } = how;
   return (
     <section className="dash-card" aria-label={title}>
       <div className="dash-card-top">
@@ -110,6 +124,21 @@ export function HowTheyCall({ title, how, onChange }: { title: string; how: How;
             </span>
             <input type="range" aria-label="Packets lost, percent" min={0} max={20} step={1} value={loss} onChange={(event) => onChange({ ...how, loss: Number(event.target.value) })} />
           </label>
+        </div>
+      )}
+      {isolates && line !== "chat" && (
+        <div className="sim-level sim-isolation">
+          <span className="sim-level-name">
+            Voice isolation
+            <span className="dash-quiet">the model that takes down a television or people near the caller</span>
+          </span>
+          <div className="dash-switch" role="group" aria-label="Voice isolation for this call">
+            {ISOLATIONS.map((one) => (
+              <button key={one.value} type="button" aria-pressed={isolation === one.value} className={isolation === one.value ? "dash-switch-on" : ""} onClick={() => onChange({ ...how, isolation: one.value })}>
+                {one.name}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </section>
