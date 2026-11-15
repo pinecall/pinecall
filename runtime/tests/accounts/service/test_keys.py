@@ -84,3 +84,23 @@ async def test_a_key_revoked_through_the_api_is_refused_on_its_very_next_request
     assert "this key opens nothing here" in refused.json()["detail"]
     nothing = await gateway.http.get("/v1/agents")
     assert nothing.json()["detail"] == "this endpoint takes an API key"
+
+
+@needs_the_services
+async def test_a_person_reads_their_own_sign_ins_and_which_one_is_this(
+    gateway: Gateway, sessions: async_sessionmaker[AsyncSession], tenant: Tenant
+) -> None:
+    """GET /v1/me/keys lists the person's live keys alone, the one of this request marked, never a server's."""
+    async with sessions.begin() as session:
+        seat = await members.get_member(session, tenant.org, tenant.member)
+        other = await keys.issue_person_key(session, seat.member, label="a phone")
+    listed = await gateway.http.get("/v1/me/keys", headers=tenant.person)
+    assert listed.status_code == 200, listed.text
+    rows = {row["fingerprint"]: row for row in listed.json()}
+    assert set(rows) == {fingerprint(tenant.person_key), fingerprint(other.secret)}
+    assert rows[fingerprint(tenant.person_key)]["current"] is True
+    assert (rows[fingerprint(other.secret)]["current"], rows[fingerprint(other.secret)]["label"]) == (False, "a phone")
+    revoked = await gateway.http.post(f"/v1/keys/{fingerprint(other.secret)}/revoke", headers=tenant.person)
+    assert revoked.status_code == 200, revoked.text
+    left = (await gateway.http.get("/v1/me/keys", headers=tenant.person)).json()
+    assert [row["fingerprint"] for row in left] == [fingerprint(tenant.person_key)]

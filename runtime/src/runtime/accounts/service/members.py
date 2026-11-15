@@ -13,7 +13,7 @@ from runtime.accounts.service.actor import check_may_grant
 from runtime.accounts.service.key_cache import KeyCache
 from runtime.actor import Actor
 from runtime.enums import MemberStatus, Role
-from runtime.exceptions import Conflict, NotFound, ValidationError
+from runtime.exceptions import Conflict, Forbidden, NotFound, ValidationError
 from runtime.scoping import box_wide
 
 
@@ -55,6 +55,13 @@ async def get_member(session: AsyncSession, org: str, member_id: str) -> Members
     if found is None:
         raise NoSuchMember()
     return found
+
+
+async def get_own_seat(session: AsyncSession, actor: Actor) -> Membership:
+    """The actor's own seat in the org their key opens; Forbidden for a server's token and for a visit."""
+    if actor.person is None or actor.person.org != actor.org:
+        raise Forbidden("your account is changed from an org you are a member of, signed in as yourself")
+    return await get_member(session, actor.org, actor.person.id)
 
 
 async def get_member_by_email(session: AsyncSession, org: str, email: str) -> Membership:
@@ -115,6 +122,13 @@ async def update_member(session: AsyncSession, cache: KeyCache, membership: Memb
         await keys.revoke_member_keys(session, cache, membership.id)
     else:
         cache.forget_after_commit(session, subject=membership.id)
+    return membership
+
+
+async def rename_member(session: AsyncSession, cache: KeyCache, membership: Membership, name: str) -> Membership:
+    """What the org calls the member, changed by themselves; their keys say it from the next request."""
+    await MemberRepository(session).update(membership.member, name=name)
+    await keys.rename_member_keys(session, cache, membership.id, name)
     return membership
 
 

@@ -47,6 +47,28 @@ Never the key nor its hash. With no key it is `401 this endpoint takes an API ke
 opens nothing — revoked, mistyped, another deployment's — `401 this key opens nothing here`, which
 says to sign in again or mint a new one, and never which of the three it was.
 
+## Your own account — `GET /v1/me`
+
+A person's key, in an org they are a member of; a server's token and an operator's visit are `403`.
+What the console's User settings reads and writes:
+
+```json
+{"id": "m_…", "email": "ana@clinica.test", "name": "Ana García", "role": "admin",
+ "verified": true, "has_password": true}
+```
+
+`PATCH /v1/me {name}` changes what this org calls the person, on their seat and on the keys they
+hold; another org of theirs keeps the name it gave them. `PUT /v1/me/password {current, password}`
+changes their one password: `204`, and every other key of theirs is revoked, in every org, while
+the one that asked goes on. The current password is what proves the person, never the key alone, so
+a stolen key cannot keep the account: a wrong one is `403 that is not your current password` and is
+counted with the tries of a sign-in (below), a new one under `min_password` is `400`, and somebody
+with no password (`has_password` false: they only ever signed in through Google or their org's
+provider) is `409` and sets one through the link of a forgotten password. `GET /v1/me/keys` lists
+the live keys their own sign-ins to this org left, the latest used first, as
+`{fingerprint, label, created_at, last_used_at, current}`: `current` is the key of this request, and
+any of them is stopped with `POST /v1/keys/{fingerprint}/revoke`. The address is not changed here.
+
 ## Signing in — `POST /v1/login`
 
 No key. The body says one of two things, and a body with both or neither is `400`:

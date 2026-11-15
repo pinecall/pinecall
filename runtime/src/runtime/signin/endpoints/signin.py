@@ -1,8 +1,8 @@
-"""Signing in: a password or a code for a key, the orgs a person opens, a code for a browser, a reset."""
+"""Signing in: a password or a code for a key, the orgs a person opens, a code for a browser, a reset, a change."""
 
 from fastapi import APIRouter
 
-from runtime.accounts.auth import AnyKey, PersonKey, PublicUrl, ThePerson
+from runtime.accounts.auth import AnyKey, MinPassword, PersonKey, PublicUrl, TheKeyCache, TheOwnSeat, ThePerson
 from runtime.accounts.schemas import KeyIssued
 from runtime.exceptions import ValidationError
 from runtime.mail.auth import TheOutbox
@@ -80,3 +80,19 @@ async def forget_password(
         outbox=outbox,
     )
     return schemas.Empty()
+
+
+@router.put("/v1/me/password", status_code=204)
+async def change_password(
+    body: schemas.ChangePassword,
+    actor: PersonKey,
+    seat: TheOwnSeat,
+    client: Client,
+    throttle: ThePasswordThrottle,
+    cache: TheKeyCache,
+    shortest: MinPassword,
+    session: Session,
+) -> None:
+    """Change your own password, proven by the one you have; every other sign-in of yours ends."""
+    change = passwords.PasswordChange(body.current, body.password, shortest)
+    await passwords.change_password(session, cache, throttle, seat, change, client=client, keep=actor.key_id)

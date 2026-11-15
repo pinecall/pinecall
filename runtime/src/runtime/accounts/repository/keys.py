@@ -50,9 +50,16 @@ class ApiKeyRepository(Repository[ApiKey]):
         """Every live key minted for the member is revoked; the rows stay, the log names them. The fingerprints."""
         return await self._revoke(ApiKey.subject == member_id)
 
-    async def revoke_of_person(self, person_id: str) -> list[str]:
-        """Every live key minted for any seat of the person is revoked. Run box-wide by the caller. The fingerprints."""
-        return await self._revoke(ApiKey.subject.in_(select(Member.id).where(Member.person == person_id)))
+    async def revoke_of_person(self, person_id: str, *, keep: str | None = None) -> list[str]:
+        """Every live key of any seat of the person is revoked, but the one kept. Run box-wide by the caller."""
+        theirs = ApiKey.subject.in_(select(Member.id).where(Member.person == person_id))
+        return await self._revoke(theirs if keep is None else theirs & (ApiKey.id != keep))
+
+    async def rename_of_member(self, member_id: str, name: str) -> None:
+        """Every live key minted for the member says their name as it is now."""
+        await self.change(
+            update(ApiKey).where(ApiKey.subject == member_id, ApiKey.revoked_at.is_(None)).values(name=name)
+        )
 
     async def delete_of_org(self, org: str) -> int:
         """Forget every key of the org; how many went."""

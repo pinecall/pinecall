@@ -11,7 +11,7 @@ from runtime.accounts.service import keys, passwords
 from runtime.accounts.service.actor import check_may_grant
 from runtime.accounts.service.key_cache import KeyCache
 from runtime.actor import Actor
-from runtime.exceptions import Conflict
+from runtime.exceptions import Conflict, Forbidden
 from runtime.kit.crypto import random_id
 from runtime.kit.time import now
 from runtime.scoping import box_wide
@@ -30,6 +30,22 @@ class PasswordIsTheirs(Conflict):
         )
         super().__init__(
             f"{email} {why}: send them a reset, which is mailed to them, instead of typing a password for them"
+        )
+
+
+class NotTheirPassword(Forbidden):
+    """What was typed as the current password is not the person's."""
+
+    def __init__(self) -> None:
+        super().__init__("that is not your current password")
+
+
+class NoPasswordYet(Conflict):
+    """A person who only ever signed in through a provider has no password to change."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            "you have no password yet: ask for the link that sets one from the sign-in page, it is mailed to you"
         )
 
 
@@ -77,6 +93,20 @@ async def check_may_set_password(session: AsyncSession, actor: Actor, membership
 async def set_password(session: AsyncSession, person: Person, hashed: str) -> None:
     """The person's one password, kept as its hash: it opens every org that seats them."""
     await PersonRepository(session).update(person, password_hash=hashed)
+
+
+# A key alone never chooses a password: whoever holds a stolen key would keep the account after the
+# key is revoked. The current password proves the person; with none, the link in their mailbox does.
+async def change_password(
+    session: AsyncSession, cache: KeyCache, person: Person, current: str, password: str, shortest: int, *, keep: str
+) -> None:
+    """The person's password changed by themselves: every other sign-in of theirs ends, the key kept goes on."""
+    if person.password_hash is None:
+        raise NoPasswordYet()
+    if not await passwords.matches(current, person.password_hash):
+        raise NotTheirPassword()
+    await set_password(session, person, await passwords.hash_password(password, shortest))
+    await keys.revoke_person_keys(session, cache, person, keep=keep)
 
 
 async def password_matches(person: Person | None, password: str) -> bool:

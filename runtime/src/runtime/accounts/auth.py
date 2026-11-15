@@ -98,7 +98,14 @@ async def load_named_orgs_member(member_id: MemberId, org: TheNamedOrg, session:
     return await members.get_member(session, org.id, member_id)
 
 
+# A visiting operator's seat is in another org: their account is changed from an org of their own.
+async def load_own_seat(actor: PersonKey, session: Session) -> Membership:
+    """The seat of the person behind the key, in the key's org, with the person they are."""
+    return await members.get_own_seat(session, actor)
+
+
 TheMember = Annotated[Membership, Depends(load_member)]
+TheOwnSeat = Annotated[Membership, Depends(load_own_seat)]
 TheNamedOrgsMember = Annotated[Membership, Depends(load_named_orgs_member)]
 
 

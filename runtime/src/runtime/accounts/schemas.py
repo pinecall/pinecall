@@ -58,6 +58,33 @@ class SetPassword(Schema):
     password: str = Field(min_length=1)
 
 
+class Me(Row):
+    """GET /v1/me: the person behind the key as their own account shows them."""
+
+    id: str
+    email: str
+    name: str
+    role: Role
+    verified: bool
+    has_password: bool
+
+
+class ChangeMe(Schema):
+    """PATCH /v1/me: the name the org calls you by."""
+
+    name: str = Field(min_length=1, max_length=120)
+
+
+class SignInRow(Row):
+    """GET /v1/me/keys, one row: a key one of your sign-ins left, by fingerprint, never the key."""
+
+    fingerprint: str
+    label: str | None
+    created_at: datetime
+    last_used_at: datetime | None
+    current: bool
+
+
 class ChangeMember(Schema):
     """PATCH /v1/members/{id}: what is named changes, what is left out stays."""
 

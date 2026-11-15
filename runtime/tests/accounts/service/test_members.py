@@ -168,3 +168,29 @@ async def test_a_phone_is_one_persons_on_the_whole_box_and_the_newest_to_say_so_
         assert await members.forget_test_phone(session, other.org, other.member) == phone
         assert await members.forget_test_phone(session, other.org, other.member) is None
         assert await members.find_member_by_test_phone(session, phone) is None
+
+
+# ── a member's own name ──
+
+
+@needs_the_services
+async def test_a_person_renames_themselves_and_their_next_request_says_so(gateway: Gateway, tenant: Tenant) -> None:
+    """PATCH /v1/me changes what the org calls them: the account, whoami and the list of keys all say it."""
+    before = await gateway.http.get("/v1/me", headers=tenant.person)
+    assert before.status_code == 200, before.text
+    assert (before.json()["name"], before.json()["email"]) == ("The admin", f"admin@{tenant.slug}.test")
+    assert before.json()["has_password"] is True
+    renamed = await gateway.http.patch("/v1/me", json={"name": "  Ana Ruiz "}, headers=tenant.person)
+    assert renamed.status_code == 200, renamed.text
+    assert renamed.json()["name"] == "Ana Ruiz"
+    assert (await gateway.http.get("/v1/whoami", headers=tenant.person)).json()["name"] == "Ana Ruiz"
+    listed = (await gateway.http.get("/v1/keys", headers=tenant.person)).json()
+    assert [key["name"] for key in listed if key["kind"] == "person"] == ["Ana Ruiz"]
+    nameless = await gateway.http.patch("/v1/me", json={"name": " "}, headers=tenant.person)
+    assert nameless.status_code in (400, 422), nameless.text
+
+
+@needs_the_services
+async def test_a_servers_token_has_no_account_of_its_own(gateway: Gateway, tenant: Tenant) -> None:
+    """GET /v1/me is a person's: a server's token is refused, not answered as nobody."""
+    assert (await gateway.http.get("/v1/me", headers=tenant.server)).status_code == 403

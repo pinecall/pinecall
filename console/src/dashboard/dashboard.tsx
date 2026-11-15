@@ -1,11 +1,13 @@
 /** The home, one page: the agents, apps, live calls and alerts on top, then the harness, its judges over the month, then the numbers and graphs of the window picked, and the agents and calls to look at. */
 
 import { useMemo, useState, type ReactNode } from "react";
+import { Link } from "react-router";
 
 import { change, percent, utcDay } from "../lib/format";
 import { useHarness } from "../lib/harness";
 import { useInsights, type WindowDays } from "../lib/insights";
 import { useOrg } from "../lib/org";
+import { Icon } from "../shell/icons";
 import { NoticesButton } from "../shell/notices";
 import { PageHead } from "../shell/page-head";
 import { ThemeButton } from "../shell/theme";
@@ -74,6 +76,9 @@ export function Dashboard(): ReactNode {
       <PageHead>
         <NoticesButton />
         <ThemeButton />
+        <Link to="/account" className="sh-notices" aria-label="User settings" title="User settings">
+          <Icon name="user" size={15} />
+        </Link>
       </PageHead>
       <div className="dash-home">
         <FleetCards live={live} alerts={alerts} />

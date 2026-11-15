@@ -73,9 +73,11 @@ export const OPERATOR_MENU: Group = {
 
 // Reached from the bell at the sidebar's foot, not from a row of the menu.
 const NOTIFICATIONS: Row = { path: "/notifications", name: "Notifications", icon: "bell" };
+// Reached from the person's own menu and from the dashboard's head: theirs, not the org's.
+const ACCOUNT: Row = { path: "/account", name: "User settings", icon: "user" };
 
 /** The menu's row a page belongs to; `/agents/front-desk` is Agents'. */
 export function rowOfPage(page: string): Row | undefined {
-  const rows = [...MENU.flatMap((group) => group.rows), ...OPERATOR_MENU.rows, NOTIFICATIONS];
+  const rows = [...MENU.flatMap((group) => group.rows), ...OPERATOR_MENU.rows, NOTIFICATIONS, ACCOUNT];
   return page === "/" ? rows[0] : rows.find((row) => row.path !== "/" && (page === row.path || page.startsWith(`${row.path}/`)));
 }

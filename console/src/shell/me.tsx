@@ -1,6 +1,7 @@
-/** Who is signed in, at the sidebar's foot, and what is theirs on any page: the theme and signing out. */
+/** Who is signed in, at the sidebar's foot, and what is theirs on any page: their settings, the theme and signing out. */
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { Link } from "react-router";
 
 import { initialsOf } from "@pinecall/core/initials";
 import { chooseTheme, currentTheme, watchTheme } from "@pinecall/core/theme";
@@ -31,6 +32,12 @@ export function Me({ onLeave }: { onLeave: () => void }): ReactNode {
       </button>
       {open && (
         <div className="sh-me-menu" role="menu" aria-label={name}>
+          <Link to="/account" role="menuitem" className="sh-org-row" onClick={() => setOpen(false)}>
+            <Icon name="user" size={15} />
+            <span className="sh-words">
+              <span className="sh-strong">User settings</span>
+            </span>
+          </Link>
           <button type="button" role="menuitem" className="sh-org-row" onClick={() => setTheme(chooseTheme(theme === "dark" ? "light" : "dark"))}>
             <Icon name={theme === "dark" ? "sun" : "moon"} size={15} />
             <span className="sh-words">

@@ -1,4 +1,4 @@
-"""Signing in with a password: the tries it is held to, the key it opens, the orgs it opens, and the reset by mail."""
+"""A password: the tries it is held to, the key it opens, the orgs it opens, the reset by mail, and its change."""
 
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -118,6 +118,33 @@ async def list_orgs_a_password_opens(
         if org is not None:
             opened.append(OpenedOrg(org.id, org.slug, org.name, seat.role))
     return opened
+
+
+@dataclass(frozen=True, slots=True)
+class PasswordChange:
+    """What a signed-in person typed to change their password: the one they have, the one they want."""
+
+    current: str
+    password: str
+    shortest: int
+
+
+# The current password is a guess like any other: a stolen key tries it under the budget a sign-in has.
+async def change_password(
+    session: AsyncSession,
+    cache: accounts.KeyCache,
+    throttle: PasswordThrottle,
+    seat: accounts.Membership,
+    change: PasswordChange,
+    *,
+    client: str,
+    keep: str,
+) -> None:
+    """A signed-in person's password changed by themselves; their other sign-ins end, the key kept goes on."""
+    await throttle.check(client, seat.email)
+    await accounts.change_password(
+        session, cache, seat.person, change.current, change.password, change.shortest, keep=keep
+    )
 
 
 # Answered alike whoever asks, so nobody learns who is a member. The link goes through the box's own

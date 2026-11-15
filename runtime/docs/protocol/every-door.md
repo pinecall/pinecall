@@ -232,6 +232,10 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `GET` | `/v1/login/sso` | — | 302 to the org's provider, with a state, a nonce and a PKCE challenge. |
 | `GET` | `/v1/login/sso/callback` | — | The code exchanged, the person seated, and 302 to the console with a login code. |
 | `POST` | `/v1/login/sso/discover` | — | The orgs whose provider signs in this address's domain, oldest first. |
+| `GET` | `/v1/me` | — | The person behind the key: their name and address, their role here, whether a password opens their account. |
+| `PATCH` | `/v1/me` | — | Change the name this org calls you by. |
+| `GET` | `/v1/me/keys` | — | The keys your own sign-ins to this org left, the latest used first, and which one this request came with. |
+| `PUT` | `/v1/me/password` | — | Change your own password, proven by the one you have; every other sign-in of yours ends. |
 | `GET` | `/v1/members` | team | Every member of the org, oldest first, the disabled ones too. |
 | `POST` | `/v1/members` | team | Invite a person, within the org's seats, and mail them the link. |
 | `DELETE` | `/v1/members/{id}` | team | Take a member out for good, their keys revoked; never yourself, never the last admin. |

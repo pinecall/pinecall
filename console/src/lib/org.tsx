@@ -1,6 +1,6 @@
 /** What every page of the console reads: who is signed in, their orgs, the agents held, and the calls. */
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { readHeldAgents } from "@pinecall/core/agents";
 import { useCredentials } from "@pinecall/core/credentials";
@@ -26,6 +26,8 @@ export interface Org {
   live: SessionLine[];
   /** Whether the person runs the box; null while asking. */
   operator: boolean | null;
+  /** Ask again who is signed in: their name changed. */
+  rereadWhose: () => void;
 }
 
 const Held = createContext<Org | null>(null);
@@ -44,6 +46,8 @@ export function OrgProvider({ children }: { children: ReactNode }): ReactNode {
   const [agents, setAgents] = useState<HeldAgent[]>([]);
   const [agentsRead, setAgentsRead] = useState(false);
   const [hosted, setHosted] = useState<readonly Hosted[] | null>(null);
+  const [asked, setAsked] = useState(0);
+  const rereadWhose = useCallback(() => setAsked((times) => times + 1), []);
 
   useEffect(() => {
     let gone = false;
@@ -52,7 +56,7 @@ export function OrgProvider({ children }: { children: ReactNode }): ReactNode {
     return () => {
       gone = true;
     };
-  }, [credentials]);
+  }, [credentials, asked]);
 
   useEffect(() => {
     let gone = false;
@@ -79,7 +83,7 @@ export function OrgProvider({ children }: { children: ReactNode }): ReactNode {
   }, [credentials, floor.agentsChanged]);
 
   const studio = useMemo(() => new Set([...(hosted ?? []).filter((one) => one.kind === "studio").map((one) => one.name), ...agents.filter((one) => one.kind === "studio").map((one) => one.slug)]), [hosted, agents]);
-  const value = useMemo<Org>(() => ({ whose, orgs, agents, agentsRead, studio, hosted, lines: floor.lines, live: floor.lines.filter((line) => line.live), operator }), [whose, orgs, agents, agentsRead, studio, hosted, floor.lines, operator]);
+  const value = useMemo<Org>(() => ({ whose, orgs, agents, agentsRead, studio, hosted, lines: floor.lines, live: floor.lines.filter((line) => line.live), operator, rereadWhose }), [whose, orgs, agents, agentsRead, studio, hosted, floor.lines, operator, rereadWhose]);
   return <Held value={value}>{children}</Held>;
 }
 

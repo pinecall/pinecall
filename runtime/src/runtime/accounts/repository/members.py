@@ -74,6 +74,11 @@ class Membership:
         """Whether the person's address was proven theirs."""
         return self.person.verified
 
+    @property
+    def has_password(self) -> bool:
+        """Whether a password opens the person's account; none for who only ever signed in through a provider."""
+        return self.person.password_hash is not None
+
 
 class MemberRepository(Repository[Member]):
     """Members within an org, and a person's seats across orgs."""

@@ -131,6 +131,17 @@ class KeyDetails:
     expires_at: datetime | None
 
 
+@dataclass(frozen=True, slots=True)
+class SignIn:
+    """One key a person's sign-in left: the device it names, when it was last used, whether it is this request's."""
+
+    fingerprint: str
+    label: str | None
+    created_at: datetime
+    last_used_at: datetime | None
+    current: bool
+
+
 async def issue_key(session: AsyncSession, issue: Issue) -> Issued:
     """Mint a key: the row keeps its fingerprint, the secret is handed back this once."""
     secret = f"{KEY_PREFIX[issue.env]}{random_token(KEY_BYTES)}"
@@ -216,6 +227,18 @@ async def list_keys_visible_to(session: AsyncSession, actor: Actor) -> list[KeyD
     ]
 
 
+async def list_sign_ins(session: AsyncSession, actor: Actor) -> list[SignIn]:
+    """The live keys the actor's own sign-ins to this org left, the latest used first; none for a server's token."""
+    if actor.person is None:
+        return []
+    mine = [
+        SignIn(key.hash, key.label, key.created_at, key.last_used_at, current=key.id == actor.key_id)
+        for key in await ApiKeyRepository(session).list_of_org(actor.org)
+        if key.subject == actor.person.id and key.is_live
+    ]
+    return sorted(mine, key=lambda one: one.last_used_at or one.created_at, reverse=True)
+
+
 # A change to a key or to the member it was minted for is said to every gateway's cache once it is
 # committed: each of these takes the cache, so no caller can revoke and forget to say so.
 async def revoke_key(session: AsyncSession, cache: KeyCache, actor: Actor, fingerprint_: str) -> list[str]:
@@ -252,11 +275,20 @@ async def revoke_member_keys(session: AsyncSession, cache: KeyCache, member_id: 
     cache.forget_after_commit(session, subject=member_id)
 
 
+# A key keeps the name of who it was minted for, as the org's list of keys shows it.
+async def rename_member_keys(session: AsyncSession, cache: KeyCache, member_id: str, name: str) -> None:
+    """Every live key of the member says their name as it is now, and every gateway asks their key again."""
+    await ApiKeyRepository(session).rename_of_member(member_id, name)
+    cache.forget_after_commit(session, subject=member_id)
+
+
 # A person's keys are their seats' keys, in every org: read and revoked as the box.
-async def revoke_person_keys(session: AsyncSession, cache: KeyCache, person: Person) -> None:
-    """Every live key minted for any seat of the person is revoked, in every org."""
+async def revoke_person_keys(
+    session: AsyncSession, cache: KeyCache, person: Person, *, keep: str | None = None
+) -> None:
+    """Every live key minted for any seat of the person is revoked, in every org, but the one kept by its id."""
     with box_wide():
-        stopped = await ApiKeyRepository(session).revoke_of_person(person.id)
+        stopped = await ApiKeyRepository(session).revoke_of_person(person.id, keep=keep)
     _forget(session, cache, stopped)
 
 

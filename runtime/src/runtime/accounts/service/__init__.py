@@ -44,6 +44,7 @@ from runtime.accounts.service.orgs import (
 )
 from runtime.accounts.service.passwords import hash_password
 from runtime.accounts.service.people import (
+    change_password,
     delete_orphans,
     find_or_create_person,
     find_person,
@@ -61,6 +62,7 @@ __all__ = [
     "Membership",
     "SlugTaken",
     "card_link",
+    "change_password",
     "check_agent",
     "check_may_grant",
     "count_seated",
