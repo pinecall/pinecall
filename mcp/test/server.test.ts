@@ -111,6 +111,9 @@ describe("with a key the gateway takes", () => {
     await client.close();
     expect(lines.some((line) => line.includes("whoami") && line.endsWith("ok"))).toBe(true);
     expect(lines.join("\n")).not.toContain(KEY);
+    // A request is one line; the health, asked every few seconds by whatever runs the server, is none.
+    expect(lines.some((line) => line.includes("POST /mcp · 200"))).toBe(true);
+    expect(lines.some((line) => line.includes("/health"))).toBe(false);
   });
 
   it("opens no stream and keeps no session: a GET is told so, a body that is not JSON refused", async () => {

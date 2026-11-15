@@ -268,6 +268,9 @@ hosting:          ## CLUSTER=…: charts/hosting released on the hosting cluster
 # assistant is connected by a URL and a sign-in. Its own image and its own release, beside the
 # runtime's and never part of it: it holds no secret, and a restart loses only the written calls it
 # kept open. Then asked at its name: its health, and the document an assistant finds the sign-in by.
+# A first release's route takes the load balancer minutes to serve (it answered 404 for four on
+# 2026-11-16, the pod ready all the while, and one request in forty for four more), so the name is
+# asked until it has answered five times running, 7 minutes at most.
 MCP_DIGEST = $$(gcloud artifacts docker images describe $(REGISTRY)/mcp:$(TAG) --project $(PROJECT) --format='value(image_summary.digest)' 2>/dev/null)
 mcp-image:        ## the hosted MCP server's image, TAG=<commit>, built from that commit and checked by Cloud Build
 	git -C .. archive --format=tar.gz -o runtime/.mcp.image.tar.gz '$(TAG)^{commit}'
@@ -282,6 +285,9 @@ mcp:              ## CLUSTER=…: charts/mcp released at TAG=<commit> (make mcp-
 	  --set image.repository=$(REGISTRY)/mcp --set image.tag=$(TAG) --set image.digest=$(MCP_DIGEST) \
 	  --rollback-on-failure --timeout 10m
 	@name=$$($(HELM) get values pinecall-mcp -a -o json | python3 -c 'import json, sys; print(json.load(sys.stdin)["mcp"]["name"])'); \
+	  met=0; for try in $$(seq 140); do \
+	    if curl -fsS -o /dev/null "https://$$name/health" 2>/dev/null; then met=$$((met + 1)); else met=0; fi; \
+	    [ $$met -ge 5 ] && break; sleep 3; done; \
 	  curl -fsS "https://$$name/health" && echo && curl -fsS "https://$$name/.well-known/oauth-protected-resource" && echo
 
 # A box's database into the cluster's Postgres, once, at its cutover (and its rehearsal on

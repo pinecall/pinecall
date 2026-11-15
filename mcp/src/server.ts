@@ -17,6 +17,7 @@ export const RESOURCE_PATHS = ["/.well-known/oauth-protected-resource", `/.well-
 /** Where an assistant written to the protocol's first revision looks for the sign-in: sent on to the gateway, which holds it. */
 export const AUTHORIZATION_SERVER_PATH = "/.well-known/oauth-authorization-server";
 export const DOCS = "https://docs.pinecall.io/mcp/connect/";
+export const HEALTH_PATH = "/health";
 // A tool's arguments are a definition or a document at most; the gateway's own ceiling is larger.
 export const LARGEST_BODY = 4 * 1024 * 1024;
 
@@ -48,7 +49,8 @@ export function listener(front: Front): (request: IncomingMessage, response: Ser
   return (request, response) => {
     const started = Date.now();
     const path = new URL(request.url ?? "/", front.settings.address).pathname;
-    response.on("finish", () => front.log(`pinecall-mcp · ${request.method} ${path} · ${response.statusCode} · ${Date.now() - started} ms`));
+    // The health is asked every few seconds by the cluster and its load balancer: said, it would be the whole log.
+    if (path !== HEALTH_PATH) response.on("finish", () => front.log(`pinecall-mcp · ${request.method} ${path} · ${response.statusCode} · ${Date.now() - started} ms`));
     void answer(front, request, response, path).catch((failed: unknown) => {
       front.log(`pinecall-mcp · ${request.method} ${path} · failed: ${failed instanceof Error ? failed.message : String(failed)}`);
       if (!response.headersSent) refuse(response, 500, "the server failed to answer this request");
@@ -60,7 +62,7 @@ export function listener(front: Front): (request: IncomingMessage, response: Ser
 async function answer(front: Front, request: IncomingMessage, response: ServerResponse, path: string): Promise<void> {
   const { settings } = front;
   if (request.method === "OPTIONS") return void response.writeHead(204, ANY_PAGE).end();
-  if (path === "/health") return json(response, 200, { ok: true });
+  if (path === HEALTH_PATH) return json(response, 200, { ok: true });
   if (path === "/") return json(response, 200, { name: "pinecall-mcp", version: version(), mcp: `${settings.address}${MCP_PATH}`, docs: DOCS });
   if (RESOURCE_PATHS.includes(path)) return json(response, 200, resourceOf(settings));
   if (path === AUTHORIZATION_SERVER_PATH) return void response.writeHead(307, { ...ANY_PAGE, Location: `${settings.gateway}${AUTHORIZATION_SERVER_PATH}` }).end();
