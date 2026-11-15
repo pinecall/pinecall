@@ -80,6 +80,7 @@
 .sh-notices { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: var(--quiet); font-size: 12.5px; white-space: nowrap; cursor: pointer; }
 .sh-notices:hover { background: var(--panel); color: var(--ink); }
 .sh-notices:disabled { opacity: 0.6; cursor: default; }
+.sh-tools { display: flex; flex: none; align-items: center; gap: 2px; }
 
 .sh-body { flex: 1; padding: 20px 24px 32px; }
 /* The right column: empty until a side panel fills it, then a column of its own beside the page. */

@@ -74,11 +74,13 @@ export function Dashboard(): ReactNode {
   return (
     <>
       <PageHead>
-        <NoticesButton />
-        <ThemeButton />
-        <Link to="/account" className="sh-notices" aria-label="User settings" title="User settings">
-          <Icon name="user" size={15} />
-        </Link>
+        <div className="sh-tools">
+          <NoticesButton />
+          <ThemeButton />
+          <Link to="/account" className="sh-notices" aria-label="User settings" title="User settings">
+            <Icon name="user" size={15} />
+          </Link>
+        </div>
       </PageHead>
       <div className="dash-home">
         <FleetCards live={live} alerts={alerts} />
