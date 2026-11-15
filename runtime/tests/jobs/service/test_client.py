@@ -1,5 +1,6 @@
 """How a worker asks its gateway: what counts as away, the trace, the balancer's name, a refusal in one sentence."""
 
+import dataclasses
 import secrets
 
 import pytest
@@ -7,6 +8,7 @@ from opentelemetry import context as otel_context
 from opentelemetry import trace
 
 from runtime.actor import Scope
+from runtime.agents.declaration import Declaration
 from runtime.enums import Env
 from runtime.exceptions import UpstreamError
 from runtime.jobs.service.client import (
@@ -16,7 +18,7 @@ from runtime.jobs.service.client import (
     trace_headers,
     unavailable,
 )
-from runtime.wire.worker import HeartbeatRequest
+from runtime.wire.worker import AgentConfigResponse, HeartbeatRequest
 from tests.conftest import Gateway, Tenant, holding, needs_the_services
 
 
@@ -96,3 +98,24 @@ async def test_a_worker_asking_for_a_calls_config_with_a_test_rooms_values_gets_
         again = await fleet.get_agent(agent, scope, call="call_c")
     assert tried.voice != plain.voice and "a-voice-of-the-test-room" in str(tried.voice)
     assert again.voice == plain.voice
+
+
+@needs_the_services
+async def test_a_test_room_that_turns_voice_isolation_off_reaches_the_worker_so(
+    gateway: Gateway, tenant: Tenant, agent: str, fleet: GatewayClient
+) -> None:
+    """The call the worker builds is told: off for that call, on for the agent's others."""
+    scope = Scope(tenant.org, Env.sandbox, "")
+    async with holding(gateway, tenant, agent):
+        plain = await fleet.get_agent(agent, scope, call="call_a")
+        without = await fleet.get_agent(agent, scope, call="call_b", test={"voice_isolation": False})
+    assert (plain.voice_isolation, without.voice_isolation) == (True, False)
+
+
+# 2026-11-15: an agent set to run without voice isolation ran with it. The setting was in the
+# declaration, the settings and the class; the answer a worker reads the agent in did not carry it, so
+# every call was built on the default. A simulation placed "without the model" measured the model.
+def test_a_worker_reads_every_field_a_call_is_declared_with() -> None:
+    """What the gateway answers a worker holds every field of the declaration: none is the default by omission."""
+    declared = {one.name for one in dataclasses.fields(Declaration)}
+    assert declared <= set(AgentConfigResponse.model_fields), sorted(declared - set(AgentConfigResponse.model_fields))
