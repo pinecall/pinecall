@@ -24,16 +24,17 @@ services:
     # a start builds the card's kernels (30-46 s on an L4, 2026-10-20), and a prompt past one batch
     # (512 tokens) builds the ones a short prompt never reaches — a call's first turn waited for those
     # too. So this is also what warms it, at every start of the machine, before `up --wait` says the
-    # server is ready; every ten minutes after, the same.
+    # server is ready; every ten minutes after, the same. A machine that serves no thinking model runs
+    # Ollama for the embedder alone: healthy is Ollama answering (setup then asks it one embedding).
     healthcheck:
-      test: ["CMD-SHELL", "ollama run --think=false ${LOCAL_LLM} \"$(seq -s ' ' 1 400) Reply: ok\" >/dev/null"]
+      test: ["CMD-SHELL", "if [ -z '${LOCAL_LLM}' ]; then ollama list >/dev/null; else ollama run --think=false ${LOCAL_LLM} \"$(seq -s ' ' 1 400) Reply: ok\" >/dev/null; fi"]
       interval: 10m
       timeout: 5m
       start_period: 15m
       start_interval: 10s
       retries: 3
 
-  # Pulls the two models once and loads the LLM, then exits.
+  # Pulls the embedder's model and, when one thinks on this machine, the LLM, loaded once; then exits.
   ollama-models:
     profiles: [ollama]
     image: docker.io/ollama/ollama:0.40.6@sha256:265409e1d931028a8f7d5a32bcbafddd7bffbc6cc629d77efe9560adf692a5e7
@@ -43,9 +44,11 @@ services:
       - -ec
       - |
         until ollama list >/dev/null 2>&1; do sleep 2; done
-        ollama pull ${LOCAL_LLM}
         ollama pull bge-m3
-        ollama run ${LOCAL_LLM} "" >/dev/null
+        if [ -n "${LOCAL_LLM}" ]; then
+          ollama pull ${LOCAL_LLM}
+          ollama run ${LOCAL_LLM} "" >/dev/null
+        fi
     depends_on: [ollama]
     restart: "no"
 

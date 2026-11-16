@@ -41,7 +41,7 @@ class Answers:
     password: str | None
 
 
-def ask_person(
+async def ask_person(
     email: str | None, person: str | None, values: dict[str, str], *, asking: bool, password_stdin: bool, server: bool
 ) -> Answers:
     """Asked before anything slow: who signs in and their password; nothing on a run after the first."""
@@ -58,8 +58,8 @@ def ask_person(
             )
         address = email or NOBODY_ASKED
         return Answers(address, person or address.split("@", 1)[0], None)
-    address = email or ask.email()
-    return Answers(address, person or address.split("@", 1)[0], ask.password())
+    address = email or await ask.email()
+    return Answers(address, person or address.split("@", 1)[0], await ask.password())
 
 
 async def make_the_person(runtime: Context, answers: Answers, env: EnvFile) -> tuple[str | None, str]:

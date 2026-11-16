@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from runtime.cli.setup import server as server_
+from runtime.cli.setup.compose import Compose
 from runtime.cli.setup.files import write_shipped
 from runtime.exceptions import ValidationError
 
@@ -89,3 +90,23 @@ def test_a_name_that_resolves_nowhere_is_refused() -> None:
 
     with pytest.raises(ValidationError, match="resolves to no address"):
         server_.check_name(NAME, resolve=nowhere, here=lambda: None)
+
+
+def test_what_this_server_does_not_run_is_removed_with_every_profile_on(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`sip-server` depends on `livekit-server`: compose refuses to remove one while the other's profile is off."""
+    ran: list[tuple[tuple[str, ...], tuple[str, ...]]] = []
+
+    def record(self: Compose, *verb: str, failed: str) -> None:
+        ran.append((self.profiles, verb))
+
+    monkeypatch.setattr(Compose, "run", record)
+    server_.bring_up(tmp_path, server_.Server(NAME), {}, None, build=False)
+    removed, up = ran
+    assert removed == (
+        ("server", "server-livekit", "server-phone"),
+        ("--progress", "quiet", "rm", "--stop", "--force", "livekit", "sip", "sip-server"),
+    )
+    # What runs is this server's own: its LiveKit's profile on, the phone's off.
+    assert up[0] == ("server", "server-livekit") and up[1][-1] == "livekit-server"

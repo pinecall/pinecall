@@ -10,29 +10,33 @@ from runtime.exceptions import ValidationError
 from runtime.providers.service import machine
 
 
-def test_the_keys_a_mix_needs_and_where_each_came_from(tmp_path: Path) -> None:
+async def typed_at_a_terminal(_variable: str) -> str:
+    return " ak-typed "
+
+
+async def test_the_keys_a_mix_needs_and_where_each_came_from(tmp_path: Path) -> None:
     """One key per vendor of yours: the environment, else a shell file, else typed; the local word for openai always."""
     environ = {"ANTHROPIC_API_KEY": "sk-ant-x"}
     (tmp_path / ".zshrc").write_text("export ACME_API_KEY=ak-x\n", encoding="utf-8")
     mixed = models.Choices(stt=models.LOCAL, llm="anthropic", tts="acme")
-    given, found = found_keys.keys_for(mixed, ask=None, environ=environ, home=tmp_path)
+    given, found = await found_keys.keys_for(mixed, ask=None, environ=environ, home=tmp_path)
     assert given == {"acme": "ak-x", "anthropic": "sk-ant-x", "openai": "local"}
     assert found == {"ACME_API_KEY": "~/.zshrc", "ANTHROPIC_API_KEY": "the environment"}
     assert machine.key_variable("assemblyai") == "ASSEMBLYAI_API_KEY"
     # A judge on a vendor of yours needs that vendor's key as the thinking would.
-    judged, _ = found_keys.keys_for(models.Choices(judge="anthropic"), ask=None, environ=environ, home=tmp_path)
+    judged, _ = await found_keys.keys_for(models.Choices(judge="anthropic"), ask=None, environ=environ, home=tmp_path)
     assert judged == {"anthropic": "sk-ant-x", "openai": "local"}
     # Nowhere, at a terminal: asked once; with nobody to ask, refused naming the variable.
-    typed, where = found_keys.keys_for(
-        models.Choices(tts="acme"), ask=lambda _v: " ak-typed ", environ={}, home=tmp_path / "x"
+    typed, where = await found_keys.keys_for(
+        models.Choices(tts="acme"), ask=typed_at_a_terminal, environ={}, home=tmp_path / "x"
     )
     assert typed["acme"] == "ak-typed" and where == {"ACME_API_KEY": "typed"}
     with pytest.raises(ValidationError, match="acme needs a key: set ACME_API_KEY"):
-        found_keys.keys_for(models.Choices(tts="acme"), ask=None, environ={}, home=tmp_path / "x")
+        await found_keys.keys_for(models.Choices(tts="acme"), ask=None, environ={}, home=tmp_path / "x")
     # A shell line that expands is found but not read: asked as if it were nowhere.
     (tmp_path / ".zshrc").write_text("export ACME_API_KEY=$(cat ~/k)\n", encoding="utf-8")
     with pytest.raises(ValidationError, match="acme needs a key"):
-        found_keys.keys_for(models.Choices(tts="acme"), ask=None, environ={}, home=tmp_path)
+        await found_keys.keys_for(models.Choices(tts="acme"), ask=None, environ={}, home=tmp_path)
 
 
 def test_every_key_found_is_loaded_and_where_it_was_said(tmp_path: Path) -> None:

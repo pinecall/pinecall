@@ -60,16 +60,16 @@ def test_nobody_at_a_terminal_gets_no_made_up_password() -> None:
     assert "pinecall console" in said
 
 
-def test_a_run_after_the_first_asks_nobody() -> None:
+async def test_a_run_after_the_first_asks_nobody() -> None:
     """The console's admin is kept in the env file: run again, setup asks nothing and changes no password."""
     kept = {setup_person.ADMIN: "ana@example.com"}
-    answers = setup_person.ask_person(None, None, kept, asking=True, password_stdin=False, server=False)
+    answers = await setup_person.ask_person(None, None, kept, asking=True, password_stdin=False, server=False)
     assert answers == setup_person.Answers("ana@example.com", "ana", None)
 
 
-def test_a_server_with_nobody_to_ask_needs_a_password_on_stdin() -> None:
+async def test_a_server_with_nobody_to_ask_needs_a_password_on_stdin() -> None:
     """A server's console is reached over the internet: never an admin without a password."""
     with pytest.raises(ValidationError, match="needs a password"):
-        setup_person.ask_person(None, None, {}, asking=False, password_stdin=False, server=True)
-    laptop = setup_person.ask_person(None, None, {}, asking=False, password_stdin=False, server=False)
+        await setup_person.ask_person(None, None, {}, asking=False, password_stdin=False, server=True)
+    laptop = await setup_person.ask_person(None, None, {}, asking=False, password_stdin=False, server=False)
     assert laptop == setup_person.Answers(setup_person.NOBODY_ASKED, "admin", None)

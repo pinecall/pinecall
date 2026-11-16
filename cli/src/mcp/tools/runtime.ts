@@ -10,7 +10,7 @@ import { tool, ToolRefused } from "../tool.js";
 import { WAIT, WAIT_S } from "./fields.js";
 
 export const NO_RUNTIME =
-  'pinecall-runtime is not installed on this machine: `uv tool install "pinecall-runtime[voice]"` (Python 3.12 or later, and Docker), then run this again';
+  'pinecall-runtime is not installed on this machine: `uv tool install --python 3.13 "pinecall-runtime[voice]"` (and Docker), then run this again';
 /** `setup --recommend` arrived in pinecall-runtime 0.11.3; an older one answers argparse's own refusal. */
 export const TOO_OLD = "this machine's pinecall-runtime is older than 0.11.3, the first with `setup --recommend`: `uv tool upgrade pinecall-runtime`, then run this again";
 /** The line `setup` prints when the runtime answers and the processes are about to run. */

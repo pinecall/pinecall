@@ -294,7 +294,7 @@ The runtime is open source, and the agent is the same either way.
 <tr><td>
 
 ```console
-$ uv tool install "pinecall-runtime[voice]"
+$ uv tool install --python 3.13 "pinecall-runtime[voice]"
 $ pinecall-runtime setup
 ```
 

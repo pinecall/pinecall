@@ -3698,7 +3698,7 @@ requires-dist = [
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.43,<3" },
     { name = "starlette", specifier = ">=0.47,<2" },
     { name = "structlog", specifier = ">=25,<27" },
-    { name = "typer", specifier = ">=0.15,<1" },
+    { name = "typer", specifier = ">=0.15,<0.28" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.37,<1" },
     { name = "websockets", specifier = ">=15,<16" },
 ]

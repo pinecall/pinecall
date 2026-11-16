@@ -1,7 +1,7 @@
 """The vendors' keys `setup` runs on: each choice's, found in the environment or a shell file, else asked."""
 
 import os
-from collections.abc import Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from pathlib import Path
 
 from runtime.cli.setup.choices import Choices, is_local
@@ -13,10 +13,10 @@ NO_KEY_NEEDED = "local"
 # Where a key came from, when it was neither in the environment nor in a shell file.
 TYPED = "typed"
 # How a missing key is asked for at a terminal: the variable's name in, the secret out.
-type Ask = Callable[[str], str]
+type Ask = Callable[[str], Awaitable[str]]
 
 
-def keys_for(
+async def keys_for(
     choices: Choices,
     *,
     ask: Ask | None,
@@ -32,7 +32,7 @@ def keys_for(
         variable = machine.key_variable(vendor)
         secret, where = _read_key(variable, environ, home)
         if not secret and ask is not None:
-            secret, where = ask(variable).strip(), TYPED
+            secret, where = (await ask(variable)).strip(), TYPED
         if not secret or where is None:
             raise ValidationError(f"{vendor} needs a key: set {variable}, or answer when asked at a terminal")
         given[vendor], found[variable] = secret, where

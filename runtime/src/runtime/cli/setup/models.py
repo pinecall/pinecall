@@ -1,5 +1,6 @@
 """The local model servers `setup` brings up for its choices, the models pulled into them, the row seeded."""
 
+import asyncio
 import contextlib
 import json
 import os
@@ -49,8 +50,10 @@ def models_up(where: Path, choices: Choices, *, host_ollama: bool, card: bool = 
     # waited for: Ollama is healthy once its model answers.
     if serving:
         _compose(compose, profiles, ["up", "-d", "--remove-orphans", *serving], environment, MODELS_FAILED)
-    # The puller takes one model a run: each model the thinking, the judge or the caller names.
-    pulls = [*([] if host_ollama else [("ollama-models", model) for model in choices.local_models])]
+    # The puller takes one model a run, and the embedder's with it: each model the thinking, the judge
+    # or the caller names. With none of them on this machine it runs once all the same, for the
+    # embedder alone: every runtime searches with it, whoever thinks.
+    pulls = [] if host_ollama else [("ollama-models", model) for model in choices.local_models or ("",)]
     for puller, model in pulls:
         pulled = {**environment, **({"LOCAL_LLM": model} if model else {})}
         _compose(compose, profiles, ["run", "--rm", puller], pulled, PULL_FAILED)
@@ -156,9 +159,12 @@ async def models(runtime: Context, where: Path, choices: Choices, keys: dict[str
     """The servers the choices need up, on the card when there is one, the keys kept, the row written."""
     # An Ollama answering is this machine's own only when it is not the one an earlier setup started.
     host_ollama = machine.answers(MODEL_PORTS["Ollama"]) and not ours_running(where, "ollama")
-    models_up(where, choices, host_ollama=host_ollama, card=card)
+    # Minutes of Docker and downloads, on a thread: this run already holds the runtime's connections
+    # open, and the signal's ear, kept from asking Redis for longer than it allows a silence, said
+    # Redis was lost with a traceback in the middle of every first setup.
+    await asyncio.to_thread(models_up, where, choices, host_ollama=host_ollama, card=card)
     await seed(runtime, row_of(choices), keys)
-    warm_embedder()
+    await asyncio.to_thread(warm_embedder)
 
 
 async def seed(runtime: Context, row: Catalog, keys: dict[str, str]) -> None:

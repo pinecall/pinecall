@@ -86,8 +86,8 @@ async def carry_out(flags: Flags, out: Printer) -> int:
         flags.models, flags.stt, flags.turn, flags.llm, flags.tts, flags.judge, flags.caller, chat_only=flags.chat_only
     )
     card = models.a_card_for_docker() if choices else False
-    keys = _keys(choices, asking=flags.asking, out=out, server=wanted is not None, card=card) if choices else {}
-    answers = person.ask_person(
+    keys = await _keys(choices, asking=flags.asking, out=out, server=wanted is not None, card=card) if choices else {}
+    answers = await person.ask_person(
         flags.email, flags.person, before, asking=flags.asking, password_stdin=flags.password_stdin, server=bool(wanted)
     )
     if first_run:
@@ -141,8 +141,8 @@ async def server_for(flags: Flags, before: dict[str, str]) -> server.Server | No
     if flags.livekit is not None and flags.livekit != server.HERE:
         if flags.livekit_key is None and not flags.asking:
             raise ValidationError("--livekit needs --livekit-key and --livekit-secret-stdin with --yes")
-        typed_key = flags.livekit_key or ask.livekit_key()
-        typed_secret = read_secret_line() if flags.livekit_secret_stdin else ask.livekit_secret()
+        typed_key = flags.livekit_key or await ask.livekit_key()
+        typed_secret = read_secret_line() if flags.livekit_secret_stdin else await ask.livekit_secret()
         theirs = server.TheirLiveKit(flags.livekit, typed_key, typed_secret)
     with_phone = flags.phone or (kept.phone if kept else False)
     if theirs is not None and with_phone:
@@ -176,10 +176,10 @@ def _serve(
 
 # Every key found is loaded, so an agent may name any vendor of yours with nothing to add; a key
 # the defaults need and found nowhere is asked for at a terminal, else refused.
-def _keys(choices: Choices, *, asking: bool, out: Printer, server: bool, card: bool) -> dict[str, str]:
+async def _keys(choices: Choices, *, asking: bool, out: Printer, server: bool, card: bool) -> dict[str, str]:
     loaded, places = found_keys.keys_found()
     out.line(found_keys.say_keys(loaded, places, server=server))
     out.line(found_keys.say_models(choices, card=card))
-    keys, _ = found_keys.keys_for(choices, ask=ask.secret if asking else None)
+    keys, _ = await found_keys.keys_for(choices, ask=ask.secret if asking else None)
     # A real key wins over the word the embedder's plugin is given when none is.
     return {**keys, **loaded}

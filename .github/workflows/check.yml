@@ -223,6 +223,11 @@ jobs:
         with:
           python-version: "3.13"
       - run: uv sync --locked
+      # One image in two places: the suites build infra/local/postgres, and `setup` writes the copy the
+      # wheel carries. A fix that reached the first alone (2026-11-12) left the Postgres of every
+      # machine set up after it dying at initdb, and nothing here said so.
+      - name: the Postgres `setup` ships is the one the suites run on
+        run: diff -r ../infra/local/postgres src/runtime/cli/setup/shipped/postgres
       # A container that exited never answers: it is waited for a minute, and what it printed is
       # said before the step fails, since that is the only place its reason is written.
       - name: the Postgres of infra/local/postgres, on tmpfs

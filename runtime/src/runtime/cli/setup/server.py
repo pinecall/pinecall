@@ -197,7 +197,9 @@ def bring_up(where: Path, server: Server, values: dict[str, str], wheel: Path | 
     """The runtime's image built and every service up, kept up by Docker across reboots."""
     files = compose_files(where)
     environment = {**values, **image_of(wheel)}
-    plain = Compose(files, environment=environment)
+    # Every profile of the server, so each service named exists for compose: `sip-server` depends on
+    # `livekit-server`, and with its profile off compose refused the removal as "no such service".
+    every = Compose(files, ("server", "server-livekit", "server-phone"), environment)
     # The laptop's LiveKit and SIP publish what the server's take on the host's network; a service
     # this server no longer runs (its LiveKit for theirs, SIP turned off) is stopped, not left behind.
     unused = [
@@ -206,7 +208,7 @@ def bring_up(where: Path, server: Server, values: dict[str, str], wheel: Path | 
         *(["livekit-server"] if server.livekit else []),
         *([] if server.phone else ["sip-server"]),
     ]
-    plain.run("--progress", "quiet", "rm", "--stop", "--force", *unused, failed=UP_FAILED)
+    every.run("--progress", "quiet", "rm", "--stop", "--force", *unused, failed=UP_FAILED)
     if build:
         Compose(files, ("server",), environment).run("--progress", "quiet", "build", "gateway", failed=BUILD_FAILED)
     profiles = (

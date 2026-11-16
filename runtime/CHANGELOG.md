@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- **`setup` runs on a machine that never ran it.** Six things stopped it or spoiled it on a clean Ubuntu 24.04,
+  each found by following the self-hosting pages there, on this machine's own form and on a server's (`--domain`).
+  Every question it asks (the console's person, a key found nowhere, a LiveKit's pair) ended it with
+  `asyncio.run() cannot be called from a running event loop`: setup runs on its verb's loop, and `prompt()` starts
+  one of its own inside it. A question is awaited on setup's loop now. Postgres never started: the image setup
+  builds copied the build stage's whole library directory over the server, and the build stage's apt brings the
+  newest minor (17.12's `plpgsql.so` on a 17.11 server, `undefined symbol`). It copies what the two extensions
+  installed, as the suites' image has since 2026-11-12, when the fix reached that copy alone; CI now holds the two
+  the same. On a machine that serves no open model (calls on vendors' keys) Ollama still runs for the embedder,
+  but its health asked a thinking model that was not there and the embedder's model was never pulled, so setup
+  waited without end: the embedder's model is pulled whatever the stages, and with no thinking model Ollama is
+  healthy once it answers. A server with no phone stopped at `no such service: livekit-server`: compose was asked
+  to remove `sip-server`, which depends on a service whose profile was off; the removal runs with every profile of
+  the server on. Every first run printed a traceback, `Redis said nothing for 25 s`, in the middle of its lines:
+  the models' minutes of Docker ran on setup's loop while it held the signal's connection, which read the held
+  loop as Redis lost. They run on a thread, and the loop is left free. And `setup --help-all` failed with
+  `'TyperOption' object has no attribute 'make_metavar'` on typer 0.29, which an install from PyPI resolved:
+  typer is held at the minor the lock holds (0.27), the one the suites and the image run.
+
 - **`make diff` says what a release would change, and nothing else.** It compared the charts as text, so the
   comments of every template read as a change of 23 resources on a cluster that matched its commit. The
   manifests are compared as YAML (`--normalize-manifests`), and the line that names the plugin to install says

@@ -52,8 +52,10 @@ dependencies = [
   "opentelemetry-exporter-otlp-proto-http>=1.30,<2",
   "python-dotenv>=1.1,<2",
   "dnspython>=2.7,<3",
-  # The operator's terminal: a verb is a typed function, as an endpoint is (cli/).
-  "typer>=0.15,<1",
+  # The operator's terminal: a verb is a typed function, as an endpoint is (cli/). Held at the minor
+  # the lock holds: `setup --help-all` spells a script's flags through typer's own Option, which 0.29
+  # reshaped, and an install from PyPI resolves the newest the range allows, never the lock.
+  "typer>=0.15,<0.28",
   # `setup` at a terminal: a stage completed as it is typed, a secret typed without echo (cli/setup_ask.py).
   "prompt-toolkit>=3.0,<4",
 ]

@@ -6,6 +6,10 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **The MCP's `runtime` tool names the install that works.** With no runtime on the machine it said
+  `uv tool install "pinecall-runtime[voice]"` and Python 3.12: on a machine with 3.12 that installs an old release.
+  It says `--python 3.13` now.
+
 - **A chat draws what the agent marked in bold.** In a written chat the agent is told Markdown is fine, and it
   writes `**9:00**` for the one thing that matters: `pinecall chat` and `pinecall start` printed the asterisks. On
   a terminal the words are bold and the marks are gone; a pipe gets the reply as the agent wrote it.
