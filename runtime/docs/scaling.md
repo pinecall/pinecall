@@ -347,7 +347,15 @@ run a call either: the gateway takes the agent out of the room, so the room neve
 offers the call (`live/service/stranded.py`, `hand_on_cut`). A worker that was alive after all finds
 itself removed from the room and leaves the call, and its room, to the one that took it up. A gateway
 told to stop ends every stream itself and hands nothing on; a machine that vanishes without closing
-its connections is still LiveKit's to report, twenty seconds later.
+its connections is still LiveKit's to report, twenty seconds later. The call is never offered back
+to the worker that left it: the gateway heard that worker seconds before, and a dead worker has
+every seat free.
+
+Measured on 2026-11-16 on production's sandbox, three simulated calls, the pod of the call's worker
+deleted at once while the agent answered: the call handed on **6.9, 7.3 and 7.2 s** after the
+deletion, the second worker's first word to the caller at **8.9, 9.2 and 9.5 s**, every call gone on
+with to its caller's goodbye, one `call.started` and one `call.ended` each. The three seconds are a
+constant (`GONE_AFTER_S`); the rest is the pod dying, the offer taken and the voice starting.
 
 The call ends as `drained`, with one sentence and a call back for a phone caller, only when nobody
 can go on with it: no worker has a seat (the job goes to the overflow, which holds no call), the
@@ -385,7 +393,7 @@ one worker machine held its numbers: 24 of 24 (first audio 1.23 / 1.31 s), 32 of
 1.40 s, 378 of 382 turns) and 32 of 32 at two a second (1.24 / 1.32 s, 370 of 370), every call
 live 0.1 s after it rang.
 
-Measured on 2026-10-01 (a spoken call, its worker SIGKILLed 25 s in): **20.5 s** from the kill to
+Measured on 2026-10-01, when a call whose worker died ended there (a spoken call, its worker SIGKILLed 25 s in): **20.5 s** from the kill to
 `call.ended drained` on the log — LiveKit's connection timeout for the agent, which leaves as
 `CONNECTION_TIMEOUT` — and the sentence's job on the other worker a second later; before LiveKit
 read its webhook, the same call waited for the reaper's five minutes. The sentence is
