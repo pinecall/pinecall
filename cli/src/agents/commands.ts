@@ -267,30 +267,33 @@ export function register(program: Command, ctx: Context): void {
     .addHelpText("after", PIPELINE)
     .action(async (flags) => ctx.io.result(await service.showPipeline(ctx, flags.agent), render.pipeline));
   const melody = pipeline.command("melody").description("what a caller hears while a tool runs or the model is slow, and after how long").addHelpText("after", MELODY);
+  // `pipeline` has an --agent of its own, and commander gives a flag to the first command that knows it: said after
+  // `melody`, the slug lands on the parent. Each sub-verb reads it from wherever it landed.
+  const agentOf = (flags: { agent?: string }, command: { optsWithGlobals(): unknown }): string | undefined => flags.agent ?? (command.optsWithGlobals() as { agent?: string }).agent;
   melody
     .command("show", { isDefault: true })
     .description("what plays and after how many seconds of quiet")
     .option("--agent <slug>")
-    .action(async (flags) => ctx.io.result(await service.showMelody(ctx, flags.agent), render.melody));
+    .action(async (flags, command) => ctx.io.result(await service.showMelody(ctx, agentOf(flags, command)), render.melody));
   melody
     .command("upload")
     .description("a file of yours as the melody, from the next call")
     .argument("<file>", "a wav, an mp3, an ogg, a flac or an m4a, up to 20 MB and five minutes")
     .option("--agent <slug>")
-    .action(async (file, flags) => ctx.io.result(await service.uploadMelody(ctx, flags.agent, file), render.melody));
+    .action(async (file, flags, command) => ctx.io.result(await service.uploadMelody(ctx, agentOf(flags, command), file), render.melody));
   for (const [played, said] of [["default", "the runtime's own melody back"], ["off", "nothing plays: the caller hears silence"]] as const) {
     melody
       .command(played)
       .description(said)
       .option("--agent <slug>")
-      .action(async (flags) => ctx.io.result(await service.chooseMelody(ctx, flags.agent, played), render.melody));
+      .action(async (flags, command) => ctx.io.result(await service.chooseMelody(ctx, agentOf(flags, command), played), render.melody));
   }
   melody
     .command("after")
     .description("seconds of the agent's quiet before the melody starts")
     .argument("<seconds>", "0 to 30, or default for the runtime's own")
     .option("--agent <slug>")
-    .action(async (seconds, flags) => ctx.io.result(await service.waitBeforeMelody(ctx, flags.agent, service.AfterInput.parse(seconds)), render.melody));
+    .action(async (seconds, flags, command) => ctx.io.result(await service.waitBeforeMelody(ctx, agentOf(flags, command), service.AfterInput.parse(seconds)), render.melody));
   // The six knobs moved into the settings: the old verbs name where, instead of "too many arguments".
   for (const moved of ["set", "clear"]) pipeline.command(moved, { hidden: true }).allowUnknownOption().allowExcessArguments().action(() => { throw new UsageError(`pipeline ${moved} is \`pinecall agent ${moved}\` now: the stages are fields of the settings`); });
 

@@ -6,6 +6,10 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **`pinecall pipeline melody --agent <slug>` takes the agent.** `pipeline` has an `--agent` of its own and
+  kept the slug for itself, so `melody` and its sub-verbs (`show`, `upload`, `default`, `off`, `after`)
+  answered "no agent here" outside a project, though the page writes them with the flag.
+
 - **Pinecall's MCP server is hosted: `https://mcp.pinecall.io/mcp`.** An assistant that takes a
   server by its address — Claude and ChatGPT on the web, Claude Code, Cursor, VS Code, Codex, Gemini
   CLI — is given that one, the person signs in to Pinecall in a browser and approves it, and its 35

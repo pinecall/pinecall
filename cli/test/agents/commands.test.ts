@@ -163,6 +163,20 @@ describe("pinecall pipeline", () => {
     expect(ran.out).toContain("e2e_latency 1.23s · talk_share 42%");
     expect(ran.out).toContain("rime is not available here: no key");
   });
+
+  it("melody takes --agent as a slug from any folder, said after melody or after its sub-verb", async () => {
+    const held = { played: "default", sha256: null, seconds: null, name: null, after_s: 2.5 };
+    const read = answer("get", "/v1/agents/:slug/pipeline/hold-audio", held);
+    for (const typed of [["pipeline", "melody", "--agent", "sales"], ["pipeline", "melody", "show", "--agent", "sales"], ["pipeline", "--agent", "sales", "melody"]]) {
+      const ran = await run(typed, { cwd: folder() });
+      expect(ran.code).toBe(0);
+      expect(ran.out).toContain("plays   the runtime's melody");
+    }
+    expect(read.map((one) => one.path)).toEqual(Array(3).fill("/v1/agents/sales/pipeline/hold-audio"));
+    const set = answer("put", "/v1/agents/:slug/pipeline/hold-audio/after", { ...held, after_s: 1.5 });
+    expect((await run(["pipeline", "melody", "after", "1.5", "--agent", "sales"], { cwd: folder() })).code).toBe(0);
+    expect(set[0]!.path).toBe("/v1/agents/sales/pipeline/hold-audio/after");
+  });
 });
 
 describe("pinecall voices", () => {
