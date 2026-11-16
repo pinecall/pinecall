@@ -1,0 +1,14 @@
+{
+  "llm/anthropic/claude-haiku-5-5": {
+    "options": {"caching": "ephemeral", "max_tokens": 4096},
+    "request": {"output_config": {"effort": "low"}}
+  },
+  "llm/google/gemini-3.8-flash": {"request": {"thinking_config": {"thinking_level": "low"}}},
+  "llm/openai/gpt-6-luna": {"request": {"reasoning_effort": "none"}},
+  "stt/assemblyai": {"ends_the_turn": true},
+  "stt/deepgram/flux-": {"builds": "STTv2", "ends_the_turn": true},
+  "stt/deepgram/flux-general-en": {"builds": "STTv2", "options": {"language_hint": []}, "ends_the_turn": true},
+  "stt/elevenlabs/scribe_v2_realtime": {"commits_when_told": true},
+  "stt/google/gemini-": {"builds": "beta.GeminiSTT"},
+  "tts/google/gemini-": {"builds": "beta.GeminiTTS"}
+}

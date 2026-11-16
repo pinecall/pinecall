@@ -267,12 +267,13 @@ async def _find_another_listed(
         listed = providers.list_in_catalog(catalog, unnamed.vendor, spoken_in) or await providers.list_by_vendor(
             dataclasses.replace(unnamed, language=spoken_in)
         )
-    except PinecallError:
+    except PinecallError as unlisted:
         # A vendor that would not list its voices: the caller speaks in its plugin's own, the agent's too.
+        # The refusal is a sentence already, so it is said and no traceback goes under it.
         logger.warning(
-            "%s listed no voice for a simulated caller to speak in: it speaks in the plugin's own",
+            "%s listed no voice for a simulated caller to speak in, so it speaks in the plugin's own: %s",
             unnamed.vendor,
-            exc_info=True,
+            unlisted,
         )
         return None
     others = [voice for voice in listed if voice.id != agents_voice]

@@ -307,12 +307,14 @@ def _refusal_of(judge: JudgeModel, spent_usd: float, evals: int) -> Refusal | No
 
 
 # The vendor's no and its silence reach here as our errors (`providers.Answerer`), as does a judge
-# model that answered without its tool, or whose arguments a vendor cut short.
+# model that answered without its tool, or whose arguments a vendor cut short. Each is a sentence
+# already, so the log says it and no more: until 2026-11-16 it carried the traceback too, three
+# exceptions deep, once a judge, fifteen of them at the seal of a call whose vendor had no credit.
 async def _ask_and_survive(judge: RosterJudge, panel: Panel, model: providers.Answerer) -> Answered:
     try:
         return await asking.ask(judge.spec, panel.transcript, panel.context, model)
     except PinecallError as failed:
-        logger.warning("judge %s failed; the call is sealed without it", judge.spec.name, exc_info=True)
+        logger.warning("judge %s failed; the call is sealed without it: %s", judge.spec.name, failed)
         return Answered("skipped", f"the judge model failed: {failed}")
 
 

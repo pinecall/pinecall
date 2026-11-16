@@ -4,7 +4,7 @@ import os
 from collections.abc import Awaitable, Callable, Mapping
 from pathlib import Path
 
-from runtime.cli.setup.choices import Choices, is_local
+from runtime.cli.setup.choices import Choices, is_local, vendor_of
 from runtime.exceptions import ValidationError
 from runtime.providers.service import machine, plugins, signatures
 
@@ -66,7 +66,7 @@ def say_keys(loaded: Mapping[str, str], found: Mapping[str, str], *, server: boo
     return f"  keys      {' · '.join(sorted(loaded))} — found in {' and '.join(places)}, {lent}"
 
 
-def say_models(choices: Choices, *, card: bool = False) -> str:
+def say_models(choices: Choices, *, card: bool = False, keyed: bool = True) -> str:
     """The open models this machine serves: an agent naming none runs on them."""
     served = [
         *choices.local_models,
@@ -74,8 +74,34 @@ def say_models(choices: Choices, *, card: bool = False) -> str:
         *(["kokoro"] if is_local(choices.tts) else []),
     ]
     if not served:
-        return "  models    none served here — calls run on the keys above"
+        on = "the keys above" if keyed else "a vendor's key for each stage"
+        return f"  models    none served here — calls run on {on}"
     return f"  models    {' · '.join(served)} — open, served here{' on the GPU' if card else ''}"
+
+
+# Said before the first key is asked for, so a person who came with none reads what is wanted of them
+# and why: until 2026-11-16 they read a bare `ANTHROPIC_API_KEY:` under "calls run on the keys above",
+# and nothing said two more were coming.
+def say_asked(choices: Choices, *, environ: Mapping[str, str] = os.environ, home: Path | None = None) -> str | None:
+    """The keys found nowhere, each with what its vendor does in a call; None when every one was found."""
+    doing: dict[str, str] = {}
+    stages = (("hears", choices.stt), ("thinks", choices.llm), ("speaks", choices.tts))
+    for does, choice in (*stages, ("judges", choices.judging), ("plays the caller", choices.calling)):
+        if not is_local(choice):
+            doing.setdefault(vendor_of(choice), does)
+    missing = [
+        vendor
+        for vendor in sorted(choices.vendors)
+        if signatures.takes_a_key(vendor) and not _read_key(machine.key_variable(vendor), environ, home)[0]
+    ]
+    if not missing:
+        return None
+    wanted = " · ".join(f"{vendor} {doing[vendor]}" for vendor in missing)
+    count = f"{len(missing)} key{'' if len(missing) == 1 else 's'}"
+    said = f"  asking    {count} found nowhere — {wanted}: typed below, nothing shown"
+    if len(missing) > 1 and vendor_of(choices.llm) in missing:
+        said += "\n            written calls alone need the one that thinks: pinecall-runtime setup --chat-only"
+    return said
 
 
 # A variable's value and where it was: the environment, else the shell file setting it as plain

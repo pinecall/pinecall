@@ -68,3 +68,24 @@ def test_the_lines_setup_says_name_the_keys_and_the_open_models() -> None:
     )
     assert found_keys.say_models(models.ALL_LOCAL, card=True).endswith("served here on the GPU")
     assert found_keys.say_models(models.ALL_KEYS) == "  models    none served here — calls run on the keys above"
+
+
+def test_a_person_who_came_with_no_key_reads_what_is_asked_of_them_and_why(tmp_path: Path) -> None:
+    """Before the first key is asked for: how many, what each vendor does in a call, and the way with one alone."""
+    on_vendors = models.Choices(stt=models.LOCAL, llm="anthropic", tts="acme")
+    said = found_keys.say_asked(on_vendors, environ={}, home=tmp_path)
+    assert said is not None
+    asking, chat_only = said.split("\n")
+    assert asking == "  asking    2 keys found nowhere — acme speaks · anthropic thinks: typed below, nothing shown"
+    assert chat_only.strip() == "written calls alone need the one that thinks: pinecall-runtime setup --chat-only"
+    assert found_keys.say_models(models.ALL_KEYS, keyed=False) == (
+        "  models    none served here — calls run on a vendor's key for each stage"
+    )
+    # One key missing is asked for with no word about another way; none missing, nothing is said.
+    thinking_found = {"ANTHROPIC_API_KEY": "sk-ant-x"}
+    assert found_keys.say_asked(on_vendors, environ=thinking_found, home=tmp_path) == (
+        "  asking    1 key found nowhere — acme speaks: typed below, nothing shown"
+    )
+    both_found = {**thinking_found, "ACME_API_KEY": "ak-x"}
+    assert found_keys.say_asked(on_vendors, environ=both_found, home=tmp_path) is None
+    assert found_keys.say_asked(models.ALL_LOCAL, environ={}, home=tmp_path) is None

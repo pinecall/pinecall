@@ -1,4 +1,4 @@
-"""The providers row `setup` writes: local stages on the openai plugin with a base_url, vendors bare, all priced."""
+"""The providers row `setup` writes: local stages on the openai plugin with a base_url, vendors as built, all priced."""
 
 import json
 from typing import Any
@@ -14,8 +14,8 @@ from runtime.cli.setup.choices import (
     vendor_of,
 )
 from runtime.cli.setup.files import find_shipped
-from runtime.providers.catalog import Catalog, Rate
-from runtime.providers.service import files
+from runtime.providers.catalog import Catalog, Rate, read_stage_key
+from runtime.providers.service import files, plugins
 
 # The stages that answer with a model all run on the same plugin and server when local.
 THINKING = "llm/openai"
@@ -39,7 +39,7 @@ def row_of(choices: Choices) -> Catalog:
         "embedding": shipped["embedding"],
     }
     defaults: dict[str, dict[str, str]] = {}
-    tuning: dict[str, dict[str, object]] = {}
+    tuning: dict[str, dict[str, object]] = list_stage_options()
     for stage, choice in (("stt", choices.stt), ("llm", choices.llm), ("tts", choices.tts)):
         if is_local(choice):
             defaults[stage] = dict(shipped["defaults"][stage])
@@ -51,7 +51,9 @@ def row_of(choices: Choices) -> Catalog:
         tuning[THINKING] = dict(shipped["tuning"][THINKING])
     turn_model = TURN_MODELS[choices.turn]
     stt_key = f"stt/{'openai' if is_local(choices.stt) else vendor_of(choices.stt)}"
-    turned = {k: v for k, v in tuning.get(stt_key, {}).items() if k != "turn_model"}
+    # A detector asked for reads the end of the turn, so the ears are not left ending it themselves.
+    replaced = {"turn_model"} if turn_model is None else {"turn_model", "builds", "ends_the_turn"}
+    turned = {k: v for k, v in tuning.get(stt_key, {}).items() if k not in replaced}
     if turn_model is not None:
         turned["turn_model"] = turn_model
     if turned:
@@ -66,6 +68,19 @@ def row_of(choices: Choices) -> Catalog:
         caller={"llm": caller, "ceiling_usd": shipped["caller"]["ceiling_usd"]},
     )
     return Catalog.model_validate(row)
+
+
+# No vendor is named in code, so how a vendor's models are built is the row's to say: the class a
+# family of models runs on where it is not the plugin's `STT` or `TTS` (Deepgram's Flux on `STTv2`,
+# Gemini's voice on `beta.GeminiTTS`), the ears that end the turn themselves or commit when told, what a
+# model is asked beside the conversation. Until 2026-11-16 that lived in Pinecall's own row alone: a new
+# machine was offered those models and could not build them (`TTS.__init__() got an unexpected keyword
+# argument 'model'`). Read from that row; a vendor this install does not carry is left out, since a row
+# naming one is refused.
+def list_stage_options() -> dict[str, dict[str, object]]:
+    """How each installed vendor's models are built (`shipped/tuning.json`), by `stage/vendor[/model]`."""
+    shipped: dict[str, dict[str, object]] = json.loads(find_shipped("tuning.json").read_text(encoding="utf-8"))
+    return {key: told for key, told in shipped.items() if plugins.is_installed(read_stage_key(key)[1])}
 
 
 def list_prices() -> dict[str, Rate]:

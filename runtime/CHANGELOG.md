@@ -2,12 +2,29 @@
 
 ## Unreleased
 
+- **A new machine runs the models it is offered.** How a vendor's models are built is data, never code, and that
+  data lived in Pinecall's own providers row alone: `setup` wrote a new machine's row with every vendor bare. The
+  picker offered Gemini's voice and Deepgram's Flux, the ones Pinecall Cloud itself defaults to, and neither could
+  be built: `google refused its TTS: TTS.__init__() got an unexpected keyword argument 'model'`. The package ships
+  it now (`cli/setup/shipped/tuning.json`) and `setup` writes it into the row for the vendors the install carries:
+  the class a family of models runs on (`stt/deepgram/flux-` on `STTv2`, `tts/google/gemini-` on
+  `beta.GeminiTTS`, `stt/google/gemini-` on `beta.GeminiSTT`), the ears that end the turn themselves or commit when
+  told, and what three models are asked beside the conversation. A vendor named bare keeps its plugin's own class,
+  so nothing a machine already ran on changes; a detector asked for (`--turn livekit`) takes the end of the turn
+  from ears that would end it themselves. And a judge that failed at the seal logged its failure with the
+  traceback, three exceptions deep, once a judge: it logs the sentence.
+
 - **An install from PyPI runs the livekit the suites run.** Gemini's voice was refused on a new machine by
   Google's own API (`Invalid JSON payload received. Unknown name "speechConfig"`): the install had resolved
   google-genai 3.4, a dependency of livekit's google plugin, where the lock holds 2.31; on 3 the plugin's
   request is refused, with the plugin of 1.8.8 as with every one after it, and livekit 1.8.12 asks for 3.
   livekit is held at the patch the lock holds (under 1.8.9) and google-genai under 3, as typer is held: what a
   person installs is what was run.
+
+- **`setup` says what it is about to ask.** On a machine that serves no open model and holds no vendor's key,
+  the first thing read was a bare `ANTHROPIC_API_KEY:` under "calls run on the keys above". It says first how
+  many keys it found nowhere and what each vendor does in a call (`3 keys found nowhere — anthropic thinks ·
+  cartesia speaks · deepgram hears`), and that written calls alone need the one that thinks (`--chat-only`).
 
 - **A call its vendor refuses says why, and ends once.** A vendor that refuses a call for good (a key with no
   credit, a voice that does not exist) wrote livekit's own account of it as the error's message: `type='llm_error'

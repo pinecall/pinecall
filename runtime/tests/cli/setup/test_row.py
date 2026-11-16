@@ -1,8 +1,12 @@
 """The row `setup` writes for each mix of local stages and vendors: defaults, tuning, judge, caller, rates."""
 
+import pytest
+
 from runtime.cli.setup import choices as models
-from runtime.cli.setup.row import list_prices, row_of
+from runtime.cli.setup.row import list_prices, list_stage_options, row_of
 from runtime.enums import Stage
+from runtime.providers.catalog import read_stage_key
+from runtime.providers.service import plugins
 
 
 def test_every_stage_local_names_the_three_servers_on_loopback() -> None:
@@ -13,7 +17,8 @@ def test_every_stage_local_names_the_three_servers_on_loopback() -> None:
         "stt": ("openai", models.LOCAL_STT),
         "tts": ("openai", models.LOCAL_TTS),
     }
-    urls = {key: options.options["base_url"] for key, options in row.tuning.items()}
+    # The three local servers; what the row says of the vendors' own models stands beside them.
+    urls = {key: told.options["base_url"] for key, told in row.tuning.items() if key.endswith("/openai")}
     assert urls == {
         "llm/openai": "http://127.0.0.1:11434/v1",
         "tts/openai": "http://127.0.0.1:8880/v1",
@@ -66,7 +71,9 @@ def test_every_stage_on_a_vendor_leaves_the_ears_own_endpointing_and_the_embedde
         "llm": "anthropic",
         "tts": "cartesia",
     }
-    assert row.tuning == {} and row.voices == {}
+    # The ears named bare are the plugin's own, as before: nothing is told of them vendor-wide.
+    assert row.options_for(Stage.stt, "deepgram") is None and row.voices == {}
+    assert all(plugins.is_installed(read_stage_key(key)[1]) for key in row.tuning)
     assert row.embedding is not None and row.embedding.url == "http://127.0.0.1:11434/v1"
     livekit = row_of(models.Choices(stt="deepgram", turn="livekit", llm="anthropic", tts="cartesia"))
     assert livekit.tuning["stt/deepgram"].turn_model == "v1-mini"
@@ -80,3 +87,48 @@ def test_the_row_carries_the_list_prices_the_package_ships() -> None:
     assert row.rates["nova-3"].audio_seconds == shipped["nova-3"].audio_seconds
     local = row_of(models.ALL_LOCAL)
     assert local.rates[models.LOCAL_LLM].input == 0
+
+
+def every_vendor_installed(monkeypatch: pytest.MonkeyPatch, *only: str) -> None:
+    """An install that carries every vendor's plugin, or these alone."""
+
+    def carried(vendor: str) -> bool:
+        return not only or vendor in only
+
+    monkeypatch.setattr(plugins, "is_installed", carried)
+
+
+def test_a_new_machine_is_told_how_each_vendor_builds_the_models_it_is_offered(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Gemini's voice and Deepgram's Flux run on classes of their own: the row says which, by the family of model."""
+    every_vendor_installed(monkeypatch)
+    row = row_of(models.ALL_KEYS)
+    voice = row.options_for(Stage.tts, "google", "gemini-3.8-flash-lite-tts")
+    assert voice is not None and voice.builds == "beta.GeminiTTS"
+    flux = row.options_for(Stage.stt, "deepgram", "flux-general-multi")
+    assert flux is not None and (flux.builds, flux.ends_the_turn) == ("STTv2", True)
+    one_language = row.options_for(Stage.stt, "deepgram", "flux-general-en")
+    assert one_language is not None and one_language.options == {"language_hint": []}
+    # Another model of the same vendor, and the vendor named bare, are the plugin's own class.
+    assert row.options_for(Stage.stt, "deepgram", "nova-3") is None
+    scribe = row.options_for(Stage.stt, "elevenlabs", "scribe_v2_realtime")
+    assert scribe is not None and scribe.commits_when_told
+    thinking = row.options_for(Stage.llm, "google", "gemini-3.8-flash")
+    assert thinking is not None and thinking.request == {"thinking_config": {"thinking_level": "low"}}
+
+
+def test_a_vendor_this_install_does_not_carry_is_told_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A row naming a vendor nobody installed is refused where it is written, so its lines are left out."""
+    every_vendor_installed(monkeypatch, "anthropic")
+    assert set(list_stage_options()) == {"llm/anthropic/claude-haiku-5-5"}
+
+
+def test_a_detector_asked_for_takes_the_end_of_the_turn_from_ears_that_end_it(monkeypatch: pytest.MonkeyPatch) -> None:
+    """AssemblyAI ends the turn itself; with livekit's detector asked for, the detector does and the ears do not."""
+    every_vendor_installed(monkeypatch)
+    theirs = row_of(models.Choices(stt="assemblyai", turn="stt", llm="anthropic", tts="cartesia"))
+    assert theirs.tuning["stt/assemblyai"].ends_the_turn and theirs.tuning["stt/assemblyai"].turn_model is None
+    asked = row_of(models.Choices(stt="assemblyai", turn="livekit", llm="anthropic", tts="cartesia"))
+    assert (asked.tuning["stt/assemblyai"].ends_the_turn, asked.tuning["stt/assemblyai"].turn_model) == (
+        False,
+        "v1-mini",
+    )

@@ -162,6 +162,14 @@ voice-prices), so every call on a vendor's key is priced from the first; the ope
 nothing. After that the row is the console's: a run of `setup` never overwrites a rate, and
 `providers prices <file> --apply` changes them.
 
+**How each vendor is built.** The runtime names no vendor in code, so what a vendor's models need is the
+row's to say, and `setup` writes that with the row too (`cli/setup/shipped/tuning.json`): the plugin's class
+a family of models runs on where it is not its `STT` or `TTS` (Deepgram's Flux on `STTv2`, Gemini's voice
+and ears on `beta.GeminiTTS` and `beta.GeminiSTT`), the ears that end the turn themselves or commit when
+told, and what a model is asked beside the conversation. It is the same word Pinecall's own runtime keeps,
+by `stage/vendor/model`, so a model the picker offers runs here as it runs there; only the vendors this
+install carries are written. A vendor named bare keeps its plugin's own class and model, as before.
+
 **This machine, signed in.** On this machine, the console admin's own key is written into the CLI's
 `~/.pinecall/session.json` (`PINECALL_HOME` moves it) as `pinecall login` writes one: the `pinecall`
 CLI here needs no login, and a project `pinecall new` makes runs on this runtime, in `default`. A

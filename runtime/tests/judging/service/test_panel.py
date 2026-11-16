@@ -1,6 +1,9 @@
 """A call's panel: the judges it meets, the gate that settles one before any model is asked, the facts they are told."""
 
 import dataclasses
+import logging
+
+import pytest
 
 from runtime.enums import Direction, JudgeAnswer, JudgeRunsWhen
 from runtime.judging.service.asking import Context
@@ -288,12 +291,19 @@ def test_with_no_model_every_judge_is_skipped_saying_why() -> None:
     assert (score.judged_by.provider, score.judged_by.model) == (None, None)
 
 
-async def test_a_judge_whose_model_failed_is_skipped_and_the_call_still_scored() -> None:
-    score = await judged(a_panel(only("grounded")), [["nada"]])
+async def test_a_judge_whose_model_failed_is_skipped_and_the_call_still_scored(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.WARNING, logger="runtime.judging.service.panel"):
+        score = await judged(a_panel(only("grounded")), [["nada"]])
     [judgment] = score.judges
     assert judgment.verdict == "skipped"
     assert "the judge model failed" in judgment.reason
     assert score.not_judged == "every judge run over this call failed and not one of them answered"
+    # The log says the failure in its sentence, once, with no traceback under it.
+    [said] = caplog.records
+    assert said.getMessage().startswith("judge grounded failed; the call is sealed without it: ")
+    assert said.exc_info is None
 
 
 # A panel with nobody on it was said as "every judge run failed" (2026-10-17, a new org on a laptop,

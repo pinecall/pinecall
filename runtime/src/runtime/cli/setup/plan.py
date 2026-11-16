@@ -179,7 +179,9 @@ def _serve(
 async def _keys(choices: Choices, *, asking: bool, out: Printer, server: bool, card: bool) -> dict[str, str]:
     loaded, places = found_keys.keys_found()
     out.line(found_keys.say_keys(loaded, places, server=server))
-    out.line(found_keys.say_models(choices, card=card))
+    out.line(found_keys.say_models(choices, card=card, keyed=bool(loaded)))
+    if asking and (asked := found_keys.say_asked(choices)) is not None:
+        out.line(asked)
     keys, _ = await found_keys.keys_for(choices, ask=ask.secret if asking else None)
     # A real key wins over the word the embedder's plugin is given when none is.
     return {**keys, **loaded}
