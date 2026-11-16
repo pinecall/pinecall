@@ -2586,7 +2586,8 @@ holding. `forget` erases all of it, the right to be forgotten; on a terminal it 
 prints how many facts went. With nobody at a terminal — a script, CI — it erases only with
 `--yes`, and exits 2 without it (`data erase` asks for `--yes` even at a terminal); `--yes` also skips the question.
 
-`policy` alone prints what the agent remembers and forgets, corner by corner; with flags it writes
+`policy` alone prints what the agent remembers and forgets, corner by corner, or `set by the class` for an
+agent whose class declares `memory`; with flags it writes
 yours (`--team` the team's); for an app written as code, a write is refused naming it. Each category is its own flag — `--remember allergies --remember
 'preferred name'` — and the policy written replaces the one before it. To take yours out so the
 team's holds again: `pinecall agent clear memory`.

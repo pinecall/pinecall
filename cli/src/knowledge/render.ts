@@ -88,9 +88,12 @@ export function forgotten(gone: Forgotten): string {
 
 export const NOTHING_FORGOTTEN = "nothing forgotten";
 
-/** The policy of the three corners. */
+/** The policy of the three corners, or that the class sets it. */
 export function policy({ agent, answer }: Policy): string[] {
   const lines = [`${agent} · ${answer.world}`];
+  // A class that declares `memory` is the policy. Its corners hold none, and "nothing set" three times
+  // over would read as an agent that remembers nothing.
+  if (answer.fixed.includes("memory")) return [...lines, "  set by the class: no setting is read for it", `  → agents/${agent}/ holds the class: its memory field says what is kept and what never is`];
   for (const [name, row] of [["yours", answer.yours], ["team", answer.team], ["production", answer.production]] as const) {
     const memory = row?.config.memory ?? undefined;
     if (row === null) {

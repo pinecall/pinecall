@@ -6,6 +6,10 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **`pinecall memory policy` says when the class sets it.** For an agent whose class declares `memory` it
+  printed `yours (team's)`, `team nothing set`, `production nothing set`, which reads as an agent that
+  remembers nothing; the class's policy is the one its calls run on, and the verb says so.
+
 - **Every verb's answer is coloured on a terminal, and stands apart from the prompt.** The title in
   violet, a table's header bold and its rows named in cyan, a record's labels, the standings (`ready`,
   `live`, `stopped`, `failed`, `sandbox`, `production`), the speakers of a chat and a tool's call each
