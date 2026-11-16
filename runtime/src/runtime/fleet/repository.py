@@ -15,13 +15,11 @@ class OfferRepository(Repository[Offer]):
     model = Offer
 
     # The first sight stands: a second webhook for the same room changes nothing.
-    # A room whose worker went away is kept with that worker as the last it was offered to, and never
-    # offered: its first offer goes to another, as an offer nobody opened does.
-    async def open(self, room: str, fleet: str, dispatch: str, now: float, left_by: str | None = None) -> Offer | None:
+    async def open(self, room: str, fleet: str, dispatch: str, now: float) -> Offer | None:
         """Keep a room a caller joined; the row as kept, or None when it was kept already."""
         statement = (
             insert(Offer)
-            .values(room=room, fleet=fleet, dispatch=dispatch, seen_at=now, worker=left_by)
+            .values(room=room, fleet=fleet, dispatch=dispatch, seen_at=now)
             .on_conflict_do_nothing(index_elements=[Offer.room])
             .returning(Offer)
         )

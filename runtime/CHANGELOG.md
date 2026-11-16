@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **A dead worker's call is handed on the same way by either gateway.** Three things about a call whose
+  worker went away were one gateway's memory, and a deployment runs two. Which worker has the call is
+  the log's head now (`call_log_head.taken_up`, migration 000029): a take-up moves it in one statement,
+  so two workers that ask at once are not both answered, and the seal of the worker a call was taken
+  from is refused by whichever gateway it reaches (it was refused only by the one that had answered the
+  take-up). Each gateway says the calls a worker reads from it, so a stream cut on one while the worker
+  reads from the other hands nothing on: until now that would take a healthy agent out of its room a
+  second and a half later. And the roster is told a worker left, on every gateway: no call is offered to it
+  until it beats again, where before only its own call was kept from it. The gateway logs how long a
+  worker whose stream was cut took to read again.
+
 - **A base a class declares is listed with the agent that reads it.** `GET /v1/knowledge/attached` read each
   agent's settings alone, so a base attached by a class (`docs: { base }`) had no reader: the console's
   Knowledge page said "No agent searches it yet" of a base every call of that agent searched, and `pinecall

@@ -6,7 +6,7 @@ import logging
 from collections.abc import AsyncGenerator
 
 from runtime.calls.log import Store
-from runtime.exceptions import Conflict, ServiceUnavailable
+from runtime.exceptions import Conflict, Gone, ServiceUnavailable
 from runtime.kit.loops import survive
 from runtime.live.parts import LiveParts
 from runtime.live.served import Served
@@ -40,13 +40,23 @@ class SealedElsewhere(ServiceUnavailable):
 # gone, and a seal that broke after its summary goes on from the score, so no call is remembered or
 # billed twice. Across gateways the head's lease does what the lock does here: a request that finds
 # it taken waits for the log to say sealed.
-async def seal_call(live: LiveParts, served: Served, sealing: Sealing) -> None:
+#
+# A worker says which of the call's workers it is (`taken_up`): 0 for the one that opened it, one more
+# each time a worker took it up from one that went away. One the call was taken from is refused, and
+# the call goes on in the worker that has it. The count is the head's and is read under the lease: a
+# take-up moves it only while nobody holds the right to seal (`HeadRepository.take_up`), so none can
+# slip in between this read and the seal. A written call, sealed by the gateway that runs it, has no
+# worker and says none.
+async def seal_call(live: LiveParts, served: Served, sealing: Sealing, *, taken_up: int | None = None) -> None:
     """Remember, price the call, write its summary and its score, seal the log, let it go."""
     async with served.sealing:
         if live.calls.find(served.call) is not served:
             return
         if not await live.store.lease_seal(served.call, LEASED_S) and await _wait_for_the_other(live, served):
             return
+        if taken_up is not None and taken_up < await live.store.count_taken_up(served.call):
+            await live.store.release_seal(served.call)
+            raise Gone(f"call {served.call!r} was taken up by another worker: its end is that worker's to say")
         closing = ending.closing_of(served, sealing)
         entries, judged = await _seal(live, closing, served)
         # The score sealed the log: the call is over whatever its bookkeeping after it does, and a call

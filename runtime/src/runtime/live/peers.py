@@ -117,6 +117,7 @@ SOCKETS_CHANNEL = "sockets"
 HELD_CHANNEL = "held"
 OWNED_CHANNEL = "owned"
 RUNNING_CHANNEL = "running"
+READING_CHANNEL = "reading"
 
 
 # The gateways of the release before 2026-11 say and read the same words, joined by a bar: until that

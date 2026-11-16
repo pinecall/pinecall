@@ -62,13 +62,16 @@ class Offering:
     servers: Servers
     roster: Roster
 
-    # `left_by` is the worker a call's room was left by, under its LiveKit name: the gateway heard it
-    # seconds ago and would choose it again, the worker with every seat free (2026-11-16: a call handed
-    # on 3 s after its worker's pod was deleted went to that pod, and waited 12 s for the next offer).
+    # `left_by` is the worker a call's room was left by, under its LiveKit name. The roster is told it
+    # is gone before the room is offered (`Roster.say_gone`), so neither this room nor any other goes
+    # to it until it is heard again.
     async def offer(self, room: str, fleet: str, dispatch: Dispatch, *, left_by: str | None = None) -> str | None:
         """Keep the room and offer it; the name it went to, or None if kept already or not yet."""
+        now = time.time()
+        if left_by is not None:
+            self.roster.say_gone(left_by, now)
         async with self.sessions.begin() as session:
-            kept = await OfferRepository(session).open(room, fleet, dispatch.dump(), time.time(), left_by)
+            kept = await OfferRepository(session).open(room, fleet, dispatch.dump(), now)
         return None if kept is None else await self.offer_again(kept)
 
     # A fleet no env's calls go to (the operator renamed it, or the room was kept by a dispatch
@@ -144,7 +147,7 @@ class Offering:
         flying = await count_in_flight(session, now)
         tried = () if offer.worker is None else (offer.worker,)
         workers = self.roster.workers_of(offer.fleet, now)
-        chosen = slots.choose_worker(workers, flying, now, not_these=tried)
+        chosen = slots.choose_worker(workers, flying, now, not_these=(*tried, *self.roster.list_gone(offer.fleet, now)))
         if chosen is not None and chosen.agent_name is not None:
             free = slots.free_slots(chosen, flying)
             return Target(chosen.agent_name, f"{free} slots free, heard {now - chosen.seen_at:.0f} s ago")

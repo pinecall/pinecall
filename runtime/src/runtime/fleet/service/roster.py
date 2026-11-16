@@ -9,7 +9,7 @@ from runtime.kit.loops import survive
 from runtime.shared_state import Assigned, SharedState, newest
 from runtime.signal import LocalSignal, Signal
 from runtime.wire.feed import WorkerChanged
-from runtime.wire.signal import Assignment, RosterShare, WorkerStatus
+from runtime.wire.signal import Assignment, Departure, RosterShare, WorkerStatus
 from runtime.wire.worker import HeartbeatRequest, HeartbeatResponse
 
 # Every gateway says the heartbeats it heard and the cordons it set, once a heartbeat.
@@ -44,6 +44,9 @@ class Roster:
         self.heard_here: dict[WorkerKey, WorkerStatus] = {}
         self.cordons: dict[WorkerKey, Assigned] = {}
         self.cordoned: dict[WorkerKey, str] = {}
+        # The workers this gateway said gone and when, and every gateway's, the newest of each.
+        self.departed_here: dict[WorkerKey, float] = {}
+        self.departed: dict[WorkerKey, float] = {}
         self.shared = SharedState(
             signal or LocalSignal(),
             ROSTER_CHANNEL,
@@ -85,6 +88,33 @@ class Roster:
         """Take a worker's cordon back, when it has not left yet."""
         self._set_cordon(worker, fleet, None)
 
+    # A worker that dies beat seconds ago, and for two heartbeats more it is the worker with every
+    # seat free: the one a call would be offered to, to wait twelve seconds for the next offer
+    # (2026-11-16, production's sandbox: a call handed on 3 s after its worker's pod was deleted went
+    # to that pod). The gateway that learns a worker left a call says so here, and every gateway
+    # offers it nothing until it is heard again: a worker that was alive after all beats within five
+    # seconds and is back. Said by the name LiveKit knows it by, the one on its agent's seat.
+    def say_gone(self, agent_name: str, now: float) -> None:
+        """A worker left a call without ending it: offer it no call until its next heartbeat."""
+        key = next((key for key, worker in self.workers.items() if worker.agent_name == agent_name), None)
+        if key is None:
+            return
+        self.departed_here[key] = self.departed[key] = now
+        self.shared.put(self._gather())
+
+    def list_gone(self, fleet: str, now: float) -> list[str]:
+        """The LiveKit names of a fleet's workers said gone and not heard since."""
+        return [
+            worker.agent_name
+            for key, worker in self.workers.items()
+            if key[0] == fleet and worker.agent_name is not None and self._is_gone(key, worker, now)
+        ]
+
+    # Past the two heartbeats a silent worker is offered nothing anyway: the word is spent.
+    def _is_gone(self, key: WorkerKey, worker: WorkerStatus, now: float) -> bool:
+        at = self.departed.get(key)
+        return at is not None and worker.seen_at <= at and now - at <= slots.OFFERABLE_WITHIN_S
+
     def fleet_of_worker(self, worker: str) -> str | None:
         """The fleet a worker of that name beats for, or None when nobody has the name."""
         return next((fleet for fleet, name in self.workers if name == worker), None)
@@ -118,6 +148,9 @@ class Roster:
         for key, cordon in list(self.cordons.items()):
             if self._is_spent(cordon, self.workers.get(key), now):
                 del self.cordons[key]
+        for key, at in list(self.departed_here.items()):
+            if now - at > slots.OFFERABLE_WITHIN_S:
+                del self.departed_here[key]
         self._merge()
 
     def _set_cordon(self, worker: str, fleet: str | None, holder: str | None) -> None:
@@ -142,11 +175,21 @@ class Roster:
         return RosterShare(
             workers=tuple(self.heard_here.values()),
             cordons=tuple(Assignment.model_validate(cordon) for cordon in self.cordons.values()),
+            departures=tuple(
+                Departure(fleet=fleet, worker=worker, at=at) for (fleet, worker), at in self.departed_here.items()
+            ),
         )
 
-    # Each worker's newest heartbeat, wherever it beat; each cordon's newest setting.
+    # Each worker's newest heartbeat, wherever it beat; each cordon's newest setting; each worker's
+    # newest departure.
     def _merge(self) -> None:
         theirs = [heard.share for heard in self.shared.theirs.values()]
+        departed = dict(self.departed_here)
+        for share in theirs:
+            for gone in share.departures:
+                key = (gone.fleet, gone.worker)
+                departed[key] = max(gone.at, departed.get(key, gone.at))
+        self.departed = departed
         told = (Assigned(**cordon.model_dump()) for share in theirs for cordon in share.cordons)
         self.cordoned = newest(self.cordons, told)
         merged = dict(self.heard_here)

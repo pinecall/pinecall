@@ -347,15 +347,39 @@ cannot run a call either: the gateway takes the agent out of the room, so the ro
 offers the call (`live/service/stranded.py`, `hand_on_cut`). A worker that was alive after all finds
 itself removed from the room and leaves the call, and its room, to the one that took it up. A gateway
 told to stop ends every stream itself and hands nothing on; a machine that vanishes without closing
-its connections is still LiveKit's to report, twenty seconds later. The call is never offered back
-to the worker that left it: the gateway heard that worker seconds before, and a dead worker has
-every seat free.
+its connections is still LiveKit's to report, twenty seconds later.
+
+**Two gateways give one answer.** A deployment runs more than one gateway and a worker's requests
+reach whichever its connection lands on, so nothing of this is one gateway's memory. Three things
+are shared:
+
+- *Who reads the call.* A worker opens its stream again on any gateway, and the one it left sees a
+  call nobody reads. Every gateway says the calls read from it, each second and at once when a stream
+  begins (the signal's `reading` channel): a wait that runs out on one gateway while the worker reads
+  from another hands nothing on. The gateway a worker read from last is the one that says it gone.
+- *Which worker has the call.* The log's head counts the workers that took the call up
+  (`call_log_head.taken_up`). A take-up moves the count in one statement, from the value its asker
+  read and only while no gateway is sealing the call, so two workers that ask at once are not both
+  answered; a seal says which of the call's workers sends it and is checked against the head under
+  the seal's lease, so the worker a call was taken from is refused by either gateway.
+- *That the worker is gone.* The gateway that hands a call on tells the roster its worker left
+  (`Roster.say_gone`), and every gateway offers that worker nothing, this call or any other, until
+  it beats again. Without it the gateway would choose it: heard seconds before, and a dead worker
+  has every seat free. A worker that was alive after all beats within five seconds and is back.
+
+How long a worker that came back was away is logged by the gateway each time a cut stream reads
+again ("reads its commands again, N s after its stream was cut"): that is what the wait
+(`GONE_AFTER_S`, 1.5 s) is to be judged against.
 
 Measured on 2026-11-16 on production's sandbox, three simulated calls, the pod of the call's worker
 deleted at once while the agent answered: the call handed on **6.9, 7.3 and 7.2 s** after the
 deletion, the second worker's first word to the caller at **8.9, 9.2 and 9.5 s**, every call gone on
-with to its caller's goodbye, one `call.started` and one `call.ended` each. The three seconds are a
-constant (`GONE_AFTER_S`); the rest is the pod dying, the offer taken and the voice starting.
+with to its caller's goodbye, one `call.started` and one `call.ended` each. Those three were measured
+with a wait of three seconds. With the wait at a second and a half and the gateway's own times kept
+(three more calls, the same day): the stream was cut 3.0 s after the deletion, which is Kubernetes
+ending a deleted pod and not a worker dying; the call was offered 1.6 s after the cut and asked for
+by the second worker 0.3 to 0.6 s later; and the second worker's first word came 7.3, 8.7 and 12.2 s
+after the deletion, most of it the worker building the call's session before it speaks.
 
 The call ends as `drained`, with one sentence and a call back for a phone caller, only when nobody
 can go on with it: no worker has a seat (the job goes to the overflow, which holds no call), the

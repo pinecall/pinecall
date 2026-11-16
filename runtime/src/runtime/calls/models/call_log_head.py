@@ -60,6 +60,9 @@ class CallLogHead(Model):
     # How many entries the log took from its worker's batches, and the seq of the last.
     written: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     written_seq: Mapped[int | None] = mapped_column(BigInteger)
+    # How many times a worker took the call up from one that went away: a seal says which of the
+    # call's workers sends it, and one from a worker the call was taken from is refused.
+    taken_up: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     # The seal's lease: who holds the right to seal, and until when.
     sealing_until: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
     sealing_by: Mapped[str | None] = mapped_column(Text)

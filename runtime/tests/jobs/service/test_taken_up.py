@@ -7,10 +7,12 @@ from datetime import date
 from pathlib import Path
 
 import pytest
+from livekit import rtc
 from livekit.agents.utils import http_context
 from livekit.protocol.room import DeleteRoomRequest
 
 from runtime.calls.context import CallContext, Route, dump_context, new_call_id
+from runtime.calls.log.store import Store
 from runtime.enums import Channel, Direction, Env
 from runtime.jobs.service import answer_job, end_job, take_job, take_up_job
 from runtime.jobs.service.call_client import CallClient, open_call
@@ -138,4 +140,43 @@ async def test_a_call_another_worker_is_already_on_is_left_as_it_is(
         await first.aclose()
     assert warmed.job is None
     assert ctx.shutdowns == ["not taken up"]
+    assert DeleteRoomRequest(room=call) not in livekit.rooms.requests
+
+
+# The gateway takes an agent out of its room when its worker stopped reading the call's commands, and
+# hands the call on. A worker that was alive after all finds itself removed: the call is another
+# worker's by then, so its seal is refused and it leaves the room standing, with the caller in it.
+@pytest.mark.timeout(60)
+@needs_the_services
+async def test_a_worker_taken_out_of_its_room_leaves_the_call_and_the_room_to_the_one_that_took_it_up(
+    gateway: Gateway, fleet: GatewayClient, tenant: Tenant, agent: str, livekit: Server, store: Store, tmp_path: Path
+) -> None:
+    async with http_context.open(), holding(gateway, tenant, agent) as app:
+        first = await left_by_its_worker(fleet, tenant, agent)
+        call = first.call
+        livekit.rooms.people = {call}
+        room = ConnectedRoom(call, seat(THE_VISITOR, attributes={SCOPE_ATTRIBUTE: TALK}))
+        ctx = Assigned(room, livekit, gone(tenant, agent))
+        warmed = warmed_for(fleet, tmp_path)
+        await take_job(ctx, warmed, answer_job, take_up_job)
+        job = warmed.job
+        assert job is not None
+        speaker = Speaker()
+        job.setup.running.live.output.audio = speaker
+        listening = asyncio.create_task(hear_to_the_end(speaker))
+        try:
+            await until(lambda: speaker.frames > 0, within_s=10)
+            # The gateway judged this worker gone: its agent is removed, and another worker takes the call up.
+            room.emit("disconnected", rtc.DisconnectReason.PARTICIPANT_REMOVED)
+            assert await store.take_up(call, job.link.taken_up)
+            hangup = {"type": "call.hangup", "agent": agent, "call": call, "data": {"reason": "done"}}
+            await app.send(json.dumps(hangup))
+            await until(lambda: bool(ctx.shutdowns), within_s=10)
+            await end_job(warmed)
+        finally:
+            listening.cancel()
+            await ctx.finish()
+            await first.aclose()
+    assert job.link.passed_on
+    assert not await store.is_sealed(call), "the call goes on in the worker that took it up"
     assert DeleteRoomRequest(room=call) not in livekit.rooms.requests

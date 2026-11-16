@@ -55,9 +55,12 @@ class Dispatch(BaseModel):
     instruction: str | None = None
     # A call whose worker went away, sent to the worker that takes it up: how many entries the log took
     # from the worker that left, and when the call started, for a job that can only tell the caller and end it.
+    # `taken_up` is how many workers had taken the call up when it was offered: the job that only tells
+    # the caller seals as the last of them, and is refused if another took the call up meanwhile.
     worker_gone: bool = False
     entries_written: int = 0
     started_at: float | None = None
+    taken_up: int = 0
     continues: str | None = None
     # The voice and the models a test room asked for, over the agent's own for this call alone
     # (agents/service/settings.py: test_values); the gateway signs it, the browser cannot change it.

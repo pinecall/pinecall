@@ -104,6 +104,16 @@ class WorkerStatus(BaseModel):
     first_audio_p95_s: float | None = None
 
 
+class Departure(BaseModel):
+    """A worker a gateway said gone, and when: no call is offered to it until it is heard after that."""
+
+    model_config = ConfigDict(frozen=True)
+
+    fleet: str
+    worker: str
+    at: float
+
+
 # Told as `seats`, the word the gateways of the previous release read and say: while a release
 # rolls out, or back, the gateways of both hear each other's workers and one roster stands.
 class RosterShare(BaseModel):
@@ -115,6 +125,9 @@ class RosterShare(BaseModel):
         default=(), validation_alias=AliasChoices("workers", "seats"), serialization_alias="seats"
     )
     cordons: tuple[Assignment, ...] = ()
+    # The workers this gateway said gone before their heartbeats ran out. A gateway of the release
+    # before 2026-11-16 says none and reads none.
+    departures: tuple[Departure, ...] = ()
 
 
 # ── the live side: who holds what, on which gateway ──
@@ -152,6 +165,10 @@ class SocketsShare(RootModel[tuple[SocketRow, ...]]):
 
 class RunningShare(RootModel[dict[str, list[str]]]):
     """One gateway's share of the calls at once: the calls it opened, by `<org>|<env>`."""
+
+
+class ReadingShare(RootModel[tuple[str, ...]]):
+    """One gateway's share of the calls being read: those whose worker reads its commands from it."""
 
 
 class SimulatingShare(RootModel[dict[str, int]]):

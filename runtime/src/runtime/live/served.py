@@ -14,7 +14,7 @@ from runtime.calls.log import Log
 from runtime.calls.models import Opener
 from runtime.enums import Env
 from runtime.kit.loops import survive
-from runtime.live.peers import COMMANDS, RUNNING_CHANNEL, CallsAtOnce, Owners
+from runtime.live.peers import COMMANDS, READING_CHANNEL, RUNNING_CHANNEL, CallsAtOnce, Owners
 from runtime.live.pump import pump
 from runtime.live.sockets import SocketId, Sockets
 from runtime.live.tool_calls import ToolCalls
@@ -23,7 +23,7 @@ from runtime.session import service as session
 from runtime.shared_state import SharedState
 from runtime.signal import Signal
 from runtime.wire.base import Entry
-from runtime.wire.signal import Bound, Commanded, RunningShare
+from runtime.wire.signal import Bound, Commanded, ReadingShare, RunningShare
 
 logger = logging.getLogger(__name__)
 
@@ -84,9 +84,6 @@ class Served:
         self.sealing = asyncio.Lock()
         # Set once the app bound to the call said its end hook ran (call.done): its seal waits for it.
         self.hooked = asyncio.Event()
-        # How many times a worker took the call up from one that went away: the seal of an earlier one
-        # is refused, so a worker that was only slow cannot end a call another now runs.
-        self.taken_up = 0
 
     @property
     def call(self) -> str:
@@ -120,6 +117,8 @@ class _Kept:
     # The wait that began when the last of them was cut from the worker's end: it says the worker is
     # gone, unless a stream reads again first. None while one reads and when this gateway ended it.
     leaving: asyncio.Task[None] | None = None
+    # When that last stream was cut, for the log to say how long a worker that came back was away.
+    cut_at: float | None = None
 
 
 # Not durable on purpose: it says which calls are served now; the log is the record. The one writer
@@ -149,15 +148,29 @@ class Calls:
             every_s=RUNNING_EVERY_S,
             gathered=self._count_here,
         )
+        # The calls whose worker reads its commands from each gateway: said every second, and at once
+        # when a stream begins, so a gateway whose stream was cut knows the worker reads from another.
+        self._read = SharedState(
+            signal,
+            READING_CHANNEL,
+            load=ReadingShare.model_validate,
+            dump=_dump_reading,
+            empty=ReadingShare(()),
+            on_change=lambda: None,
+            every_s=RUNNING_EVERY_S,
+            gathered=self._read_here,
+        )
 
     async def start(self) -> None:
-        """Hear the other gateways' counts, and say this one's."""
+        """Hear the other gateways' counts and what they read, and say this one's."""
         await self._counted.start()
+        await self._read.start()
         self._heard_since = time.monotonic()
 
     async def close(self) -> None:
         """Stop hearing and saying."""
         await self._counted.close()
+        await self._read.close()
 
     # ── served ──
 
@@ -286,13 +299,21 @@ class Calls:
     # call, begun at the cut and dropped when a stream reads again, never a loop looking at every
     # call. A stream this gateway ends itself (the call sealed) is left by its body running out, and
     # begins no wait.
+    # A worker opens its stream again on whichever gateway its connection reaches, so one cut here
+    # may read from another a moment later, and a cut this gateway learns of late may be of a stream
+    # that moved long before. Every gateway says the calls read from it (`_read`), the ones it waits
+    # for among them, and says so at once when a stream begins: a wait that runs out finds the call
+    # read elsewhere and hands nothing on, and says at once that it waits no more. The gateway a
+    # worker read from last is the one that says it gone.
     @contextlib.contextmanager
     def follow(self, call: str) -> Generator[None]:
         """The call's worker reads its commands from this gateway for as long as this is entered."""
         kept = self._kept.get(call)
         if kept is not None:
             kept.streams += 1
-            self._stop_waiting(kept)
+            self._stop_waiting(kept, call)
+            if kept.streams == 1:
+                self._read.put(self._read_here())
         cut = True
         try:
             yield
@@ -302,6 +323,7 @@ class Calls:
                 kept.streams -= 1
                 if cut and kept.streams == 0 and self._gone is not None and kept.served.running is None:
                     logger.info("call %s: its worker's stream of commands was cut", call)
+                    kept.cut_at = time.monotonic()
                     kept.leaving = box_task(self._wait_for_its_worker(kept, *self._gone))
 
     def tell_when_gone(self, after_s: float, told: "WorkerGone") -> None:
@@ -311,15 +333,42 @@ class Calls:
     async def _wait_for_its_worker(self, kept: _Kept, after_s: float, told: "WorkerGone") -> None:
         await asyncio.sleep(after_s)
         kept.leaving = None
-        if kept.streams == 0 and self._kept.get(kept.served.call) is kept:
-            with survive("handing on a call whose worker went silent", kept.served.call):
-                await told(kept.served)
+        call = kept.served.call
+        # This gateway waits on the call no more, and says so at once: the gateway its worker reads
+        # from must not find it still spoken for here when its own wait runs out.
+        self._read.put(self._read_here())
+        if kept.streams or self._kept.get(call) is not kept:
+            return
+        if self._is_read_elsewhere(call):
+            logger.info("call %s: its worker reads its commands from another gateway", call)
+            return
+        with survive("handing on a call whose worker went silent", call):
+            await told(kept.served)
 
-    @staticmethod
-    def _stop_waiting(kept: _Kept) -> None:
-        if kept.leaving is not None:
-            kept.leaving.cancel()
-            kept.leaving = None
+    # How long a worker that came back was away is said each time: it is what GONE_AFTER_S is
+    # measured against.
+    def _stop_waiting(self, kept: _Kept, call: str | None = None) -> None:
+        if kept.leaving is None:
+            return
+        kept.leaving.cancel()
+        kept.leaving = None
+        if call is not None and kept.cut_at is not None:
+            away = time.monotonic() - kept.cut_at
+            logger.info("call %s: its worker reads its commands again, %.2f s after its stream was cut", call, away)
+
+    # A call this gateway waits on is still its own to speak for: another's wait that runs out
+    # meanwhile leaves it to this one.
+    def _read_here(self) -> ReadingShare:
+        return ReadingShare(
+            tuple(call for call, kept in self._kept.items() if kept.streams or kept.leaving is not None)
+        )
+
+    # A gateway silent for OPENER_SILENT_S is gone, and reads nothing.
+    def _is_read_elsewhere(self, call: str) -> bool:
+        now = time.monotonic()
+        return any(
+            call in heard.share.root for heard in self._read.theirs.values() if now - heard.at <= OPENER_SILENT_S
+        )
 
     # A spoken call outlives the gateway that opened it: its worker goes on and reads its commands from
     # another, which held it as a copy alone. So no socket that took its agent was handed it, its tools
@@ -411,4 +460,8 @@ class Calls:
 
 
 def _dump_running(share: RunningShare) -> object:
+    return share.model_dump(mode="json")
+
+
+def _dump_reading(share: ReadingShare) -> object:
     return share.model_dump(mode="json")

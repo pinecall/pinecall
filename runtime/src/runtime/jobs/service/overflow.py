@@ -112,7 +112,7 @@ async def tell_the_caller(
     says = sentence_in(None, warmed.told.overflow_says, calls_back=number is not None)
     await ctx.connect()
     link = CallClient(gateway, call)
-    link.taken_up = 0 if taken is None else taken.taken_up
+    link.taken_up = dispatch.taken_up if taken is None else taken.taken_up
     writing = open_writer(link, after=dispatch.entries_written if taken is None else taken.written)
     try:
         if scope is not None and dispatch.agent is not None:

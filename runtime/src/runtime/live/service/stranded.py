@@ -160,6 +160,7 @@ async def _offer(
         worker_gone=True,
         entries_written=kept.written,
         started_at=kept.started_at,
+        taken_up=kept.taken_up,
     )
     return await live.offering.offer(call, await fleet.fleet_of_env(session, scope.env), dispatch, left_by=left_by)
 
@@ -175,6 +176,11 @@ def _worker_of(agent: ParticipantInfo) -> str | None:
 # call nobody can take is. The app a spoken golden's call was pinned to is not kept, and is not said again.
 # It is asked before the worker joins the room: a room that holds an agent already, or no caller any
 # more, is one somebody took up first or nobody waits in, and the asker leaves it as it is.
+# Which of the call's workers the asker becomes is the head's count (`Store.take_up`), moved in a
+# statement and a transaction of its own, before the log's writer is asked for the head's row: every
+# gateway reads the same count, two askers cannot both move it, and the seal of a worker the call
+# was taken from is refused on whichever gateway it reaches (`seal.seal_call`). Until 2026-11-16 the
+# count was the memory of the gateway that answered, one of two.
 async def take_up_call(session: AsyncSession, live: LiveParts, actor: Actor, call: str) -> TakenUp:
     """Hand a call whose worker went away to the worker that takes it up, with what its log holds."""
     served = await openings.get_served(session, live, actor, call)
@@ -188,11 +194,13 @@ async def take_up_call(session: AsyncSession, live: LiveParts, actor: Actor, cal
     if any(entry.type == "call.ended" for entry in entries):
         raise Conflict(f"call {call!r} is over: nothing more can be written to it")
     said = CallStarted.model_validate(started.data)
+    was = await live.store.count_taken_up(call)
+    if not await live.store.take_up(call, was):
+        raise Gone(f"call {call!r} was taken up by another worker, or is ending: there is nothing to take up")
     lost = ErrorEvent(code=WORKER_LOST, message=WORKER_LOST_SAYS, recoverable=True)
     taken = await calls.count_taken(session, call)
     told = BatchedEntry(type="error", data=lost.dump(), ts=live.store.clock())
     await served.log.append_many([told], after=taken)
-    served.taken_up += 1
     return TakenUp(
         agent=served.agent,
         context=opening.context,
@@ -200,7 +208,7 @@ async def take_up_call(session: AsyncSession, live: LiveParts, actor: Actor, cal
         started_at=said.started_at,
         history=await calls.list_carried(session, live.vault, call),
         written=taken + 1,
-        taken_up=served.taken_up,
+        taken_up=was + 1,
     )
 
 

@@ -141,7 +141,8 @@ first words in that language. Another key is answered `404`; so is a
 asked by the worker sent into the room of a call whose worker went away, before it joins: it answers
 `{opening, medium, started_at, history, written, taken_up}`, what the call was opened with, its turns
 and its tools' calls and answers, and where its log's count stands; `410` when the room holds an agent
-already or no caller, `409` for a call that never started or has ended. That worker sends `taken_up`
+already or no caller, when another worker took the call up at the same moment, or while a gateway is
+sealing it; `409` for a call that never started or has ended. That worker sends `taken_up`
 with its seal, and the seal of the worker the call was taken from is answered `410`. `/lookup` is
 the one exception: the agent's own process searches its knowledge on a call it serves (the
 framework's `knowledge.search`), whoever opened the call, so it takes the org's `app` key in the

@@ -273,8 +273,52 @@ async def test_the_worker_a_call_was_taken_from_can_no_longer_end_it(
     await second.seal([], "done")
     assert not second.passed_on
     assert await store.is_sealed(call)
+    assert not await store.take_up(call, taken.taken_up), "a call that is over is taken up by nobody"
     await first.aclose()
     await second.aclose()
+
+
+# 2026-11-16, production: a call's stream of commands was cut on one gateway and its take-up was
+# answered by the other. The count of take-ups was then the memory of the gateway that answered, and
+# the seal of the worker the call was taken from, reaching the other one, ended a call another worker
+# ran. The count is the head's: whichever gateway the seal reaches refuses it.
+async def test_the_worker_a_call_was_taken_from_is_refused_by_a_gateway_that_did_not_answer_the_take_up(
+    fleet: GatewayClient, tenant: Tenant, agent: str, store: Store, livekit: Server
+) -> None:
+    first = await left_by_its_worker(fleet, tenant, agent)
+    call = first.call
+    livekit.rooms.people = {call}
+    taken = await fleet.take_up(call)
+    async with a_second_gateway() as other:
+        elsewhere = open_gateway(other.url, THE_FLEET_KEY)
+        late = CallClient(elsewhere, call)
+        await late.seal([], "done")
+        assert late.passed_on, "the other gateway says the call is another worker's too"
+        assert not await store.is_sealed(call)
+        second = CallClient(elsewhere, call, taken.opening)
+        second.written, second.taken_up = taken.written, taken.taken_up
+        await second.seal([], "done")
+        assert not second.passed_on
+        await late.aclose()
+        await second.aclose()
+        await elsewhere.aclose()
+    assert await store.is_sealed(call)
+    await first.aclose()
+
+
+# Two workers offered one call ask at the same moment, each of a gateway that read the same count:
+# one statement moves it, so one of them is answered and the other told the call is taken.
+async def test_two_workers_that_ask_for_one_call_at_once_are_not_both_given_it(
+    fleet: GatewayClient, tenant: Tenant, agent: str, livekit: Server
+) -> None:
+    first = await left_by_its_worker(fleet, tenant, agent)
+    livekit.rooms.people = {first.call}
+    answers = await asyncio.gather(*(fleet.take_up(first.call) for _ in range(4)), return_exceptions=True)
+    given = [answer for answer in answers if not isinstance(answer, BaseException)]
+    refused = [answer for answer in answers if isinstance(answer, UpstreamError)]
+    assert len(given) == 1, answers
+    assert [answer.answered for answer in refused] == [410] * 3, answers
+    await first.aclose()
 
 
 async def test_a_call_is_taken_up_only_while_its_caller_waits_alone_and_only_once_it_started(

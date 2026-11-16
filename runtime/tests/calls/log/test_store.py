@@ -696,3 +696,19 @@ async def test_a_seals_lease_is_renewed_and_given_back_by_its_holder_alone(
     await store.release_seal(call)
     assert not await store.lease_seal(call, 60.0), "the one that lost it cannot touch it"
     await other.writer.drain()
+
+
+# 2026-11-16: how many workers took a call up was the memory of the gateway that answered the
+# take-up, one of production's two. It is the head's: two stores are two gateways.
+async def test_a_call_is_taken_up_from_the_count_its_asker_read_and_never_while_it_is_being_sealed(
+    sessions: async_sessionmaker[AsyncSession], store: Store, call: str
+) -> None:
+    other = Store(sessions, Writer(sessions), clock=store.clock)
+    assert await store.lease_seal(call, 60.0)
+    assert not await other.take_up(call, 0), "a call a gateway is sealing is ending"
+    await store.release_seal(call)
+    assert await other.take_up(call, 0)
+    assert not await store.take_up(call, 0), "the count moved from under the one that read it first"
+    assert (await store.count_taken_up(call), await other.count_taken_up(call)) == (1, 1)
+    assert await store.take_up(call, 1)
+    await other.writer.drain()

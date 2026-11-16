@@ -1,6 +1,7 @@
 """The calls a gateway serves: a refused command is answered, the stream goes on, a caller's hang-up ends the call."""
 
 import asyncio
+import contextlib
 import dataclasses
 import functools
 import time
@@ -138,6 +139,52 @@ async def test_a_spoken_calls_command_waits_on_every_gateway_under_the_one_id_it
         ids_here, ids_there = ([None if one is None else one.id for one in kept] for kept in waiting)
         assert ids_here == ids_there == ["first", "second"]
         assert [None if one is None else one.command for one in waiting[0]] == [said, said]
+    finally:
+        its_calls.close_call(call)
+        await its_calls.close()
+        live.calls.close_call(call)
+
+
+class Cut(Exception):
+    """A worker's stream ending as a killed process's does: from the worker's end."""
+
+
+# 2026-11-16: production runs two gateways behind a Service that sends each connection to either. A
+# worker whose stream was cut on one opens it again on whichever it reaches, and the gateway it left
+# saw a call nobody read: a second and a half later it would take a healthy agent out of its room.
+# Each gateway says the calls read from it, so the wait that runs out leaves the call to the gateway
+# its worker reads from, and that one alone says the worker gone.
+async def test_a_stream_cut_on_one_gateway_hands_nothing_on_while_its_worker_reads_from_the_other(
+    live: LiveParts, call: str
+) -> None:
+    an_app(live, APP, SCOPE)
+    its_calls = Calls(live.signal, live.sockets, live.owners, functools.partial(commands.hear, live.sockets))
+    await its_calls.start()
+    other = dataclasses.replace(live, calls=its_calls)
+    gone_here: list[str] = []
+    gone_there: list[str] = []
+
+    async def told_here(served: Served) -> None:
+        gone_here.append(served.call)
+
+    async def told_there(served: Served) -> None:
+        gone_there.append(served.call)
+
+    live.calls.tell_when_gone(0.2, told_here)
+    its_calls.tell_when_gone(0.2, told_there)
+    try:
+        await served_here(live, call, written=False)
+        await served_here(other, call, written=False)
+        with contextlib.suppress(Cut), its_calls.follow(call):
+            # The worker reads from the other gateway by now, and its first stream is cut here.
+            await asyncio.sleep(0.1)
+            with contextlib.suppress(Cut), live.calls.follow(call):
+                raise Cut
+            await asyncio.sleep(0.6)
+            assert gone_here == [], "the worker reads its commands from the other gateway"
+            raise Cut
+        await until(lambda: gone_there == [call], within_s=WITHIN_S)
+        assert gone_here == []
     finally:
         its_calls.close_call(call)
         await its_calls.close()

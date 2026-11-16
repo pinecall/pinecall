@@ -103,20 +103,23 @@ async def test_a_fleet_has_a_slot_while_a_worker_has_one_and_is_said_full_when_n
 
 # 2026-11-16: a call handed on three seconds after its worker's pod was deleted was offered to that
 # pod, heard six seconds before and with every seat free, and its caller waited twelve more seconds.
+# The roster is told the worker is gone, so a room that has nothing to do with it is not offered to it either.
 async def test_a_room_its_worker_left_is_offered_to_another_worker_even_with_fewer_seats_free(
     sessions: async_sessionmaker[AsyncSession],
 ) -> None:
     servers, roster = per_world(), Roster()
     offering = Offering(sessions, servers=servers, roster=roster)
     roster.workers[(SANDBOX, "gone")] = a_worker("gone", active=0, max_jobs=32, fleet=SANDBOX)
-    roster.workers[(SANDBOX, "busy")] = a_worker("busy", active=1, max_jobs=2, fleet=SANDBOX)
-    room = f"room_{uuid4().hex}"
+    roster.workers[(SANDBOX, "busy")] = a_worker("busy", active=1, max_jobs=3, fleet=SANDBOX)
+    room, another = f"room_{uuid4().hex}", f"room_{uuid4().hex}"
     try:
         gone = agent_name(SANDBOX, "gone")
         assert await offering.offer(room, SANDBOX, Dispatch(agent="recepcion"), left_by=gone) == agent_name(
             SANDBOX, "busy"
         )
+        assert await offering.offer(another, SANDBOX, Dispatch(agent="recepcion")) == agent_name(SANDBOX, "busy")
     finally:
         await offering.forget(room)
+        await offering.forget(another)
         for server in servers.values():
             await server.aclose()

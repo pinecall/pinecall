@@ -146,6 +146,16 @@ class Store:
         async with self.sessions.begin() as session:
             return await HeadRepository(session).lease_seal(call, seconds, self.lease_id)
 
+    async def count_taken_up(self, call: str) -> int:
+        """How many times a worker took the call up from one that went away."""
+        async with self.sessions.begin() as session:
+            return await HeadRepository(session).count_taken_up(call)
+
+    async def take_up(self, call: str, was: int) -> bool:
+        """Count one more take-up of the call, from `was`; False when another moved it, or the call is ending."""
+        async with self.sessions.begin() as session:
+            return await HeadRepository(session).take_up(call, was)
+
     async def renew_seal(self, call: str, seconds: float) -> None:
         """Hold the right to seal the call for so long again, while sealing it."""
         async with self.sessions.begin() as session:

@@ -49,6 +49,8 @@ class CallHead:
     written: int
     # Who opened it; None for a call opened before the head said.
     opened_by: Opener | None = None
+    # How many times a worker took it up from one that went away.
+    taken_up: int = 0
 
 
 class HeadRepository(Repository[CallLogHead]):
@@ -69,6 +71,29 @@ class HeadRepository(Repository[CallLogHead]):
         """How many entries the log took from its writer's batches; 0 for none."""
         head = await self.find(log)
         return 0 if head is None else head.written
+
+    async def count_taken_up(self, call: str) -> int:
+        """How many times a worker took the call up from one that went away; 0 for none."""
+        head = await self.find(call)
+        return 0 if head is None else head.taken_up
+
+    # One statement, so two workers offered the same call cannot both take it: the count moves only
+    # from the value its asker read. A call that is sealed, or that a gateway holds the right to seal,
+    # is ending: the seal checks the count under that lease, and nothing moves it after.
+    async def take_up(self, call: str, was: int) -> bool:
+        """Count one more take-up of the call, from `was`; False when another moved it, or the call is ending."""
+        statement = (
+            update(CallLogHead)
+            .where(
+                CallLogHead.log == call,
+                CallLogHead.taken_up == was,
+                ~CallLogHead.sealed,
+                (CallLogHead.sealing_until.is_(None)) | (CallLogHead.sealing_until < func.now()),
+            )
+            .values(taken_up=was + 1)
+            .returning(CallLogHead.log)
+        )
+        return (await self.session.execute(statement)).scalar_one_or_none() is not None
 
     async def is_sealed(self, log: str) -> bool:
         """Whether the log is sealed."""
@@ -185,6 +210,7 @@ class HeadRepository(Repository[CallLogHead]):
             started_at=head.started_at,
             written=head.written,
             opened_by=head.opened_by,
+            taken_up=head.taken_up,
         )
 
     # The operator's way back from a claim: an agent registered with the wrong key.

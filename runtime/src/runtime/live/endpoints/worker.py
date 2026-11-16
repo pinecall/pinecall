@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 from runtime.calls.context import dump_context, read_context
 from runtime.compliance.service import recordings
 from runtime.enums import KeyScope
-from runtime.exceptions import Conflict, Gone, PinecallError
+from runtime.exceptions import Conflict, PinecallError
 from runtime.handles import TheClosing, TheVault
 from runtime.judging.service import judge_model
 from runtime.kit import sse
@@ -136,12 +136,10 @@ async def write_entries(websocket: WebSocket, call: str, live: TheLive, appends:
 @router.post("/v1/calls/{call}/sealed", status_code=204)
 async def seal_call(body: SealCallRequest, served: TheServedCall, live: TheLive) -> None:
     """Price the call, write its summary and score, and seal its log."""
-    if body.taken_up < served.taken_up:
-        raise Gone(f"call {served.call!r} was taken up by another worker: its end is that worker's to say")
     sealing = ending.Sealing(
         usage=tuple(body.usage), outcome=body.outcome, recording=body.recording, lent=tuple(body.lent)
     )
-    await seal.seal_call(live, served, sealing)
+    await seal.seal_call(live, served, sealing, taken_up=body.taken_up)
 
 
 # What the session of a worker's call heard of the app: its end hook ran, what it wrote was sent.

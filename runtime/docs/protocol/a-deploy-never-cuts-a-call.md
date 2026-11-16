@@ -87,7 +87,10 @@ takes up a call whose worker died writes through a writer that follows on from t
 entry that says the loss (`error`, `worker_lost`), which is counted as the writer's so that a batch
 the dead worker sends late writes nothing. A job that can only tell the caller follows on from the
 count its dispatch carries (`entries_written`). A seal says which of the call's workers sends it
-(`taken_up`), and one from a worker the call was taken from is answered `410`. The one-entry
+(`taken_up`), and one from a worker the call was taken from is answered `410`, by whichever gateway
+it reaches: the count is the head's (`call_log_head.taken_up`), moved by the take-up in one statement
+and read by the seal under its lease. A job that can only tell the caller seals as the last worker
+its dispatch names (`taken_up`). The one-entry
 endpoint, `POST /v1/calls/{call}/events`, still answers for a worker of an older release, and counts
 nothing. A written call's session batches too, straight to its log; taken up after a restart, it
 goes on from the count its log's head keeps.
