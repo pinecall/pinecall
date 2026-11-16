@@ -3,7 +3,7 @@
 import type { CamelEvent } from "@pinecall/agents/client";
 import type { Cost } from "@pinecall/agents/wire";
 
-import { amount, count, date, duration, formatHint, formatPairs, money as dollars } from "../kit/format.js";
+import { amount, clipped, count, date, duration, formatHint, formatPairs, money as dollars } from "../kit/format.js";
 import { table } from "../kit/table.js";
 import { BROKEN, HELD } from "../judging/render.js";
 import type { CallShown, ConsentHistory, DoNotCall, DoNotCallImported, Entry, Erasure, ErasureTrail, LogPage, OrgPolicyRow, Reads, SessionLine } from "./service/index.js";
@@ -33,14 +33,18 @@ export interface Line {
   text: string;
 }
 
-/** The agent's calls, newest first, as a table: the id, how it came, how long, why it ended, what it cost, the agent's last words. */
-export function sessions({ agent, calls }: { agent: string; calls: SessionLine[] }): string[] {
+/**
+ * The agent's calls, newest first, as a table: the id, how it came, how long, why it ended, what it cost, the agent's
+ * last words. On a terminal a row is cut at its width: a row that wraps pushes the table's own header off the screen.
+ */
+export function sessions({ agent, calls }: { agent: string; calls: SessionLine[] }, columns?: number): string[] {
   if (calls.length === 0) return [`${agent} has run no calls`];
   const rows = table(
     ["call", "via", "lasted", "ended", "cost", "last said"],
     calls.map((one) => [one.call, [one.channel, one.direction].filter((word) => word !== null && word !== undefined).join(" ") || "—", lasted(one), endedOf(one), money(one.cost), onOneLine(one.outcome, 60)]),
   );
-  return [`${agent} · ${count(calls.length, "call")}`, ...rows, formatHint(`pinecall sessions <call> reads one whole`)];
+  const fitted = columns === undefined ? rows : rows.map((row) => clipped(row, columns));
+  return [`${agent} · ${count(calls.length, "call")}`, ...fitted, formatHint(`pinecall sessions <call> reads one whole`)];
 }
 
 /** One call whole: live or not, its outcome, how it ended, what it cost, how each judge answered. */

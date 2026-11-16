@@ -6,6 +6,9 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **`pinecall sessions` fits the terminal.** A row is cut at the terminal's width, as the judges' list is: a call's
+  last words used to wrap every row in two and push the table's header off the screen. A pipe gets each row whole.
+
 - **`pinecall memory policy` says when the class sets it.** For an agent whose class declares `memory` it
   printed `yours (team's)`, `team nothing set`, `production nothing set`, which reads as an agent that
   remembers nothing; the class's policy is the one its calls run on, and the verb says so.

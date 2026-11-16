@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { entryLine, log, policy } from "../../src/calls/render.js";
+import { entryLine, log, policy, sessions } from "../../src/calls/render.js";
 
 const row = (calling_hours: { from: number; until: number } | null, per_number_day: number | null) => ({
   policy: { retention_days: null, calling_hours, per_number_day, consent_everywhere: false, disclosure: null, recording_notice: true },
@@ -64,5 +64,19 @@ describe("a log page read whole", () => {
     expect(lines[2]).toMatch(/state\.changed {2}takeMessage set message\.name Ana · message\.about a delivery$/);
     expect(lines.at(-1)).toBe("  → --verbose shows every entry");
     expect(log(page as never, 0, true)[0]).toBe("call_1 · 3 entries");
+  });
+});
+
+describe("the sessions", () => {
+  const one = { call: "call_7211bd743634463eb744fc9c89a89c3e", channel: "web", direction: "inbound", started_at: 100, ended_at: 103.1, end_reason: "caller_hung_up", cost: { usd: 0.0015 }, outcome: "Hello Ana! For Tuesday, I have 9:00 and 10:30 available." };
+
+  it("cuts a row at the terminal's width, so no row wraps and pushes the header away; a pipe gets it whole", () => {
+    const whole = sessions({ agent: "front-desk", calls: [one] as never });
+    expect(whole[2]).toBe("call_7211bd743634463eb744fc9c89a89c3e  web inbound  3.1s    caller hung up  $0.0015  Hello Ana! For Tuesday, I have 9:00 and 10:30 available.");
+    const narrow = sessions({ agent: "front-desk", calls: [one] as never }, 100);
+    expect(narrow[2]).toBe("call_7211bd743634463eb744fc9c89a89c3e  web inbound  3.1s    caller hung up  $0.0015  Hello Ana! For…");
+    expect(narrow[2]).toHaveLength(100);
+    // The title and the next step are sentences, left as they are.
+    expect([narrow[0], narrow.at(-1)]).toEqual([whole[0], whole.at(-1)]);
   });
 });

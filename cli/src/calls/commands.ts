@@ -67,7 +67,7 @@ export function register(program: Command, ctx: Context): void {
     .addHelpText("after", SESSIONS)
     .action(async (call, flags) => {
       if (call !== undefined) return ctx.io.result(await service.showCall(ctx, call), render.call);
-      ctx.io.result(await service.listSessions(ctx, service.ListSessionsInput.parse({ agent: flags.agent, limit: numberOf("--limit", flags.limit) })), render.sessions);
+      ctx.io.result(await service.listSessions(ctx, service.ListSessionsInput.parse({ agent: flags.agent, limit: numberOf("--limit", flags.limit) })), (listed) => render.sessions(listed, ctx.io.columns));
     });
   sessions
     .command("log")

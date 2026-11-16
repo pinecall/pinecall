@@ -1325,6 +1325,9 @@ call_29d7c7b6cdd643de9c659984a0125c8c  web inbound  3s       caller hung up  $0.
   → pinecall sessions <call> reads one whole
 ```
 
+On a terminal each row is cut at the terminal's width, so a call's last words never wrap a row in two; a
+pipe or a file gets every row whole.
+
 With a call id (`sessions <call>`): that call's **outcome**, how long it ran and why it ended, what it cost in US dollars with a
 line per priced row under it (the model, the ears, the voice, the memory model at hang-up, each
 phone leg in minutes begun) and a line for anything the platform has no rate for, and the **score**:
