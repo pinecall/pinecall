@@ -3647,6 +3647,7 @@ dependencies = [
 [package.optional-dependencies]
 voice = [
     { name = "audioop-lts" },
+    { name = "google-genai" },
     { name = "livekit-agents", extra = ["assemblyai", "asyncai", "aws", "azure", "baseten", "bland", "cambai", "cartesia", "cerebras", "clova", "deepgram", "elevenlabs", "fal", "fireworksai", "fishaudio", "gladia", "gnani", "google", "gradium", "groq", "hume", "inworld", "lmnt", "meta", "minimax", "mistralai", "murf", "neuphonic", "nvidia", "palabra", "perplexity", "resemble", "respeecher", "rime", "rtzr", "sarvam", "simplismart", "slng", "smallestai", "soniox", "speechify", "speechmatics", "spitch", "upliftai", "vakyam", "xai"] },
     { name = "python-socketio" },
 ]
@@ -3675,9 +3676,10 @@ requires-dist = [
     { name = "cryptography", specifier = ">=50,<51" },
     { name = "dnspython", specifier = ">=2.7,<3" },
     { name = "fastapi", specifier = ">=0.120,<1" },
+    { name = "google-genai", marker = "extra == 'voice'", specifier = ">=2.31,<3" },
     { name = "httpx", specifier = ">=0.28,<1" },
-    { name = "livekit-agents", extras = ["anthropic", "openai"], specifier = ">=1.8.3,<2" },
-    { name = "livekit-agents", extras = ["assemblyai", "asyncai", "aws", "azure", "baseten", "bland", "cambai", "cartesia", "cerebras", "clova", "deepgram", "elevenlabs", "fal", "fireworksai", "fishaudio", "gladia", "gnani", "google", "gradium", "groq", "hume", "inworld", "lmnt", "meta", "minimax", "mistralai", "murf", "neuphonic", "nvidia", "palabra", "perplexity", "resemble", "respeecher", "rime", "rtzr", "sarvam", "simplismart", "slng", "smallestai", "soniox", "speechify", "speechmatics", "spitch", "upliftai", "vakyam", "xai"], marker = "extra == 'voice'", specifier = ">=1.8.3,<2" },
+    { name = "livekit-agents", extras = ["anthropic", "openai"], specifier = ">=1.8.3,<1.8.9" },
+    { name = "livekit-agents", extras = ["assemblyai", "asyncai", "aws", "azure", "baseten", "bland", "cambai", "cartesia", "cerebras", "clova", "deepgram", "elevenlabs", "fal", "fireworksai", "fishaudio", "gladia", "gnani", "google", "gradium", "groq", "hume", "inworld", "lmnt", "meta", "minimax", "mistralai", "murf", "neuphonic", "nvidia", "palabra", "perplexity", "resemble", "respeecher", "rime", "rtzr", "sarvam", "simplismart", "slng", "smallestai", "soniox", "speechify", "speechmatics", "spitch", "upliftai", "vakyam", "xai"], marker = "extra == 'voice'", specifier = ">=1.8.3,<1.8.9" },
     { name = "livekit-api", specifier = ">=1.2,<2" },
     { name = "numpy", specifier = ">=2,<3" },
     { name = "onnxruntime", specifier = ">=1.20,<2" },

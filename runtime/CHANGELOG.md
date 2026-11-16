@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **An install from PyPI runs the livekit the suites run.** Gemini's voice was refused on a new machine by
+  Google's own API (`Invalid JSON payload received. Unknown name "speechConfig"`): the install had resolved
+  google-genai 3.4, a dependency of livekit's google plugin, where the lock holds 2.31; on 3 the plugin's
+  request is refused, with the plugin of 1.8.8 as with every one after it, and livekit 1.8.12 asks for 3.
+  livekit is held at the patch the lock holds (under 1.8.9) and google-genai under 3, as typer is held: what a
+  person installs is what was run.
+
 - **A call its vendor refuses says why, and ends once.** A vendor that refuses a call for good (a key with no
   credit, a voice that does not exist) wrote livekit's own account of it as the error's message: `type='llm_error'
   timestamp=… label='livekit.plugins.anthropic.llm.LLM' error=APIStatusError("Error code: 400 - {…`. That is what

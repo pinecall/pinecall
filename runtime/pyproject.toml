@@ -31,7 +31,10 @@ dependencies = [
   "structlog>=25,<27",
   "apscheduler>=3.11,<4",
   # The text session is livekit's AgentSession with no audio: the library and its two llm plugins.
-  "livekit-agents[anthropic,openai]>=1.8.3,<2",
+  # Held at the patch the lock holds, here and in `voice`: an install from PyPI resolves the newest a
+  # range allows, never the lock, and 1.8.12's google plugin asks for google-genai 3, on which Gemini's
+  # voice is refused by its own API (`Unknown name "speechConfig"`, found 2026-11-16 on a new machine).
+  "livekit-agents[anthropic,openai]>=1.8.3,<1.8.9",
   # Smart Turn v3, the row's alternative to livekit's own end-of-turn model: 8 MB of ONNX read
   # off the caller's audio on the worker's CPU, no transcript.
   "smart-turn-livekit[livekit]>=0.4,<1",
@@ -62,7 +65,10 @@ dependencies = [
 
 [project.optional-dependencies]
 voice = [
-  "livekit-agents[assemblyai,asyncai,aws,azure,baseten,bland,cambai,cartesia,cerebras,clova,deepgram,elevenlabs,fal,fireworksai,fishaudio,gladia,gnani,google,gradium,groq,hume,inworld,lmnt,meta,minimax,mistralai,murf,neuphonic,nvidia,palabra,perplexity,resemble,respeecher,rime,rtzr,sarvam,simplismart,slng,smallestai,soniox,speechify,speechmatics,spitch,upliftai,vakyam,xai]>=1.8.3,<2",
+  "livekit-agents[assemblyai,asyncai,aws,azure,baseten,bland,cambai,cartesia,cerebras,clova,deepgram,elevenlabs,fal,fireworksai,fishaudio,gladia,gnani,google,gradium,groq,hume,inworld,lmnt,meta,minimax,mistralai,murf,neuphonic,nvidia,palabra,perplexity,resemble,respeecher,rime,rtzr,sarvam,simplismart,slng,smallestai,soniox,speechify,speechmatics,spitch,upliftai,vakyam,xai]>=1.8.3,<1.8.9",
+  # The google plugin's own SDK, a dependency of a dependency, held under 3 for the reason above: the
+  # plugin of 1.8.8 names no ceiling for it, and 3.4 breaks the voice the lock's 2.31 speaks with.
+  "google-genai>=2.31,<3",
   # livekit-plugins-upliftai imports socketio and does not declare it (1.8.3): without it the
   # plugin does not import, and Uplift AI is no vendor.
   "python-socketio>=5.11,<6",
