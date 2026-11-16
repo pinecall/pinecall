@@ -14,7 +14,7 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   server by its address — Claude and ChatGPT on the web, Claude Code, Cursor, VS Code, Codex, Gemini
   CLI — is given that one, the person signs in to Pinecall in a browser and approves it, and its 35
   tools act in their org with nothing installed and no key copied.
-  [Connect an assistant](docs/mcp/connecting.md) has each assistant's steps. It is this package's
+  [Connect Claude or ChatGPT](docs/mcp/connecting.md) has each assistant's steps. It is this package's
   tools over HTTP (`pinecall/hosted`, served by the repository's `mcp/`), without the ten that act
   on a machine; `pinecall mcp` is unchanged.
 - **`agent` with action `list` names the org's agents held now**, and the process holding each: what

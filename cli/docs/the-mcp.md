@@ -7,7 +7,7 @@ tools take a person from an empty folder to an agent on Pinecall without a termi
 The same tools are also hosted by Pinecall at `https://mcp.pinecall.io/mcp`, for an assistant that
 takes a server by its address — Claude and ChatGPT on the web among them: a URL and a sign-in in a
 browser, nothing installed. That server has no folder, so it leaves out the ten tools that act on
-this machine; [Connect an assistant](mcp/connecting.md) says how to add it to each assistant, and
+this machine; [Connect Claude or ChatGPT](mcp/connecting.md) says how to add it to each assistant, and
 [The hosted server](#the-hosted-server), below, what it leaves out. This page is the server on your
 own machine.
 
@@ -200,7 +200,7 @@ A refusal is one sentence that names what to do next: no project names `project`
 
 `https://mcp.pinecall.io/mcp` is these tools behind HTTP, run by Pinecall: an assistant is given the
 address, the person signs in to Pinecall in a browser and approves it, and every call runs on the
-sign-in that approval made, in the org they chose ([Connect an assistant](mcp/connecting.md)). It is
+sign-in that approval made, in the org they chose ([Connect Claude or ChatGPT](mcp/connecting.md)). It is
 built from this package (`pinecall/hosted`) by the repository's `mcp/`.
 
 It works on no folder and starts nothing, so:

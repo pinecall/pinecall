@@ -3,7 +3,7 @@
 The `pinecall` CLI is an MCP server on a person's machine (`pinecall mcp`, [its page](../cli/docs/the-mcp.md)).
 This folder is the same tools behind HTTP, so an assistant is connected by an address and a sign-in:
 Claude and ChatGPT on the web, and any editor, with nothing installed. Pinecall's own runs at
-`https://mcp.pinecall.io/mcp`; [Connect an assistant](../cli/docs/mcp/connecting.md) is the page for
+`https://mcp.pinecall.io/mcp`; [Connect Claude or ChatGPT](../cli/docs/mcp/connecting.md) is the page for
 whoever uses it. This one is for whoever runs or changes it.
 
 It is private to the repository: never published to npm, with no version of its own. What ships is

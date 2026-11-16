@@ -1,4 +1,4 @@
-# Connect an assistant
+# Connect Claude or ChatGPT
 
 Pinecall's MCP server is hosted at one address:
 
@@ -6,49 +6,153 @@ Pinecall's MCP server is hosted at one address:
 https://mcp.pinecall.io/mcp
 ```
 
-Give that address to an assistant — Claude, ChatGPT, Claude Code, Cursor, VS Code, Codex, Gemini CLI —
-and it asks you to sign in to Pinecall in a browser. You approve it once, and its tools act in your
-org: read a call, talk to an agent, change its voice, run a simulation, watch a live call. Nothing is
-installed, and no key is copied anywhere.
+Add that address to Claude or ChatGPT as a connector, approve it once on a Pinecall page, and the
+assistant works in your org: it reads your calls, talks to an agent, changes its voice, runs a
+simulation, watches a live call. Nothing is installed and no key is copied. Claude Code, Cursor,
+VS Code, Codex and Gemini CLI take the same address, [further down](#claude-code).
 
-## Two servers, the same tools
+## What is a connector?
 
-There are two ways an assistant reaches Pinecall. Both can be connected at once.
+A connector is a server an assistant calls for tools. You add it once in the assistant's settings;
+then, in any conversation, the assistant may call its tools, and asks you first unless you told it
+not to. The assistant signs in to Pinecall as you, through a page of Pinecall's own, so it acts with
+your role in your org and never sees your password.
 
-| | the hosted server | the server on your machine |
-|---|---|---|
-| what you give the assistant | `https://mcp.pinecall.io/mcp` | `pinecall mcp`, written by `pinecall mcp install` |
-| how you sign in | a browser page you approve | the `login` tool, once per machine |
-| what it works on | the agents your org runs on Pinecall | those, and your project's folder |
-| tools | 35 | 45 |
-| where it works | any assistant, on the web and on a phone too | an assistant on your own computer |
-
-The hosted server has no folder. So the ten tools that need your machine are not in it: `login`,
-`project`, `runtime`, `start`, `stop`, `status`, `prompt`, `voice_sample`, `line` and `remember`. A
-few actions of the others read or write an agent's files (`docs push`, `test run` on the golden
-files, `runs promote`, `cases pull`, `deploy deploy`): the hosted server refuses those in one
-sentence that names the server on your machine. To write an agent's class, hold it while you write
-it and run its goldens from files, add that one: [the MCP server](../the-mcp.md).
-
-Every other tool is the same tool, with the same parameters: [the tools, stage by stage](../the-mcp.md#the-tools).
+The connector added here is yours alone. Listing Pinecall in Claude's or ChatGPT's public directory
+is a separate review, and nothing on this page needs it.
 
 ## Claude
 
-On claude.ai, in Claude Desktop and in the phone app. Custom connectors are on every plan; a Free
-account keeps one.
+On claude.ai, in Claude Desktop and in the phone app, on every plan.
 
-1. Open **Customize > Connectors**.
-2. Click **+ Add**, then **Add custom connector**.
-3. Name it `Pinecall`, and enter `https://mcp.pinecall.io/mcp` as the server's URL. Click **Continue**.
-4. Claude detects that the server signs you in. Leave what it found, and click **Add**.
-5. Click **Connect**. A Pinecall page opens: sign in if it asks, choose the workspace, and click **Connect**.
+:::steps
+### Open your connectors
 
-In a chat, the **+** button at the lower left has **Connectors**: switch Pinecall on for that
-conversation.
+In claude.ai, open **Settings** and then **Customize**. Under **Connectors**, choose the **Yours**
+tab, then **+ Add** and **Add custom connector**.
+
+### Name it, and give it the address
+
+Write `Pinecall` as the name and `https://mcp.pinecall.io/mcp` as the MCP server URL, then click
+**Continue**.
+
+![Claude's Add custom connector form, with the name Pinecall and the server's address](connecting/claude-add-custom-connector-2580c1d9.png)
+
+### Keep what Claude detected
+
+Claude reads from the server how it signs in: **Sign in now** and **Use Claude's published
+identity**, both marked *Detected*. Change nothing, scroll down and click **Add**.
+
+![Claude's authentication choices for the connector, Sign in now and Claude's published identity detected](connecting/claude-sign-in-detected-4380d8f2.png)
+
+### Connect, and approve on Pinecall's page
+
+Click **Connect**. A Pinecall page opens, signed in if your browser already is, or asking you to
+sign in first. It names Claude, the workspace it will act in and where it sends you back. Choose the
+workspace if you belong to several, and click **Connect**.
+
+![Pinecall's page asking whether Claude may act as you, with the workspace chosen and the Connect button](connecting/pinecall-approve-b777fef9.png)
+
+:::result
+Back in Claude: *Connected to Pinecall.* The connector's page lists its tools, the read-only ones
+apart, each one set to *Needs approval* until you choose otherwise.
+
+![Claude's connector page for Pinecall, connected, with its tool permissions](connecting/claude-connected-273bba7a.png)
+:::
+
+### Use it in a chat
+
+Ask for something Pinecall knows: *"Which of my agents are running, and how did their last calls
+go?"* Claude asks before each tool the first time; **Allow once** runs that call, **Always allow**
+stops asking for that tool.
+
+![Claude asking leave to use Pinecall's agent tool, with Decline, Always allow and Allow once](connecting/claude-tool-approval-dfc5f571.png)
+:::
+
+If a chat does not use it, the **+** button at the lower left of the chat lists your connectors:
+switch Pinecall on there.
 
 On a Team or Enterprise plan an owner adds it once for everybody, in **Organization settings >
-Connectors** (**Add**, then **Custom**, then **Web**). Each member then finds it under
-**Customize > Connectors** and clicks **Connect** to sign in as themselves.
+Connectors**; each member then finds it among their connectors and clicks **Connect** to sign in as
+themselves.
+
+## ChatGPT
+
+On chatgpt.com, the free plan included. In a workspace, its admin decides whether members may add a
+custom MCP server.
+
+:::steps
+### Open Plugins, and add a custom MCP server
+
+Open [chatgpt.com/plugins](https://chatgpt.com/plugins). Click **Add**, at the top right, and
+choose **Add custom MCP server**.
+
+![ChatGPT's Add menu: Create plugin, Upload plugin archive, Add custom MCP server](connecting/chatgpt-add-menu-e5e254f5.png)
+
+### Fill in the form
+
+Write `Pinecall` as the name (a description is optional), keep **Server URL** under *Connection* and
+enter `https://mcp.pinecall.io/mcp`, and keep **OAuth** as the authentication. ChatGPT finds the
+rest from the server itself: open **Advanced OAuth settings** and it shows it registers with its own
+client document. Change nothing there.
+
+![ChatGPT's Add custom MCP server form for Pinecall, with the OAuth settings it discovered](connecting/chatgpt-add-custom-mcp-server-8aa4366f.png)
+
+### Create it
+
+Scroll down, tick **I understand and want to continue** under the warning, and click **Create as a
+plugin**.
+
+### Connect, and approve on Pinecall's page
+
+ChatGPT asks to connect Pinecall. Click **Connect Pinecall**: the same Pinecall page as for Claude
+opens, naming ChatGPT and sending you back to chatgpt.com. Choose the workspace, and click
+**Connect**.
+
+![ChatGPT's Connect Pinecall dialog](connecting/chatgpt-connect-pinecall-1499e538.png)
+
+:::result
+Back in ChatGPT, Pinecall is under **Installed** on the Plugins page.
+:::
+
+### Use it in a chat
+
+Open Pinecall's plugin page and click **Try in chat**, or type **@** in any conversation and pick
+Pinecall, then ask.
+
+![A ChatGPT conversation with @Pinecall: both tools called, the org and the environment answered](connecting/chatgpt-in-a-chat-dcfaae44.png)
+:::
+
+## What the connection can do
+
+The hosted server has 35 tools: the agents your org runs, their settings, their calls, tests and
+cases, simulations, a live call, numbers and the docs. Each says whether it only reads or may change
+something, and the assistant shows that: Claude groups the read-only ones apart, and asks before the
+others. The destructive ones — placing a call, buying a number, ending a live call, overwriting
+settings, removing a judge or a persona — are the ones to keep on *Needs approval*.
+
+It has no folder of yours. What needs your project's files — writing an agent's class, holding it
+while you write it, its golden files, uploading a project — is the [MCP server on your
+machine](../the-mcp.md), which an assistant on your computer runs (`pinecall mcp install`). A tool
+asked for one of those answers in a sentence that says so.
+
+Every tool, its parameters and what it answers: [the tools, stage by stage](../the-mcp.md#the-tools).
+
+## What you approved
+
+The Pinecall page at `https://cloud.pinecall.io/connect` gives the assistant a sign-in of its own:
+a key of yours, labelled with the assistant's name.
+
+- **It acts as you.** It opens what your role opens, in the sandbox, and in production when a tool
+  is asked with `prod: true` and your org lets you act there.
+- **It is listed with your sign-ins.** The console's **User settings** lists it under *Where you are
+  signed in*, beside your browsers and terminals. Ending it there cuts the assistant off at once.
+- **Disconnecting in the assistant stops the assistant**, but Claude's **Disconnect** leaves the
+  sign-in itself in that list. End it in User settings too when you are done with it.
+- **It ends by itself** thirty days after the assistant last used it. The assistant then asks you
+  to connect again.
+- **No key crosses the model.** No tool takes a vendor's key or a secret, and no answer carries a
+  Pinecall key.
 
 ## Claude Code
 
@@ -67,20 +171,6 @@ write it into the repository's `.mcp.json` for your team:
   }
 }
 ```
-
-## ChatGPT
-
-1. Open [chatgpt.com/plugins](https://chatgpt.com/plugins).
-2. Select the plus button, then **Add custom MCP server**.
-3. Enter a name (`Pinecall`) and a description.
-4. Under **Connection**, choose **Public endpoint** and enter `https://mcp.pinecall.io/mcp`.
-5. Under authentication, keep OAuth: ChatGPT reads how Pinecall signs you in from the server
-   itself. Review the warning and select **I understand and want to continue**.
-6. Select **Create as a plugin**. ChatGPT sends you to Pinecall to sign in and approve, then lists
-   the tools it found.
-
-In a new conversation, type **@** and pick Pinecall. Whether your account may add a custom MCP
-server is decided by your plan and, in a workspace, by its admin.
 
 ## Cursor
 
@@ -155,23 +245,6 @@ itself. An assistant that can only launch a command reaches it through `mcp-remo
 }
 ```
 
-## What you approve
-
-The page that opens is Pinecall's own console, at `https://cloud.pinecall.io/connect`. It says
-which app is asking, the workspace it will act in (you choose, when you belong to several) and the
-site you will be sent back to. Approve only an app you just added yourself.
-
-The assistant then holds a sign-in of its own: a key of yours, labelled with the assistant's name.
-
-- **It acts as you.** It opens what your role opens, in the sandbox, and in production when a tool
-  is asked with `prod: true` and your org lets you act there.
-- **You end it at any time.** The console's **User settings** lists it under *Where you are signed
-  in*, beside your browsers and terminals. Disconnecting in the assistant ends it too.
-- **It ends by itself** thirty days after the assistant last used it. The assistant then asks you
-  to connect again.
-- **No key crosses the model.** No tool takes a vendor's key or a secret, and no answer carries a
-  Pinecall key: [the same rule as the server on your machine](../the-mcp.md).
-
 ## With a key, and no browser
 
 A script, a CI job or an agent of your own has nobody to click. The hosted server takes a Pinecall
@@ -209,9 +282,18 @@ For whoever writes an MCP client, or wonders what the assistant does.
 | transport | Streamable HTTP at `/mcp`: each request whole, answered as JSON, no stream and no session id |
 | the sign-in | OAuth 2.1, the authorization code grant with PKCE (`S256`), a public client |
 | found by | `401` with `WWW-Authenticate: Bearer resource_metadata=…`, then `https://mcp.pinecall.io/.well-known/oauth-protected-resource` (RFC 9728), then `https://cloud.pinecall.io/.well-known/oauth-authorization-server` (RFC 8414) |
-| the client | a Client ID Metadata Document (its `client_id` is the document's `https` address), or registered at `/v1/oauth/register` (RFC 7591) |
+| the client | a Client ID Metadata Document (its `client_id` is the document's `https` address: Claude's and ChatGPT's both are), or registered at `/v1/oauth/register` (RFC 7591) |
 | the token | a Pinecall key of the person's, as a bearer. No refresh token: the key is kept while it is used |
+| the tools | each with a `title` and `readOnlyHint` or `destructiveHint` |
 | revoked by | `POST https://cloud.pinecall.io/v1/oauth/revoke` (RFC 7009), or the person, in the console |
 
 The gateway's side, endpoint by endpoint:
 [People](../../../runtime/docs/protocol/people.md#an-app-connected-as-you--v1oauth).
+
+## Next steps
+
+:::cards
+- [The MCP server on your machine](../the-mcp.md) {terminal} The same tools, and the ten that need your project's folder.
+- [Quickstart](../quickstart.md) {rocket-launch} From nothing to an agent that answers, in ten minutes.
+- [The console tour](../../../docs/pages/guides/console-tour.md) {layout} Where the sign-ins are listed, and everything else.
+:::
