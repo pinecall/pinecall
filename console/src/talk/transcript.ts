@@ -9,11 +9,11 @@ import { supervisorMark } from "./supervisor-mark";
 export type { Said, Speaker } from "@pinecall/core/transcripts";
 export { SEGMENT_ID, TRANSCRIPTION_FINAL, TRANSCRIPTION_TOPIC, upsert } from "@pinecall/core/transcripts";
 
-/** One thing the log said between two sentences: an error, a supervisor stepping in, or a stage of the call changed. */
+/** One thing the log said between two sentences: an error, one the call went on from, a supervisor stepping in, or a stage of the call changed. */
 export interface Mark {
   kind: "mark";
   id: string;
-  tone: "error" | "supervisor" | "change";
+  tone: "error" | "aside" | "supervisor" | "change";
   text: string;
 }
 
@@ -107,6 +107,9 @@ export function markOf(entry: Entry): Mark | ToolRun | null {
       };
     }
     case "error":
+      // An error the call went on from (a lookup that came late for a spoken turn, a fact that could not be kept) is
+      // said as an aside: the turn was answered, and a red line under it says the call broke when it did not.
+      if (data["recoverable"] === true) return { kind: "mark", id: `mark-${entry.seq}`, tone: "aside", text: String(data["message"]) };
       return { kind: "mark", id: `mark-${entry.seq}`, tone: "error", text: `${BROKE} ${String(data["message"])}` };
     case "stage.changed": {
       const said = stageSaid(data);

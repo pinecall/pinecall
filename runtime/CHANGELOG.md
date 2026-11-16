@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **The console's Talk panel says a recovered error as an aside.** A lookup that came late for a spoken turn
+  (`search_skipped`, `recall_skipped`) and a fact that could not be kept are `error` entries the call went on
+  from: the turn was answered. The panel drew them as a red `✗` line, which read as a call that broke. They are
+  drawn quietly now; an error the call did not recover from is red as before.
+
 - **A call whose room goes away under it still ends.** When LiveKit closed a call's room, or a room was
   deleted, while its worker held the call, the worker wrote no `call.ended` and sealed nothing: closing
   the hold melody asks the room to unpublish its track, and livekit waits for an answer a room that is gone
