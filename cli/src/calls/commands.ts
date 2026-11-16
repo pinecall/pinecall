@@ -229,8 +229,9 @@ async function chatAtTheTerminal(ctx: Context, options: service.ChatOptions, eve
     onEntry: (entry, raw) => {
       const line = events ? raw : render.chatLine(entry);
       if (line === null) return;
-      // Redraw the prompt: an entry may land mid-typing.
-      ctx.io.stdout.write(`\r${line}\n`);
+      // Redraw the prompt: an entry may land mid-typing. The wire's own lines are data, written as they came.
+      if (events) ctx.io.stdout.write(`\r${line}\n`);
+      else ctx.io.over(line);
       if (!closed) prompt();
     },
     onLost: () => ctx.io.info("\rthe gateway went away — the call is kept, reconnecting…"),
@@ -266,7 +267,7 @@ async function atTheDesk(ctx: Context, call: string): Promise<void> {
   const watching = (async () => {
     for await (const entry of service.followCall(ctx, call, 0, leaving.signal)) {
       const line = render.deskLine(entry);
-      if (line !== null) ctx.io.stdout.write(`\r${line}\n`);
+      if (line !== null) ctx.io.over(line);
       prompting(lines, ctx, left);
       if (entry.type === "call.ended") ended = true;
       if (ended) break;

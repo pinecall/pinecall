@@ -2935,8 +2935,16 @@ nothing has held it`, and `→ pinecall start holds it from this terminal, pinec
 Pinecall`. A path in a refusal is written as you would type it from where you are
 (`agents/clinica-norte/docs`), never whole.
 
-On a terminal the marks are coloured — `✓` green, `✗` red, the `→` and `–` lines dimmed, a refusal's
-`pinecall:` red — and nothing else is; a pipe, a file or `NO_COLOR` gets none.
+**On a terminal an answer is coloured and stands apart.** Every verb's lines are read for what they
+are and painted in one place: what the answer is about in Pinecall's violet (`dental-front-desk ·
+sandbox`), a table's header bold and each row's name cyan, a record's labels cyan, a standing that is
+a cell of its own in its colour (`ready` and `live` green, `stopped` and `sandbox` yellow, `production`
+magenta, `failed` red), a date and what only separates dimmed, `✓` green and `✗` red, a next step's
+`→` cyan over dimmed words, a refusal's `pinecall:` red. A transcript tells its speakers apart: the
+agent's `›` violet, the caller's `‹` cyan, a tool asked in yellow and its answer dimmed. The help is
+painted the same way. An empty line comes before the answer's first line and after its last, and
+before its next steps. A pipe, a file or `NO_COLOR` gets the words alone, with no colour and no
+empty lines added: what a script reads never changes with the terminal.
 
 `start` and `prompt` run the agent's own process: when it leaves on its own they end with its exit code,
 whatever it is — 2 when the gateway refused what the class declares.

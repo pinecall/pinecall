@@ -6,6 +6,13 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **Every verb's answer is coloured on a terminal, and stands apart from the prompt.** The title in
+  violet, a table's header bold and its rows named in cyan, a record's labels, the standings (`ready`,
+  `live`, `stopped`, `failed`, `sandbox`, `production`), the speakers of a chat and a tool's call each
+  in a colour of their own, the help too; an empty line before and after an answer, and before its next
+  steps. Until now only `✓`, `✗` and the `→` lines were. A pipe, a file and `NO_COLOR` read the same
+  words as before.
+
 - **`pinecall pipeline melody --agent <slug>` takes the agent.** `pipeline` has an `--agent` of its own and
   kept the slug for itself, so `melody` and its sub-verbs (`show`, `upload`, `default`, `off`, `after`)
   answered "no agent here" outside a project, though the page writes them with the flag.

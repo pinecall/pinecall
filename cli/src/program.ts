@@ -68,7 +68,7 @@ export async function createProgram(ctx: Context, argv: readonly string[] = []):
     .option("--json", "answer with one JSON object on stdout")
     .exitOverride()
     .configureOutput({
-      writeOut: (text) => ctx.io.stdout.write(text),
+      writeOut: (text) => ctx.io.page(text),
       writeErr: (text) => ctx.io.stderr.write(text),
       // As wide as the terminal the help is written to (commander would read the process's own), 80 off one.
       getOutHelpWidth: () => ctx.io.columns ?? HELP_WIDTH,

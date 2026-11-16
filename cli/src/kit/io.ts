@@ -21,12 +21,18 @@ export interface IO {
   json: boolean;
   /** `PINECALL_DEBUG`: `debug` lines are written. */
   readonly verbose: boolean;
-  /** Whether the marks and hints are coloured: each stream a terminal, and no `NO_COLOR`. */
+  /** Whether what is written is coloured: each stream a terminal, and no `NO_COLOR`. */
   readonly color?: { out: boolean; err: boolean };
   /** A verb's answer: the object under `--json`, the rendered lines otherwise. */
   result<T>(data: T, render: Render<T>): void;
   /** A line of the answer written as it comes (a transcript, a log); silent under `--json`. */
   print(line: string): void;
+  /** A line written from the row's start, over the prompt a person is typing at: a turn landing mid-typing. */
+  over(line: string): void;
+  /** A text written whole as it came, its lines painted: the help. */
+  page(text: string): void;
+  /** The verb is over: on a terminal, what it wrote is closed with an empty line. */
+  end(): void;
   /** What a person reads while the verb runs: where it connected, what it is doing. */
   info(line: string): void;
   warn(line: string): void;
@@ -53,6 +59,9 @@ export class StreamIO implements IO {
   readonly verbose: boolean;
   readonly color: { out: boolean; err: boolean };
   json = false;
+  // On a terminal an answer stands apart from the prompts around it: an empty line before its first
+  // line and one after its last. Written to stdout, the terminal itself, whichever stream spoke first.
+  #aired = false;
 
   constructor(
     readonly stdout: Writable,
@@ -71,17 +80,44 @@ export class StreamIO implements IO {
       this.stdout.write(`${JSON.stringify(data, null, 2)}\n`);
       return;
     }
-    const lines = render(data);
-    // A rendered answer may hold several lines in one string; each is painted on its own.
-    for (const line of typeof lines === "string" ? [lines] : lines) this.stdout.write(`${this.paint(line, this.color.out)}\n`);
+    const rendered = render(data);
+    const lines = typeof rendered === "string" ? rendered.split("\n") : rendered.flatMap((line) => line.split("\n"));
+    this.air();
+    for (const line of this.tty ? apart(lines) : lines) this.stdout.write(`${this.paint(line, this.color.out)}\n`);
   }
 
   print(line: string): void {
-    if (!this.json) this.stdout.write(`${this.paint(line, this.color.out)}\n`);
+    if (this.json) return;
+    this.air();
+    this.stdout.write(`${this.paint(line, this.color.out)}\n`);
+  }
+
+  // It takes the prompt's own row, so no empty line goes before it; the verb's end still closes what it wrote.
+  over(line: string): void {
+    if (this.json) return;
+    this.#aired ||= this.tty;
+    this.stdout.write(`\r${this.paint(line, this.color.out)}\n`);
+  }
+
+  page(text: string): void {
+    this.air();
+    this.stdout.write(this.paint(text, this.color.out));
   }
 
   info(line: string): void {
+    this.air();
     this.stderr.write(`${this.paint(line, this.color.err)}\n`);
+  }
+
+  end(): void {
+    if (this.#aired) this.stdout.write("\n");
+    this.#aired = false;
+  }
+
+  private air(): void {
+    if (!this.tty || this.json || this.#aired) return;
+    this.#aired = true;
+    this.stdout.write("\n");
   }
 
   private paint(text: string, on: boolean): string {
@@ -95,6 +131,13 @@ export class StreamIO implements IO {
   debug(line: string): void {
     if (this.verbose) this.stderr.write(`debug: ${line}\n`);
   }
+}
+
+// On a terminal the next steps (`  → …`) stand apart from the answer they follow: an empty line before the first.
+function apart(lines: readonly string[]): string[] {
+  const first = lines.findIndex((line) => /^ {2,}→ /.test(line));
+  if (first <= 0 || lines[first - 1] === "") return [...lines];
+  return [...lines.slice(0, first), "", ...lines.slice(first)];
 }
 
 /** An IO that keeps what a verb answers, for a caller that is no terminal: the MCP server, a test. */
@@ -119,9 +162,19 @@ export class CollectingIO implements IO {
     this.lines.push(line);
   }
 
+  over(line: string): void {
+    this.lines.push(line);
+  }
+
+  page(text: string): void {
+    this.lines.push(text);
+  }
+
   info(line: string): void {
     this.lines.push(line);
   }
+
+  end(): void {}
 
   warn(line: string): void {
     this.lines.push(`warning: ${line}`);

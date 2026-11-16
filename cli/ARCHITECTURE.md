@@ -61,10 +61,10 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `kit/format.ts` | 107 | The one way a date, an amount, a duration, a count or a verdict's mark is written for a terminal. |
 | `kit/hostname.ts` | 12 | The machine label shown on keys minted for this terminal. |
 | `kit/home.ts` | 12 | The CLI's home folder on this machine: `PINECALL_HOME`, else `~/.pinecall`; where its sign-in and the local runtime's file live. |
-| `kit/io.ts` | 137 | Where a verb writes: results on stdout, everything a person reads while waiting on stderr. |
+| `kit/io.ts` | 190 | Where a verb writes: results on stdout, everything a person reads while waiting on stderr. |
 | `kit/json-file.ts` | 21 | A JSON file named on the command line, read with errors that name the flag and the file. |
 | `kit/keyvalue.ts` | 23 | `key=value` pairs as a repeated flag names them, each value read as JSON when it parses and as text otherwise. |
-| `kit/paint.ts` | 20 | Colour for a terminal, on the marks and the hints alone: the data stays the terminal's own colour. |
+| `kit/paint.ts` | 160 | Colour for a terminal: one line read for what it is (a title, a table's header, a label, a mark, a turn) and painted. |
 | `kit/player.ts` | 54 | The audio players a machine might have, the first one on the PATH, and a file played on it: the one place audio is played. |
 | `kit/stdin.ts` | 53 | Terminal input: a secret without echo, or the lines of a pipe. A key never lands in argv or the scrollback. |
 | `kit/table.ts` | 28 | Rows as aligned columns: the one table a verb prints. |

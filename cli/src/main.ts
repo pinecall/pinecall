@@ -65,6 +65,7 @@ export async function main(
   } catch (failed) {
     return readerLeft ? 0 : exitWith(failed, ctx, program === undefined ? { verbs: [] } : readCommandTyped(program, argv));
   } finally {
+    io.end();
     process.off("SIGINT", onSignal);
     process.off("SIGTERM", onSignal);
   }
