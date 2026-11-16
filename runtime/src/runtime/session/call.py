@@ -322,8 +322,13 @@ class Call:
         if wanted.state is not None:
             await self.set_state(StateSet(state=wanted.state))
 
+    def list_closed_tools(self) -> list[str]:
+        """The agent's tools the app closed, by name: what the model is told not to call this turn."""
+        return sorted(tool.name for tool in self.declaration.tools if tool.name not in self.open_tools)
+
     # Every tool stays in the agent's hands for the whole call: changing what the provider is sent
-    # spends its prompt cache. The subset open now is enforced where a tool is run.
+    # spends its prompt cache. The subset open now is enforced where a tool is run, and each request
+    # names the closed ones (`prompt.request`).
     async def set_tools(self, wanted: ToolsSet) -> None:
         """Open only these of the agent's tools; an empty list closes them all."""
         names = {tool.name for tool in self.declaration.tools}

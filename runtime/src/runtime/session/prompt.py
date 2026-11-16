@@ -95,15 +95,32 @@ ALREADY_SAID = (
 )
 
 
+# The model holds every tool of the call for the whole call, since the list is part of the cached prefix,
+# and the app opens a subset: a model not told which calls a closed one and is refused. An agent of a
+# team is offered the pass to itself, described as "call it as soon as the caller brings that up", and
+# the front desk called it on its first turn in 3 calls of 16 (gemini-3.5-flash-lite, 2026-11-16).
+# So the closed ones are named where the view is: in this request alone, after the caller's words.
+CLOSED_NOW = (
+    "These tools are closed right now, so never call them: {names}. "
+    "What they are for is yours to answer yourself, or with a tool that is open."
+)
+
+
 # Always a new context: livekit reuses its own across a turn's tool steps, so additions would
 # pile up. The order is the one prompt-injection.md states: static blocks, history, the view after
 # the caller's words, and last what the agent is still saying.
 def request(
-    history: llm.ChatContext, blocks: Blocks, lookups: Sequence[llm.ChatItem] = (), saying: Sequence[str] = ()
+    history: llm.ChatContext,
+    blocks: Blocks,
+    lookups: Sequence[llm.ChatItem] = (),
+    saying: Sequence[str] = (),
+    closed: Sequence[str] = (),
 ) -> Request:
-    """One request: the history with the lookups spliced in, the dynamic blocks after the caller, what is said last."""
+    """One request: the history and its lookups, the view and the tools closed now after the caller, what is said."""
     items = _ahead_of_the_caller(history.items, lookups)
     dynamic = [llm.ChatMessage(role="system", content=[text]) for text in blocks.of("dynamic")]
+    if closed:
+        dynamic.append(llm.ChatMessage(role="system", content=[CLOSED_NOW.format(names=", ".join(closed))]))
     said = [llm.ChatMessage(role="system", content=[ALREADY_SAID.format(line=line)]) for line in saying]
     return Request([*_after_the_caller(items, dynamic), *said], blocks.of("static"))
 

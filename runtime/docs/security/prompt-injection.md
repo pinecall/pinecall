@@ -19,6 +19,7 @@ words land in a request and where a retrieved sentence lands, and check it in th
 | what `search` returned | whoever wrote the documents | a tool result, JSON | none |
 | what a tenant's own tool returned | the tenant's systems, and what they read | a tool result, JSON | none |
 | the `view` block | the tenant | after the caller's newest words, ahead of the turn's tool rounds; last when no tool ran | operator |
+| the names of the tools the app closed (`tools.set`) | the gateway, from the tenant's own tool names | one sentence right after the `view` block, in that request alone: the model holds every tool for the whole call, and is told each turn which it must not call | operator |
 
 **Nothing that came from outside the conversation is placed among the operator's blocks or in a
 plain `user` turn**: it goes in a tool result, encoded as JSON. **Nothing the operator wrote is

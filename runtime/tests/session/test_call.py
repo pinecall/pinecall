@@ -24,9 +24,11 @@ async def test_everything_declared_is_open_until_a_tools_set_narrows_it(box: Box
     ongoing = Call(context_of(call), Declaration(slug="a", tools=(A_TOOL,)), box)
     ongoing.writing.open()
     assert ongoing.open_tools == {"book"}
+    assert ongoing.list_closed_tools() == []
     undeclared = WiredTool(name="ghost", description="d", parameters={"type": "object"})
     await ongoing.set_tools(ToolsSet(tools=[undeclared]))
     assert ongoing.open_tools == frozenset()
+    assert ongoing.list_closed_tools() == ["book"]
     await ongoing.writing.close(5)
     assert [entry.data for entry in await store.whole_of(call)] == [{"visible": []}]
 

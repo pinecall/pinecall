@@ -9,6 +9,7 @@ type Piece = llm.ChatChunk | str
 
 # A sentence ends at its stop and the space after it; a line with no stop is one sentence.
 SENTENCE_END = re.compile(r"(?<=[.!?…])\s+")
+STOPS = ".!?…"
 
 
 def _plain(text: str) -> str:
@@ -30,6 +31,12 @@ def _wordless(piece: Piece) -> Piece:
 
 def _calls_a_tool(piece: Piece) -> bool:
     return not isinstance(piece, str) and piece.delta is not None and bool(piece.delta.tool_calls)
+
+
+def _saying(piece: Piece, words: str) -> Piece:
+    if isinstance(piece, str) or piece.delta is None:
+        return words
+    return piece.model_copy(update={"delta": piece.delta.model_copy(update={"content": words})})
 
 
 class SaidThisTurn:
@@ -55,6 +62,22 @@ class SaidThisTurn:
         """Whether these words are a sentence already said, whole."""
         return _plain(text) in self.sentences
 
+    # A model writes the line again and its answer after it with no space between ("…invoices.I see…",
+    # Gemini, 2026-11-16), so the sentence is found by its words and not by the space after its stop.
+    # Only a sentence that ends in a stop is cut off the front: "Sure" is not the start of "Surely".
+    def after_a_said_opening(self, text: str) -> str | None:
+        """The words that follow a sentence already said, when the text opens with one and goes on; else None."""
+        for sentence in self.sentences:
+            if sentence[-1] not in STOPS:
+                continue
+            for cut in range(len(sentence), len(text)):
+                opening = _plain(text[:cut])
+                if len(opening) > len(sentence):
+                    break
+                if opening == sentence and text[cut - 1] in STOPS:
+                    return text[cut:].lstrip()
+        return None
+
 
 # A model chaining tools in one answer writes its line again in each round ("Let me note that
 # down." before one tool, then before the next): the words that open a round are held while they
@@ -73,7 +96,7 @@ async def drop_repeats(pieces: AsyncIterable[Piece], said: SaidThisTurn) -> Asyn
             held = []
             yield piece
             continue
-        held.append(piece)
+        held = _past_what_was_said([*held, piece], said)
         text = "".join(text_of(one) for one in held)
         if said.holds(text):
             held = []
@@ -84,3 +107,14 @@ async def drop_repeats(pieces: AsyncIterable[Piece], said: SaidThisTurn) -> Asyn
     if held and not said.holds("".join(text_of(one) for one in held)):
         for one in held:
             yield one
+
+
+# The line and what follows it can come in one piece: the line goes, and what follows is held as
+# the opening of the round, since it may be a second line said again.
+def _past_what_was_said(held: list[Piece], said: SaidThisTurn) -> list[Piece]:
+    while held:
+        rest = said.after_a_said_opening("".join(text_of(one) for one in held))
+        if rest is None:
+            return held
+        held = [_saying(held[-1], rest)] if rest else []
+    return held

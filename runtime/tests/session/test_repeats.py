@@ -55,6 +55,34 @@ async def test_the_reply_after_a_repeated_line_is_said_whole() -> None:
     assert "".join(text_of(piece) for piece in answer) == " That is Tuesday at nine."
 
 
+async def test_a_line_said_again_with_the_reply_in_the_same_piece_loses_the_line_alone() -> None:
+    """Gemini wrote the announcement again and its answer after it with no space between (2026-11-16)."""
+    answer = await played(having_said(NOTED), "Let me note that down.That is Tuesday at nine.")
+    assert [text_of(piece) for piece in answer] == ["That is Tuesday at nine."]
+
+
+async def test_a_line_said_again_and_the_reply_after_a_space_in_one_piece_loses_the_line_alone() -> None:
+    answer = await played(having_said(NOTED), "Let me note ", "that down. That is Tuesday", " at nine.")
+    assert "".join(text_of(piece) for piece in answer) == "That is Tuesday at nine."
+
+
+async def test_two_lines_said_again_in_one_piece_are_both_dropped() -> None:
+    answer = await played(having_said("One moment.", NOTED), "One moment. Let me note that down. It is booked.")
+    assert "".join(text_of(piece) for piece in answer) == "It is booked."
+
+
+async def test_a_line_with_no_stop_is_never_cut_off_the_front_of_longer_words() -> None:
+    answer = await played(having_said("Sure"), "Surely that is fine.")
+    assert "".join(text_of(piece) for piece in answer) == "Surely that is fine."
+
+
+async def test_a_piece_of_the_model_keeps_its_kind_when_a_line_is_cut_off_its_front() -> None:
+    chunk = llm.ChatChunk(id="c", delta=llm.ChoiceDelta(role="assistant", content="Let me note that down.Done."))
+    answer = await played(having_said(NOTED), chunk)
+    assert isinstance(answer[0], llm.ChatChunk)
+    assert text_of(answer[0]) == "Done."
+
+
 async def test_words_that_start_like_a_line_said_but_go_elsewhere_are_all_said() -> None:
     answer = await played(having_said(NOTED), "Let me ", "check the calendar.")
     assert "".join(text_of(piece) for piece in answer) == "Let me check the calendar."

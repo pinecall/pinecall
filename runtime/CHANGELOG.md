@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **A model is told which of its tools are closed, so an agent of a team no longer passes the call to itself.**
+  A call's model holds every tool for the whole call, since the list is part of the cached prompt, and
+  the app opens a subset with `tools.set`. Nothing told the model which: an agent of a team was offered
+  the pass to itself, the front desk of a two-agent app called `transfer_to_front_desk` on its first
+  turn in 3 written calls of 16, and each one wrote `transfer_to_front_desk is not available now` to
+  the call's log (a `✗` in `pinecall chat`). Each request now names the closed tools in one sentence
+  after the view, in that request alone; with every tool open it says nothing.
+
+- **A tool's line the model writes again is dropped when its answer follows in the same piece.** A tool's
+  announcement said once was dropped from the reply only when it came as a piece of its own. Gemini
+  writes it again and its answer right after, with no space between: a written call read "Let me look
+  up your invoices.I see invoice 204…", in the chat and as the call's outcome. The line is now found at
+  the front of what the model writes, and what follows it is said alone.
+
 - **A written call passed to a teammate thinks with the teammate's model, and its hand-over is no error.**
   A hand-over tells a call to take its stages anew. A chat the gateway runs had nothing to take them
   with: every hand-over that worked also wrote `a written call the gateway runs keeps the model it opened

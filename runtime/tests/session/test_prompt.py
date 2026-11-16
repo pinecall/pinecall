@@ -10,6 +10,7 @@ from runtime.exceptions import ValidationError
 from runtime.kit.text import a_list, a_mapping, sha256_of
 from runtime.session.prompt import (
     ALREADY_SAID,
+    CLOSED_NOW,
     Blocks,
     Request,
     greeting_for,
@@ -176,6 +177,23 @@ def test_a_line_the_agent_is_still_saying_ends_the_request_as_a_note_never_as_a_
     assert last.text_content == ALREADY_SAID.format(line="Let me book that for you.")
     assert params[-2].type == "function_call_output"
     assert not any(isinstance(item, llm.ChatMessage) and item.role == "assistant" for item in params[-2:])
+
+
+def test_the_tools_the_app_closed_are_named_after_the_view_in_this_request_alone() -> None:
+    """A model holds every tool for the whole call: not told, the front desk passed the call to itself (2026-11-16)."""
+    history = _history()
+    before = len(history.items)
+    params = request(history, _written(view="Turnos libres"), closed=["askRefund", "transfer_to_front_desk"]).items
+    tail = [item.text_content for item in params[-2:] if isinstance(item, llm.ChatMessage)]
+    assert tail == ["Turnos libres", CLOSED_NOW.format(names="askRefund, transfer_to_front_desk")]
+    assert len(history.items) == before
+
+
+def test_with_every_tool_open_the_request_says_nothing_of_closed_ones() -> None:
+    history = _history()
+    assert [item.type for item in request(history, _written(), closed=[]).items] == [
+        item.type for item in request(history, _written()).items
+    ]
 
 
 def test_with_nothing_being_said_the_request_ends_as_before() -> None:
