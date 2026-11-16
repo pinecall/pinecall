@@ -252,7 +252,7 @@ and goes on with it; the overflow, or a worker that cannot, says `PINECALL_OVERF
 back, writes `call.ended {reason: "drained", ended_by: "platform"}` through a writer that follows on from
 the dead worker's, deletes the room and seals the call ([scaling.md](../scaling.md), "A worker that dies").
 The gateway offers the same call sooner, without this event, when the worker's stream of the call's
-commands was cut and stayed cut for three seconds: it removes the agent from the room and offers it. A worker that ends a call, drains or hands a ring to the sandbox leaves with
+commands was cut and stayed cut for a second and a half: it removes the agent from the room and offers it. A worker that ends a call, drains or hands a ring to the sandbox leaves with
 `CLIENT_INITIATED`, and a deleted room says `ROOM_DELETED`: neither is acted on.
 
 ## Usage

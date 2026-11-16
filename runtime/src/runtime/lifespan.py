@@ -3,6 +3,7 @@
 import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import AsyncExitStack, asynccontextmanager
+from functools import partial
 from typing import TypedDict
 
 from fastapi import FastAPI
@@ -37,6 +38,7 @@ from runtime.live import service as live_service
 from runtime.live import tasks as live_tasks
 from runtime.live.holders import Holders
 from runtime.live.parts import LiveParts
+from runtime.live.service import stranded
 from runtime.live.service.codes import Codes
 from runtime.live.service.entries import Appends
 from runtime.live.service.tokens import Signer
@@ -148,7 +150,7 @@ async def lifespan(app: FastAPI, outside: Outside = THE_INTERNET) -> AsyncGenera
         threads = await builders.build_threads(live, stack)
         loops.start(live_tasks.reap.bind(live))
         loops.start(live_tasks.adopt.bind(live))
-        loops.start(live_tasks.hand_on.bind(live, app.state.closing))
+        live.calls.tell_when_gone(stranded.GONE_AFTER_S, partial(stranded.hand_on_cut, live, app.state.closing))
         loops.start(alerts_tasks.sweep_newborns.bind(sessions, alerting, list_ended_calls))
         sip_names = builders.read_sip_names(handles.settings)
         loops.start(telephony_tasks.rebuild_sip.bind(Owed(), sessions, vault, handles.servers, sip_names))

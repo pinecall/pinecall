@@ -1,5 +1,6 @@
 """A call whose worker went away, offered again and handed to its taker; a caller alone offered one."""
 
+import asyncio
 import logging
 from dataclasses import dataclass
 
@@ -106,18 +107,22 @@ async def offer_stranded(session: AsyncSession, live: LiveParts, env: Env, event
 # back), and the caller sits in silence for all of it: 23 to 26 s from a worker's pod deleted to the
 # call handed on, measured on 2026-11-16. The gateway knows sooner. A worker reads its call's commands
 # from a stream it opens again half a second after it ends, so a stream cut from the worker's end and
-# still not open GONE_AFTER_S later is a worker that is gone, or one this gateway cannot reach, which
-# cannot run a call either: no tool answers, no entry is written. The call is handed on then. The
-# agent is taken out of the room first: a worker that was alive after all finds itself removed and
-# leaves the call to the one that takes it up (`jobs.Job`), and the room holds one agent, never two.
+# still not open GONE_AFTER_S later (`Calls.tell_when_gone`) is a worker that is gone, or one this
+# gateway cannot reach, which cannot run a call either: no tool answers, no entry is written. The
+# call is handed on then. The agent is taken out of the room first: a worker that was alive after
+# all finds itself removed and leaves the call to the one that takes it up (`jobs.Job`), and the
+# room holds one agent, never two.
 # A call that ended as its worker left (its `call.ended` is on the log) and one whose caller is gone
 # are left alone. LiveKit's own word, when it comes, finds the room offered or an agent in it.
-GONE_AFTER_S = 3.0
+GONE_AFTER_S = 1.5
 
 
-async def hand_on_cut(live: LiveParts, served: Served) -> bool:
+async def hand_on_cut(live: LiveParts, closing: asyncio.Event, served: Served) -> bool:
     """Hand on a spoken call whose worker stopped reading its commands; whether it was offered."""
     call = served.call
+    # A gateway told to stop ends every stream itself, and its workers open them again on another.
+    if closing.is_set():
+        return False
     async with live.sessions.begin() as session:
         kept = await calls.find_head(session, call)
         if kept is None or kept.sealed or kept.scope is None:
@@ -133,7 +138,7 @@ async def hand_on_cut(live: LiveParts, served: Served) -> bool:
             await server.room.remove_participant(RoomParticipantIdentity(room=call, identity=seat.identity))
         offered = await _offer(session, live, call, kept, _worker_of(agents[0]) if agents else None)
     logger.warning(
-        "call %s: its worker read no commands for %.0f s; offered to %s to be taken up", call, GONE_AFTER_S, offered
+        "call %s: its worker read no commands for %.1f s; offered to %s to be taken up", call, GONE_AFTER_S, offered
     )
     return True
 

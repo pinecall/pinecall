@@ -84,8 +84,8 @@ async def _set_up(ctx: JobContext, warmed: Warmed, dispatch: Dispatch, taken: Ta
     arrival = telephony.Arrival(context.caller, context.channel, context.direction, route.number)
     arrived = Arrived(dispatch, arrival, route, context)
     call, scope = context.call, arrived.scope
-    await ctx.connect()
-    declaration, stages, held = await asyncio.gather(
+    _, declaration, stages, held = await asyncio.gather(
+        ctx.connect(),
         gateway.get_agent(route.agent, scope, call=call),
         gateway.get_stages(route.agent, scope, call=call),
         gateway.get_hold(route.agent, scope),

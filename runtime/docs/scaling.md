@@ -342,8 +342,8 @@ seconds (it waits for the agent's connection to come back), and with only its wo
 in silence 23 to 26 s from the worker's pod deleted to the call handed on, measured on 2026-11-16
 in three calls. A worker reads its call's commands from a stream it opens again half a second after
 it ends, so the gateway that serves the stream sees it cut the moment the worker dies. A stream
-still cut three seconds later is a worker that is gone, or one the gateway cannot reach, which cannot
-run a call either: the gateway takes the agent out of the room, so the room never holds two, and
+still cut a second and a half later is a worker that is gone, or one the gateway cannot reach, which
+cannot run a call either: the gateway takes the agent out of the room, so the room never holds two, and
 offers the call (`live/service/stranded.py`, `hand_on_cut`). A worker that was alive after all finds
 itself removed from the room and leaves the call, and its room, to the one that took it up. A gateway
 told to stop ends every stream itself and hands nothing on; a machine that vanishes without closing

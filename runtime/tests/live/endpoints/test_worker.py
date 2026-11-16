@@ -311,7 +311,7 @@ async def follow_then_die(worker: CallClient) -> None:
 
 
 # LiveKit takes some twenty seconds to say an agent is gone; the stream of commands its worker read
-# is cut the moment the worker dies. The gateway waits three seconds for it to be opened again, then
+# is cut the moment the worker dies. The gateway waits a second and a half for it to be opened again, then
 # takes the agent out of the room and offers the call: a caller waits seconds, not half a minute.
 @pytest.mark.timeout(30)
 async def test_a_call_whose_worker_stops_reading_its_commands_is_handed_on_within_seconds(
@@ -331,7 +331,7 @@ async def test_a_call_whose_worker_stops_reading_its_commands_is_handed_on_withi
     await ended.append_many([BatchedEntry(type="call.ended", data=AN_END, ts=time.time())], after=3)
     livekit.rooms.people, livekit.rooms.existing = {ended.call}, {ended.call: True}
     await follow_then_die(ended)
-    await asyncio.sleep(5)
+    await asyncio.sleep(3)
     assert [asked.room for asked in removed()] == [first.call]
     await first.aclose()
     await ended.aclose()

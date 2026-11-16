@@ -99,6 +99,10 @@ class Served:
         return self.declaration.slug
 
 
+# Told of a spoken call whose worker stopped reading its commands and did not start again.
+type WorkerGone = Callable[[Served], Awaitable[object]]
+
+
 @dataclass(slots=True)
 class _Kept:
     """What the calls keep of one of them beside itself: its pump, its listener, when it was seen and parked."""
@@ -113,9 +117,9 @@ class _Kept:
     parked_at: float | None = None
     # How many streams of its worker read its commands from this gateway now.
     streams: int = 0
-    # When the last of them was cut from the worker's end, by this process's clock; None while one
-    # reads, when this gateway ended it, and once the call was handed on for it.
-    cut_at: float | None = None
+    # The wait that began when the last of them was cut from the worker's end: it says the worker is
+    # gone, unless a stream reads again first. None while one reads and when this gateway ended it.
+    leaving: asyncio.Task[None] | None = None
 
 
 # Not durable on purpose: it says which calls are served now; the log is the record. The one writer
@@ -130,6 +134,8 @@ class Calls:
         self._owners = owners
         self._hear = hear
         self._kept: dict[str, _Kept] = {}
+        # How long a worker's stream may stay cut before its worker is said gone, and who is told.
+        self._gone: tuple[float, WorkerGone] | None = None
         # Since when this gateway hears what the others say they opened.
         self._heard_since = time.monotonic()
         # Each org's calls at once in each env, as every gateway counts its own each second.
@@ -275,16 +281,18 @@ class Calls:
 
     # A worker follows its call's commands for as long as it runs the call, and opens the stream again
     # half a second after it ends. So a stream cut from the worker's end and not opened again is the
-    # first sign that the worker is gone, seconds before LiveKit says so (`stranded.hand_on_cut`). A
-    # stream this gateway ends itself (the call sealed, the gateway told to stop) is left by its body
-    # running out, and says nothing.
+    # first sign that the worker is gone, seconds before LiveKit says so. The cut is an event (the
+    # connection closing ends this block by an exception), and so is what follows it: one wait per
+    # call, begun at the cut and dropped when a stream reads again, never a loop looking at every
+    # call. A stream this gateway ends itself (the call sealed) is left by its body running out, and
+    # begins no wait.
     @contextlib.contextmanager
     def follow(self, call: str) -> Generator[None]:
         """The call's worker reads its commands from this gateway for as long as this is entered."""
         kept = self._kept.get(call)
         if kept is not None:
             kept.streams += 1
-            kept.cut_at = None
+            self._stop_waiting(kept)
         cut = True
         try:
             yield
@@ -292,18 +300,26 @@ class Calls:
         finally:
             if kept is not None:
                 kept.streams -= 1
-                if cut and kept.streams == 0:
-                    kept.cut_at = time.monotonic()
+                if cut and kept.streams == 0 and self._gone is not None and kept.served.running is None:
+                    logger.info("call %s: its worker's stream of commands was cut", call)
+                    kept.leaving = box_task(self._wait_for_its_worker(kept, *self._gone))
 
-    def take_cut(self, now: float, after_s: float) -> list[Served]:
-        """The spoken calls whose worker's stream was cut that long ago and never opened again, each told once."""
-        gone: list[Served] = []
-        for kept in self._kept.values():
-            silent = kept.cut_at is not None and now - kept.cut_at >= after_s
-            if silent and kept.streams == 0 and kept.served.running is None:
-                kept.cut_at = None
-                gone.append(kept.served)
-        return gone
+    def tell_when_gone(self, after_s: float, told: "WorkerGone") -> None:
+        """Have `told` hear of each spoken call whose worker's stream stayed cut that long."""
+        self._gone = (after_s, told)
+
+    async def _wait_for_its_worker(self, kept: _Kept, after_s: float, told: "WorkerGone") -> None:
+        await asyncio.sleep(after_s)
+        kept.leaving = None
+        if kept.streams == 0 and self._kept.get(kept.served.call) is kept:
+            with survive("handing on a call whose worker went silent", kept.served.call):
+                await told(kept.served)
+
+    @staticmethod
+    def _stop_waiting(kept: _Kept) -> None:
+        if kept.leaving is not None:
+            kept.leaving.cancel()
+            kept.leaving = None
 
     # A spoken call outlives the gateway that opened it: its worker goes on and reads its commands from
     # another, which held it as a copy alone. So no socket that took its agent was handed it, its tools
@@ -349,6 +365,7 @@ class Calls:
         if kept is None:
             return
         self._stop_pump(kept)
+        self._stop_waiting(kept)
         kept.served.commands.put_nowait(None)
         self._owners.run_call(call, here=False)
         if kept.listening is not None:

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **A dead worker's call is handed on a second and a half after its stream is cut, by a timer of its own.**
+  The gateway looked at every call twice a second to find the ones whose worker had stopped reading for
+  three seconds. The cut is an event, and so is what follows it now: one wait per call, begun when the
+  stream is cut and dropped when a stream reads again. The wait is 1.5 s, and the worker that takes the
+  call up joins its room while it reads the call from the gateway.
+
 ## 0.11.41 — the CLI answers in colour, an assistant connects by an address, and a dead worker's call goes on (2026-11-16)
 
 - **A tool's line the model writes again is dropped, on Gemini too.** A turn that already spoke does not
