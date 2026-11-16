@@ -335,8 +335,19 @@ as an `error` entry with the code `worker_lost`.
 What is lost with the worker is what only it held. The sentence the agent was saying is not in the
 log, so the second worker does not know it; the tokens the first worker's models used are not
 counted; and a recorded call keeps the audio from the moment it was taken up, the first part having
-been on the disk of the machine that went. The caller waits in silence for as long as LiveKit
-takes to notice (below), which no worker can shorten.
+been on the disk of the machine that went.
+
+**The gateway does not wait for LiveKit to say the worker is gone.** LiveKit takes about twenty
+seconds (it waits for the agent's connection to come back), and with only its word the caller sat
+in silence 23 to 26 s from the worker's pod deleted to the call handed on, measured on 2026-11-16
+in three calls. A worker reads its call's commands from a stream it opens again half a second after
+it ends, so the gateway that serves the stream sees it cut the moment the worker dies. A stream
+still cut three seconds later is a worker that is gone, or one the gateway cannot reach, which cannot
+run a call either: the gateway takes the agent out of the room, so the room never holds two, and
+offers the call (`live/service/stranded.py`, `hand_on_cut`). A worker that was alive after all finds
+itself removed from the room and leaves the call, and its room, to the one that took it up. A gateway
+told to stop ends every stream itself and hands nothing on; a machine that vanishes without closing
+its connections is still LiveKit's to report, twenty seconds later.
 
 The call ends as `drained`, with one sentence and a call back for a phone caller, only when nobody
 can go on with it: no worker has a seat (the job goes to the overflow, which holds no call), the

@@ -21,6 +21,12 @@
   another took up: its late batch writes nothing and its seal is answered `410`. What goes with the dead
   worker: the reply it was saying, its models' token counts, and the first part of the recording.
 
+- **A dead worker's call is handed on in seconds, not when LiveKit notices.** LiveKit takes about twenty
+  seconds to say an agent is gone, and the caller sat in silence for 23 to 26 s. The gateway now watches
+  the stream of commands each worker reads for its call: one cut from the worker's end and still cut
+  three seconds later is a worker that is gone. It takes the agent out of the room and offers the call
+  at once. A worker that was alive after all is removed from the room and leaves the call to its taker.
+
 - **A model is told which of its tools are closed, so an agent of a team no longer passes the call to itself.**
   A call's model holds every tool for the whole call, since the list is part of the cached prompt, and
   the app opens a subset with `tools.set`. Nothing told the model which: an agent of a team was offered

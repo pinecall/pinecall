@@ -4,6 +4,7 @@ import logging
 from dataclasses import dataclass
 
 from livekit.protocol.models import DisconnectReason, ParticipantInfo
+from livekit.protocol.room import RoomParticipantIdentity
 from livekit.protocol.webhook import WebhookEvent
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,8 +15,9 @@ from runtime.enums import Channel, Direction, Env, Medium
 from runtime.exceptions import Conflict, Gone
 from runtime.fleet import service as fleet
 from runtime.live.parts import LiveParts
+from runtime.live.served import Served
 from runtime.live.service import openings
-from runtime.livekit import is_left_alone
+from runtime.livekit import A_PERSON, is_left_alone, participants_in
 from runtime.telephony import service as telephony
 from runtime.wire.base import BatchedEntry, Entry
 from runtime.wire.dispatch import Dispatch
@@ -93,7 +95,52 @@ async def offer_stranded(session: AsyncSession, live: LiveParts, env: Env, event
         return None
     if not await is_left_alone(live.servers[env], call):
         return None
+    offered = await _offer(session, live, call, kept)
+    reason = DisconnectReason.Name(event.participant.disconnect_reason)
+    logger.warning("call %s: its worker went away (%s); offered to %s to be taken up", call, reason, offered)
+    return call
+
+
+# LiveKit takes about twenty seconds to say an agent is gone (it waits for the connection to come
+# back), and the caller sits in silence for all of it: 23 to 26 s from a worker's pod deleted to the
+# call handed on, measured on 2026-11-16. The gateway knows sooner. A worker reads its call's commands
+# from a stream it opens again half a second after it ends, so a stream cut from the worker's end and
+# still not open GONE_AFTER_S later is a worker that is gone, or one this gateway cannot reach, which
+# cannot run a call either: no tool answers, no entry is written. The call is handed on then. The
+# agent is taken out of the room first: a worker that was alive after all finds itself removed and
+# leaves the call to the one that takes it up (`jobs.Job`), and the room holds one agent, never two.
+# A call that ended as its worker left (its `call.ended` is on the log) and one whose caller is gone
+# are left alone. LiveKit's own word, when it comes, finds the room offered or an agent in it.
+GONE_AFTER_S = 3.0
+
+
+async def hand_on_cut(live: LiveParts, served: Served) -> bool:
+    """Hand on a spoken call whose worker stopped reading its commands; whether it was offered."""
+    call = served.call
+    async with live.sessions.begin() as session:
+        kept = await calls.find_head(session, call)
+        if kept is None or kept.sealed or kept.scope is None:
+            return False
+        if any(entry.type == "call.ended" for entry in await calls.read_whole(session, live.vault, call)):
+            return False
+        server = live.servers[kept.scope.env]
+        seated = await participants_in(server, call)
+        if not any(seat.kind in A_PERSON for seat in seated):
+            return False
+        for seat in seated:
+            if seat.kind == ParticipantInfo.Kind.AGENT:
+                await server.room.remove_participant(RoomParticipantIdentity(room=call, identity=seat.identity))
+        offered = await _offer(session, live, call, kept)
+    logger.warning(
+        "call %s: its worker read no commands for %.0f s; offered to %s to be taken up", call, GONE_AFTER_S, offered
+    )
+    return True
+
+
+async def _offer(session: AsyncSession, live: LiveParts, call: str, kept: calls.CallHead) -> str | None:
     scope = kept.scope
+    if scope is None:
+        return None
     dispatch = Dispatch(
         agent=kept.agent,
         org=scope.org,
@@ -104,10 +151,7 @@ async def offer_stranded(session: AsyncSession, live: LiveParts, env: Env, event
         entries_written=kept.written,
         started_at=kept.started_at,
     )
-    offered = await live.offering.offer(call, await fleet.fleet_of_env(session, scope.env), dispatch)
-    reason = DisconnectReason.Name(event.participant.disconnect_reason)
-    logger.warning("call %s: its worker went away (%s); offered to %s to be taken up", call, reason, offered)
-    return call
+    return await live.offering.offer(call, await fleet.fleet_of_env(session, scope.env), dispatch)
 
 
 # The worker went away, not the caller: the same call goes on in another worker. No quota, no token, no

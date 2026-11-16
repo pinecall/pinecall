@@ -148,6 +148,7 @@ async def lifespan(app: FastAPI, outside: Outside = THE_INTERNET) -> AsyncGenera
         threads = await builders.build_threads(live, stack)
         loops.start(live_tasks.reap.bind(live))
         loops.start(live_tasks.adopt.bind(live))
+        loops.start(live_tasks.hand_on.bind(live, app.state.closing))
         loops.start(alerts_tasks.sweep_newborns.bind(sessions, alerting, list_ended_calls))
         sip_names = builders.read_sip_names(handles.settings)
         loops.start(telephony_tasks.rebuild_sip.bind(Owed(), sessions, vault, handles.servers, sip_names))

@@ -113,6 +113,9 @@ class _Kept:
     parked_at: float | None = None
     # How many streams of its worker read its commands from this gateway now.
     streams: int = 0
+    # When the last of them was cut from the worker's end, by this process's clock; None while one
+    # reads, when this gateway ended it, and once the call was handed on for it.
+    cut_at: float | None = None
 
 
 # Not durable on purpose: it says which calls are served now; the log is the record. The one writer
@@ -270,17 +273,37 @@ class Calls:
 
     # ── adopted ──
 
+    # A worker follows its call's commands for as long as it runs the call, and opens the stream again
+    # half a second after it ends. So a stream cut from the worker's end and not opened again is the
+    # first sign that the worker is gone, seconds before LiveKit says so (`stranded.hand_on_cut`). A
+    # stream this gateway ends itself (the call sealed, the gateway told to stop) is left by its body
+    # running out, and says nothing.
     @contextlib.contextmanager
     def follow(self, call: str) -> Generator[None]:
         """The call's worker reads its commands from this gateway for as long as this is entered."""
         kept = self._kept.get(call)
         if kept is not None:
             kept.streams += 1
+            kept.cut_at = None
+        cut = True
         try:
             yield
+            cut = False
         finally:
             if kept is not None:
                 kept.streams -= 1
+                if cut and kept.streams == 0:
+                    kept.cut_at = time.monotonic()
+
+    def take_cut(self, now: float, after_s: float) -> list[Served]:
+        """The spoken calls whose worker's stream was cut that long ago and never opened again, each told once."""
+        gone: list[Served] = []
+        for kept in self._kept.values():
+            silent = kept.cut_at is not None and now - kept.cut_at >= after_s
+            if silent and kept.streams == 0 and kept.served.running is None:
+                kept.cut_at = None
+                gone.append(kept.served)
+        return gone
 
     # A spoken call outlives the gateway that opened it: its worker goes on and reads its commands from
     # another, which held it as a copy alone. So no socket that took its agent was handed it, its tools

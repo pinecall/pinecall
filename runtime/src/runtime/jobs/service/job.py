@@ -144,8 +144,15 @@ class Job:
         await self.setup.running.resume(taken, notice=says)
         self._watch()
 
+    # The gateway takes this worker's agent out of the room when it could not reach the worker and
+    # handed the call to another: the call goes on there, and nothing of it is this job's to end.
+    def _when_out_of_the_room(self, reason: rtc.DisconnectReason.ValueType | None = None) -> None:
+        if reason == rtc.DisconnectReason.PARTICIPANT_REMOVED:
+            self.link.passed_on = True
+
     def _watch(self) -> None:
         setup, running = self.setup, self.setup.running
+        self.ctx.room.on("disconnected", self._when_out_of_the_room)  # pyright: ignore[reportUnknownMemberType]
         setup.room.watch()
         # After the start, which opens the call's writer: a greeting flushes it before it reads the state.
         if setup.widget is not None:

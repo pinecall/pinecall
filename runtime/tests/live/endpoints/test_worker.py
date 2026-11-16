@@ -6,6 +6,7 @@ import time
 from datetime import date
 
 import pytest
+from livekit.protocol.room import RoomParticipantIdentity
 
 from runtime.calls.context import CallContext, Route, dump_context, new_call_id
 from runtime.calls.log.store import Store
@@ -20,7 +21,7 @@ from runtime.live.service import reaper
 from runtime.session.service import ToolUse
 from runtime.wire.base import BatchedEntry
 from runtime.wire.worker import OpenCallRequest, SealCallRequest
-from tests.conftest import THE_FLEET_KEY, Gateway, Tenant, holding, needs_the_services, received, used_of
+from tests.conftest import THE_FLEET_KEY, Gateway, Tenant, holding, needs_the_services, received, until, used_of
 from tests.fakes.livekit import Server
 from tests.live.gateways import a_second_gateway
 
@@ -294,3 +295,43 @@ async def test_a_call_is_taken_up_only_while_its_caller_waits_alone_and_only_onc
     assert refused.status_code == 409, refused.text
     await first.aclose()
     await unstarted.aclose()
+
+
+async def follow_then_die(worker: CallClient) -> None:
+    """The worker reads its call's commands for a moment, and is cut off as a killed process is."""
+
+    async def read() -> None:
+        async for _ in worker.commands():
+            return
+
+    reading = asyncio.create_task(read())
+    await asyncio.sleep(0.5)
+    reading.cancel()
+    await asyncio.gather(reading, return_exceptions=True)
+
+
+# LiveKit takes some twenty seconds to say an agent is gone; the stream of commands its worker read
+# is cut the moment the worker dies. The gateway waits three seconds for it to be opened again, then
+# takes the agent out of the room and offers the call: a caller waits seconds, not half a minute.
+@pytest.mark.timeout(30)
+async def test_a_call_whose_worker_stops_reading_its_commands_is_handed_on_within_seconds(
+    fleet: GatewayClient, tenant: Tenant, agent: str, livekit: Server
+) -> None:
+    first = await left_by_its_worker(fleet, tenant, agent)
+    livekit.rooms.people, livekit.rooms.existing = {first.call}, {first.call: True}
+    await follow_then_die(first)
+
+    def removed() -> list[RoomParticipantIdentity]:
+        return [asked for asked in livekit.rooms.requests if isinstance(asked, RoomParticipantIdentity)]
+
+    await until(lambda: bool(removed()), within_s=8)
+    assert [(asked.room, asked.identity) for asked in removed()] == [(first.call, "agent")]
+    # A call that ended as its worker left is nobody's to hand on: its end is on the log.
+    ended = await left_by_its_worker(fleet, tenant, agent)
+    await ended.append_many([BatchedEntry(type="call.ended", data=AN_END, ts=time.time())], after=3)
+    livekit.rooms.people, livekit.rooms.existing = {ended.call}, {ended.call: True}
+    await follow_then_die(ended)
+    await asyncio.sleep(5)
+    assert [asked.room for asked in removed()] == [first.call]
+    await first.aclose()
+    await ended.aclose()
