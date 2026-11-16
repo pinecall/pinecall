@@ -288,6 +288,27 @@ async def test_a_scope_reads_its_own_declaration_else_the_orgs_own_never_another
     assert mine is not None and mine.fixed == frozenset({"language"})
 
 
+@needs_the_database
+async def test_a_studio_agents_declaration_is_the_orgs_for_a_person_who_kept_a_class_under_its_slug(
+    sessions: async_sessionmaker[AsyncSession], tenant: Tenant
+) -> None:
+    """Somebody whose old class held the slug reads what Studio saved; to a class of the org's, theirs still wins."""
+    ana = Scope(tenant.org, Env.sandbox, "m_ana")
+    the_orgs = Scope(tenant.org, Env.sandbox)
+    hers = Declared(greeting=GreetingConfig(say="The old class."), language="es")
+    async with sessions.begin() as session:
+        await put_declaration(session, ana, SLUG, hers, sdk="pinecall/0.11.0", first=True)
+        saved = Declared(greeting=GreetingConfig(say="What Studio saved."))
+        await put_declaration(session, the_orgs, SLUG, saved, sdk="studio", first=True)
+        read = await declaration_of(session, ana, SLUG)
+        assert read is not None and read.greeting == Greeting(say="What Studio saved.")
+        assert read.fixed == frozenset({"greeting"})
+        # The same two rows with the org's a class: her own is the one her process would declare again.
+        await put_declaration(session, the_orgs, SLUG, saved, sdk="pinecall/0.11.0", first=True)
+        again = await declaration_of(session, ana, SLUG)
+    assert again is not None and again.greeting == Greeting(say="The old class.")
+
+
 def test_a_declaration_a_call_is_sent_changes_only_the_fields_the_app_sent() -> None:
     """A configure keeps what it does not name, and a tool it sends keeps the timeout tools have."""
     book = ToolSpec("book", "Book.", {"type": "object"})

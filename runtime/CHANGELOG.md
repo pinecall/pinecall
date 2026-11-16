@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A Studio agent is read as Studio declares it by everyone in the org.** A person whose own class had held
+  the slug before it became a Studio agent kept that class's declaration in their scope, and it won
+  over Studio's: their chats and calls with the Studio agent opened on the old class's greeting, and
+  their settings showed its voice, models and timezone as fixed by the class, whatever Studio saved.
+  The org's declaration of a Studio agent is now the one every scope reads.
+
 - **The gateway is an OAuth 2.1 authorization server, so an assistant is connected as a person.**
   An MCP server in front of a gateway (the repository's `mcp/`, `charts/mcp`) is given to Claude,
   ChatGPT or an editor as an address; the assistant finds the gateway from it and does the rest

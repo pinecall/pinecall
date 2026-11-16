@@ -85,6 +85,11 @@ call; a gateway that stops drains and its calls go to another's socket. `GET /v1
 socket as the process `pinecall-studio`. An app of the org's that registers a Studio agent's slug
 is refused: a slug is one agent.
 
+So the declaration of a Studio agent is the org's for everyone. A person who once ran a class of their
+own under that slug (`pinecall start`, before the slug was Studio's) still has what that class
+declared kept in their scope, and it is not read: their calls open on the greeting Studio saved and
+their settings screen shows what Studio fixes, as a colleague's do.
+
 For each call the socket is sent the call's entries as any app is: at `call.started` (or
 `call.attached`, rebuilding the call from its state) it sends `state.set` with what is collected,
 `prompt.set` for `identity`, `tools` and `view`, and `tools.set`; at `tool.call` it sends the

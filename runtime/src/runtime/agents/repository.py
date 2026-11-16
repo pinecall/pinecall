@@ -169,10 +169,10 @@ class DeclarationRepository(Repository[AgentDeclaration]):
 
     model = AgentDeclaration
 
-    async def find(self, scope: Scope, agent: str) -> AgentDeclaration | None:
-        """The scope's own declaration, else the org's own in the env; None when neither declared the agent."""
+    async def list_reaching(self, scope: Scope, agent: str) -> Sequence[AgentDeclaration]:
+        """The declarations of the agent that reach the scope: its own and the org's own in the env, its own first."""
         statement = self.statement().where(*_in_scope_or_orgs(AgentDeclaration, scope, agent))
-        return await self.one_or_none(statement.order_by(AgentDeclaration.holder.desc()).limit(1))
+        return await self.all(statement.order_by(AgentDeclaration.holder.desc()))
 
     async def find_own(self, scope: Scope, agent: str) -> AgentDeclaration | None:
         """The scope's own declaration, none falling through."""

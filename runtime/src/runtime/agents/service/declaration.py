@@ -6,7 +6,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from runtime.actor import Scope
+from runtime.actor import THE_ORGS_OWN, Scope
 from runtime.agents.declaration import (
     DEFAULT_LAYOUT,
     DEFAULT_TOOL_TIMEOUT_S,
@@ -26,6 +26,7 @@ from runtime.agents.declaration import (
 )
 from runtime.agents.repository import DeclarationRepository
 from runtime.agents.service.hold_audio import check_wait
+from runtime.agents.service.kinds import kind_of
 from runtime.agents.service.resolution import SEPARATOR, check_realtime
 from runtime.agents.service.setting_names import FIELD_OF
 from runtime.agents.service.widgets import check_look, look_of
@@ -154,11 +155,19 @@ async def put_declaration(
 # own in the env. Until 2026-11 there were four (any scope with production first, the scope's newest
 # holder, its newest taker, the kept row), so the settings screen and the call it configured could
 # disagree on what the class fixes: a field the calls ignored was written, or one they would run refused.
+#
+# A Studio agent is the one exception to "its own first". The org holds it and nobody else can: an app
+# that registers its slug is refused, a person's too. So a row a person kept under that slug is from a
+# class they ran before the slug was Studio's, and it described nothing that answers: until 2026-11-16
+# it won, and that person's calls to the Studio agent opened on the old class's greeting and showed its
+# voice and models as fixed, whatever Studio saved.
 async def declaration_of(session: AsyncSession, scope: Scope, slug: str) -> Declaration | None:
-    """The agent as the scope's last app declared it (the org's own when the scope never did), or None."""
-    row = await DeclarationRepository(session).find(scope, slug)
-    if row is None:
+    """The agent as the scope's last app declared it: the org's own when the scope never did, or when it is Studio's."""
+    reaching = await DeclarationRepository(session).list_reaching(scope, slug)
+    if not reaching:
         return None
+    the_orgs = reaching[-1]
+    row = the_orgs if the_orgs.holder == THE_ORGS_OWN and kind_of(the_orgs.sdk) == "studio" else reaching[0]
     return apply_declaration(Declaration(slug=slug), wire.AgentConfig.model_validate(row.declaration), first=True)
 
 
