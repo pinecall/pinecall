@@ -4,7 +4,7 @@ import { signed, type World } from "./signed.js";
 
 /**
  * Ask the gateway to run a live call on the stages of `agent` from here on. Answers the status:
- * 202 once the call's worker was told, 404 for a call no worker runs (a written one), 409 for one that is over.
+ * 202 once whatever runs the call was told, 404 for a call nothing runs here, 409 for one that is over.
  */
 export async function stagedAs(door: { url: string; apiKey: string; env?: World | undefined }, call: string, agent: string): Promise<number> {
   const answered = await fetch(`${door.url.replace(/\/+$/, "")}/v1/calls/${encodeURIComponent(call)}/stages`, {

@@ -17,7 +17,7 @@ from runtime.calls import service as calls
 from runtime.calls.context import CallContext, Contact, Route, new_call_id
 from runtime.calls.log import Subscription
 from runtime.calls.models import Opener
-from runtime.enums import Channel, Direction
+from runtime.enums import Channel, Direction, Stage
 from runtime.exceptions import Conflict, NotFound, QuotaExceeded, ValidationError
 from runtime.kit.text import Json, JsonObject
 from runtime.kit.time import today_in
@@ -51,6 +51,8 @@ class WrittenSetup:
     model: Running
     # A golden's facts, which recall answers instead of the contact's memory; None on a real call.
     recalled: tuple[str, ...] | None = None
+    # A test room's own voice and models, read again whenever the call takes its stages anew.
+    test: Mapping[str, Any] | None = None
 
 
 # What a session reaches outside itself when the gateway hosts it (`session.Platform`): the call's own
@@ -127,7 +129,7 @@ async def open_written(
     resolved = await agents.resolve_for_call(session_, agent.whole, scope, catalog, picked, test)
     keys = await providers.keys_of(session_, live.vault, scope)
     model = providers.thinking_of(resolved.declaration, catalog, keys)
-    setup = WrittenSetup(resolved.declaration, resolved.versions, model)
+    setup = WrittenSetup(resolved.declaration, resolved.versions, model, test=test)
     return await open_written_as(session_, live, registration, context, setup)
 
 
@@ -141,7 +143,7 @@ async def open_written_as(
     await openings.admit(session_, live, scope, registration.slug)
     opening = Opening(context, setup.declaration, scope, Opener.gateway, registration.owner)
     served = await openings.open_served(live, opening, setup.versions)
-    return start_session(live, served, setup.model, setup.recalled)
+    return start_session(live, served, setup.model, setup.recalled, test=setup.test)
 
 
 # A gateway that restarted forgot the call, not the caller: no admission, no second greeting. It runs
@@ -211,7 +213,13 @@ def context_as_started(call: str, slug: str, scope: Scope, entries: Iterable[Ent
 
 
 def start_session(
-    live: LiveParts, served: Served, model: Running, recalled: tuple[str, ...] | None, *, written: int = 0
+    live: LiveParts,
+    served: Served,
+    model: Running,
+    recalled: tuple[str, ...] | None,
+    *,
+    written: int = 0,
+    test: Mapping[str, Any] | None = None,
 ) -> session.Session:
     """The session of a written call served here, built and said to run here; not yet started."""
     platform = GatewayPlatform(live, served, recalled)
@@ -219,8 +227,41 @@ def start_session(
     running = session.open_written(
         call, model, lookup_budget_ms=live.settings.text_lookup_budget_ms, tool_steps=live.settings.max_tool_steps
     )
+    served.restage = restaging(live, served, running, test)
     live.calls.run(served, running)
     return running
+
+
+# A written call has one stage, its model, and it takes the model of the agent it is passed to as a spoken
+# call takes that agent's model and voice, and reads that agent's from then on (`jobs.Job.restage` is the
+# worker's). Until 2026-11-16 the gateway had nothing to take them with, so every hand-over that worked
+# also wrote "a written call the gateway runs keeps the model it opened on" on the call's log as a
+# refusal, and the teammate went on thinking with the first agent's model.
+def restaging(
+    live: LiveParts, served: Served, running: session.Session, test: Mapping[str, Any] | None = None
+) -> session.Restage:
+    """What a written call served here does when its stages are named anew: think with its agent's model now."""
+    staged_as = served.declaration.slug
+
+    async def restage(passed_to: str | None) -> None:
+        nonlocal staged_as
+        staged_as = passed_to or staged_as
+        async with live.sessions() as session_:
+            model = await model_now(session_, live, served.scope, staged_as, served.context.call, test)
+        await session.take_stages(running, {Stage.llm: model}, alone=False)
+
+    return restage
+
+
+async def model_now(
+    session_: AsyncSession, live: LiveParts, scope: Scope, slug: str, call: str, test: Mapping[str, Any] | None
+) -> Running:
+    """The model the agent thinks with in this call, as its class and its settings name it now."""
+    agent = await agents.agent_of(session_, scope, slug)
+    catalog = await providers.get_catalog(session_)
+    resolved = await agents.resolve_for_call(session_, agent.whole, scope, catalog, agents.Picked(call=call), test)
+    keys = await providers.keys_of(session_, live.vault, scope)
+    return providers.thinking_of(resolved.declaration, catalog, keys)
 
 
 # ── a chat: a written call opened over a socket, with a key ──

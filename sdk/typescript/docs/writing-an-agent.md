@@ -529,7 +529,8 @@ listed and judged.
 A spoken call takes the model and the voice of the agent it was passed to: the `llm` and
 the `voice` that class declares, or what its settings say. The sentence being said ends in the voice it
 began in, and the next one is the teammate's; each stage that changed is a `stage.changed` on the
-call's log. The ears stay the first agent's for the whole call. A written call keeps the model it opened on.
+call's log. The ears stay the first agent's for the whole call. A written call has one stage, its model, and takes
+the teammate's the same way.
 
 ### A line that chooses who answers
 

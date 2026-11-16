@@ -74,6 +74,8 @@ class Served:
         self.app = opening.owner
         # A written call runs here; a voice call runs in a worker.
         self.running: session.Session | None = None
+        # How a written call takes its stages anew, on a hand-over; a voice call's worker has its own.
+        self.restage: session.Restage | None = None
         self.log = log
         self.tools = tools
         # Each with the id it was sent under. A None ends the worker's command stream.

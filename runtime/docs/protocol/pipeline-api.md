@@ -49,8 +49,8 @@ next call; this endpoint reads.
 
 A call keeps the stages it opened on until it ends. This door is how one call takes the **model** and
 the **voice** its agent's settings name now, without hanging up: whoever changed the settings while on
-the call asks it for that call, with a key that holds `pipeline`. `202` and `{"call": ...}` once the
-call's worker was told; `404` for a call no worker runs, `409` for one that is over.
+the call asks it for that call, with a key that holds `pipeline`. `202` and `{"call": ...}` once
+whatever runs the call was told; `404` for a call nothing runs, `409` for one that is over.
 
 The worker reads the stages again as it did when the call opened (the same scope, the same canary, a
 tuning under test) and rebuilds the ones that differ. The reply being said ends in the voice it began
@@ -71,7 +71,8 @@ What it refuses, said as an `error` entry on the call (`refused`), the call goin
 - **a call on one model that hears and speaks**, and settings that now name one.
 - **a stage its vendor refuses** (a key it does not take, a voice it does not have).
 
-A written call the gateway runs itself (the chat door, WhatsApp) keeps its model: `refused`, the same way.
+A written call the gateway runs itself (the chat door, WhatsApp) has one stage, its model, and takes it the
+same way: the gateway reads the agent's model again and the next turn thinks with it.
 
 ## The hold melody — `GET` · `PUT /v1/agents/{slug}/pipeline/hold-audio`
 

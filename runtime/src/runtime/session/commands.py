@@ -200,9 +200,7 @@ async def take(session: Session, command: Command, *, restage: Restage | None = 
                 session.caller_hung_up()
             case StagesChanged(agent=agent):
                 if restage is None:
-                    raise Conflict(
-                        "a written call the gateway runs keeps the model it opened on: its settings run on the next one"
-                    )
+                    raise Conflict("this call has nothing to take its stages with: its settings run on the next one")
                 await restage(agent)
             # A worker's client keeps it (`jobs.call_client`): by the time a session reads one, what it
             # says is true already, since the commands before it were taken in order.

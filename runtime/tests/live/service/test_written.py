@@ -2,19 +2,26 @@
 
 from dataclasses import replace
 from datetime import date
+from typing import cast
 
 from runtime.actor import Scope
 from runtime.agents.declaration import Declaration, Docs, MemoryPolicy
+from runtime.agents.service.declaration import put_declaration
 from runtime.agents.service.kinds import BUILT_IN_STUDIO
 from runtime.calls.context import Contact
-from runtime.enums import Channel, Env
+from runtime.enums import Channel, Env, Stage
 from runtime.live.holders import Registration
 from runtime.live.parts import LiveParts
 from runtime.live.served import Opening
 from runtime.live.service import openings
-from runtime.live.service.written import A_GOLDEN, GatewayPlatform, context_as_started, registration_for
+from runtime.live.service.written import A_GOLDEN, GatewayPlatform, context_as_started, registration_for, restaging
+from runtime.providers.stage import Running
+from runtime.session.service import Session
+from runtime.wire.declaration import AgentConfig as Declared
+from runtime.wire.declaration import ModelConfig
 from tests.calls.factories import AGENT, CALL, CALLER, LINE, entry
-from tests.conftest import needs_the_database
+from tests.conftest import Tenant, needs_the_database
+from tests.fakes import acme
 from tests.session.conftest import context_of
 
 SCOPE = Scope("org_1", Env.sandbox)
@@ -85,4 +92,42 @@ async def test_a_goldens_search_is_the_real_index(live: LiveParts, call: str) ->
     platform = golden_call(live, call, Declaration(slug=AGENT, bases=(Docs(base="precios"),)))
     found = await platform.look_up("search", {"query": "precio"}, None)
     assert "facts" not in found and A_FACT not in str(found)
+    live.calls.close_call(call)
+
+
+# ── a hand-over ──
+
+
+class Taking:
+    """A session that only notes the stages it is told to take."""
+
+    def __init__(self) -> None:
+        self.taken: list[tuple[dict[Stage, Running], bool]] = []
+
+    async def take_stages(self, wanted: dict[Stage, Running], *, alone: bool) -> list[Stage]:
+        self.taken.append((dict(wanted), alone))
+        return []
+
+
+# A hand-over tells the call to take its stages anew. A spoken call's worker does; a written call the
+# gateway runs had nothing to do it with, and wrote a refusal on every hand-over that worked (2026-11-16).
+@needs_the_database
+async def test_a_written_call_passed_to_a_teammate_thinks_with_that_agents_model(
+    live: LiveParts, call: str, tenant: Tenant
+) -> None:
+    scope = Scope(tenant.org, Env.sandbox)
+    async with live.sessions.begin() as session_:
+        first = Declared(llm=ModelConfig(provider=acme.ACME, model=acme.MODEL))
+        await put_declaration(session_, scope, AGENT, first, sdk=None, first=True)
+        teammate = Declared(llm=ModelConfig(provider=acme.ACME, model="acme-2"))
+        await put_declaration(session_, scope, "billing", teammate, sdk=None, first=True)
+    opening = Opening(context_of(call, Channel.web), Declaration(slug=AGENT), scope, None)
+    served = openings.serve(live, opening, opened_here=True)
+    taking = Taking()
+    restage = restaging(live, served, cast(Session, taking))
+    await restage("billing")
+    # Its settings changed with nobody named: the agent it was passed to is the one it reads from then on.
+    await restage(None)
+    taken = [(wanted[Stage.llm].model, alone) for wanted, alone in taking.taken]
+    assert taken == [("acme-2", False), ("acme-2", False)]
     live.calls.close_call(call)

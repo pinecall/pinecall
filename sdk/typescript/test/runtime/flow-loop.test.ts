@@ -110,7 +110,7 @@ describe("a pass heard on a call's log", () => {
     expect(said).toEqual([]);
   });
 
-  it("says nothing of a written call, which no worker runs, and says a refusal", async () => {
+  it("says nothing of a call nothing runs, and says a refusal", async () => {
     kept.staged = 404;
     await passHeard(workingWith(app()), logged(20, "handoff", { to: "brightside-billing" }));
     expect(said).toEqual([]);

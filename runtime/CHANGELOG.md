@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A written call passed to a teammate thinks with the teammate's model, and its hand-over is no error.**
+  A hand-over tells a call to take its stages anew. A chat the gateway runs had nothing to take them
+  with: every hand-over that worked also wrote `a written call the gateway runs keeps the model it opened
+  on` to the call's log as a refusal (a `✗` in `pinecall chat` and `pinecall start`), and the teammate
+  went on with the first agent's model. It takes the teammate's model now; a spoken call is as it was.
+
 - **The pipeline report no longer says a stage is unavailable when the call runs it.** A stage the agent
   leaves to the runtime was checked with no model, so an org lent models by name (every new org) read
   "google is not lent to this org" under `decides` and `speaks`, in `pinecall pipeline` and on the

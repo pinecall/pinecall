@@ -71,7 +71,7 @@ async def deliver(calls: Calls, signal: Signal, command: Command) -> Delivery:
 async def take_here(served: Served, running: session.Session, command: Command) -> ErrorEvent | None:
     """Apply the command to the session that runs here; the refusal, written on the call's log, when it refuses."""
     declare_for_the_call(served, command)
-    refusal = await session.take(running, command)
+    refusal = await session.take(running, command, restage=served.restage)
     if refusal is not None:
         await served.log.append("error", refusal.dump())
     return refusal
@@ -137,7 +137,7 @@ async def hang_up_for_caller(live: LiveParts, call: str) -> None:
     await send_to_live_call(live, call, CALLER_HUNG_UP, {})
 
 
-# Only a call a worker runs follows it: a written call the gateway runs itself keeps the model it opened on.
+# A call a worker runs reads its stages again there; a written call the gateway runs reads its model here.
 async def restage(live: LiveParts, scope: Scope, call: str, passed_to: str | None = None) -> None:
     """The live call takes its model and its voice as its agent's settings name them now, or as `passed_to`'s do."""
     if passed_to is not None and live.holders.find_serving(scope, passed_to) is None:
