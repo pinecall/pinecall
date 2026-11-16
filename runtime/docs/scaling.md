@@ -384,8 +384,8 @@ With only the call's process killed and its worker left alive, which is a worker
 of Kubernetes in the way (two calls, the release of the shared count): the gateway saw the stream
 cut at once, offered the call 1.5 s later, the second worker took it up 0.4 s after that, and its
 first word came 3.7 and 4.6 s after the cut. The worker whose process was killed, alive and with
-every seat free, was offered neither call, and took calls again at its next heartbeat. In four of
-these five calls the take-up and the seal were answered by different gateways.
+every seat free, was offered neither call, and took calls again at its next heartbeat. In three of
+these five calls the hand-on, the take-up and the seal were not all answered by the same gateway.
 
 One limit stands, seen in 2 of the 13 calls taken up so far: when the room closed as the caller
 left, the second worker wrote no end and sealed nothing, its job was stopped 150 s later, and the
