@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **A call whose room goes away under it still ends.** When LiveKit closed a call's room, or a room was
+  deleted, while its worker held the call, the worker wrote no `call.ended` and sealed nothing: closing
+  the hold melody asks the room to unpublish its track, and livekit waits for an answer a room that is gone
+  never gives. The job was stopped 150 s later and the gateway's reaper ended the call as `drained` minutes
+  after, with no summary and no recording. It happened to 2 of 13 calls taken up from a dead worker, whose
+  rooms LiveKit sometimes closes the moment the caller leaves, and to any call whose room was deleted. The
+  melody is let go of after two seconds without that answer, and the call's end is written.
+
 - **A dead worker's call is handed on the same way by either gateway.** Three things about a call whose
   worker went away were one gateway's memory, and a deployment runs two. Which worker has the call is
   the log's head now (`call_log_head.taken_up`, migration 000029): a take-up moves it in one statement,

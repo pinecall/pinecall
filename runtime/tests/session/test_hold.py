@@ -1,9 +1,13 @@
 """The hold melody: one for whatever overlaps, played after its grace once the agent is quiet, and when it sounded."""
 
 import asyncio
+import time
 from pathlib import Path
+from typing import override
 
-from runtime.session.hold import HoldMusic
+import pytest
+
+from runtime.session.hold import UNPUBLISHED_WITHIN_S, HoldMusic
 from tests.fakes.livekit import Player
 from tests.fakes.livekit import Room as AnOfflineRoom
 
@@ -95,3 +99,26 @@ async def test_the_grace_outlasts_the_line_the_agent_says_before_the_tool() -> N
     assert player.played == []
     melody.end()
     assert (melody.running, melody.pending, melody.handle) == (0, None, None)
+
+
+class OfARoomThatIsGone(Player):
+    """A player whose track is unpublished by a room that no longer answers."""
+
+    @override
+    async def aclose(self) -> None:
+        """Wait for the room's word, which never comes."""
+        await asyncio.Event().wait()
+
+
+# 2026-11-16, production: LiveKit closed a call's room as its caller left, livekit's player waited
+# without end for the room to say its track was unpublished, and the call's end was never written:
+# the job was stopped 150 s later and the call reaped as drained. Deleting any call's room did the same.
+@pytest.mark.timeout(UNPUBLISHED_WITHIN_S + 5)
+async def test_a_melody_whose_room_is_gone_is_let_go_of_and_does_not_hold_the_calls_end() -> None:
+    melody = HoldMusic(Path("hold.ogg"), AnOfflineRoom("call_1"), OfARoomThatIsGone())
+    await melody.start()
+    began = time.monotonic()
+    await melody.aclose()
+    assert time.monotonic() - began < UNPUBLISHED_WITHIN_S + 1
+    assert not melody.publishing
+    await melody.aclose()

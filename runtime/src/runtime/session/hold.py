@@ -18,6 +18,12 @@ VOLUME = 0.6
 GRACE_S = HOLD_AFTER_S
 FADE_IN_S = 0.4
 FADE_OUT_S = 0.3
+# livekit's player unpublishes its track as it closes, and waits for the room to say it did. A room
+# that is gone says nothing, and the wait had no end: on 2026-11-16 a call whose room LiveKit closed
+# as its caller left wrote no end and was sealed by nobody, its job was stopped 150 s later and the
+# call reaped as `drained` minutes after; a room deleted under any call did the same. A room that is
+# there answers in milliseconds, and the track of one that is gone went with it: the close goes on.
+UNPUBLISHED_WITHIN_S = 2.0
 
 
 class HoldMusic:
@@ -81,11 +87,18 @@ class HoldMusic:
         return [*self.played, (self.playing_since, time.time())]
 
     async def aclose(self) -> None:
-        """Stop and close the player."""
+        """Stop and close the player, without waiting on a room that is gone."""
         self._stop()
         if self.publishing:
             self.publishing = False
-            await self.player.aclose()
+            try:
+                async with asyncio.timeout(UNPUBLISHED_WITHIN_S):
+                    await self.player.aclose()
+            except TimeoutError:
+                logger.warning(
+                    "the hold melody's track was not unpublished within %g s: its room is gone, the call's end goes on",
+                    UNPUBLISHED_WITHIN_S,
+                )
 
     # The tool starts while its announcement still plays, so the grace counts from when the agent
     # is quiet; checked again after it, since livekit may speak another round's preamble.

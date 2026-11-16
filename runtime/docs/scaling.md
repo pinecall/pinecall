@@ -387,10 +387,14 @@ first word came 3.7 and 4.6 s after the cut. The worker whose process was killed
 every seat free, was offered neither call, and took calls again at its next heartbeat. In three of
 these five calls the hand-on, the take-up and the seal were not all answered by the same gateway.
 
-One limit stands, seen in 2 of the 13 calls taken up so far: when the room closed as the caller
-left, the second worker wrote no end and sealed nothing, its job was stopped 150 s later, and the
-gateway's reaper ended the call as `drained` minutes after, with no summary and no recording. Its
-cause is not found yet. The caller had left, so nobody heard it; the call's record is what is short.
+One thing those calls found is mended. In 2 of the first 13 calls taken up, LiveKit (1.13.7)
+closed the room 26 ms after the caller left, as `departure timeout`, where a room is given 20 s
+after its last person leaves; a room an agent had left before is where it was seen. The second
+worker then wrote no end and sealed nothing, its job was stopped 150 s later, and the gateway's
+reaper ended the call as `drained` minutes after, with no summary and no recording. The worker was
+waiting, with no end, for the room to say the hold melody's track was unpublished, and a room that
+is gone says nothing; a room deleted under any call, taken up or not, did the same. The melody is
+let go of after two seconds without that answer (`session/hold.py`), and the call's end is written.
 
 The call ends as `drained`, with one sentence and a call back for a phone caller, only when nobody
 can go on with it: no worker has a seat (the job goes to the overflow, which holds no call), the
