@@ -5,6 +5,11 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
+## 0.11.41 — the CLI answers in colour, an assistant connects by an address, and a dead worker's call goes on (2026-11-16)
+
+- A written call passed to a teammate takes the teammate's model, as a spoken call takes its model and voice: the
+  runtime does it now, and `docs/writing-an-agent.md` and the comment on `stagedAs` say so. No code of this package changed.
+
 ## 0.11.40 — a call hears the nearest voice, a simulated television is a real one, and a caller stops the agent by a model's word (2026-11-15)
 
 - A class may declare `voiceIsolation` (on unless `false`): whether a spoken call goes through the runtime's model that takes down the voices far from the caller. `voice_isolation` on `AgentConfig` and on the settings' body.

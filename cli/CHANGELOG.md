@@ -4,7 +4,7 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## [0.11.41] — the CLI answers in colour, an assistant connects by an address, and a dead worker's call goes on (2026-11-16)
 
 - **`pinecall sessions` fits the terminal.** A row is cut at the terminal's width, as the judges' list is: a call's
   last words used to wrap every row in two and push the table's header off the screen. A pipe gets each row whole.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.41 — the CLI answers in colour, an assistant connects by an address, and a dead worker's call goes on (2026-11-16)
+
+- Released with the runtime: nothing of this package changed.
+
 ## 0.11.40 — a call hears the nearest voice, a simulated television is a real one, and a caller stops the agent by a model's word (2026-11-15)
 
 - A class may declare `voice_isolation` (on unless `False`): whether a spoken call goes through the runtime's model that takes down the voices far from the caller.

@@ -1,13 +1,15 @@
 # Changelog
 
-## Unreleased
+## 0.11.41 — the CLI answers in colour, an assistant connects by an address, and a dead worker's call goes on (2026-11-16)
 
-- **A tool's line the model writes again is dropped on Gemini too.** A line said this turn is held back
-  when the model opens a round with it again. Gemini's plugin sends a piece with the tokens used and no
-  words before every piece of text, and such a piece was taken for the end of the round's words: what was
-  held ("Let") was let out, so the line was never seen whole and a written call read "Let me check your
-  invoices.I see invoice 204…", in the chat and as the call's outcome. A piece with no words and no tool
-  call now passes and ends nothing.
+- **A tool's line the model writes again is dropped, on Gemini too.** A turn that already spoke does not
+  announce its next tool, so the line the model wrote for it stays unsaid in the history, and Gemini wrote
+  it again itself in front of its answer: after a hand-over a written call read "Let me check your
+  invoices.I see invoice 204…", in the chat and as the call's outcome. The filter that drops a line said
+  again never worked on Gemini, whose plugin sends a piece with the tokens used and no words before every
+  piece of text: such a piece was taken for the end of the round's words and let out what was held. A
+  skipped line now counts as said, it is found at the front of a piece that goes on, and a piece with no
+  words and no tool call ends nothing.
 
 - **A call whose worker dies goes on in another worker.** Until now a worker killed, a machine gone or a
   job's process dead ended the call: the caller heard one sentence from another worker and was promised
@@ -34,13 +36,6 @@
   turn in 3 written calls of 16, and each one wrote `transfer_to_front_desk is not available now` to
   the call's log (a `✗` in `pinecall chat`). Each request now names the closed tools in one sentence
   after the view, in that request alone; with every tool open it says nothing.
-
-- **A tool's line the model writes again is dropped, even glued to its answer, even when it was never said.**
-  A turn that already spoke does not announce its tool, and the model then wrote its own line for the
-  tool again in the round after it, glued to its answer: a written call read "Let me look up your
-  invoices.I found invoice 204…", in the chat and as the call's outcome. The skipped line counts as said
-  this turn, and a line said this turn is found at the front of what the model writes and dropped, with
-  what follows it said alone.
 
 - **A written call passed to a teammate thinks with the teammate's model, and its hand-over is no error.**
   A hand-over tells a call to take its stages anew. A chat the gateway runs had nothing to take them
