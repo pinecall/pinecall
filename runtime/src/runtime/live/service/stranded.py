@@ -26,6 +26,7 @@ from runtime.wire.events import CallStarted, ErrorEvent
 logger = logging.getLogger(__name__)
 
 LEFT = "participant_left"
+AGENT_NAME = "lk.agent.name"
 
 # The reasons livekit gives when a participant's connection was lost rather than closed: a worker
 # killed, a machine gone, a job process that died. A worker that ends a call, drains or hands it
@@ -95,7 +96,7 @@ async def offer_stranded(session: AsyncSession, live: LiveParts, env: Env, event
         return None
     if not await is_left_alone(live.servers[env], call):
         return None
-    offered = await _offer(session, live, call, kept)
+    offered = await _offer(session, live, call, kept, _worker_of(event.participant))
     reason = DisconnectReason.Name(event.participant.disconnect_reason)
     logger.warning("call %s: its worker went away (%s); offered to %s to be taken up", call, reason, offered)
     return call
@@ -127,17 +128,21 @@ async def hand_on_cut(live: LiveParts, served: Served) -> bool:
         seated = await participants_in(server, call)
         if not any(seat.kind in A_PERSON for seat in seated):
             return False
-        for seat in seated:
-            if seat.kind == ParticipantInfo.Kind.AGENT:
-                await server.room.remove_participant(RoomParticipantIdentity(room=call, identity=seat.identity))
-        offered = await _offer(session, live, call, kept)
+        agents = [seat for seat in seated if seat.kind == ParticipantInfo.Kind.AGENT]
+        for seat in agents:
+            await server.room.remove_participant(RoomParticipantIdentity(room=call, identity=seat.identity))
+        offered = await _offer(session, live, call, kept, _worker_of(agents[0]) if agents else None)
     logger.warning(
         "call %s: its worker read no commands for %.0f s; offered to %s to be taken up", call, GONE_AFTER_S, offered
     )
     return True
 
 
-async def _offer(session: AsyncSession, live: LiveParts, call: str, kept: calls.CallHead) -> str | None:
+# The worker that left is not offered its own call: the gateway heard from it seconds ago, and a dead
+# worker with every seat free is the one it would choose.
+async def _offer(
+    session: AsyncSession, live: LiveParts, call: str, kept: calls.CallHead, left_by: str | None
+) -> str | None:
     scope = kept.scope
     if scope is None:
         return None
@@ -151,7 +156,12 @@ async def _offer(session: AsyncSession, live: LiveParts, call: str, kept: calls.
         entries_written=kept.written,
         started_at=kept.started_at,
     )
-    return await live.offering.offer(call, await fleet.fleet_of_env(session, scope.env), dispatch)
+    return await live.offering.offer(call, await fleet.fleet_of_env(session, scope.env), dispatch, left_by=left_by)
+
+
+# LiveKit keeps the name a worker registered under on its agent's seat: the name an offer goes to.
+def _worker_of(agent: ParticipantInfo) -> str | None:
+    return agent.attributes.get(AGENT_NAME) or None
 
 
 # The worker went away, not the caller: the same call goes on in another worker. No quota, no token, no

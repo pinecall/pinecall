@@ -62,10 +62,13 @@ class Offering:
     servers: Servers
     roster: Roster
 
-    async def offer(self, room: str, fleet: str, dispatch: Dispatch) -> str | None:
+    # `left_by` is the worker a call's room was left by, under its LiveKit name: the gateway heard it
+    # seconds ago and would choose it again, the worker with every seat free (2026-11-16: a call handed
+    # on 3 s after its worker's pod was deleted went to that pod, and waited 12 s for the next offer).
+    async def offer(self, room: str, fleet: str, dispatch: Dispatch, *, left_by: str | None = None) -> str | None:
         """Keep the room and offer it; the name it went to, or None if kept already or not yet."""
         async with self.sessions.begin() as session:
-            kept = await OfferRepository(session).open(room, fleet, dispatch.dump(), time.time())
+            kept = await OfferRepository(session).open(room, fleet, dispatch.dump(), time.time(), left_by)
         return None if kept is None else await self.offer_again(kept)
 
     # A fleet no env's calls go to (the operator renamed it, or the room was kept by a dispatch
