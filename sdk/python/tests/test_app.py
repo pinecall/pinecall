@@ -97,6 +97,8 @@ def test_what_the_app_declares_for_its_agents_and_a_setting_both_declare_is_refu
     assert declared["idle"] == {"says": ["¿Sigues ahí?"], "after_s": 8.0, "times": 2}
     asked = cast("dict[str, list[dict[str, object]]]", declared["judges"])
     assert [one["name"] for one in asked["own"]] == ["app-rule-1"]
+    # It reads what the call carried: a price a document gave is not a price the agent made up.
+    assert asked["own"][0]["reads"] == ["evidence"]
     with pytest.raises(DeclarationRefused, match="keep one of the two"):
         voice_app("other").line("+14155550199", Greets, greeting="Otra.").declares(Greets)
 

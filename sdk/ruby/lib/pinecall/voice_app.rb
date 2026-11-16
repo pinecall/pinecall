@@ -188,10 +188,13 @@ module Pinecall
     end
 
     # The class's own judges stay, and each rule adds one: a declared list is the agent's whole list.
+    # A rule's judge reads the call's evidence too (the documents searched, the tools' answers, the state):
+    # a rule is about what the agent may say from what it was given.
     def judging(klass)
       own = klass.environment[:judges] || {}
       asked = @rules.each_with_index.map do |rule, at|
-        Pinecall.own_judge(name: "app-rule-#{at + 1}", asks: "Did the agent keep this rule through the whole call: \"#{rule}\"?")
+        Pinecall.own_judge(name: "app-rule-#{at + 1}", asks: "Did the agent keep this rule through the whole call: \"#{rule}\"?",
+                           reads: ["evidence"])
       end
       { on: own[:on] || [], own: [*own[:own], *asked] }
     end

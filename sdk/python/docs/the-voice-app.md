@@ -172,7 +172,8 @@ app.rule("Never quote a price that is not in the price list.")
 ```
 
 A rule is read into the prompt of every agent of the app, and a judge asks of each call whether it
-was kept, named `app-rule-1`, `app-rule-2`, in order. A class's own `judges` stay beside them.
+was kept, named `app-rule-1`, `app-rule-2`, in order. A rule's judge reads the call and its evidence (the
+documents searched, the tools' answers, the state). A class's own `judges` stay beside them.
 
 ### A team: the call passed from one agent to another
 

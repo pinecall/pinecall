@@ -114,7 +114,8 @@ APP.line("+1 415 555 0135", ->(call) { Clinic.closed?(call.today) ? AfterHours :
          fallback: FrontDesk, team: [AfterHours, Billing])
 ```
 
-A rule is read into every agent's prompt and judged (`app-rule-1`, …). A teammate that `takes`
+A rule is read into every agent's prompt and judged (`app-rule-1`, …), by a judge that reads the call and its
+evidence (the documents searched, the tools' answers, the state). A teammate that `takes`
 something is offered as a tool named by its class (`transfer_to_billing`); a tool can pass the call
 itself with `call.handoff(Billing, invoice:)`, and the teammate reads `call.handed`; `call.shared` is
 what the agents of one call share. A line's lambda chooses who answers; the `fallback` answers when it

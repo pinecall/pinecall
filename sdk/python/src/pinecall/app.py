@@ -272,11 +272,14 @@ class VoiceApp:
 
     def _judging(self, cls: type) -> dict[str, object]:
         # The class's own judges stay, and each rule adds one: a declared list is the whole list.
+        # A rule's judge reads the call's evidence too (the documents searched, the tools' answers,
+        # the state): a rule is about what the agent may say from what it was given.
         own = cast("dict[str, list[Any]]", _harness.harness_of(cls).get("judges") or {})
         asked = [
             _harness.own_judge(
                 name=f"app-rule-{at}",
                 asks=f'Did the agent keep this rule through the whole call: "{rule}"?',
+                reads=("evidence",),
             )
             for at, rule in enumerate(self.rules, start=1)
         ]

@@ -283,8 +283,10 @@ export class VoiceApp {
     }
     if (this.#rules.length > 0 && ofTheApp) {
       // The class's own judges stay, and each rule adds one: a declared list is the agent's whole list.
+      // A rule's judge reads the call's evidence too (the documents searched, the tools' answers, the state): a rule
+      // is about what the agent may say from what it was given, and the words of the call alone do not show that.
       const own = harnessOf(ctor).judges ?? { on: [], own: [] };
-      const asked = this.#rules.map((rule, at) => ({ name: `app-rule-${at + 1}`, question: `Did the agent keep this rule through the whole call: "${rule}"?` }));
+      const asked = this.#rules.map((rule, at) => ({ name: `app-rule-${at + 1}`, question: `Did the agent keep this rule through the whole call: "${rule}"?`, reads: ["evidence" as const] }));
       added.judges = judges({ on: own.on ?? [], own: [...(own.own ?? []), ...asked] });
     }
     if (this.#silence !== undefined && ofTheApp) {

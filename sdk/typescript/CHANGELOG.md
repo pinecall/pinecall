@@ -5,6 +5,13 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
+## Unreleased
+
+- **A rule's judge reads what the call carried.** `app.rule("…")` adds a judge to every agent of the app; it read the
+  call's words alone, so an amount the agent read out of a document broke "never say an amount a tool or a document
+  did not give you" whatever the rule said. The judge now reads the call's evidence too (`reads: ["evidence"]`: the
+  documents searched, the tools' answers, the state), as a judge of your own may.
+
 ## 0.11.41 — the CLI answers in colour, an assistant connects by an address, and a dead worker's call goes on (2026-11-16)
 
 - A written call passed to a teammate takes the teammate's model, as a spoken call takes its model and voice: the

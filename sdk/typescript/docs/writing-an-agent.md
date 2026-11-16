@@ -483,7 +483,9 @@ app.rule("Never quote a price that is not in the price list.");
 
 A rule is read into the prompt of every agent of the app, and a judge asks of each call whether it
 was kept: the call's score says so, as it does for the judges a class declares. The judges are named
-`app-rule-1`, `app-rule-2`, in the order the rules are written. An agent's declared judges are its
+`app-rule-1`, `app-rule-2`, in the order the rules are written. A rule's judge reads the call and its
+evidence (the documents searched, the tools' answers, the state), so a rule about what the agent may say
+is held to what the call gave it. An agent's declared judges are its
 whole list, so an app with rules owns the list of each of its agents: name the ones of Pinecall's you
 want beside them in the class, `@agent({ judges: ["grounded"] })`.
 

@@ -54,6 +54,8 @@ class VoiceAppTest < Minitest::Test
     assert_equal "America/Los_Angeles", declared[:timezone]
     assert_equal({ says: ["¿Sigues ahí?"], after_s: 8.0, times: 2 }, declared[:idle])
     assert_equal ["app-rule-1"], declared[:judges][:own].map { |judge| judge[:name] }
+    # It reads what the call carried: a price a document gave is not a price the agent made up.
+    assert_equal ["evidence"], declared[:judges][:own].first[:reads]
     assert_raises(Pinecall::DeclarationRefused) { Pinecall.voice_app("other").line("+14155550199", Greets, greeting: "Otra.").declares(Greets) }
   end
 

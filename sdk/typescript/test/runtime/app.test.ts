@@ -110,7 +110,8 @@ describe("a rule", () => {
     expect(app.rules).toEqual(["Never quote a price that is not in the price list."]);
     expect(app.declares(FrontDesk).judges).toEqual({
       on: [],
-      own: [expect.objectContaining({ name: "app-rule-1", question: expect.stringContaining("Never quote a price") })],
+      // It reads what the call carried: a price a document gave is not a price the agent made up.
+      own: [expect.objectContaining({ name: "app-rule-1", question: expect.stringContaining("Never quote a price"), reads: ["evidence"] })],
     });
     expect(app.declares(Billing)).toEqual({});
   });

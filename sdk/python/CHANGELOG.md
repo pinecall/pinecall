@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **A rule's judge reads what the call carried.** `app.rule("…")` adds a judge to every agent of the app; it read the
+  call's words alone, so an amount the agent read out of a document broke a rule about where amounts come from. The
+  judge now reads the call's evidence too (`reads=("evidence",)`: the documents searched, the tools' answers, the state).
+
 ## 0.11.41 — the CLI answers in colour, an assistant connects by an address, and a dead worker's call goes on (2026-11-16)
 
 - Released with the runtime: nothing of this package changed.
