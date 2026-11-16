@@ -163,6 +163,13 @@ describe("the report's parts", () => {
     expect(written["log"]).toHaveLength(1);
   });
 
+  it("a run that broke, asked with no folder (a hosted server's), writes nothing and says no reproduction", async () => {
+    answer("get", "/v1/calls/:call/events", { entries: [], next: null });
+    const { ctx } = testContext();
+    const report = await suite.reportOf(ctx, aRun([{ metric: "tools", passed: false, reason: "never booked" }]), [GOLDEN], null);
+    expect([report.held, report.reproductions]).toEqual([false, []]);
+  });
+
   it("nothing broke, nothing written", () => {
     expect(suite.writeReproductions(aRun(), [GOLDEN], {}, folder())).toEqual([]);
   });

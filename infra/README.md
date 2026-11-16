@@ -366,7 +366,9 @@ people in, so it needs nothing of the operator's but a name.
   nothing: the plan is five additions. A name in `services` would instead reissue the one
   certificate every service is served on.
 - **The values**: `mcp: { name: mcp.example.com }` in the operator's values file. The chart reads
-  `domain` for the gateway, as every chart does.
+  `domain` for the gateway, as every chart does. `mcp.openaiChallenge` is the token OpenAI's
+  developer dashboard gives to verify the name before a plugin is submitted, served at
+  `/.well-known/openai-apps-challenge`; it is published there, so it is a value, not a secret.
 - **The release**, from `runtime/`:
 
 ```

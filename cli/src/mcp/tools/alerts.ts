@@ -8,6 +8,8 @@ import { tool, ToolRefused } from "../tool.js";
 
 export const monitors = tool({
   name: "monitors",
+  title: "Monitors",
+  destroys: true,
   description: "The numbers the org watches over a window — latency, the judges' held rate, escalations, tool failures, spend, calls — and the line each must not cross; list them, add one, forget one.",
   schema: {
     action: z.enum(["list", "add", "rm"]).describe("list says every monitor with the last day it fired; add watches a number; rm forgets one by id"),
@@ -33,6 +35,8 @@ export const monitors = tool({
 
 export const webhook = tool({
   name: "webhook",
+  title: "Alerts webhook",
+  destroys: true,
   description: "Where the org posts its alerts — a monitor fired, the spend unusual, a quota out, a vendor that failed a call — shown, proven with a test post (signed when it has a secret), or cleared. Setting one is the person's, in a terminal: the secret is a credential.",
   schema: {
     action: z.enum(["show", "test", "clear"]).describe("show says the URL and whether posts are signed; test posts one webhook.test event and says whether the URL answered 2xx; clear stops the posting"),
@@ -49,6 +53,7 @@ export const webhook = tool({
 
 export const alerts = tool({
   name: "alerts",
+  title: "Alerts",
   reads: true,
   description: "What the org was told in the environment, newest first: every alert kept — a monitor fired, the spend unusual, a quota out, a vendor that failed a call, a hosted app down — whether or not a webhook is set, and whether each was mailed.",
   schema: {
@@ -61,6 +66,8 @@ export const alerts = tool({
 
 export const telemetry = tool({
   name: "telemetry",
+  title: "Telemetry export",
+  destroys: true,
   description: "Where the org's calls' traces go — its own OpenTelemetry collector — shown or cleared. Setting one is the person's, in a terminal: a header's value is a credential.",
   schema: {
     action: z.enum(["show", "clear"]).describe("show says the collector, the headers' names and whether words travel; clear stops the export"),

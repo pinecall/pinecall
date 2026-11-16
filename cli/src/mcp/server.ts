@@ -33,6 +33,8 @@ export interface ServerOptions {
   journey?: string;
   /** What a host is told of every tool beside its schema, as the protocol's `_meta`. */
   meta?: Record<string, unknown>;
+  /** Hosted, with no folder: each tool's hosted manual where it has one. */
+  hosted?: boolean;
 }
 
 /** A server over these tools, one session for its life. */
@@ -43,7 +45,8 @@ export function createServer(version: string, processEnv: NodeJS.ProcessEnv, opt
   const trace = options.trace ?? (() => undefined);
   for (const one of stages.flatMap((stage) => stage.tools)) {
     // The manual rides the description: the one place a host shows the model what a tool is for.
-    const said = { description: `${one.description}\n\n${one.manual}`, inputSchema: one.schema, ...(one.reads ? { annotations: { readOnlyHint: true } } : {}), ...(options.meta === undefined ? {} : { _meta: options.meta }) };
+    const manual = options.hosted === true ? (one.hostedManual ?? one.manual) : one.manual;
+    const said = { title: one.title, description: `${one.description}\n\n${manual}`, inputSchema: one.schema, annotations: annotationsOf(one), ...(options.meta === undefined ? {} : { _meta: options.meta }) };
     server.registerTool(one.name, said, async (args: unknown) => await answered(session, one, args, trace));
   }
   return server;
@@ -65,6 +68,11 @@ function onStdio(): Transport {
   const transport = new StdioServerTransport();
   process.stdin.once("end", () => void transport.close());
   return transport;
+}
+
+// MCP's hints, every one said: a directory (Claude's) refuses a tool that leaves its kind unsaid.
+function annotationsOf(one: Tool): { title: string; readOnlyHint: boolean; destructiveHint?: boolean } {
+  return one.reads ? { title: one.title, readOnlyHint: true } : { title: one.title, readOnlyHint: false, destructiveHint: one.destroys };
 }
 
 // A refusal is the model's to act on: its sentence, scrubbed, and never a stack.

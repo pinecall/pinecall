@@ -39,6 +39,10 @@ spec:
             # The gateway by its public name: a link a tool answers points there, and a person approves there.
             - name: PINECALL_URL
               value: {{ printf "https://%s" (required "domain" .Values.domain) | quote }}
+            {{- with .Values.mcp.openaiChallenge }}
+            - name: PINECALL_MCP_OPENAI_CHALLENGE
+              value: {{ . | quote }}
+            {{- end }}
           ports: [{ name: http, containerPort: 8787 }]
           lifecycle:
             preStop: { sleep: { seconds: 30 } }

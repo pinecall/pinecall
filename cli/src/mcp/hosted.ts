@@ -62,6 +62,8 @@ or a carrier, removing a deployed app. Those stay \`pinecall\` verbs a person ty
 
 /** What a hosted server keeps for one key between its requests: the written calls open, the runs in flight. */
 export class HostedSession extends Session {
+  override readonly writesFiles = false;
+
   constructor(
     /** The gateway's public address: the one a link the tools answer points at. */
     readonly gateway: string,
@@ -149,7 +151,7 @@ export interface HostedOptions {
 
 /** A server over the hosted tools for one key's session; the transport is whoever hosts it's. */
 export function hostedServer(session: HostedSession, options: HostedOptions = {}): McpServer {
-  return createServer(version(), {}, { stages: HOSTED_STAGES, session, journey: HOSTED_JOURNEY, ...(options.trace === undefined ? {} : { trace: options.trace }), ...(options.meta === undefined ? {} : { meta: options.meta }) });
+  return createServer(version(), {}, { stages: HOSTED_STAGES, session, journey: HOSTED_JOURNEY, hosted: true, ...(options.trace === undefined ? {} : { trace: options.trace }), ...(options.meta === undefined ? {} : { meta: options.meta }) });
 }
 
 /** Who a key is at the gateway; null for one that opens nothing there. Any other failure is thrown. */

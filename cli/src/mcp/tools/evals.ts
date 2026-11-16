@@ -20,6 +20,9 @@ export interface InFlight {
 
 export const test = tool({
   name: "test",
+  title: "Run tests",
+  hosted:
+    "`test run` plays the org's dataset of cases through the agent, wherever it is held, with nothing started here: `case` names cases to play (a pending one reproduces the call that broke), `dataset` plays every approved one; cases play in the sandbox. The gateway drives and scores each conversation, a column per model in `models`, and answers the matrix — every case held or broken, with the evidence and each call's latency — or, past `wait_s`, the run's id: call `test wait` to keep waiting. One run per agent at a time. `version` runs every call on that version of the agent's settings. The golden files beside an agent's code are played by the server on the person's machine (`pinecall mcp`), or by `pinecall test` in a terminal.",
   description: "Run the agent's goldens through the agent wherever it is held, under every model named, written or said out loud; waits for the matrix.",
   schema: {
     action: z.enum(["run", "wait"]).describe("run starts the goldens and waits up to wait_s; wait keeps waiting for the run in flight"),
@@ -63,7 +66,7 @@ export const test = tool({
     let id: string | null = null;
     let begun: (started: string) => void = () => undefined;
     const idKnown = new Promise<string>((known) => (begun = known));
-    const pending = service.runSuite(ctx, reached.slug, goldens, input, reached.app, { onStarted: (started) => begun((id = started)) }).then((report) => ({ ...report, env: ctx.env }));
+    const pending = service.runSuite(ctx, reached.slug, goldens, input, reached.app, { onStarted: (started) => begun((id = started)) }, ctx.session.writesFiles ? service.REPRODUCTIONS : null).then((report) => ({ ...report, env: ctx.env }));
     const started: InFlight = { pending, begun: idKnown, soFar: () => ({ status: "running", run: id, says: "call test with action wait to keep waiting, or runs show with this id" }) };
     ctx.session.runs.set(reached.slug, started);
     return await waited(ctx.session.runs, reached.slug, started, args.wait_s ?? WAIT_S);
@@ -72,6 +75,9 @@ export const test = tool({
 
 export const runs = tool({
   name: "runs",
+  title: "Test runs",
+  hosted:
+    "`runs list` and `show` read the suites the gateway kept; `diff` says which goldens or cases moved between two runs; `drift` compares each judge's held-rate in the last week with the month before it and names the judges past the threshold. `promote`, which writes a golden derived from a real call as a file beside the agent's code, is the server's on the person's machine.",
   description: "The suites the gateway kept: the newest, one run's matrix, what moved between two, a real call written as a golden candidate, and each judge's drift.",
   schema: {
     action: z.enum(["list", "show", "diff", "promote", "drift"]).describe("list the newest runs; show one; diff two; promote a real call to a golden candidate; drift compares each judge's held-rate over two windows"),
@@ -99,6 +105,7 @@ export const runs = tool({
 
 export const evalTool = tool({
   name: "eval",
+  title: "Check a call",
   description: "Check one finished call again by code: consent, banned words, errors, latency, talk share, interruptions — held, broken, deferred or skipped.",
   schema: {
     call: z.string().describe("the call's id"),
@@ -111,6 +118,10 @@ export const evalTool = tool({
 
 export const cases = tool({
   name: "cases",
+  title: "Cases",
+  destroys: true,
+  hosted:
+    "`cases` is the dataset real calls make, and the loop that fixes the agent. A call a judge broke on — a simulation's too — is kept at hang-up as a pending case and joins its agent's GROUP for that judge (`groups`, `group` with the grp_ id). `propose` asks the judge model for the cause the calls share and the smallest fix, as `proposal`: {cause, kind, where, change, confidence}. Act on it by kind: `setting` — tell the person the setting and the value, and on their yes call `apply` (a new settings version; refused for what the class of an app written as code declares, and in production for the app, naming it), then `test` with `case` to replay; `code` — `where` names the tool or prompt block and `change` what it must do: tell the person, whose code it is; once it is changed, `test` with `case` until it holds, then `approve` the group; `knowledge` — propose the text to add to the agent's knowledge base; `none` — the calls show no fault of the agent's: offer `dismiss` with `judge_was_wrong`. Never approve or apply without the person. `persona` keeps a caller like the group's for the nightly. A single case: `list`, `show`, `approve`, `dismiss`, `reopen`, `keep` (a finished call); `pull`, which writes its golden beside the code, is the server's on the person's machine. `add` keeps a golden written by hand — given whole as `golden` — as an approved case under its name (`source: person`); the same name again rewrites it, and a name a call made is the gateway's 409. A case names only words, what the caller says and what the agent must say or never say. Forgetting one cannot be undone, so it is never a tool: `pinecall cases forget` in a terminal.",
   description: "The org's dataset: real calls and simulations kept as cases, grouped by the judge that broke them — a group diagnosed with a fix proposed, a setting applied, a persona made from it, decided whole — and each case read, approved, dismissed, pulled into the repository, a call kept, a golden written by hand added.",
   schema: {
     action: z.enum(["groups", "group", "propose", "apply", "persona", "list", "show", "approve", "dismiss", "reopen", "pull", "keep", "add"]).describe("groups lists the agent's case groups; group shows one whole; propose diagnoses one (cause + fix); apply writes its proposed setting; persona keeps a caller like its calls'; list the agent's cases, the pending first; show one whole; approve or dismiss a case or a whole group (`name` a grp_ id); reopen a case; pull its golden into the repository; keep a finished call as a case; add a golden written by hand as an approved case"),
@@ -157,6 +168,7 @@ export const cases = tool({
 
 export const simulate = tool({
   name: "simulate",
+  title: "Simulate a caller",
   description: "A model plays one of the agent's personas against the agent wherever it is held, written or spoken, and the call is judged at hang-up.",
   schema: {
     action: z.enum(["run", "wait"]).describe("run starts a simulated call and waits up to wait_s; wait keeps waiting for the one in flight"),
@@ -233,6 +245,10 @@ export const simulate = tool({
 
 export const personas = tool({
   name: "personas",
+  title: "Personas",
+  destroys: true,
+  hosted:
+    "`personas` keeps the callers a model plays against the agent. Pinecall's library comes first — realism (in-a-hurry, wrong-number, interrupts, elderly-slow…) and a red team (prompt-leak, data-leak, harmful…) — each off until `on`; the nightly plays what is on. The agent's own are a goal, a manner, facts, and `expects`: what the agent should do, one verifiable line each, judged at hang-up and never told to the caller. `interrupts` and `pause_s` make a spoken caller talk over the agent and hesitate, so barge-in is tested for real; `backchannels` has it murmur an mm-hmm while the agent speaks, `speed` slows or hurries its voice, and `ambience` with `background_noise` puts a television, a café, an office or a street behind it. `generate` writes callers from the agent's prompt, tools and knowledge (one eval each, none on the org's own judge key); show them to the person, and `add` the ones they keep. A class that declares `personas` owns the roster: the list says `fixed`, and `add`, `edit`, `rm`, `on` and `off` are refused naming the class; its callers are code beside it, which `generate` with `save` writes on the person's machine. `simulate` runs one.",
   description: "The agent's simulated callers: Pinecall's library switched on or off, its own written (a goal, a manner, facts, what it expects of the agent, how it acts on a line), callers generated from the agent, dropped.",
   schema: {
     action: z.enum(["list", "show", "add", "edit", "rm", "on", "off", "generate"]).describe("list Pinecall's personas then the agent's own; show one; add one; edit one (only the fields named change); rm one of the agent's own; on/off one of Pinecall's; generate callers written from the agent"),

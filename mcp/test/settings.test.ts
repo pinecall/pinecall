@@ -12,6 +12,11 @@ describe("the settings", () => {
     expect(readSettings({ ...SAID, PINECALL_MCP_PORT: "9000" }).port).toBe(9000);
   });
 
+  it("carry OpenAI's domain challenge only when one is set", () => {
+    expect(readSettings(SAID).openaiChallenge).toBeUndefined();
+    expect(readSettings({ ...SAID, PINECALL_MCP_OPENAI_CHALLENGE: " oai-token-1 \n" }).openaiChallenge).toBe("oai-token-1");
+  });
+
   it("name the variable that is missing, has a path, or is no port", () => {
     expect(() => readSettings({ PINECALL_URL: SAID.PINECALL_URL })).toThrow(/PINECALL_MCP_URL is not set/);
     expect(() => readSettings({ ...SAID, PINECALL_URL: "cloud.example.com" })).toThrow(/PINECALL_URL is cloud.example.com/);

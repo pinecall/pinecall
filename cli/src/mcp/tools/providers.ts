@@ -5,6 +5,7 @@ import { tool } from "../tool.js";
 
 export const providers = tool({
   name: "providers",
+  title: "Providers",
   reads: true,
   description: "The vendors an agent may run on: what each does, whether it is ready, and whose key it would run on. Never a key.",
   schema: {},

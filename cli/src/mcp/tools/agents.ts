@@ -11,6 +11,8 @@ import { AGENT } from "./fields.js";
 
 export const agent = tool({
   name: "agent",
+  title: "Agents and their settings",
+  destroys: true,
   description: "The org's agents held now (`list`), and one agent's settings — voice, models, language, greeting, memory policy, knowledge by heart: read, set, cleared, history, diff, rollback.",
   schema: {
     action: z.enum(["list", "show", "set", "clear", "history", "diff", "rollback", "knowledge"]).describe("list says every agent of the org held now, and the process holding it; show reads the settings; set writes the fields named as a new version; clear takes fields out; history lists the versions; diff compares with the team's or production's; rollback brings a version back; knowledge reads or writes what the agent knows by heart"),
@@ -58,6 +60,8 @@ export const agent = tool({
 
 export const lexicon = tool({
   name: "lexicon",
+  title: "Lexicon",
+  destroys: true,
   description: "The agent's words: how its voice says one (`add`), the words its ears must catch (`hear`), taking them out (`rm`), and its versions.",
   schema: {
     action: z.enum(["show", "add", "hear", "rm", "history"]).describe("show the words; add how the voice says one; hear the words the ears must catch; rm takes words out of both; history lists the versions"),
@@ -85,6 +89,7 @@ export const lexicon = tool({
 
 export const pipeline = tool({
   name: "pipeline",
+  title: "Pipeline",
   reads: true,
   description: "What the agent hears, decides and speaks with — the vendors and models of each stage — and the latency each measured.",
   schema: { agent: AGENT },
@@ -94,6 +99,7 @@ export const pipeline = tool({
 
 export const voices = tool({
   name: "voices",
+  title: "Voices",
   reads: true,
   description: "A voice vendor's voices in a language: the id an agent's voice setting takes, the name, gender and accent.",
   schema: {
@@ -107,6 +113,7 @@ export const voices = tool({
 
 export const voiceSample = tool({
   name: "voice_sample",
+  title: "Voice sample",
   machine: true,
   description: "Have the gateway say a line in a voice, as a call would, and save it as a WAV the person can play; with how long the vendor took.",
   schema: {

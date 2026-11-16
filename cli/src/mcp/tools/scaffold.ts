@@ -16,6 +16,7 @@ import { needed } from "./fields.js";
 
 export const project = tool({
   name: "project",
+  title: "Project",
   machine: true,
   description: "The project the tools act on (`show`), another folder opened (`open`), a new project written (`new`), or an agent or a golden added to it (`generate`).",
   schema: {

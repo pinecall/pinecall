@@ -215,9 +215,15 @@ It works on no folder and starts nothing, so:
   and `deploy` `deploy`.
 - **`whoami` says `key_from: this connection's sign-in`**, and the gateway is Pinecall Cloud.
 
-A host is told which tools change nothing (`whoami`, `calls`, `call`, `pipeline`, `providers`,
-`voices`, `alerts`, `usage`, `carriers`, `callbacks`, `docs_search`, `get_doc`), so it may call
-those without asking the person first; this server says the same.
+Every tool says, to whichever host lists it, a title a person reads in its screens and its kind,
+as MCP's hints: read-only (`whoami`, `calls`, `call`, `pipeline`, `providers`, `voices`, `alerts`,
+`usage`, `carriers`, `callbacks`, `docs_search`, `get_doc`, and `status` and `prompt` on a machine),
+which a host may call without asking the person first; or a write, and whether it may take away or
+overwrite what exists or act outside — `dial`, `numbers`, `supervise`, the settings' writes and the
+removals are destructive, `chat`, `test` and `simulate` are not. Claude's connector directory refuses a
+tool that leaves either unsaid. Where a tool's manual speaks of a folder or of this machine, the
+hosted server shows its own words instead: `whoami`, `test`, `runs`, `cases`, `personas`, `judges`,
+`docs`, `memory` and `deploy`. A test run there writes no reproduction to any disk.
 
 ## Not in the MCP
 

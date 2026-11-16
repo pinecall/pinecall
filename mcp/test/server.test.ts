@@ -10,7 +10,7 @@ import { whoHolds } from "pinecall/hosted";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { Keys } from "../src/keys.js";
-import { AUTHORIZATION_SERVER_PATH, listener, RESOURCE_PATHS, SCOPE } from "../src/server.js";
+import { AUTHORIZATION_SERVER_PATH, listener, OPENAI_CHALLENGE_PATH, RESOURCE_PATHS, SCOPE } from "../src/server.js";
 import { Sessions } from "../src/sessions.js";
 
 const KEY = "pk_0123456789abcdef0123456789abcdef";
@@ -38,7 +38,7 @@ beforeAll(async () => {
   gatewayUrl = await listening(gateway);
   front = createServer();
   url = await listening(front);
-  const settings = { port: 0, address: url, gateway: gatewayUrl };
+  const settings = { port: 0, address: url, gateway: gatewayUrl, openaiChallenge: "oai-challenge-of-the-suite" };
   front.on("request", listener({ settings, keys: new Keys((key) => whoHolds(gatewayUrl, key)), sessions: new Sessions(gatewayUrl), log: (line) => void lines.push(line) }));
 });
 
@@ -59,6 +59,11 @@ describe("before a sign-in", () => {
       expect(answer.headers.get("access-control-allow-origin")).toBe("*");
       expect(await answer.json()).toMatchObject({ resource: `${url}/mcp`, authorization_servers: [gatewayUrl], scopes_supported: [SCOPE], bearer_methods_supported: ["header"] });
     }
+  });
+
+  it("answers OpenAI's domain challenge with the token it was given, as plain text", async () => {
+    const answer = await fetch(`${url}${OPENAI_CHALLENGE_PATH}`);
+    expect([answer.status, answer.headers.get("content-type"), await answer.text()]).toEqual([200, "text/plain; charset=utf-8", "oai-challenge-of-the-suite"]);
   });
 
   it("sends an assistant of the protocol's first revision on to the gateway's own document", async () => {

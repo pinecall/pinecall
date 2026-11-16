@@ -13,6 +13,7 @@ import { AGENT } from "./fields.js";
 
 export const start = tool({
   name: "start",
+  title: "Hold the agent",
   machine: true,
   description: "Hold the project's agent so it answers calls: in a thread of this server, reloaded on every save, or attached to a process already holding it.",
   schema: { agent: AGENT },
@@ -33,6 +34,7 @@ export const start = tool({
 
 export const stop = tool({
   name: "stop",
+  title: "Stop holding the agent",
   machine: true,
   description: "Stop holding the agent: its thread drains its live calls and leaves.",
   schema: { agent: AGENT },
@@ -47,6 +49,8 @@ export const stop = tool({
 
 export const status = tool({
   name: "status",
+  title: "What is held",
+  reads: true,
   machine: true,
   description: "What this server holds: each agent, how (thread or attached), its app, the version answering, and why the newest save did not load.",
   schema: {},
@@ -56,6 +60,8 @@ export const status = tool({
 
 export const prompt = tool({
   name: "prompt",
+  title: "Agent's prompt",
+  reads: true,
   machine: true,
   description: "Print the exact prompt the model reads when a call opens, or in a given state: offline, no key, no call.",
   schema: {
@@ -80,6 +86,7 @@ export const prompt = tool({
 
 export const consoleUrl = tool({
   name: "console_url",
+  title: "Console link",
   description: "A link that opens the console signed in, on the org's floor or on one agent: good for five minutes, once.",
   schema: { agent: z.string().optional().describe("open on this agent's screens; the org's floor when left out") },
   manual:

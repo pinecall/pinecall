@@ -19,6 +19,10 @@ mcp:
   # One: what a server keeps between two requests of a key (a written call open, a run in flight)
   # is in its memory. More than one needs each key's requests sent to the same pod.
   replicas: 1
+  # The token OpenAI's developer dashboard gives to verify this name (domain verification, before a
+  # plugin is submitted for review), served at /.well-known/openai-apps-challenge. Not a secret: it is
+  # published at that address. Empty, nothing is served there.
+  openaiChallenge: ""
 
 ingress:
   gkePolicies: false

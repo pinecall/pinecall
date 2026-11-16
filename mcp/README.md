@@ -54,6 +54,7 @@ PINECALL_MCP_URL=http://127.0.0.1:8787 PINECALL_URL=https://cloud.pinecall.io no
 | `PINECALL_MCP_URL` | this server's own public address, with no path: `https://mcp.example.com`. Required |
 | `PINECALL_URL` | the gateway's public address, with no path: where a person signs in, where every tool acts, and where a link a tool answers points. Required |
 | `PINECALL_MCP_PORT` | the port it listens on, 8787 unless said |
+| `PINECALL_MCP_OPENAI_CHALLENGE` | the token OpenAI's developer dashboard gives to verify the server's name, served as plain text at `/.well-known/openai-apps-challenge`; nothing is served there without it |
 
 It logs one line per request and one per tool call to stderr: the method, the path or the tool, how
 long, how it ended. Never a key, an argument or an answer.
@@ -86,6 +87,22 @@ curl -X POST https://mcp.pinecall.io/mcp -H "Authorization: Bearer $PINECALL_KEY
   -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'                    # the 35 tools
 ```
+
+## Listing it in a directory
+
+A custom connector works by its address alone. To be listed for everyone, each assistant's
+directory reviews it, and asks of the server what this one already says, and of the publisher what
+only a person gives:
+
+| | Claude ([connectors directory](https://claude.com/docs/connectors/building/submission)) | ChatGPT ([plugins](https://developers.openai.com/apps-sdk/deploy/submission)) |
+|---|---|---|
+| where | claude.ai/directory/manage → Submit new → MCP connector, any paid plan | platform.openai.com/plugins → Upload → With MCP, by a verified organization |
+| the server | OAuth, each tool's `title` and read-only or destructive hint: given | OAuth by Client ID Metadata Document: given; the domain's token (`PINECALL_MCP_OPENAI_CHALLENGE`, `mcp.openaiChallenge`) |
+| the listing | documentation URL, privacy policy URL, support contact, icon | website, support, privacy and terms URLs, a demo video, release notes, countries |
+| for review | a test account, asked by email for the Verified label | a test account with no MFA, five positive test cases and three negative |
+
+Published by default as a Community connector after an automatic scan on Claude's; ChatGPT's waits
+for its review.
 
 ## Rules
 

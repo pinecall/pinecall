@@ -11,6 +11,7 @@ export const NOT_SIGNED_IN = "this machine is not signed in: call `login` with a
 
 export const login = tool({
   name: "login",
+  title: "Sign in",
   machine: true,
   description: "Sign this machine in to a gateway: `start` returns a link for the person to open; `status` waits for their approval.",
   schema: {
@@ -40,6 +41,9 @@ export const login = tool({
 
 export const whoami = tool({
   name: "whoami",
+  title: "Who am I",
+  hosted:
+    "`whoami` first, in any session: it names the org this connection acts in, the gateway, the environment and the person who approved it; with `prod`, whether production is allowed for them. A connection that was ended is refused: the person connects Pinecall again in the assistant.",
   reads: true,
   description: "Which org, gateway and environment the open project's key acts in, and whether production is allowed.",
   schema: {},
@@ -61,6 +65,7 @@ export const whoami = tool({
 
 export const team = tool({
   name: "team",
+  title: "Team",
   description: "The org's people (`list`), or a one-use link that lets one of them choose a new password (`reset`).",
   schema: {
     action: z.enum(["list", "reset"]).describe("list the org's people; reset makes a one-use link for one of them to choose their password"),

@@ -8,6 +8,8 @@ import { AGENT } from "./fields.js";
 
 export const line = tool({
   name: "line",
+  title: "Phone line",
+  destroys: true,
   machine: true,
   description: "Who answers the agent's number right now and who could take it; which phone is the person's own, so their calls reach their copy.",
   schema: {
@@ -32,6 +34,8 @@ export const line = tool({
 
 export const numbers = tool({
   name: "numbers",
+  title: "Phone numbers",
+  destroys: true,
   description: "The org's numbers and the agent each reaches; the numbers its carrier accounts own; importing one, or buying one on the deployment's account, shown as steps before anything is written.",
   schema: {
     action: z.enum(["list", "available", "import", "buy"]).describe("list the org's numbers; available is what its carrier accounts own; import points one of them at an agent; buy gets a new one on the deployment's account — import and buy are a dry run unless dry_run is false"),
@@ -61,6 +65,7 @@ export const numbers = tool({
 
 export const carriers = tool({
   name: "carriers",
+  title: "Carrier accounts",
   reads: true,
   description: "The org's carrier accounts — Twilio, a SIP peer, WhatsApp — and one account's networks and how outbound calls leave. Never a secret.",
   schema: { action: z.enum(["list", "show"]).describe("list the org's carrier accounts, or show one"), account: z.string().optional().describe("`show`: the account's id") },
@@ -73,6 +78,8 @@ export const carriers = tool({
 
 export const dial = tool({
   name: "dial",
+  title: "Place a call",
+  destroys: true,
   description: "Have an agent call a phone number, with the state its call opens in. The org's dial guards decide: who may be called, when, and how often.",
   schema: {
     agent: z.string().min(1).describe("the agent that places the call: its slug"),
@@ -90,6 +97,7 @@ export const dial = tool({
 
 export const callbacks = tool({
   name: "callbacks",
+  title: "Callbacks",
   reads: true,
   description: "The callers waiting to be called back, oldest first: who, on which channel, through what (the overflow, the agent's own tool, the widget).",
   schema: { agent: z.string().optional().describe("only this agent's"), after: z.number().int().min(0).optional().describe("where the page before ended") },

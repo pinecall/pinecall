@@ -17,6 +17,8 @@ export interface ToolContext extends Context {
 /** A tool as declared, typed by its own schema. `manual` is the paragraph the server's instructions carry about it. */
 interface Declared<Shape extends z.ZodRawShape> {
   name: string;
+  /** What a person reads for it in a host's screens: a few words. */
+  title: string;
   /** One sentence: what the tool does, for the host's tool list. */
   description: string;
   schema: Shape;
@@ -29,11 +31,16 @@ interface Declared<Shape extends z.ZodRawShape> {
   machine?: true;
   /** It changes nothing, whatever it is asked: a host may call it without asking the person first. */
   reads?: true;
+  /** It can take away or overwrite what exists, or act outside (a real call, a number bought): a host asks the person first. */
+  destroys?: true;
+  /** The manual a hosted server shows instead, where this one speaks of a folder or of this machine. */
+  hosted?: string;
 }
 
 /** A tool as the server lists it: its schema checks what a host sends before the handler sees it. */
 export interface Tool {
   name: string;
+  title: string;
   description: string;
   manual: string;
   schema: z.ZodRawShape;
@@ -41,6 +48,8 @@ export interface Tool {
   reveals?: ((result: unknown) => string[]) | undefined;
   machine: boolean;
   reads: boolean;
+  destroys: boolean;
+  hostedManual: string | undefined;
 }
 
 /** Declare a tool; its handler receives arguments already checked against its schema, `prod` taken out. */
@@ -49,6 +58,7 @@ export function tool<Shape extends z.ZodRawShape>(declared: Declared<Shape>): To
   const checked = z.object(schema);
   return {
     name: declared.name,
+    title: declared.title,
     description: declared.description,
     manual: declared.manual,
     schema,
@@ -59,6 +69,8 @@ export function tool<Shape extends z.ZodRawShape>(declared: Declared<Shape>): To
     reveals: declared.reveals,
     machine: declared.machine === true,
     reads: declared.reads === true,
+    destroys: declared.destroys === true,
+    hostedManual: declared.hosted,
   };
 }
 

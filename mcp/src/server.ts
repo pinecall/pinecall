@@ -18,6 +18,8 @@ export const RESOURCE_PATHS = ["/.well-known/oauth-protected-resource", `/.well-
 export const AUTHORIZATION_SERVER_PATH = "/.well-known/oauth-authorization-server";
 export const DOCS = "https://docs.pinecall.io/mcp/connect/";
 export const HEALTH_PATH = "/health";
+/** Where OpenAI reads the token that proves this name is the publisher's (its developer dashboard, domain verification). */
+export const OPENAI_CHALLENGE_PATH = "/.well-known/openai-apps-challenge";
 // A tool's arguments are a definition or a document at most; the gateway's own ceiling is larger.
 export const LARGEST_BODY = 4 * 1024 * 1024;
 
@@ -65,6 +67,10 @@ async function answer(front: Front, request: IncomingMessage, response: ServerRe
   if (path === HEALTH_PATH) return json(response, 200, { ok: true });
   if (path === "/") return json(response, 200, { name: "pinecall-mcp", version: version(), mcp: `${settings.address}${MCP_PATH}`, docs: DOCS });
   if (RESOURCE_PATHS.includes(path)) return json(response, 200, resourceOf(settings));
+  if (path === OPENAI_CHALLENGE_PATH) {
+    if (settings.openaiChallenge === undefined) return refuse(response, 404, "no OpenAI domain challenge is set for this server");
+    return void response.writeHead(200, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" }).end(settings.openaiChallenge);
+  }
   if (path === AUTHORIZATION_SERVER_PATH) return void response.writeHead(307, { ...ANY_PAGE, Location: `${settings.gateway}${AUTHORIZATION_SERVER_PATH}` }).end();
   if (path !== MCP_PATH) return refuse(response, 404, `nothing at ${path}: the MCP endpoint is ${settings.address}${MCP_PATH}`);
 

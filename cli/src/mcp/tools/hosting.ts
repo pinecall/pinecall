@@ -8,6 +8,10 @@ import { WAIT, WAIT_S } from "./fields.js";
 
 export const deploy = tool({
   name: "deploy",
+  title: "Deploy",
+  destroys: true,
+  hosted:
+    "`deploy` with action `list` names the org's hosted apps; for one app, named by `name`: `releases`, `logs` (its last lines), `stop` and `start` its process, and `rollback`, which sends a release's sources again and follows it until it is live (`wait` follows it further). Uploading a new release sends a project folder, so action `deploy` is the server's on the person's machine, or `pinecall deploy` in a terminal. Removing an app is never a tool: `pinecall deploy rm` in a terminal.",
   description: "Run the project on Pinecall: a release uploaded and followed until live; the apps, their releases, their logs, a rollback, stop and start.",
   schema: {
     action: z.enum(["deploy", "wait", "list", "releases", "logs", "rollback", "stop", "start"]).describe("deploy uploads the project as a release; wait follows one further; list the org's apps; releases of one app; logs of its process; rollback sends a release's sources again; stop and start its process"),

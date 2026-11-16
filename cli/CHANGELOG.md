@@ -23,8 +23,13 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `save`), `docs attach` and `detach`, and `test` with `case` or `dataset` take the agent by its
   name from any folder, as `calls` and `cases` did; until now they refused an agent that was not in
   the open project.
-- **A host is told which tools only read** (`readOnlyHint`): `whoami`, `calls`, `call`, `pipeline`,
-  `providers`, `voices`, `alerts`, `usage`, `carriers`, `callbacks`, `docs_search`, `get_doc`.
+- **Every tool has a title and says its kind**, as MCP's hints: read-only, or a write and whether
+  it may take away or overwrite what exists or act outside (`destructiveHint`: `dial`, `numbers`,
+  `supervise`, the settings' writes and the removals). A host shows the title and asks before a
+  destructive call; Claude's connector directory refuses a tool that leaves either unsaid.
+- **The hosted server speaks of the connection, not of a folder**: `whoami`, `test`, `runs`,
+  `cases`, `personas`, `judges`, `docs`, `memory` and `deploy` carry their own words there, and a
+  test run there writes no reproduction to a disk.
 
 ## [0.11.40] — a call hears the nearest voice, a simulated television is a real one, and a caller stops the agent by a model's word (2026-11-15)
 

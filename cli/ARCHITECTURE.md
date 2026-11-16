@@ -1,4 +1,4 @@
-# Architecture — `pinecall`, the CLI
+| `mcp/tools/telephony.ts` | 106 | The `line`, `numbers`, `carriers`, `dial` and `callbacks` tools: the telephony domain, over its service. |
 
 What this package is, file by file: every module of `src/` with the line it opens with. The
 convention every file follows is [CONTRIBUTING.md](CONTRIBUTING.md); every verb, from the user's

@@ -8,6 +8,8 @@ import { needed } from "./fields.js";
 
 export const studio = tool({
   name: "studio",
+  title: "Studio agents",
+  destroys: true,
   description: "Build an agent with no code, as the console's Studio does: made, its definition saved as releases, each tool's request tried, deployed to production.",
   schema: {
     action: z.enum(["list", "show", "new", "save", "try", "deploy"]).describe("list the org's Studio agents; show one's newest release and definition; new makes one; save keeps a whole definition as the next release; try sends one tool's request once; deploy puts the sandbox's release in production"),

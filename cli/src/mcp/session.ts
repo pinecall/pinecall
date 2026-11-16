@@ -45,6 +45,8 @@ export class Session {
   readonly simulations = new Map<string, InFlight>();
   /** `pinecall-runtime setup`, when this server started it. */
   runtime: LocalRuntimeProcess | undefined;
+  /** Whether a tool may leave files behind it (a broken golden's reproduction): a hosted server's session has no folder to leave them in. */
+  readonly writesFiles: boolean = true;
 
   constructor(
     readonly processEnv: NodeJS.ProcessEnv,

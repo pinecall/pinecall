@@ -8,6 +8,7 @@ import type { ToolContext } from "../../src/mcp/tool.js";
 
 const echo = tool({
   name: "echo",
+  title: "Echo",
   description: "says it back",
   schema: { text: z.string().min(1) },
   manual: "`echo` says it back.",

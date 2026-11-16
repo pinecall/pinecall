@@ -169,12 +169,12 @@ export function held(run: api.EvalRun): boolean {
 }
 
 /** Read every call's log once, measure its turns, and write a reproduction for each golden that broke. */
-export async function reportOf(ctx: Context, run: api.EvalRun, goldens: Golden[], under = REPRODUCTIONS): Promise<SuiteReport> {
+export async function reportOf(ctx: Context, run: api.EvalRun, goldens: Golden[], under: string | null = REPRODUCTIONS): Promise<SuiteReport> {
   const logs: Record<string, Entry[]> = {};
   for (const opened of run.calls) logs[opened.call] = await allEntries(ctx, opened.call);
   const latencies: Latencies = {};
   for (const [call, entries] of Object.entries(logs)) latencies[call] = mediansOf(entries);
-  return { run, latencies, reproductions: writeReproductions(run, goldens, logs, under), held: held(run), files: goldens.map((one) => one.name) };
+  return { run, latencies, reproductions: under === null ? [] : writeReproductions(run, goldens, logs, under), held: held(run), files: goldens.map((one) => one.name) };
 }
 
 /** A whole call's log, page by page. */
@@ -306,8 +306,9 @@ export interface SuiteListeners {
  * plays it after; this side follows it on the org's feed (`run.changed`) until its row says it is
  * over, so a front can draw each golden as it lands. A 409 is the agent's run already going, told
  * by its id, and a 422 a golden the gateway's schema refuses: both are a run that cannot start, exit 2.
+ * A broken golden's reproduction is written `under` a folder, none when it is null.
  */
-export async function runSuite(ctx: Context, agent: string, goldens: Golden[], input: SuiteInput, app: string | undefined, listeners: SuiteListeners = {}): Promise<SuiteReport> {
+export async function runSuite(ctx: Context, agent: string, goldens: Golden[], input: SuiteInput, app: string | undefined, listeners: SuiteListeners = {}, under: string | null = REPRODUCTIONS): Promise<SuiteReport> {
   let started: api.EvalRun;
   try {
     started = await startSuite(ctx, agent, goldens, input, app);
@@ -319,7 +320,7 @@ export async function runSuite(ctx: Context, agent: string, goldens: Golden[], i
   listeners.onStarted?.(started.id);
   listeners.onChanged?.(started);
   const run = await settledRun(ctx, started, ctx.signal, listeners.onChanged);
-  return reportOf(ctx, run, goldens);
+  return reportOf(ctx, run, goldens, under);
 }
 
 /** One stored run. */

@@ -9,6 +9,10 @@ import { AGENT } from "./fields.js";
 
 export const docs = tool({
   name: "docs",
+  title: "Knowledge bases",
+  destroys: true,
+  hosted:
+    "`docs list` names the org's knowledge bases — their chunks, their language — and `attached` which agents read which base: both name no agent. `attach` makes an agent search a base before every turn (`k`, `mode`, `min_score`) and `detach` stops it; on an app written as code they work in the sandbox unless its class declares its bases, and are refused naming it in production. A base is written from a folder of Markdown beside the agent's code: `push`, `pull` and `eval` (against the golden file) are the server's on the person's machine. Dropping a base, or one file of it, is never a tool: `pinecall docs drop` and `pinecall docs rm` in a terminal.",
   description: "The documents the agent searches: a folder pushed into a base and pulled back from it, attached to the agent, held to its golden; the org's bases and who reads them.",
   schema: {
     action: z.enum(["push", "pull", "list", "eval", "attach", "detach", "attached"]).describe("push writes the agent's docs folder into its base, the base's other files kept; pull writes the base into the folder; list the org's bases; eval scores the docs golden; attach a base to the agent; detach it; attached says which agents read which base"),
@@ -43,6 +47,10 @@ export const docs = tool({
 
 export const memory = tool({
   name: "memory",
+  title: "Memory",
+  destroys: true,
+  hosted:
+    "`memory policy` says what the agent keeps about a caller (`remember`) and never keeps (`forget`); with neither it reads them, and with no policy the agent remembers nothing. `show` reads what it kept about one caller, and names no agent. On an app written as code writing `policy` works in the sandbox unless its class declares its memory, and is refused naming it in production. `eval`, which scores a golden file beside the agent's code, is the server's on the person's machine. Forgetting a caller is never a tool: `pinecall memory forget` in a terminal.",
   description: "What the agent remembers about a caller, what it is told to keep and never keep, and the recall golden held against it.",
   schema: {
     action: z.enum(["show", "policy", "eval"]).describe("show what memory kept about `contact`; policy reads, or with remember/forget writes, what the agent keeps; eval scores the memory golden"),
@@ -68,6 +76,7 @@ export const memory = tool({
 
 export const remember = tool({
   name: "remember",
+  title: "Memory cases",
   machine: true,
   description: "Hold memory's writing to its cases: each written call in agents/<agent>/test/memory/ run through one extraction, and what it kept checked by code.",
   schema: { agent: AGENT, grep: z.string().optional().describe("only cases whose name holds this") },

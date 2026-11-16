@@ -55,6 +55,30 @@ describe("the hosted server", () => {
     for (const one of tools) expect(one._meta).toEqual(META);
   });
 
+  it("titles every tool and says of each whether it only reads or may take something away, as a directory requires", async () => {
+    const host = await connected();
+    const { tools } = await host.listTools();
+    for (const one of tools) {
+      expect(one.title, one.name).toBeTruthy();
+      expect(one.annotations?.title, one.name).toBe(one.title);
+      expect(typeof one.annotations?.readOnlyHint, one.name).toBe("boolean");
+      if (one.annotations?.readOnlyHint === false) expect(typeof one.annotations.destructiveHint, one.name).toBe("boolean");
+    }
+    const kind = (name: string) => tools.find((one) => one.name === name)!.annotations;
+    expect(kind("dial")).toMatchObject({ readOnlyHint: false, destructiveHint: true });
+    expect(kind("chat")).toMatchObject({ readOnlyHint: false, destructiveHint: false });
+    expect(kind("calls")).toMatchObject({ readOnlyHint: true });
+  });
+
+  it("speaks of this connection, never of a folder or this machine, where the local manual would", async () => {
+    const host = await connected();
+    const { tools } = await host.listTools();
+    for (const one of tools) {
+      expect(one.description, one.name).not.toMatch(/this machine is signed in|the project's key|agents\/<agent>/);
+    }
+    expect(tools.find((one) => one.name === "whoami")!.description).toContain("names the org this connection acts in");
+  });
+
   it("runs a call on the key its session was made with, in the env asked, the key hidden", async () => {
     const sent = answer("get", "/v1/whoami", { ...WHO, name: `Ana, whose key is ${KEY}`, env: "production" });
     const host = await connected();

@@ -10,6 +10,7 @@ export const ENDED = (call: string): string => `${call} has ended, and a desk mo
 
 export const calls = tool({
   name: "calls",
+  title: "Calls",
   reads: true,
   description: "The agent's newest calls: each one's id, channel, length, how it ended, its cost and its verdicts.",
   schema: { agent: AGENT, limit: z.number().int().min(1).max(100).optional().describe("how many, newest first; 20 when left out") },
@@ -19,6 +20,7 @@ export const calls = tool({
 
 export const call = tool({
   name: "call",
+  title: "One call's log",
   reads: true,
   description: "One call's log, entry by entry — every turn, tool call, result, state change, metric and verdict — a page at a time.",
   schema: {
@@ -37,6 +39,7 @@ type Heard = { agent: string } | { tool: string; args: unknown } | { result: str
 
 export const chat = tool({
   name: "chat",
+  title: "Chat with an agent",
   description: "Talk to the agent as a caller, wherever it is held: `say` a line (opening a call, or continuing one by its id) and get its whole answer; `end` hangs up.",
   schema: {
     action: z.enum(["say", "end"]).describe("say a line as the caller, opening a call or continuing `call`; end hangs `call` up"),
@@ -108,6 +111,8 @@ function take(heard: Heard[], entry: service.Entry): void {
 
 export const supervise = tool({
   name: "supervise",
+  title: "Supervise a live call",
+  destroys: true,
   description: "A live call, as a supervisor's desk sees it: its transcript as it happens (`watch`), and a move on it — whisper to the agent, say a line in its voice, take the line, give it back, transfer, end.",
   schema: {
     action: z.enum(["watch", "whisper", "say", "takeover", "release", "transfer", "end"]).describe("watch reads what was said since `after`, waiting up to wait_s for more; whisper tells the agent something the caller never hears; say makes the agent say `text` verbatim; takeover silences the agent and puts a person on the line; release gives the line back; transfer sends the caller to `to`; end hangs up"),
