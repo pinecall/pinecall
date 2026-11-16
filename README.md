@@ -1,14 +1,14 @@
 <p align="center">
   <a href="https://docs.pinecall.io/start/quickstart/">
-    <img src=".github/assets/banner-6f1ad65d.svg" alt="Pinecall: the harness for voice AI — voice agents and voice apps, from Studio, code, the CLI or MCP" width="100%">
+    <img src=".github/assets/banner-a5893ca2.webp" alt="Pinecall: the open-source harness for voice AI — voice and chat agents from Studio, code, the CLI or MCP" width="100%">
   </a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/pinecall/pinecall/actions/workflows/check.yml"><img alt="check" src="https://img.shields.io/github/actions/workflow/status/pinecall/pinecall/check.yml?branch=main&label=check&logo=github&style=for-the-badge&labelColor=0d1117"></a>
-  <a href="https://github.com/pinecall/pinecall/tags"><img alt="release" src="https://img.shields.io/github/v/tag/pinecall/pinecall?label=release&color=9184d9&style=for-the-badge&labelColor=0d1117"></a>
-  <a href="https://www.npmjs.com/package/pinecall"><img alt="npm" src="https://img.shields.io/npm/v/pinecall?label=cli&color=5eead4&style=for-the-badge&labelColor=0d1117&logo=npm"></a>
-  <a href="https://pypi.org/project/pinecall-runtime/"><img alt="pypi" src="https://img.shields.io/pypi/v/pinecall-runtime?label=runtime&color=5eead4&style=for-the-badge&labelColor=0d1117&logo=python&logoColor=white"></a>
+  <a href="https://github.com/pinecall/pinecall/actions/workflows/check.yml"><img alt="check" src="https://img.shields.io/github/actions/workflow/status/pinecall/pinecall/check.yml?branch=main&label=check&logo=github"></a>
+  <a href="https://github.com/pinecall/pinecall/tags"><img alt="release" src="https://img.shields.io/github/v/tag/pinecall/pinecall?label=release&color=6246ea"></a>
+  <a href="https://www.npmjs.com/package/pinecall"><img alt="npm" src="https://img.shields.io/npm/v/pinecall?label=cli&color=3f74e8&logo=npm"></a>
+  <a href="https://pypi.org/project/pinecall-runtime/"><img alt="pypi" src="https://img.shields.io/pypi/v/pinecall-runtime?label=runtime&color=3f74e8&logo=python&logoColor=white"></a>
 </p>
 
 <p align="center">
