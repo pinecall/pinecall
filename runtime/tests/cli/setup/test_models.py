@@ -1,6 +1,7 @@
 """The model servers `setup` brings up: what is pulled when nothing thinks here, and the loop left free meanwhile."""
 
 import asyncio
+import subprocess
 import threading
 from pathlib import Path
 
@@ -58,6 +59,23 @@ def test_ollama_with_no_thinking_model_is_healthy_once_it_answers() -> None:
     assert "if [ -z '${LOCAL_LLM}' ]; then ollama list >/dev/null; else ollama run" in shipped
     pulled, _, thinking = shipped.partition("ollama pull bge-m3\n")
     assert pulled and 'if [ -n "${LOCAL_LLM}" ]; then\n          ollama pull ${LOCAL_LLM}\n' in thinking
+
+
+def test_the_puller_reads_nothing_of_the_terminal_setup_was_typed_at(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`ollama run` with no prompt reads one from stdin: the shipped puller gives it none, and compose no terminal."""
+    shipped = (Path(models.__file__).parent / "shipped" / "models.yaml").read_text(encoding="utf-8")
+    assert 'ollama run ${LOCAL_LLM} "" </dev/null >/dev/null' in shipped
+    handed: list[object] = []
+
+    def run(command: list[str], **how: object) -> subprocess.CompletedProcess[str]:
+        handed.append(how.get("stdin"))
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr(subprocess, "run", run)
+    models.models_up(tmp_path, Choices(stt="deepgram", llm="local/gemma4:12b", tts="cartesia"), host_ollama=False)
+    assert handed and all(stdin is subprocess.DEVNULL for stdin in handed)
 
 
 async def test_the_loop_stays_free_while_the_models_come_up(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

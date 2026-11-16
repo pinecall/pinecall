@@ -45,9 +45,12 @@ services:
       - |
         until ollama list >/dev/null 2>&1; do sleep 2; done
         ollama pull bge-m3
+        # Loaded with no prompt and nothing to read: given none, `ollama run` reads its prompt from
+        # stdin, and under `compose run` that is the terminal of whoever typed `setup`, where it
+        # waited for good with the model pulled and loaded (three machines, 2026-11-17).
         if [ -n "${LOCAL_LLM}" ]; then
           ollama pull ${LOCAL_LLM}
-          ollama run ${LOCAL_LLM} "" >/dev/null
+          ollama run ${LOCAL_LLM} "" </dev/null >/dev/null
         fi
     depends_on: [ollama]
     restart: "no"

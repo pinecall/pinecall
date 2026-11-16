@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **`setup` with open models ends when typed at a terminal.** With a model of its own to serve, `setup` never
+  came back: the models were pulled and loaded, and the last step of the puller, `ollama run <model> ""`, sat
+  reading its prompt from stdin, which under `docker compose run` was the terminal `setup` was typed at. Seen on
+  three machines at once (no card, an L4, an A100), each waiting for good with everything in place; a script, with
+  no terminal, never met it. The puller is given no stdin, and no quiet command of `setup` hands the person's
+  terminal down to what Docker starts.
+
 - **A new machine runs the models it is offered.** How a vendor's models are built is data, never code, and that
   data lived in Pinecall's own providers row alone: `setup` wrote a new machine's row with every vendor bare. The
   picker offered Gemini's voice and Deepgram's Flux, the ones Pinecall Cloud itself defaults to, and neither could

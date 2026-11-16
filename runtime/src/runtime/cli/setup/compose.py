@@ -53,8 +53,14 @@ class Compose:
 
     def run(self, *verb: str, failed: str) -> None:
         """One compose verb, quiet; UpstreamError with compose's last words when it fails."""
+        # A quiet verb reads nothing of the person's terminal: what compose starts would inherit it.
         done = subprocess.run(
-            self._command(*verb), capture_output=True, text=True, check=False, env={**os.environ, **self.environment}
+            self._command(*verb),
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            check=False,
+            env={**os.environ, **self.environment},
         )
         if done.returncode != 0:
             raise UpstreamError(failed.format(output=(done.stderr or done.stdout).strip()[-SAID_AT_MOST:]))

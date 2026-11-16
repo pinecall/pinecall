@@ -150,7 +150,15 @@ def warm_on_host(models: tuple[str, ...]) -> None:
 def _compose(
     compose: list[str], profiles: list[str], verb: list[str], environment: dict[str, str], failed: str
 ) -> None:
-    done = subprocess.run([*compose, *profiles, *verb], capture_output=True, text=True, check=False, env=environment)
+    # Nothing of the person's terminal is handed down: a container `compose run` starts reads stdin.
+    done = subprocess.run(
+        [*compose, *profiles, *verb],
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
+        check=False,
+        env=environment,
+    )
     if done.returncode != 0:
         raise UpstreamError(failed.format(output=(done.stderr or done.stdout).strip()[-2000:]))
 

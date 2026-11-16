@@ -46,7 +46,7 @@ services:
         until ollama list >/dev/null 2>&1; do sleep 2; done
         ollama pull gemma4:12b
         ollama pull bge-m3
-        ollama run gemma4:12b "" >/dev/null
+        ollama run gemma4:12b "" </dev/null >/dev/null
         words=""
         for word in $(seq 1 40); do
           words="$$words word$$word"
