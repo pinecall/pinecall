@@ -4,13 +4,20 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from runtime.actor import Scope
+from runtime.agents import service as agents
+from runtime.agents.declaration import Docs
+from runtime.agents.service import versions
+from runtime.agents.settings import AgentSettings
 from runtime.billing import service as billing
 from runtime.billing.service import quotas
+from runtime.enums import Env
 from runtime.exceptions import QuotaExceeded
 from runtime.knowledge.service import bases, search
 from runtime.knowledge.service.cutter import cut
 from runtime.knowledge.service.embedder import Embedder
-from tests.conftest import needs_the_database
+from runtime.wire.declaration import AgentConfig as Declared
+from runtime.wire.declaration import DocsConfig
+from tests.conftest import Tenant, needs_the_database
 
 pytestmark = needs_the_database
 
@@ -196,3 +203,29 @@ async def test_a_question_the_section_answers_finds_it_and_the_model_reads_the_s
     async with sessions() as session:
         files = await bases.list_files(session, scope, "clinica")
     assert {item.path: item.chunks for item in files} == {"precios.md": 2, "horario.md": 1}
+
+
+# ── who reads a base ──
+
+
+# Until 2026-11-16 the settings alone were read: a base a class declares was listed with nobody reading it.
+async def test_a_base_is_read_by_the_agents_whose_class_declares_it_and_by_those_whose_settings_attach_it(
+    sessions: async_sessionmaker[AsyncSession], tenant: Tenant
+) -> None:
+    """What a call of each agent would read: its class's bases where it declares them, its settings' otherwise."""
+    scope = Scope(tenant.org, Env.sandbox)
+    by = versions.Written(author=tenant.member)
+    async with sessions.begin() as session:
+        # A class that declares its base. Its settings attach another, which no call of it reads.
+        reads_its_own = Declared(docs=DocsConfig(base="clinica"))
+        await agents.put_declaration(session, scope, "front-desk", reads_its_own, sdk=None, first=True)
+        ignored = AgentSettings(bases=(Docs(base="otra"),))
+        await versions.add_version(session, versions.SETTINGS, scope, "front-desk", ignored, by)
+        # A class that declares none: its settings say what it reads.
+        await agents.put_declaration(session, scope, "billing", Declared(language="es"), sdk=None, first=True)
+        attached = AgentSettings(bases=(Docs(base="clinica"), Docs(base="precios")))
+        await versions.add_version(session, versions.SETTINGS, scope, "billing", attached, by)
+    async with sessions() as session:
+        read = await bases.list_attached(session, scope)
+    readers = [(one.base, one.agents) for one in read]
+    assert readers == [("clinica", ["billing", "front-desk"]), ("precios", ["billing"])]

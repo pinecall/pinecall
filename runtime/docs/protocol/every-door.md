@@ -206,7 +206,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `POST` | `/v1/keys` | app (a person's key) | A server's token for the org in one environment, `pc_live_` or `pc_test_`. |
 | `POST` | `/v1/keys/{fingerprint}/revoke` | — | Stop one of the org's keys from the next request on: your own, one you made, or any. |
 | `GET` | `/v1/knowledge` | knowledge | Every base the key's corner reads, its size, its model and when it was pushed. |
-| `GET` | `/v1/knowledge/attached` | knowledge | Each base some agent attaches, and the agents whose settings in the corner attach it. |
+| `GET` | `/v1/knowledge/attached` | knowledge | Each base some agent reads, and the agents whose class or whose settings in the corner attach it. |
 | `DELETE` | `/v1/knowledge/{base}` | knowledge | Drop the holder's own copy of the base and its chunks. |
 | `GET` | `/v1/knowledge/{base}` | knowledge | The base's files, each with its size and chunks, never its text. |
 | `PUT` | `/v1/knowledge/{base}` | knowledge | Put the folder's files into the base by path, keeping the files it does not name; `?replace=true` makes the base the folder. Cut, embedded where it changed, indexed. |

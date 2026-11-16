@@ -1,4 +1,4 @@
-/** A base's markdown read as a page: headings, paragraphs, lists, quotes, tables, code, links, drawn as elements so nothing in a file runs. */
+/** A base's markdown read as a page: headings, paragraphs, lists, quotes, tables, code, links and the questions a section answers, drawn as elements so nothing in a file runs. */
 
 import type { ReactNode } from "react";
 
@@ -9,12 +9,14 @@ type Block =
   | { kind: "quote"; text: string }
   | { kind: "code"; language: string; text: string }
   | { kind: "table"; head: string[]; rows: string[][] }
+  | { kind: "asks"; questions: string[] }
   | { kind: "rule" };
 
 const HEADING = /^(#{1,6})\s+(.*?)\s*#*\s*$/;
 const ITEM = /^\s*(?:[-*+]|(\d+)[.)])\s+(.*)$/;
 const FENCE = /^\s*(```|~~~)\s*([\w+#.-]*)\s*$/;
 const RULE = /^\s*([-*_])(\s*\1){2,}\s*$/;
+const COMMENT = "<!--";
 const TABLE_ROW = /^\s*\|.*\|\s*$/;
 const TABLE_RULE = /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/;
 // `code`, **strong**, *em* or _em_, [text](url), a bare URL; longest markers first.
@@ -54,6 +56,22 @@ function blocksOf(markdown: string): Block[] {
       at += 1;
       continue;
     }
+    // A comment is a note to the author: it is no chunk of the base, and no reader of Markdown draws one. One is
+    // read by the index, `<!-- asks … -->`: the questions the section answers, drawn as what they are.
+    if (line.trimStart().startsWith(COMMENT)) {
+      const said: string[] = [];
+      let rest = line.trimStart().slice(COMMENT.length);
+      while (!rest.includes("-->") && at + 1 < lines.length) {
+        said.push(rest);
+        rest = lines[++at] ?? "";
+      }
+      said.push(rest.split("-->")[0] ?? "");
+      at += 1;
+      const [first = "", ...more] = said.join("\n").trim().split("\n");
+      const questions = /^asks\b/.test(first) ? [first.replace(/^asks\b/, ""), ...more].map((one) => one.trim()).filter((one) => one !== "") : [];
+      if (questions.length > 0) blocks.push({ kind: "asks", questions });
+      continue;
+    }
     if (TABLE_ROW.test(line) && TABLE_RULE.test(lines[at + 1] ?? "")) {
       const rows: string[][] = [];
       at += 2;
@@ -87,7 +105,7 @@ function blocksOf(markdown: string): Block[] {
     const paragraph: string[] = [];
     while (at < lines.length) {
       const next = lines[at] ?? "";
-      if (next.trim() === "" || HEADING.test(next) || FENCE.test(next) || ITEM.test(next) || next.trimStart().startsWith(">") || RULE.test(next)) break;
+      if (next.trim() === "" || HEADING.test(next) || FENCE.test(next) || ITEM.test(next) || next.trimStart().startsWith(">") || RULE.test(next) || next.trimStart().startsWith(COMMENT)) break;
       paragraph.push(next.trim());
       at += 1;
     }
@@ -175,6 +193,17 @@ export function Markdown({ text }: { text: string }): ReactNode {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            );
+          case "asks":
+            return (
+              <div key={at} className="kb-md-asks">
+                <span>Questions this section answers</span>
+                <ul>
+                  {block.questions.map((question, n) => (
+                    <li key={n}>{question}</li>
+                  ))}
+                </ul>
               </div>
             );
           case "rule":

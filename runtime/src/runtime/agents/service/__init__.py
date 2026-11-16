@@ -7,6 +7,7 @@ from runtime.agents.service.declaration import (
     declaration_of,
     declare,
     list_changes,
+    list_classes,
     put_declaration,
     read_model,
 )
@@ -54,6 +55,7 @@ __all__ = [
     "keep_settings",
     "kind_of",
     "list_changes",
+    "list_classes",
     "list_noted_versions",
     "list_settings",
     "name_model",

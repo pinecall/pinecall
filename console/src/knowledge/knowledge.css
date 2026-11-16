@@ -84,6 +84,9 @@ a.kb-fact-agent:hover { color: var(--ink); }
 .kb-md blockquote { padding: 2px 0 2px 12px; border-left: 2px solid var(--line); color: var(--quiet); }
 .kb-md hr { margin: 18px 0; border: 0; border-top: 1px solid var(--line); }
 .kb-md-table { overflow-x: auto; }
+.kb-md-asks { padding: 8px 12px; border-radius: 8px; background: var(--raised); color: var(--quiet); }
+.kb-md-asks span { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+.kb-md-asks ul { margin-top: 4px; }
 .kb-md table { border-collapse: collapse; font-size: 13px; }
 .kb-md th, .kb-md td { padding: 5px 10px; border-bottom: 1px solid var(--line); text-align: left; }
 .kb-md th { font-weight: 500; }

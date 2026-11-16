@@ -42,7 +42,7 @@ async def list_bases(actor: KnowledgeKey, session: Session) -> schemas.Knowledge
 # Before `/{base}`, so "attached" is never read as a base's name.
 @router.get("/v1/knowledge/attached")
 async def list_attached_bases(actor: KnowledgeKey, session: Session) -> schemas.KnowledgeUses:
-    """Each base some agent attaches, and the agents whose settings in the scope attach it."""
+    """Each base some agent reads, and the agents whose class or whose settings in the scope attach it."""
     attached = await bases.list_attached(session, actor.scope)
     return schemas.KnowledgeUses(bases=[schemas.KnowledgeUse.of(item) for item in attached])
 

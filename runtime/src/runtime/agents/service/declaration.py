@@ -24,6 +24,7 @@ from runtime.agents.declaration import (
     Voicemail,
     check_words,
 )
+from runtime.agents.models import AgentDeclaration
 from runtime.agents.repository import DeclarationRepository
 from runtime.agents.service.hold_audio import check_wait
 from runtime.agents.service.kinds import kind_of
@@ -164,8 +165,19 @@ async def put_declaration(
 async def declaration_of(session: AsyncSession, scope: Scope, slug: str) -> Declaration | None:
     """The agent as the scope's last app declared it: the org's own when the scope never did, or when it is Studio's."""
     reaching = await DeclarationRepository(session).list_reaching(scope, slug)
-    if not reaching:
-        return None
+    return _read(slug, reaching) if reaching else None
+
+
+async def list_classes(session: AsyncSession, scope: Scope) -> dict[str, Declaration]:
+    """Every agent an app declared where the scope reads, each as `declaration_of` reads it."""
+    reaching: dict[str, list[AgentDeclaration]] = {}
+    for row in await DeclarationRepository(session).list_reaching_any(scope):
+        reaching.setdefault(row.agent, []).append(row)
+    return {slug: _read(slug, rows) for slug, rows in reaching.items()}
+
+
+# The scope's own row first, the org's own last: the order both listings give.
+def _read(slug: str, reaching: Sequence[AgentDeclaration]) -> Declaration:
     the_orgs = reaching[-1]
     row = the_orgs if the_orgs.holder == THE_ORGS_OWN and kind_of(the_orgs.sdk) == "studio" else reaching[0]
     return apply_declaration(Declaration(slug=slug), wire.AgentConfig.model_validate(row.declaration), first=True)

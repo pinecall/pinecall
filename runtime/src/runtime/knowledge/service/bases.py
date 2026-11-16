@@ -121,12 +121,22 @@ async def get_base(session: AsyncSession, scope: Scope, base: str) -> KnowledgeB
     return copy
 
 
-# Off each agent's newest settings in the scope: a base only its class attaches is not listed.
+# What a call of the agent would read: the bases its class declares where it declares them, its settings'
+# otherwise (`agents.resolution`, `keep("docs", …)`). Until 2026-11-16 the settings alone were read, and a
+# base only a class attaches was listed with nobody reading it: the console said "No agent searches it yet"
+# of the base every call of that agent searched.
 async def list_attached(session: AsyncSession, scope: Scope) -> list[Attached]:
-    """Each base some agent attaches, and the agents whose settings in the scope attach it."""
+    """Each base some agent reads in the scope, and the agents whose class or whose settings attach it."""
+    classes = await agents.list_classes(session, scope)
+    settings = await agents.list_settings(session, scope)
     readers: dict[str, list[str]] = {}
-    for agent, settings in sorted((await agents.list_settings(session, scope)).items()):
-        for docs in settings.bases or ():
+    for agent in sorted(classes.keys() | settings.keys()):
+        of_its_class = classes.get(agent)
+        if of_its_class is not None and "docs" in of_its_class.fixed:
+            read = of_its_class.bases
+        else:
+            read = (settings[agent].bases or ()) if agent in settings else ()
+        for docs in read:
             readers.setdefault(docs.base, []).append(agent)
     return [Attached(base=base, agents=named) for base, named in sorted(readers.items())]
 

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **A base a class declares is listed with the agent that reads it.** `GET /v1/knowledge/attached` read each
+  agent's settings alone, so a base attached by a class (`docs: { base }`) had no reader: the console's
+  Knowledge page said "No agent searches it yet" of a base every call of that agent searched, and `pinecall
+  docs attached` listed nothing. It answers what a call would read: the class's bases where it declares them,
+  the settings' otherwise. The console's file view no longer draws an HTML comment as text, and draws
+  `<!-- asks … -->` as the questions the section answers.
+
 - **A dead worker's call is handed on a second and a half after its stream is cut, by a timer of its own.**
   The gateway looked at every call twice a second to find the ones whose worker had stopped reading for
   three seconds. The cut is an event, and so is what follows it now: one wait per call, begun when the
