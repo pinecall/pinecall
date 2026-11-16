@@ -47,6 +47,8 @@ describe("paintLine", () => {
   it("colours a record's label, and the help's own", () => {
     expect(paintLine("  key   k_abc · berna-air")).toBe(`  ${cyan("key")}   k_abc${dot}berna-air`);
     expect(paintLine("  opens the sandbox, and production with --prod")).toBe("  opens the sandbox, and production with --prod");
+    // A label of several parts is named by its first, and its date is read last.
+    expect(paintLine('  v7 · Bernardo · 2026-11-16 09:58   temperature 0.3')).toBe(`  ${cyan("v7")}${dot}Bernardo${dot}${dim("2026-11-16 09:58")}   temperature 0.3`);
     expect(paintLine("Usage: pinecall data [options] [command]")).toBe(`${bold("Usage:")} pinecall data [options] [command]`);
     expect(paintLine("Commands:")).toBe(bold("Commands:"));
     expect(paintLine("  erase       one ended call, gone")).toBe(`  ${cyan("erase")}       one ended call, gone`);

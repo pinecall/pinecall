@@ -127,7 +127,9 @@ const field: Rule = (line) => {
   const found = /^( +)(\S+(?: \S+)*)( {2,})(\S.*)$/.exec(line);
   if (found === null) return undefined;
   const [, lead = "", label = "", gap = "", value = ""] = found;
-  return `${lead}${cyan(label)}${gap}${cells(value)}`;
+  // `v7 · Bernardo · 2026-11-16 · "steadier"`: a label of several parts is named by its first.
+  const [name = "", ...more] = label.split(DOT);
+  return `${lead}${[cyan(name), ...more.map(cell)].join(dim(DOT))}${gap}${cells(value)}`;
 };
 
 // `brightside-app  release 2  —`: a table's row, named by its first cell.
