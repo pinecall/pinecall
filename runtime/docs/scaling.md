@@ -380,6 +380,17 @@ with a wait of three seconds. With the wait at a second and a half and the gatew
 ending a deleted pod and not a worker dying; the call was offered 1.6 s after the cut and asked for
 by the second worker 0.3 to 0.6 s later; and the second worker's first word came 7.3, 8.7 and 12.2 s
 after the deletion, most of it the worker building the call's session before it speaks.
+With only the call's process killed and its worker left alive, which is a worker dying with nothing
+of Kubernetes in the way (two calls, the release of the shared count): the gateway saw the stream
+cut at once, offered the call 1.5 s later, the second worker took it up 0.4 s after that, and its
+first word came 3.7 and 4.6 s after the cut. The worker whose process was killed, alive and with
+every seat free, was offered neither call, and took calls again at its next heartbeat. In four of
+these five calls the take-up and the seal were answered by different gateways.
+
+One limit stands, seen in 2 of the 13 calls taken up so far: when the room closed as the caller
+left, the second worker wrote no end and sealed nothing, its job was stopped 150 s later, and the
+gateway's reaper ended the call as `drained` minutes after, with no summary and no recording. Its
+cause is not found yet. The caller had left, so nobody heard it; the call's record is what is short.
 
 The call ends as `drained`, with one sentence and a call back for a phone caller, only when nobody
 can go on with it: no worker has a seat (the job goes to the overflow, which holds no call), the
