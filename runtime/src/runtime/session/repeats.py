@@ -87,7 +87,13 @@ async def drop_repeats(pieces: AsyncIterable[Piece], said: SaidThisTurn) -> Asyn
     """The model's answer without a sentence the agent already said since the caller last spoke."""
     held: list[Piece] = []
     async for piece in pieces:
-        if _calls_a_tool(piece) or not text_of(piece):
+        # A piece with no words and no call says nothing of where the words end: Gemini's plugin sends
+        # one, the tokens used, before every piece of text. Taken for the end of the round's words it
+        # let out what was held ("Let"), and the line said again was never seen whole (2026-11-16).
+        if not text_of(piece) and not _calls_a_tool(piece):
+            yield piece
+            continue
+        if _calls_a_tool(piece):
             # The round's words end here: said already, they go and the tool call stays.
             if said.holds("".join(text_of(one) for one in [*held, piece])):
                 held, piece = [], _wordless(piece)

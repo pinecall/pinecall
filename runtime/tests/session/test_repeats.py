@@ -83,6 +83,25 @@ async def test_a_piece_of_the_model_keeps_its_kind_when_a_line_is_cut_off_its_fr
     assert text_of(answer[0]) == "Done."
 
 
+def counting() -> llm.ChatChunk:
+    """The piece Gemini's plugin sends before each piece of text: the tokens used, and no words."""
+    return llm.ChatChunk(id="c", usage=llm.CompletionUsage(completion_tokens=1, prompt_tokens=9, total_tokens=10))
+
+
+async def test_a_piece_with_no_words_between_the_words_of_a_line_said_again_does_not_let_it_through() -> None:
+    """Gemini: the tokens used, "Let", the tokens used, " me check your invoices.I see…" (2026-11-16)."""
+    answer = await played(
+        having_said(NOTED), counting(), "Let", counting(), " me note that down.That is Tuesday", counting(), " at nine."
+    )
+    assert "".join(text_of(piece) for piece in answer) == "That is Tuesday at nine."
+    assert len([piece for piece in answer if isinstance(piece, llm.ChatChunk) and piece.usage is not None]) == 3
+
+
+async def test_a_piece_with_no_words_before_new_words_changes_nothing() -> None:
+    answer = await played(having_said(NOTED), counting(), "That is ", counting(), "Tuesday.")
+    assert "".join(text_of(piece) for piece in answer) == "That is Tuesday."
+
+
 async def test_words_that_start_like_a_line_said_but_go_elsewhere_are_all_said() -> None:
     answer = await played(having_said(NOTED), "Let me ", "check the calendar.")
     assert "".join(text_of(piece) for piece in answer) == "Let me check the calendar."

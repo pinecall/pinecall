@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **A tool's line the model writes again is dropped on Gemini too.** A line said this turn is held back
+  when the model opens a round with it again. Gemini's plugin sends a piece with the tokens used and no
+  words before every piece of text, and such a piece was taken for the end of the round's words: what was
+  held ("Let") was let out, so the line was never seen whole and a written call read "Let me check your
+  invoices.I see invoice 204…", in the chat and as the call's outcome. A piece with no words and no tool
+  call now passes and ends nothing.
+
 - **A call whose worker dies goes on in another worker.** Until now a worker killed, a machine gone or a
   job's process dead ended the call: the caller heard one sentence from another worker and was promised
   a call back. The gateway now offers the room to the fleet again, and the worker that takes it reads the
