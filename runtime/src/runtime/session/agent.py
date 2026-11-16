@@ -122,11 +122,17 @@ class CallAgent(Agent):
         heir.said_this_turn, heir.said, heir.saying = self.said_this_turn, self.said, self.saying
         return heir
 
-    # Said while the tool runs, not awaited; a turn that spoke has announced the tool itself.
+    # Said while the tool runs, not awaited; a turn that spoke has announced the tool itself. The line it
+    # skips still counts as said: a model writes its own line for the tool again in the round after it,
+    # glued to its answer ("Let me look up your invoices.I found…", Gemini after a hand-over, 2026-11-16).
     def announce(self, line: str | None) -> None:
         """Say this line as a tool starts, unless the agent has spoken since the caller did."""
-        if line and not self.said_this_turn:
-            self.interject(line)
+        if not line:
+            return
+        if self.said_this_turn:
+            self.said.say(line)
+            return
+        self.interject(line)
 
     def interject(self, line: str) -> None:
         """Say this line now, whatever was said since the caller spoke: a wait that has grown long."""

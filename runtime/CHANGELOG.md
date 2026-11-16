@@ -10,11 +10,12 @@
   the call's log (a `✗` in `pinecall chat`). Each request now names the closed tools in one sentence
   after the view, in that request alone; with every tool open it says nothing.
 
-- **A tool's line the model writes again is dropped when its answer follows in the same piece.** A tool's
-  announcement said once was dropped from the reply only when it came as a piece of its own. Gemini
-  writes it again and its answer right after, with no space between: a written call read "Let me look
-  up your invoices.I see invoice 204…", in the chat and as the call's outcome. The line is now found at
-  the front of what the model writes, and what follows it is said alone.
+- **A tool's line the model writes again is dropped, even glued to its answer, even when it was never said.**
+  A turn that already spoke does not announce its tool, and the model then wrote its own line for the
+  tool again in the round after it, glued to its answer: a written call read "Let me look up your
+  invoices.I found invoice 204…", in the chat and as the call's outcome. The skipped line counts as said
+  this turn, and a line said this turn is found at the front of what the model writes and dropped, with
+  what follows it said alone.
 
 - **A written call passed to a teammate thinks with the teammate's model, and its hand-over is no error.**
   A hand-over tells a call to take its stages anew. A chat the gateway runs had nothing to take them

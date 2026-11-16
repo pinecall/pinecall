@@ -337,6 +337,23 @@ async def test_a_quiet_tool_called_in_silence_is_answered_so_the_move_is_said(
     assert len(model_of(session).requests) == 2
 
 
+@needs_the_database
+async def test_a_tool_line_skipped_since_the_turn_spoke_is_not_said_by_the_round_after_the_tool(
+    box: Box, store: Store, call: str
+) -> None:
+    """Gemini wrote its own line for the tool again, glued to its answer: "invoices.I found…" (2026-11-16)."""
+    looking: list[Json] = [
+        "Of course.",
+        {"name": "look", "arguments": {"day": "monday", "say": "Let me check the agenda."}, "call_id": "t1"},
+    ]
+    session = a_session(box, LOOKING, looking, ["Let me check the agenda.I have nine on Monday."])
+    await session.start()
+    await hear(session, "anything on monday?")
+    await session.end("caller_hung_up", "caller")
+    said = [entry.data["text"] for entry in await store.whole_of(call) if entry.type == "turn.agent"]
+    assert said == ["Of course.", "I have nine on Monday."]
+
+
 CHAINED_IN_SILENCE: tuple[list[Json], ...] = (
     [{"name": "point", "arguments": {"ref": "e12"}, "call_id": "t1"}],
     [{"name": "point", "arguments": {"ref": "e13"}, "call_id": "t2"}],
