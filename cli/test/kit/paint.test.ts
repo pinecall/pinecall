@@ -59,6 +59,8 @@ describe("paintLine", () => {
   it("tells the speakers of a transcript apart, and a tool from its answer", () => {
     expect(paintLine("› Good morning. How can I help?")).toBe(`${accent("›")} Good morning. How can I help?`);
     expect(paintLine("‹ a visit on Tuesday")).toBe(`${cyan("‹")} ${dim("a visit on Tuesday")}`);
+    // What the agent marked as the one thing that matters is drawn bold, its marks gone.
+    expect(paintLine("› We have **9:00** and **10:30**.")).toBe(`${accent("›")} We have ${bold("9:00")} and ${bold("10:30")}.`);
     expect(paintLine('→ freeSlots({"day":"tuesday"})')).toBe(`${yellow("→ freeSlots")}${dim('({"day":"tuesday"})')}`);
     expect(paintLine('← freeSlots {"free":["9:00"]}')).toBe(`${dim("←")} ${yellow("freeSlots")}${dim(' {"free":["9:00"]}')}`);
   });

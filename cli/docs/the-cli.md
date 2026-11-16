@@ -2945,7 +2945,8 @@ sandbox`), a table's header bold and each row's name cyan, a record's labels cya
 a cell of its own in its colour (`ready` and `live` green, `stopped` and `sandbox` yellow, `production`
 magenta, `failed` red), a date and what only separates dimmed, `✓` green and `✗` red, a next step's
 `→` cyan over dimmed words, a refusal's `pinecall:` red. A transcript tells its speakers apart: the
-agent's `›` violet, the caller's `‹` cyan, a tool asked in yellow and its answer dimmed. The help is
+agent's `›` violet, the caller's `‹` cyan, a tool asked in yellow and its answer dimmed; what the
+agent marked `**so**` is drawn bold, its marks gone. The help is
 painted the same way. An empty line comes before the answer's first line and after its last, and
 before its next steps. A pipe, a file or `NO_COLOR` gets the words alone, with no colour and no
 empty lines added: what a script reads never changes with the terminal.

@@ -87,7 +87,7 @@ const turn: Rule = (line) => {
   const said = /^(\s*)([›‹]) (.*)$/.exec(line);
   if (said !== null) {
     const [, lead = "", glyph = "", rest = ""] = said;
-    return glyph === "›" ? `${lead}${accent(glyph)} ${rest}` : `${lead}${cyan(glyph)} ${dim(rest)}`;
+    return glyph === "›" ? `${lead}${accent(glyph)} ${strong(rest)}` : `${lead}${cyan(glyph)} ${dim(rest)}`;
   }
   const called = /^→ ([\w.-]+)(.*)$/.exec(line);
   if (called !== null) return `${yellow(`→ ${called[1] ?? ""}`)}${dim(called[2] ?? "")}`;
@@ -95,6 +95,12 @@ const turn: Rule = (line) => {
   if (answered !== null) return `${dim("←")} ${yellow(answered[1] ?? "")}${dim(answered[2] ?? "")}`;
   return undefined;
 };
+
+// In a written chat the agent is told Markdown is fine, and it marks the one thing that matters: `**9:00**`. A
+// terminal draws that as bold, as a page would; where there is no colour the words stay as the agent wrote them.
+function strong(text: string): string {
+  return text.replace(/\*\*([^*\n]+)\*\*|__([^_\n]+)__/g, (_, stars: string | undefined, bars: string | undefined) => bold(stars ?? bars ?? ""));
+}
 
 // `── identity (static) ──`, and a tag of the prompt alone on its line.
 const section: Rule = (line) => {

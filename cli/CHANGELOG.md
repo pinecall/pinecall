@@ -4,6 +4,12 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+- **A chat draws what the agent marked in bold.** In a written chat the agent is told Markdown is fine, and it
+  writes `**9:00**` for the one thing that matters: `pinecall chat` and `pinecall start` printed the asterisks. On
+  a terminal the words are bold and the marks are gone; a pipe gets the reply as the agent wrote it.
+
 ## [0.11.41] — the CLI answers in colour, an assistant connects by an address, and a dead worker's call goes on (2026-11-16)
 
 - **`pinecall sessions` fits the terminal.** A row is cut at the terminal's width, as the judges' list is: a call's
