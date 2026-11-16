@@ -195,7 +195,7 @@ async def report_on(session: AsyncSession, vault: Vault, scope: Scope, agent: Ag
         runnable=providers.runnable_on(catalog, keys, providers.list_vendors()),
         voice_defaults=dict(catalog.voices),
         measured=measured,
-        unavailable_reasons=_list_unavailable(stages, keys),
+        unavailable_reasons=list_unavailable(resolved, catalog, keys),
     )
 
 
@@ -217,11 +217,21 @@ def _plan_stage(stage: Stage, declaration: Declaration, catalog: Catalog, *, lan
     )
 
 
-def _list_unavailable(stages: Mapping[str, StagePlan], keys: providers.Keyring) -> dict[str, str]:
+# Checked as the call builds it (`providers.stage_on_its_key`): the vendor the agent names or the row's, on
+# the model named or the one the row runs for that vendor. Until 2026-11-16 a stage with no model named was
+# checked with none, so an org lent the row's own models by name (every new org) read "google is not lent to
+# this org" for an agent whose calls ran on those very models.
+def list_unavailable(declaration: Declaration, catalog: Catalog, keys: providers.Keyring) -> dict[str, str]:
+    """Each stage the next call could not run, with the reason; empty when all three run."""
+    named = {"hears": declaration.stt, "decides": declaration.llm, "speaks": declaration.voice}
+    stage_of = {"hears": Stage.stt, "decides": Stage.llm, "speaks": Stage.tts}
     missing: dict[str, str] = {}
-    for where, stage in stages.items():
+    for where, own in named.items():
+        stage = stage_of[where]
+        default = catalog.defaults[stage]
+        vendor, model = (default.vendor, default.model) if own is None else (own.vendor, own.model or None)
         try:
-            providers.running_on(keys, stage.vendor, stage.model)
+            providers.running_on(keys, vendor, model or catalog.model_for(stage, vendor))
         except PinecallError as refused:
             missing[where] = str(refused)
     return missing

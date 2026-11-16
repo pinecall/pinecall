@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The pipeline report no longer says a stage is unavailable when the call runs it.** A stage the agent
+  leaves to the runtime was checked with no model, so an org lent models by name (every new org) read
+  "google is not lent to this org" under `decides` and `speaks`, in `pinecall pipeline` and on the
+  console's Configure page, for an agent whose calls ran on those very models. The report checks each
+  stage on the model the call would run.
+
 - **A Studio agent is read as Studio declares it by everyone in the org.** A person whose own class had held
   the slug before it became a Studio agent kept that class's declaration in their scope, and it won
   over Studio's: their chats and calls with the Studio agent opened on the old class's greeting, and
