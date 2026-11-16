@@ -60,7 +60,8 @@ class Runner:
         try:
             await self.reconcile(await self.beat(), now)
         except UpstreamError as away:
-            logger.warning("the runner's beat: %s", away)
+            # Said as it is: the error names what was being asked (the beat, a release's sources).
+            logger.warning("%s", away)
 
     # What was not taken is said again with the next beat.
     async def beat(self) -> RunnerHeartbeatResponse:

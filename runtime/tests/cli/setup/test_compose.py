@@ -1,9 +1,40 @@
 """docker compose as the installer runs it: the files a server's services are laid over."""
 
+import subprocess
 from pathlib import Path
 
+import pytest
+
+from runtime.cli.setup import compose
 from runtime.cli.setup.files import write_shipped
 from runtime.cli.setup.server import compose_files
+from runtime.exceptions import UpstreamError
+
+NO_ACCESS = "permission denied while trying to connect to the docker API at unix:///var/run/docker.sock"
+
+
+def docker_answering(monkeypatch: pytest.MonkeyPatch, *, daemon: int) -> None:
+    """Docker on PATH with its compose plugin, and a daemon that answers this user with that exit."""
+
+    def run(command: list[str], **_how: object) -> subprocess.CompletedProcess[str]:
+        refused = command[1] == "info" and daemon != 0
+        return subprocess.CompletedProcess(command, daemon if refused else 0, "", NO_ACCESS if refused else "")
+
+    def found(_name: str) -> str:
+        return "/usr/bin/docker"
+
+    monkeypatch.setattr(compose, "which", found)
+    monkeypatch.setattr(subprocess, "run", run)
+
+
+def test_a_daemon_this_user_cannot_reach_is_refused_before_anything_is_asked(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Docker installed and its daemon closed to this user: said in one sentence, with what lets them in."""
+    docker_answering(monkeypatch, daemon=1)
+    with pytest.raises(UpstreamError, match="did not answer this user") as refused:
+        compose.docker_or_refuse()
+    assert NO_ACCESS in str(refused.value) and "sudo usermod -aG docker $USER" in str(refused.value)
+    docker_answering(monkeypatch, daemon=0)
+    compose.docker_or_refuse()
 
 
 def test_a_servers_compose_is_laid_over_the_services(tmp_path: Path) -> None:

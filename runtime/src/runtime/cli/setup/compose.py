@@ -27,6 +27,19 @@ def docker_or_refuse() -> None:
     version = subprocess.run(["docker", "compose", "version", "--short"], capture_output=True, text=True, check=False)
     if version.returncode != 0:
         raise UpstreamError("docker compose did not answer: start Docker and run this again")
+    # `compose version` answers with no daemon at all, so the daemon is asked too, before the person is
+    # asked anything: until 2026-11-16 a user outside the docker group typed a password twice and then
+    # read compose's own "permission denied while trying to connect to the docker API".
+    daemon = subprocess.run(
+        ["docker", "info", "--format", "{{.ServerVersion}}"], capture_output=True, text=True, check=False
+    )
+    if daemon.returncode != 0:
+        said = (daemon.stderr or daemon.stdout).strip().splitlines()[-1:]
+        raise UpstreamError(
+            f"Docker is here but did not answer this user ({said[0] if said else 'it said nothing'}): start it, or "
+            "on Linux add this user to the docker group (`sudo usermod -aG docker $USER`, then sign in again), "
+            "and run this again"
+        )
 
 
 # Until 2026-11 eleven calls built the command six ways and cut the error five times.

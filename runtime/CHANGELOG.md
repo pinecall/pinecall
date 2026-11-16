@@ -16,6 +16,14 @@
   second session on a log about to end, whose own end the log then refused with two tracebacks. A close asked for
   while one runs waits for it, so `end` and a turn that ended the call return once the call is over.
 
+- **`setup` hears the gateway before it starts the rest, and asks Docker's daemon before it asks you.** The
+  gateway, the worker and the runner started at once, and the runner's first beats found no gateway: three
+  warnings under "Running." at every start, each saying its subject twice (`the runner's beat: the runner's beat:
+  …`). The gateway starts alone and is heard on its port first; the runner's warning says its error once. And a
+  user Docker's daemon does not answer (outside the `docker` group, on Linux) was asked the console's person and
+  the password twice, then read compose's own `permission denied … docker.sock`: `setup` refuses before it asks
+  anything, with what lets that user in.
+
 - **`setup` runs on a machine that never ran it.** Six things stopped it or spoiled it on a clean Ubuntu 24.04,
   each found by following the self-hosting pages there, on this machine's own form and on a server's (`--domain`).
   Every question it asks (the console's person, a key found nowhere, a LiveKit's pair) ended it with
