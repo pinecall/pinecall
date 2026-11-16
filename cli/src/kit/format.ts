@@ -105,3 +105,8 @@ export function pathFrom(cwd: string, path: string): string {
 export function clipped(text: string, width: number): string {
   return text.length <= width ? text : `${text.slice(0, Math.max(0, width - 1))}…`;
 }
+
+/** The first line of a text: what an error says to a person, when the vendor's own account follows on the lines under it. */
+export function firstLine(text: unknown): string {
+  return String(text ?? "").split("\n", 1)[0] ?? "";
+}

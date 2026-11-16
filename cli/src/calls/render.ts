@@ -3,7 +3,7 @@
 import type { CamelEvent } from "@pinecall/agents/client";
 import type { Cost } from "@pinecall/agents/wire";
 
-import { amount, clipped, count, date, duration, formatHint, formatPairs, money as dollars } from "../kit/format.js";
+import { amount, clipped, count, date, duration, firstLine, formatHint, formatPairs, money as dollars } from "../kit/format.js";
 import { table } from "../kit/table.js";
 import { BROKEN, HELD } from "../judging/render.js";
 import type { CallShown, ConsentHistory, DoNotCall, DoNotCallImported, Entry, Erasure, ErasureTrail, LogPage, OrgPolicyRow, Reads, SessionLine } from "./service/index.js";
@@ -157,7 +157,8 @@ export function metricsLine(metrics: Record<string, unknown> | undefined): strin
 /** A chat frame as a line; null for entries with no line. `turn.user` is skipped: readline already echoed it. */
 export function chatLine(entry: Entry): string | null {
   if (entry.type === "turn.user") return null;
-  if (entry.type === "error") return `${BROKE} ${String(entry.data["message"])}`;
+  // The reason: a component that failed keeps the vendor's own account under it, which `pinecall call` reads whole.
+  if (entry.type === "error") return `${BROKE} ${firstLine(entry.data["message"])}`;
   const line = lineFor({ type: entry.type, data: entry.data } as CamelEvent);
   return line === null ? null : `${line.mark} ${line.text}`;
 }

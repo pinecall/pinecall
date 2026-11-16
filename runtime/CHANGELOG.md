@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **A call its vendor refuses says why, and ends once.** A vendor that refuses a call for good (a key with no
+  credit, a voice that does not exist) wrote livekit's own account of it as the error's message: `type='llm_error'
+  timestamp=… label='livekit.plugins.anthropic.llm.LLM' error=APIStatusError("Error code: 400 - {…`. That is what
+  `pinecall chat` and `start`, the console's Talk panel and the `vendor.failed` alert's mail showed. The message's
+  first line is the reason now, in the sentences the rest of the runtime says a vendor's no with (`anthropic refused
+  this call's model: Your credit balance is too low…`, `deepgram failed on its side (503): …`, `cartesia did not
+  answer: …`); livekit's account stays whole on the lines under it, where the alert and the gateway's counters read
+  the vendor and the stage, and the vendor's request id with it. The alert says the reason once (`On call …,
+  anthropic refused this call's model: …`). And such a written call ended twice: with no host, the session's close
+  ran as a task, a close asked for meanwhile returned at once, and the chat's socket was closed before `call.ended`
+  was written. The caller's CLI took that for a gateway gone, dialled again, and the gateway took the call up as a
+  second session on a log about to end, whose own end the log then refused with two tracebacks. A close asked for
+  while one runs waits for it, so `end` and a turn that ended the call return once the call is over.
+
 - **`setup` runs on a machine that never ran it.** Six things stopped it or spoiled it on a clean Ubuntu 24.04,
   each found by following the self-hosting pages there, on this machine's own form and on a server's (`--domain`).
   Every question it asks (the console's person, a key found nowhere, a LiveKit's pair) ended it with

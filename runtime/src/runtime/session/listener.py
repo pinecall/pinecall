@@ -21,6 +21,7 @@ from livekit.agents import ErrorEvent as ComponentFailed
 from livekit.agents.voice import AgentSession, SpeechHandle
 from livekit.agents.voice.events import EventTypes
 
+from runtime.providers import service as providers
 from runtime.session.call import Call
 from runtime.session.line import Line
 from runtime.session.lookups import Lookups
@@ -213,7 +214,7 @@ class Listener:
     def _on_failure(self, event: ComponentFailed) -> None:
         if self.ended_for_good:
             return
-        said = str(event.error)
+        said = providers.say_failure(event.error)
         wrapped = getattr(event.error, "error", None)
         if not (isinstance(wrapped, APIStatusError) and fails_for_good(wrapped)):
             recoverable = bool(getattr(event.error, "recoverable", False))

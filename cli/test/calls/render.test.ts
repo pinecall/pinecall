@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { entryLine, log, policy, sessions } from "../../src/calls/render.js";
+import { chatLine, entryLine, log, policy, sessions } from "../../src/calls/render.js";
 
 const row = (calling_hours: { from: number; until: number } | null, per_number_day: number | null) => ({
   policy: { retention_days: null, calling_hours, per_number_day, consent_everywhere: false, disclosure: null, recording_notice: true },
@@ -78,5 +78,13 @@ describe("the sessions", () => {
     expect(narrow[2]).toHaveLength(100);
     // The title and the next step are sentences, left as they are.
     expect([narrow[0], narrow.at(-1)]).toEqual([whole[0], whole.at(-1)]);
+  });
+});
+
+describe("a chat's line for an error", () => {
+  it("says the reason, its first line, and leaves the vendor's own account to the log read whole", () => {
+    const message = "anthropic refused this call's model: Your credit balance is too low.\ntype='llm_error' label='livekit.plugins.anthropic.llm.LLM' error=APIStatusError(…)";
+    const line = chatLine({ seq: 4, type: "error", call: "call_1", data: { code: "component_dead_end", message, recoverable: false } });
+    expect(line).toBe("✗ anthropic refused this call's model: Your credit balance is too low.");
   });
 });

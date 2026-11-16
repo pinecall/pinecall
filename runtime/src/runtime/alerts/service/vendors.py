@@ -1,6 +1,5 @@
 """A vendor that failed a call, read off the sealed log: which stage, whose key, and how many times."""
 
-import re
 from collections.abc import Sequence
 
 from runtime.enums import Stage
@@ -8,12 +7,12 @@ from runtime.providers import service as providers
 from runtime.wire.base import Entry
 from runtime.wire.events import VendorFailed
 
-# The error codes a worker writes when a vendor's component failed, or the model said nothing in time.
-FAILED_CODES = frozenset({"component_failed", "component_dead_end", "llm_timeout"})
-# A component's error names its plugin and its stage: `livekit.plugins.google.llm.LLM`.
-STAGE_IN = re.compile(r"plugins\.\w+\.(?P<stage>llm|stt|tts)\b")
+# The error codes a worker writes when a vendor's component failed. Such an error says who refused and
+# what in its own first line (`providers.say_failure`), and names its plugin on the lines under it.
+COMPONENT_CODES = frozenset({"component_failed", "component_dead_end"})
 # The one error a message cannot place: a model that said nothing within the deadline is the LLM's.
 TIMEOUT = "llm_timeout"
+FAILED_CODES = COMPONENT_CODES | {TIMEOUT}
 SWITCHED = "vendor.switched"
 ERROR = "error"
 # The alert carries the first line of the error, and no more than this of it.
@@ -55,8 +54,7 @@ def _failure_in(call: str, entry: Entry, lent: Sequence[str]) -> VendorFailed | 
         code, message = str(entry.data.get("code") or ""), str(entry.data.get("message") or "")
         if code not in FAILED_CODES:
             return None
-        placed = STAGE_IN.search(message)
-        stage = None if placed is None else _stage_named(placed["stage"])
+        stage = providers.stage_named_in(message)
         if stage is None and code == TIMEOUT:
             stage = Stage.llm
         if stage is None:

@@ -150,7 +150,7 @@ Something went wrong. Inside a call it says what failed; outside a call it says 
 | field | type | required | meaning |
 |---|---|---|---|
 | `code` | `string` | yes | A stable code a program can match: unknown_command, bad_shape, no_route, tool_timeout, provider_error; llm_timeout — the model said nothing within the agent's llm_timeout_s, so the turn ended unanswered and the call goes on; session_failed — the worker could not build the call's session (a vendor refused its stage: a model it does not take, a key it does not accept), unrecoverable, the call ended at once with reason `error` and the refusal as its outcome; and stopped — a member of the org stopped this app (POST /v1/apps/{app}/stop), the socket closes next, and the app exits rather than reconnect. And killed — on one agent: an admin killed it (POST /v1/agents/{slug}/kill), the gateway let go of it and the app keeps its other agents, and declares it no more when it reconnects. |
-| `message` | `string` | yes | What happened, for a person. |
+| `message` | `string` | yes | What happened, for a person. A component of the call that failed (`component_failed`, `component_dead_end`) says the reason on its first line, the vendor's own words after the colon (`anthropic refused this call's model: Your credit balance is too low…`), and keeps the vendor SDK's whole account on the lines under it: a view of the call shows the first line. |
 | `command` | `string` | no | The type of the command that failed, when one did. |
 | `id` | `string` | no | The app's id for that command, when it sent one. |
 | `recoverable` | `boolean` | yes | True when the call goes on; false when this is why it ended. |

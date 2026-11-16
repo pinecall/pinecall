@@ -6,6 +6,15 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **`chat` reads the end of a call as its end.** When the gateway ended a written call (a vendor refused it for
+  good, the desk ended it) and closed the socket saying so, `chat` printed "the gateway went away — the call is
+  kept, reconnecting…", dialled again, and never said why. A normal closure is the call's end: nothing is dialled
+  again, and the lines above it say the reason.
+
+- **An error is said by its reason.** `chat` and `start` printed an error's message whole; a component that failed
+  now keeps the vendor's own account under its first line, so they print that line: `✗ anthropic refused this
+  call's model: Your credit balance is too low…`. `pinecall call` still reads the entry whole.
+
 - **The MCP's `runtime` tool names the install that works.** With no runtime on the machine it said
   `uv tool install "pinecall-runtime[voice]"` and Python 3.12: on a machine with 3.12 that installs an old release.
   It says `--python 3.13` now.

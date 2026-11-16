@@ -45,7 +45,7 @@ from runtime.wire.commands import (
 from runtime.wire.metrics import ModelUsage
 from runtime.wire.parts import ToolResult
 from tests.conftest import needs_the_database, until
-from tests.fakes.acme import ACME
+from tests.fakes.acme import A_REFUSED_KEY, ACME
 from tests.fakes.livekit import Microphone, Player, Server, Speaker, tone
 from tests.fakes.livekit import Room as AnOfflineRoom
 from tests.session.conftest import (
@@ -225,8 +225,45 @@ async def test_a_voice_that_does_not_exist_ends_the_call_after_one_error_and_no_
     entries = await store.whole_of(call)
     errors = [entry.data["code"] for entry in entries if entry.type == "error"]
     assert errors == ["component_dead_end"]
+    # The log says why in a sentence, the vendor's own words after the colon; livekit's account goes under it.
+    reason, _, livekits_own = next(str(entry.data["message"]) for entry in entries if entry.type == "error").partition(
+        "\n"
+    )
+    assert reason == "the vendor refused this call: voice not found"
+    assert livekits_own.startswith("type='llm_error'") and "label='acme'" in livekits_own
     ended = next(entry for entry in entries if entry.type == "call.ended")
     assert (ended.data["reason"], ended.data["ended_by"]) == ("error", "platform")
+
+
+@needs_the_database
+async def test_a_close_asked_for_while_one_runs_waits_for_it(box: Box, store: Store, call: str) -> None:
+    """With no host, hanging up begins the close as a task: whoever closes after it returns once the call is over."""
+    session = a_session(box, NOBODY)
+    await session.start()
+    session.hang_up("error", "platform")
+    await asyncio.sleep(0)
+    assert session.closed and not session.over.is_set()
+    await session.close()
+    assert session.over.is_set()
+    assert [entry.type for entry in await store.whole_of(call)].count("call.ended") == 1
+
+
+@needs_the_database
+async def test_a_turn_its_vendor_refuses_for_good_is_heard_once_the_call_is_closed(
+    box: Box, store: Store, call: str
+) -> None:
+    """A key the vendor does not know ends a written call on its turn: the turn returns with the end in the log."""
+    assert box.log.call is not None
+    refused = Running(ACME, A_REFUSED_KEY, options={"replies": []})
+    session = text_session(Call(context_of(box.log.call), NOBODY, box), refused, Place())
+    await session.start()
+    heard = await session.hear("hello")
+    assert heard.ended == ("error", "platform")
+    assert session.over.is_set()
+    entries = await store.whole_of(call)
+    reason = next(str(entry.data["message"]) for entry in entries if entry.type == "error").split("\n")[0]
+    assert reason.endswith("invalid api key")
+    assert [entry.type for entry in entries].count("call.ended") == 1
 
 
 @needs_the_database

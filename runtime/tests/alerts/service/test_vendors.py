@@ -6,8 +6,9 @@ from runtime.alerts.service.vendors import failure_of
 from runtime.wire.base import Entry
 
 GEMINI_504 = (
+    "google failed on its side (504): gemini llm: server error\n"
     "type='llm_error' timestamp=1793805400.7 label='livekit.plugins.google.llm.LLM' "
-    "error=APIStatusError('gemini llm: server error', status_code=504, request_id='1db9d7713f68')\nmore"
+    "error=APIStatusError('gemini llm: server error', status_code=504, request_id='1db9d7713f68')"
 )
 SAID_NOTHING = "the model said nothing within 12s, so the caller was asked to say it again"
 
@@ -33,7 +34,8 @@ def test_a_component_error_names_its_vendor_its_stage_and_whose_key_it_ran_on() 
         True,
         2,
     )
-    assert failed.message.startswith("type='llm_error'") and "\n" not in failed.message
+    # The alert carries the reason said in words, the error's first line; the plugin is read under it.
+    assert failed.message == "google failed on its side (504): gemini llm: server error"
     lent = failure_of("call_1", log, lent=["google/gemini-3.5-flash-lite", "deepgram"])
     assert lent is not None and lent.own_key is False
 

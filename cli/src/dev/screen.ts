@@ -4,6 +4,7 @@ import type { CamelEvent } from "@pinecall/agents/client";
 import { toSnake } from "@pinecall/agents/wire";
 
 import { BROKE, lineFor, metricsLine, type Line } from "../calls/render.js";
+import { firstLine } from "../kit/format.js";
 
 export { BROKE, CALLER, lineFor, metricsLine, TURN_METRICS, type Line } from "../calls/render.js";
 
@@ -50,7 +51,7 @@ export function absorb(screen: Screen, event: CamelEvent): Screen {
       return { ...next, state: { ...event.data.state }, changed: [...event.data.changed] };
     case "error":
       // A kill, or any refusal the gateway sends the app: said where the person is looking.
-      return { ...next, transcript: keep([...screen.transcript, { mark: BROKE, text: String(event.data.message) }]) };
+      return { ...next, transcript: keep([...screen.transcript, { mark: BROKE, text: firstLine(event.data.message) }]) };
     default:
       return next;
   }

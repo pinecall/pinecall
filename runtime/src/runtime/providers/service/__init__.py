@@ -16,7 +16,7 @@ from runtime.providers.service.plugins import (
 from runtime.providers.service.prices import completion_usage, cost_of
 from runtime.providers.service.questions import Answerer, Line, Patience, ask, open_answerer
 from runtime.providers.service.readiness import Runnable, runnable_on
-from runtime.providers.service.refusals import sentence_of, vendor_named_in
+from runtime.providers.service.refusals import name_stage, say_failure, sentence_of, stage_named_in, vendor_named_in
 from runtime.providers.service.signatures import default_voice, refuse_untaken_settings
 from runtime.providers.service.speech import TimedWord, speak
 from runtime.providers.service.stages import (
@@ -62,6 +62,7 @@ __all__ = [
     "list_in_catalog",
     "list_vendors",
     "mint_for_a_page",
+    "name_stage",
     "open_answerer",
     "parse_lending",
     "put_box_credentials",
@@ -70,8 +71,10 @@ __all__ = [
     "refuse_what_cannot_run",
     "runnable_on",
     "running_on",
+    "say_failure",
     "sentence_of",
     "speak",
+    "stage_named_in",
     "stage_on_its_key",
     "telemetry_of",
     "thinking_of",

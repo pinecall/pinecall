@@ -109,8 +109,8 @@ export function markOf(entry: Entry): Mark | ToolRun | null {
     case "error":
       // An error the call went on from (a lookup that came late for a spoken turn, a fact that could not be kept) is
       // said as an aside: the turn was answered, and a red line under it says the call broke when it did not.
-      if (data["recoverable"] === true) return { kind: "mark", id: `mark-${entry.seq}`, tone: "aside", text: String(data["message"]) };
-      return { kind: "mark", id: `mark-${entry.seq}`, tone: "error", text: `${BROKE} ${String(data["message"])}` };
+      if (data["recoverable"] === true) return { kind: "mark", id: `mark-${entry.seq}`, tone: "aside", text: reasonOf(data["message"]) };
+      return { kind: "mark", id: `mark-${entry.seq}`, tone: "error", text: `${BROKE} ${reasonOf(data["message"])}` };
     case "stage.changed": {
       const said = stageSaid(data);
       return said === null ? null : { kind: "mark", id: `mark-${entry.seq}`, tone: "change", text: said };
@@ -125,6 +125,11 @@ function answered(data: Record<string, unknown>): string {
   if (data["error"] !== undefined && data["error"] !== null) return said(data["error"]);
   if (data["output"] !== undefined) return said(data["output"]);
   return typeof data["summary"] === "string" ? data["summary"] : "nothing";
+}
+
+/** What an error says to a person watching the call: its first line. A component that failed keeps the vendor's own account under it. */
+export function reasonOf(message: unknown): string {
+  return String(message ?? "").split("\n", 1)[0] ?? "";
 }
 
 function said(value: unknown): string {

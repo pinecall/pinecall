@@ -89,6 +89,23 @@ describe("the socket", () => {
     expect(chat.ended).toBe(true);
   });
 
+  it("a normal closure is the call's end said by the gateway: nothing is dialled again", async () => {
+    // A vendor refused the call for good: the gateway writes why, ends the call and closes with 1000.
+    const { url, asked } = await chatGateway((socket) => {
+      socket.send(JSON.stringify({ seq: 2, type: "error", call: "call_1", data: { code: "component_dead_end", message: "acme refused this call's model: no credit", recoverable: false } }));
+      socket.send(JSON.stringify({ seq: 3, type: "call.ended", call: "call_1", data: { reason: "error", ended_by: "platform" } }));
+      socket.close(1000, "the call ended: error");
+    });
+    let lost = 0;
+    const heard: string[] = [];
+    const chat = await Chat.open(contextAt(url), { agent: "front-desk" }, { onEntry: (entry) => heard.push(entry.type), onLost: () => (lost += 1) });
+    chat.say("hello");
+    expect(await chat.done()).toBe("");
+    expect(chat.ended).toBe(true);
+    expect(heard).toEqual(["call.started", "error", "call.ended"]);
+    expect([lost, asked.length]).toEqual([0, 1]);
+  });
+
   it("a gateway that closes before the call opens is the refusal, in its words", async () => {
     gateway = new WebSocketServer({ host: "127.0.0.1", port: 0 });
     gateway.on("connection", (socket) => socket.close(4404, "no process holds front-desk"));

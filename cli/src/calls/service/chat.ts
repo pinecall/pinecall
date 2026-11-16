@@ -13,6 +13,8 @@ const BACK_CAP_MS = 5_000;
 
 /** How long one line waits for the agent to finish answering it. */
 export const ANSWERS_WITHIN_MS = 60_000;
+// RFC 6455 §7.4.1: what the gateway closes a call that ended with, saying why (`the call ended: error`).
+const NORMAL_CLOSURE = 1000;
 // How long a hang-up waits for the gateway to end the call and close the socket.
 const HANG_UP_WITHIN_MS = 5_000;
 // Time for the call's first entry: register plus first render, no model turn.
@@ -209,8 +211,11 @@ export class Chat {
         }
         // A redial that closed again settles its own promise; whether to dial once more is decided below.
         settle(() => opened());
-        if (this.leaving || this.over || this.back >= BACK_TRIES) {
-          this.finish(this.leaving || this.over ? "" : why);
+        // A normal closure is the gateway saying the call ended (the agent hung up, a vendor refused it
+        // for good, the desk ended it): the call's end, never a gateway that went away to be dialled again.
+        const ended = this.leaving || this.over || code === NORMAL_CLOSURE;
+        if (ended || this.back >= BACK_TRIES) {
+          this.finish(ended ? "" : why);
           return;
         }
         // A close reason while reconnecting may just mean the app socket has not re-registered yet.

@@ -6,6 +6,7 @@ from contextlib import contextmanager
 
 from livekit.agents import APIConnectionError, APIError, APIStatusError, APITimeoutError
 
+from runtime.enums import Stage
 from runtime.exceptions import UpstreamError, ValidationError
 from runtime.kit.text import a_mapping
 from runtime.providers.service.plugins import INFERENCE, INFERENCE_MODULE, PLUGINS
@@ -20,6 +21,10 @@ type Silence = Callable[[str], str]
 LABELLED = re.compile(
     rf"label='(?:{re.escape(PLUGINS)}\.(?P<plugin>\w+)|(?P<inference>{re.escape(INFERENCE_MODULE)}))\."
 )
+# The label places it too: the stage is the plugin's module, `livekit.plugins.google.llm.LLM`.
+STAGE_IN = re.compile(r"plugins\.\w+\.(?P<stage>llm|stt|tts)\b")
+# A stage as an org reads it, in an alert and in a call's own log.
+STAGE_NAMED = {Stage.llm: "model", Stage.stt: "transcription", Stage.tts: "voice"}
 
 
 # The one translation of livekit's errors. A vendor that turns down what it was asked (a typo in a
@@ -33,16 +38,25 @@ def refusing(vendor: str, what: str, *, silence: Silence | None = None) -> Gener
     try:
         yield
     except (APIConnectionError, APITimeoutError) as silent:
-        said = sentence_of(silent)
-        words = f"{vendor} did not answer: {said}" if silence is None else silence(said)
+        words = _word(vendor, what, silent) if silence is None else silence(sentence_of(silent))
         raise UpstreamError(words, vendor=vendor, retryable=True) from silent
     except APIStatusError as answered:
         if answered.status_code < THE_VENDORS_OWN:
-            raise ValidationError(f"{vendor} refused {what}: {sentence_of(answered)}") from answered
-        words = f"{vendor} failed on its side ({answered.status_code}): {sentence_of(answered)}"
+            raise ValidationError(_word(vendor, what, answered)) from answered
+        words = _word(vendor, what, answered)
         raise UpstreamError(words, vendor=vendor, answered=answered.status_code, retryable=True) from answered
     except APIError as refused:
-        raise ValidationError(f"{vendor} refused {what}: {sentence_of(refused)}") from refused
+        raise ValidationError(_word(vendor, what, refused)) from refused
+
+
+# The three sentences a vendor's no is said in, wherever it is said: thrown by `refusing`, or written
+# on a live call's log by `say_failure`.
+def _word(vendor: str, what: str, refused: APIError) -> str:
+    if isinstance(refused, APIConnectionError | APITimeoutError):
+        return f"{vendor} did not answer: {sentence_of(refused)}"
+    if isinstance(refused, APIStatusError) and refused.status_code >= THE_VENDORS_OWN:
+        return f"{vendor} failed on its side ({refused.status_code}): {sentence_of(refused)}"
+    return f"{vendor} refused {what}: {sentence_of(refused)}"
 
 
 # A vendor SDK puts its whole body in the message (`Error code: 401 - {'message': …}`): the
@@ -69,3 +83,32 @@ def vendor_named_in(text: str) -> str:
     if found is None:
         return ""
     return INFERENCE if found["inference"] else found["plugin"]
+
+
+def stage_named_in(text: str) -> Stage | None:
+    """The stage of the component an error names, None when it names none."""
+    found = STAGE_IN.search(text)
+    return None if found is None else Stage(found["stage"])
+
+
+def name_stage(stage: Stage) -> str:
+    """A stage as an org reads it: the model, the transcription, the voice."""
+    return STAGE_NAMED[stage]
+
+
+# What a live call's log says of a component that failed. Its first line is the reason as a person
+# reads it, in the sentences `refusing` says a vendor's no with. livekit's own account goes under it,
+# whole: it names the plugin, where the alerts and the gateway's counters read the vendor and the
+# stage, and it carries the vendor's request id. Until 2026-11-16 that account alone was the message:
+# for a key with no credit, `pinecall chat` and the alert read `type='llm_error' timestamp=…`.
+def say_failure(failed: object) -> str:
+    """A failed component in our words, livekit's own account of it on the lines under."""
+    own = str(failed)
+    stage = stage_named_in(own)
+    vendor = vendor_named_in(own) or "the vendor"
+    what = "this call" if stage is None else f"this call's {name_stage(stage)}"
+    cause: object = getattr(failed, "error", None)
+    if isinstance(cause, APIError):
+        return f"{_word(vendor, what, cause)}\n{own}"
+    said = "" if cause is None else f": {cause}"
+    return f"{vendor} failed {what}{said}\n{own}"

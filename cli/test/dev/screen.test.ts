@@ -22,6 +22,12 @@ describe("the view", () => {
     expect(screen.transcript.map((line) => line.text)).toEqual(["front-desk was killed by ana"]);
   });
 
+  it("a component that failed is said by its reason, never with the vendor's raw answer under it", () => {
+    const message = "anthropic refused this call's model: Your credit balance is too low.\ntype='llm_error' label='livekit.plugins.anthropic.llm.LLM' error=APIStatusError(…)";
+    const screen = absorb(screenFor("front-desk", "https://gateway.test"), event("error", { code: "component_dead_end", message, recoverable: false }));
+    expect(screen.transcript.map((line) => line.text)).toEqual(["anthropic refused this call's model: Your credit balance is too low."]);
+  });
+
   it("the state panel marks what changed, and says when there is none", () => {
     expect(statePanel({}, [])).toEqual(["  (no state yet)"]);
     expect(statePanel({ patient: "Ana", notes: "x".repeat(80) }, ["patient"])).toEqual(["● patient: Ana", `  notes: ${"x".repeat(59)}…`]);

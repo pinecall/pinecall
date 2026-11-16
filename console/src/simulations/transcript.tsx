@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Said } from "@pinecall/core/transcripts";
 import { type Entry } from "@pinecall/core/wire/envelope";
 import { Icon } from "../shell/icons";
-import { words } from "../talk/transcript";
+import { reasonOf, words } from "../talk/transcript";
 
 /** One thing the log said that this page draws. */
 export type Line =
@@ -42,7 +42,7 @@ export function lineOf(entry: Entry): Line | null {
       return { kind: "tool", id: `tool-${String(data["call_id"])}`, name: String(data["name"]), args: {}, status: failed ? "failed" : "ok", result: written(answer), seconds: typeof data["duration_s"] === "number" ? data["duration_s"] : null };
     }
     case "error":
-      return { kind: "note", id: `note-${entry.seq}`, text: String(data["message"]) };
+      return { kind: "note", id: `note-${entry.seq}`, text: reasonOf(data["message"]) };
     default:
       return null;
   }

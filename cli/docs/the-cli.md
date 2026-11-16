@@ -597,6 +597,9 @@ came. With nothing after it, the agent of this directory; with a slug, that agen
 A written call runs in the gateway, so a gateway that restarts drops the socket — and keeps the
 call. `chat` says `the gateway went away — the call is kept, reconnecting…`, dials again naming
 the call, and the conversation goes on, history and state whole. It gives up after about a minute.
+A call the gateway ended is not a gateway that went away: when the agent hangs up, the desk ends the
+call, or a vendor refuses it for good (`✗ anthropic refused this call's model: Your credit balance is
+too low…`), the lines say why and `chat` ends there.
 
 Lines read from a pipe or a file are said one at a time, as a person types them: each once the
 agent answered the one before, its tools included (a minute at most per line). Lines typed at a

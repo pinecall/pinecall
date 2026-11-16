@@ -209,10 +209,14 @@ class Session:
     # The log is flushed before the seal, since the gateway reads the call back from it. Nothing
     # that fails on the way keeps the call from its last entry and its seal, and `over` is set
     # whatever happens: until 2026-11 a recording that could not be finished left the call open for
-    # the reaper, and the wait for call.ended was not within the log's budget.
+    # the reaper, and the wait for call.ended was not within the log's budget. A close asked for while
+    # one runs waits for it: until 2026-11-16 it returned at once, so `end` came back before
+    # `call.ended` was written whenever `hang_up` had begun the close, and a chat's socket was closed
+    # under a call still ending, which its caller took up again as a second session on the same log.
     async def close(self) -> None:
-        """Write call.ended and hand the rest to the seal, within the log's budget."""
+        """Write call.ended and hand the rest to the seal, within the log's budget; asked again, wait for that."""
         if self.closed:
+            await self.over.wait()
             return
         self.closed = True
         call, name = self.call, self.call.context.call
@@ -270,9 +274,10 @@ class Session:
             if isinstance(item, llm.ChatMessage) and item.role == "assistant"
         )
         said = next((item.text_content or "" for item in replies), "")
-        # The model hung up in this turn (end_call): a hosted call ends with its host, one nothing hosts
-        # here, once its last reply is said.
-        if call.ended is not None and not self.closed and self.on_ended is None:
+        # The call ended in this turn (the model's end_call, a vendor that refuses for good): a hosted
+        # call ends with its host; one nothing hosts is closed here, and is heard only once it is,
+        # whoever began the close.
+        if call.ended is not None and self.on_ended is None:
             await self.close()
         return Heard(said, call.ended)
 

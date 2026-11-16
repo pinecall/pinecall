@@ -45,20 +45,27 @@ def test_a_vendors_failure_says_whose_key_it_ran_on_and_opens_the_call() -> None
         vendor="google",
         model=None,
         code="component_failed",
-        message="gemini llm: server error, status_code=504",
+        message="google failed on its side (504): gemini llm: server error",
         own_key=True,
         errors=2,
     )
     assert kind_of(own) is VENDOR_FAILED and VENDOR_FAILED.words is not None
     title, said = VENDOR_FAILED.words(own)
     assert title == "google failed a call"
-    assert said.startswith("On call call_1d6b, google failed as the model, 2 times: gemini llm")
+    # A component's error names who refused and what itself: the mail says it once.
+    assert said.startswith("On call call_1d6b (2 errors), google failed on its side (504): gemini llm: server error ")
     assert "on your own key" in said and "Settings ▸ Providers" in said
     assert VENDOR_FAILED.subject(own) == "google"
     assert link_of(ADDRESS, Env.sandbox, VENDOR_FAILED, own) == f"{ADDRESS}/sandbox/calls/call_1d6b"
     assert link_of(ADDRESS, Env.production, VENDOR_FAILED, own) == f"{ADDRESS}/calls/call_1d6b"
     lent = own.model_copy(
-        update={"own_key": False, "errors": 1, "vendor": "", "message": "the model said nothing within 12s"}
+        update={
+            "own_key": False,
+            "errors": 1,
+            "vendor": "",
+            "code": "llm_timeout",
+            "message": "the model said nothing within 12s",
+        }
     )
     title, said = VENDOR_FAILED.words(lent)
     assert title == "The model failed a call"

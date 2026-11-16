@@ -6,7 +6,9 @@ from datetime import UTC, datetime
 from typing import Any
 
 from runtime.alerts.models import AlertKind
+from runtime.alerts.service.vendors import COMPONENT_CODES
 from runtime.enums import Env, Stage
+from runtime.providers import service as providers
 from runtime.wire.base import WireModel
 from runtime.wire.events import CreditsExhausted, MonitorFired, SpendUnusual, VendorFailed
 from runtime.wire.feed import AppFailed, OrgQuiet
@@ -21,8 +23,6 @@ ALERTS_SCREEN = {Env.production: "/settings/alerts", Env.sandbox: "/sandbox/sett
 CALL_SCREEN = {Env.production: "/calls/{call}", Env.sandbox: "/sandbox/calls/{call}"}
 # Where the operator finds the org the alert names: the console's Box, its organizations.
 OPERATORS_SCREEN = "/box/orgs"
-# What a vendor's stage is called to a person.
-STAGE_NAMED = {Stage.llm: "model", Stage.stt: "transcription", Stage.tts: "voice"}
 # The quota whose refusal names the calls that hold it.
 CONCURRENT_CALLS = "concurrent_calls"
 
@@ -103,12 +103,11 @@ def _quota(exhausted: CreditsExhausted) -> Words:
 
 
 def _vendor(failed: VendorFailed) -> Words:
-    stage = STAGE_NAMED[Stage(failed.stage)]
+    stage = providers.name_stage(Stage(failed.stage))
     vendor = failed.vendor
     whose = vendor or f"the {stage}"
     model = f" ({failed.model})" if failed.model else ""
     errors = failed.errors or 1
-    times = "" if errors == 1 else f", {errors} times"
     what = failed.message.split("\n")[0]
     if failed.own_key:
         advice = (
@@ -117,7 +116,13 @@ def _vendor(failed: VendorFailed) -> Words:
         )
     else:
         advice = "The call ran it on Pinecall's key; the operators were told too."
-    said = f"On call {failed.call}, {whose}{model} failed as the {stage}{times}: {what} {advice}"
+    # A component's error says who refused and what in its own first line; a switch and a silence do not.
+    if failed.code in COMPONENT_CODES:
+        counted = "" if errors == 1 else f" ({errors} errors)"
+        said = f"On call {failed.call}{counted}, {what} {advice}"
+    else:
+        times = "" if errors == 1 else f", {errors} times"
+        said = f"On call {failed.call}, {whose}{model} failed as the {stage}{times}: {what} {advice}"
     return f"{vendor or f'The {stage}'} failed a call", said
 
 
