@@ -9,7 +9,7 @@ import time
 from collections.abc import AsyncGenerator, AsyncIterator, Callable, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 from uuid import uuid4
 
 import httpx
@@ -17,6 +17,7 @@ import pytest
 import uvicorn
 from cryptography.fernet import Fernet
 from fastapi import FastAPI
+from livekit import api
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from websockets.asyncio.client import ClientConnection, connect
 
@@ -53,6 +54,7 @@ from runtime.signal import LocalSignal
 from runtime.wire.commands import AgentRegister
 from tests.fakes import acme as fake_acme
 from tests.fakes.internet import Internet
+from tests.fakes.livekit import Server
 
 fake_acme.install()
 
@@ -318,6 +320,17 @@ async def holding(
         await app.send(json.dumps({"type": "agent.register", "agent": agent, "call": None, "data": register}))
         await received(app, "agent.registered")
         yield app
+
+
+# The suite's gateway is built with livekit's own client, which reaches no server. A test whose gateway
+# must ask who is in a room puts a server of its own in the sandbox's place for as long as it runs.
+@pytest.fixture
+async def livekit(gateway: Gateway, monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[Server]:
+    """The sandbox's LiveKit as the suite's gateway asks it, its rooms the test's to fill."""
+    server = Server()
+    monkeypatch.setitem(cast(dict[Env, api.LiveKitAPI], gateway.state["live"].servers), Env.sandbox, server)
+    yield server
+    await server.aclose()
 
 
 # The sandbox fleet's key is the box's own, given to the gateway and to that env's workers as a

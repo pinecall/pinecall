@@ -98,6 +98,12 @@ def history_of(entries: Sequence[Entry]) -> Resumption:
     return Resumption(history, started_at, turns, last_said, speeches)
 
 
+def awaits_an_answer(history: llm.ChatContext) -> bool:
+    """Whether a call's history ends on the caller's words or on a tool's answer nobody has spoken to yet."""
+    last = history.items[-1] if history.items else None
+    return isinstance(last, FunctionCallOutput) or (isinstance(last, llm.ChatMessage) and last.role == "user")
+
+
 # ── what is added to it ──
 
 

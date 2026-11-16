@@ -5,7 +5,8 @@ from runtime.jobs.service.heartbeat import CORDONED_EXIT, Heartbeats, agent_name
 from runtime.jobs.service.job import A_JOB_ENDS_WITHIN_S, JobSettings, Warmed, answer_job, end_job
 from runtime.jobs.service.load import Load
 from runtime.jobs.service.measures import LastMinute, listen_for_jobs, measures_path
-from runtime.jobs.service.overflow import answer_overflow, take_job
+from runtime.jobs.service.overflow import answer_overflow, take_job, tell_the_caller
+from runtime.jobs.service.taken_up import take_up_job
 from runtime.jobs.service.traces import trace_to
 
 __all__ = [
@@ -26,6 +27,8 @@ __all__ = [
     "measures_path",
     "open_gateway",
     "take_job",
+    "take_up_job",
+    "tell_the_caller",
     "trace_to",
     "worker_name_of",
 ]

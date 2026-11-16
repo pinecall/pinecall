@@ -8,10 +8,10 @@ from typing import Annotated
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 
-from runtime.calls.context import read_context
+from runtime.calls.context import dump_context, read_context
 from runtime.compliance.service import recordings
 from runtime.enums import KeyScope
-from runtime.exceptions import Conflict, PinecallError
+from runtime.exceptions import Conflict, Gone, PinecallError
 from runtime.handles import TheClosing, TheVault
 from runtime.judging.service import judge_model
 from runtime.kit import sse
@@ -26,7 +26,7 @@ from runtime.live.auth import (
     get_socket_actor,
 )
 from runtime.live.served import Calls, Served
-from runtime.live.service import codes, ending, entries, lookups, openings, seal, tools
+from runtime.live.service import codes, ending, entries, lookups, openings, seal, stranded, tools
 from runtime.postgres import Session
 from runtime.wire.base import Entry
 from runtime.wire.commands import CallClaim
@@ -45,6 +45,7 @@ from runtime.wire.worker import (
     RecordingKeyResponse,
     RememberResponse,
     SealCallRequest,
+    TakenUpResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -69,6 +70,21 @@ async def open_call(body: OpenCallRequest, actor: WorkerKey, live: TheLive, sess
 async def reopen_call(call: str, body: OpenCallRequest, actor: WorkerKey, live: TheLive, session: Session) -> None:
     """Serve again a call the gateway forgot."""
     await openings.reopen_call(session, live, actor, call, _arrival_of(body))
+
+
+@router.post("/v1/calls/{call}/taken-up")
+async def take_up_call(call: str, actor: WorkerKey, live: TheLive, session: Session) -> TakenUpResponse:
+    """Hand a call whose worker went away to the worker that takes it up."""
+    taken = await stranded.take_up_call(session, live, actor, call)
+    opening = OpenCallRequest.model_validate({"agent": taken.agent, "context": dump_context(taken.context)})
+    return TakenUpResponse(
+        opening=opening,
+        medium=taken.medium,
+        started_at=taken.started_at,
+        history=taken.history,
+        written=taken.written,
+        taken_up=taken.taken_up,
+    )
 
 
 # The entry comes back with its seq: only the gateway numbers a log.
@@ -120,6 +136,8 @@ async def write_entries(websocket: WebSocket, call: str, live: TheLive, appends:
 @router.post("/v1/calls/{call}/sealed", status_code=204)
 async def seal_call(body: SealCallRequest, served: TheServedCall, live: TheLive) -> None:
     """Price the call, write its summary and score, and seal its log."""
+    if body.taken_up < served.taken_up:
+        raise Gone(f"call {served.call!r} was taken up by another worker: its end is that worker's to say")
     sealing = ending.Sealing(
         usage=tuple(body.usage), outcome=body.outcome, recording=body.recording, lent=tuple(body.lent)
     )

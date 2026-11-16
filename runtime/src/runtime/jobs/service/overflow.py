@@ -20,6 +20,7 @@ from runtime.providers.stage import Running, primary_language
 from runtime.session import service as session
 from runtime.wire.dispatch import Dispatch
 from runtime.wire.events import AgentTranscript, CallEnded
+from runtime.wire.worker import TakenUpResponse
 
 logger = logging.getLogger(__name__)
 
@@ -53,15 +54,18 @@ ALL_LINES_BUSY = {
 
 # How a job's call is answered: run (`job.answer_job`), or its caller told the fleet is full.
 type Answer = Callable[[JobContext, Warmed], Awaitable[None]]
+# What a job does with a call whose worker went away: a worker takes it up (`taken_up.take_up_job`),
+# the overflow, which holds no call, tells its caller (`tell_the_caller`).
+type Stranded = Callable[[JobContext, Warmed, Dispatch], Awaitable[None]]
 
 
 # Whether the call's worker went away is asked here, once, for the worker's own jobs and for the
 # overflow's: until 2026-11 the entrypoint decided it for one and this module for the other.
-async def take_job(ctx: JobContext, warmed: Warmed, answer: Answer) -> None:
-    """A job of the fleet: its call answered, or, of a call whose worker went away, its caller told."""
+async def take_job(ctx: JobContext, warmed: Warmed, answer: Answer, stranded: Stranded) -> None:
+    """A job of the fleet: its call answered, or, of a call whose worker went away, what this process does with one."""
     dispatch = Dispatch.parse(ctx.job.metadata)
     if dispatch.worker_gone:
-        await tell_the_caller(ctx, warmed, dispatch)
+        await stranded(ctx, warmed, dispatch)
         return
     await answer(ctx, warmed)
 
@@ -91,36 +95,45 @@ async def answer_overflow(ctx: JobContext, warmed: Warmed) -> None:
         await end_and_seal(link, writing, ended, says)
 
 
-# The gateway ended the call as drained before sending this job, and offered the call back; the
-# job's writer takes the call over where the dead worker's stopped. A gateway that no longer
-# serves the call refuses the entry and the seal, and its reaper seals it.
-async def tell_the_caller(ctx: JobContext, warmed: Warmed, dispatch: Dispatch) -> None:
-    """Tell the caller of a call whose worker went away the overflow's sentence, then seal it."""
+# The call's worker went away and nobody goes on with the call: no worker has a seat for it (this is
+# the overflow), or the one that took the job could not take the call up. The caller hears the
+# sentence, a phone caller is promised a call back, and the call ends as `drained`, written by this
+# job's writer where the writer before it stopped (`after`). Until 2026-11 the gateway wrote that end
+# and the call back before it sent the job, for every call whose worker went away. A gateway that no
+# longer serves the call refuses the entries and the seal, and its reaper seals it.
+async def tell_the_caller(
+    ctx: JobContext, warmed: Warmed, dispatch: Dispatch, taken: TakenUpResponse | None = None
+) -> None:
+    """Tell the caller of a call whose worker went away the overflow's sentence, then end and seal it."""
     call = ctx.job.room.name
     ctx.log_context_fields = {"room": call}
     gateway, scope = warmed.gateway, dispatch.named_scope
-    # The gateway offered the call back as it drained the call, to a caller with a number.
-    calls_back = dispatch.caller is not None and dispatch.caller.startswith("+")
-    says = sentence_in(None, warmed.told.overflow_says, calls_back=calls_back)
+    number = dispatch.caller if dispatch.caller is not None and dispatch.caller.startswith("+") else None
+    says = sentence_in(None, warmed.told.overflow_says, calls_back=number is not None)
     await ctx.connect()
     link = CallClient(gateway, call)
-    writing = open_writer(link, after=dispatch.entries_written)
+    link.taken_up = 0 if taken is None else taken.taken_up
+    writing = open_writer(link, after=dispatch.entries_written if taken is None else taken.written)
     try:
         if scope is not None and dispatch.agent is not None:
             stages = await gateway.get_stages(dispatch.agent, scope)
-            says = sentence_in(stages.pipeline.tts.language, warmed.told.overflow_says, calls_back=calls_back)
+            says = sentence_in(stages.pipeline.tts.language, warmed.told.overflow_says, calls_back=number is not None)
             await _say_once(ctx, writing, stages.pipeline.tts, says)
+            if number is not None:
+                await gateway.ask_callback(dispatch.agent, Channel.phone, number, call)
     except UpstreamError:
         logger.warning(
             "call %s: the caller its worker left was not told all of it; the room closes anyway", call, exc_info=True
         )
     finally:
         await close_room(ctx.api, call)
-    await writing.close(session.WRITTEN_WITHIN_S)
+    now = time.time()
+    lasted = max(now - (dispatch.started_at or now), 0.0)
+    ended = CallEnded(reason="drained", ended_by="platform", ended_at=now, duration_s=lasted)
     try:
-        await link.seal([], says)
+        await end_and_seal(link, writing, ended, says)
     except UpstreamError:
-        logger.warning("call %s: the gateway did not take the seal; its reaper seals the call", call, exc_info=True)
+        logger.warning("call %s: the gateway did not take its end; its reaper seals the call", call, exc_info=True)
 
 
 def sentence_in(language: str | None, operators: str | None, *, calls_back: bool) -> str:

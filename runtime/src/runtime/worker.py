@@ -40,12 +40,12 @@ WARMED = "warmed"
 # the job's own process, by `prewarm`.
 async def run_job(ctx: JobContext) -> None:
     """Every job of the fleet: one call, or telling the caller of a call whose worker went away."""
-    await jobs.take_job(ctx, _get_warmed(ctx.proc), jobs.answer_job)
+    await jobs.take_job(ctx, _get_warmed(ctx.proc), jobs.answer_job, jobs.take_up_job)
 
 
 async def run_overflow_job(ctx: JobContext) -> None:
     """One call the fleet had no place for, or one whose worker went away."""
-    await jobs.take_job(ctx, _get_warmed(ctx.proc), jobs.answer_overflow)
+    await jobs.take_job(ctx, _get_warmed(ctx.proc), jobs.answer_overflow, jobs.tell_the_caller)
 
 
 # livekit runs it alone, after it closed the session and before it leaves the room, within

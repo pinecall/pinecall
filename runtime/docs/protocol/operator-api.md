@@ -244,12 +244,13 @@ any other word is a `422`), and the gateway asks that LiveKit of the event's roo
 **agent lost** mid-call, `participant_left` of kind `AGENT` whose `disconnect_reason` says its
 connection was lost (`SIGNAL_CLOSE`, `CONNECTION_TIMEOUT`, `STATE_MISMATCH`, `JOIN_FAILURE`,
 `MEDIA_FAILURE`, `AGENT_ERROR`), in a room whose call is open, has no `call.ended`, still holds a
-person and no agent. The gateway then writes `call.ended {reason: "drained", ended_by: "platform"}`
-once (the head row locked: a second delivery finds it written and does nothing), writes
-`callback.requested` on the agent's log for a phone call, and dispatches the call's environment's fleet
-into the room with `worker_gone: true` and `entries_written`, how many entries the log took from
-the dead worker's writer, where the job's own writer follows on. That job says `PINECALL_OVERFLOW_SAYS`, deletes the room
-and seals the call. A worker that ends a call, drains or hands a ring to the sandbox leaves with
+person and no agent. The gateway then offers the room to the call's environment's fleet (once: a second
+delivery finds the room offered and does nothing) with `worker_gone: true`, `entries_written` (how many
+entries the log took from the dead worker's writer), `started_at` and, for a phone call, the number to
+call back as `caller`. The worker that takes the job takes the call up (`POST /v1/calls/{call}/taken-up`)
+and goes on with it; the overflow, or a worker that cannot, says `PINECALL_OVERFLOW_SAYS`, asks the call
+back, writes `call.ended {reason: "drained", ended_by: "platform"}` through a writer that follows on from
+the dead worker's, deletes the room and seals the call ([scaling.md](../scaling.md), "A worker that dies"). A worker that ends a call, drains or hands a ring to the sandbox leaves with
 `CLIENT_INITIATED`, and a deleted room says `ROOM_DELETED`: neither is acted on.
 
 ## Usage

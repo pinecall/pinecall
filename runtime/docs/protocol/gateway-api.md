@@ -137,7 +137,12 @@ for a call the fleet's worker opened, an org's `app` key for one its own worker 
 for a written call, which the gateway runs itself. `POST /v1/calls` carries the test room's own voice and
 models the worker runs the call on (`tuning`, its dispatch's), so the call opens as it runs: the platform's
 first words in that language. Another key is answered `404`; so is a
-`/reopened` (a call the gateway forgot, served again) outside the call's own scope. `/lookup` is
+`/reopened` (a call the gateway forgot, served again) outside the call's own scope. `/taken-up` is
+asked by the worker sent into the room of a call whose worker went away, before it joins: it answers
+`{opening, medium, started_at, history, written, taken_up}`, what the call was opened with, its turns
+and its tools' calls and answers, and where its log's count stands; `410` when the room holds an agent
+already or no caller, `409` for a call that never started or has ended. That worker sends `taken_up`
+with its seal, and the seal of the worker the call was taken from is answered `410`. `/lookup` is
 the one exception: the agent's own process searches its knowledge on a call it serves (the
 framework's `knowledge.search`), whoever opened the call, so it takes the org's `app` key in the
 call's environment, and the fleet's. What the

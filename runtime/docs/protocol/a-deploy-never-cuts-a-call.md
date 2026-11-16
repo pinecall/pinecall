@@ -81,9 +81,13 @@ batch, and a batch retried goes again unchanged, after the same count, so a retr
 write an entry twice. A `409` refuses the whole batch and the call goes on with the next. The
 entries a worker writes outside its session take the same writer: a command the session refused
 is an `error` on the session's own, and the `call.ended` of a leg nobody answered and the
-overflow's sentence and `call.ended` go through one the job opens with the call. The job sent into
-a room whose worker died writes the sentence through a writer that follows on from the dead
-worker's: the dispatch carries the count the log's head kept (`entries_written`). The one-entry
+overflow's sentence and `call.ended` go through one the job opens with the call. The worker that
+takes up a call whose worker died writes through a writer that follows on from the dead worker's:
+`POST /v1/calls/{call}/taken-up` answers the count the log's head keeps, after the gateway's own
+entry that says the loss (`error`, `worker_lost`), which is counted as the writer's so that a batch
+the dead worker sends late writes nothing. A job that can only tell the caller follows on from the
+count its dispatch carries (`entries_written`). A seal says which of the call's workers sends it
+(`taken_up`), and one from a worker the call was taken from is answered `410`. The one-entry
 endpoint, `POST /v1/calls/{call}/events`, still answers for a worker of an older release, and counts
 nothing. A written call's session batches too, straight to its log; taken up after a restart, it
 goes on from the count its log's head keeps.
@@ -91,7 +95,8 @@ goes on from the count its log's head keeps.
 ## A release of the workers
 
 A worker told to stop takes no new call, finishes the ones it holds (up to ten minutes) and
-leaves; nothing moves a call from one worker to another. So a release keeps a fleet open by never
+leaves; a release moves no call from one worker to another (only a worker that dies has its calls
+taken up, [scaling.md](../scaling.md), "A worker that dies"). So a release keeps a fleet open by never
 stopping its last worker: each environment's workers are a Deployment that starts a new pod and waits
 for it to answer its startup probe before it tells an old one to stop (`maxUnavailable: 0`,
 `maxSurge: 1`), and Kubernetes gives the old one fifteen minutes to drain. While one drains the

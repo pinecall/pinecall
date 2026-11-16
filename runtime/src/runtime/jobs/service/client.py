@@ -27,6 +27,7 @@ from runtime.wire.worker import (
     RingAtTestLine,
     RingHandoff,
     RouteRow,
+    TakenUpResponse,
 )
 
 # A caller is waiting on the line.
@@ -126,6 +127,10 @@ class GatewayClient:
         """Somebody the overflow told to wait for a call back."""
         wanted: Json = {"agent": agent, "channel": channel.value, "number": number, "call": call}
         await self.read("POST", "/v1/callbacks", wanted)
+
+    async def take_up(self, call: str) -> TakenUpResponse:
+        """Take up a call whose worker went away: how it opened, what was said, where its log stands."""
+        return TakenUpResponse.model_validate(await self.read("POST", f"/v1/calls/{call}/taken-up"))
 
     async def aclose(self) -> None:
         """Close the connection pool."""

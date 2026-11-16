@@ -261,7 +261,7 @@ person is alone in a room, LiveKit's webhook says so (`participant_joined`, or a
 fleet that nobody took is the call to place. The room is kept in `offers` until a worker opens its
 call, an agent joins the room or the room ends, whichever LiveKit says first (`fleet/service/offers.py`, `fleet/service/arrivals.py`): a caller who hangs up before any worker took the call leaves nothing to
 offer, and a dispatch on a room that is gone would make the room again. An outbound call, a
-simulated caller and the sentence of a worker gone are offered the same way, by the endpoint that
+simulated caller and a call whose worker went away are offered the same way, by the endpoint that
 makes them. So **the
 gateway needs LiveKit's webhook** (`livekit.yaml`'s `webhook.urls`), each environment's naming its environment
 (`?world=sandbox`), so the gateway asks the LiveKit the room is on: a deployment without it places no
@@ -321,15 +321,36 @@ draining its calls as it goes. No call is moved.
 A worker killed, a machine gone or a job's process dead leaves its callers in rooms with nobody
 answering. LiveKit says so: its agent leaves without a goodbye (the connection lost, not closed),
 and LiveKit's webhook tells the gateway (`POST /v1/livekit/webhook`). If the call is still open
-and its caller still in the room, the gateway ends it as `drained`, puts a call back on the agent's
-log for a phone caller, and sends the environment's fleet into the room with a job that says one
-sentence, the overflow's `PINECALL_OVERFLOW_SAYS`, deletes the room and seals the call. So the
-caller hears that sentence, not silence: LiveKit notices a connection lost in seconds (it waits
-five for it to come back), and the job starts on any worker with a seat, or on the overflow when
-the fleet is full. On a fleet of one worker, a dead worker's calls wait for it to come back (its
-Deployment starts it again in seconds), since the overflow opens only for a full fleet and a
-fleet nobody hears from is not full. A drain, a cordon and a call that ends leave on purpose, and
-are not this. If no job comes, the reaper seals the call after five quiet minutes, as before.
+and its caller still in the room, **the call goes on in another worker**. The gateway offers the
+room to the environment's fleet as it offers any call (above, "Who takes a call"), with a job that
+says the call's worker went away. The worker that takes it asks the gateway for the call (`POST
+/v1/calls/{call}/taken-up`) before it joins the room, and is answered how the call was opened, what
+was said on it and how many entries its log holds. It builds the session on that history and tells
+the caller first, in the agent's language: "We are sorry, there was a technical problem on our
+side. Please stay on the line, we are picking up right where we left off." Then the agent answers
+what the caller said last, if the loss cut its reply, and the call goes on: the same call, the same
+log, the same app holding it, its ceiling counted from its first start. The log says the loss once,
+as an `error` entry with the code `worker_lost`.
+
+What is lost with the worker is what only it held. The sentence the agent was saying is not in the
+log, so the second worker does not know it; the tokens the first worker's models used are not
+counted; and a recorded call keeps the audio from the moment it was taken up, the first part having
+been on the disk of the machine that went. The caller waits in silence for as long as LiveKit
+takes to notice (below), which no worker can shorten.
+
+The call ends as `drained`, with one sentence and a call back for a phone caller, only when nobody
+can go on with it: no worker has a seat (the job goes to the overflow, which holds no call), the
+call never started, or the session to take it up cannot be built. That job says the overflow's
+`PINECALL_OVERFLOW_SAYS`, writes `callback.requested` on the agent's log, deletes the room and
+seals the call. Until 2026-11 that was the end of every call whose worker went away.
+
+A worker that was lost to its room for a while and then comes back cannot end a call another one
+took up: the batch it sends late finds the log's count moved and writes nothing, and its seal is
+answered `410`, on which it leaves the room standing. On a fleet of one worker, a dead worker's
+calls wait for it to come back (its Deployment starts it again in seconds), since the overflow
+opens only for a full fleet and a fleet nobody hears from is not full. A drain, a cordon and a call
+that ends leave on purpose, and are not this. If no job comes, the reaper seals the call after five
+quiet minutes, as before.
 
 **A machine that vanishes is worse than a worker that dies.** A worker process that ends, even
 killed, closes its connection, and LiveKit forgets it at once. A machine that disappears whole (a

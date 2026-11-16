@@ -18,8 +18,9 @@ from runtime.kit.text import JsonObject
 from runtime.providers.service.stages import llm_of
 from runtime.providers.stage import Running
 from runtime.session.call import CallContext
-from runtime.session.history import date_pair, opening, opening_of
+from runtime.session.history import awaits_an_answer, date_pair, history_of, opening, opening_of
 from runtime.session.prompt import Blocks, request
+from runtime.wire.base import Entry
 from tests.session.conftest import context_of
 
 # ── the date ──
@@ -101,3 +102,24 @@ def test_every_other_model_opens_on_the_clock_alone() -> None:
     claude = llm_of(Running("anthropic", "k", model="claude-haiku-5-5"))
     opened = opening(date(2026, 10, 11), (claude,))
     assert [item.type for item in opened] == ["function_call", "function_call_output"]
+
+
+# ── a call taken up again ──
+
+
+def entry(seq: int, kind: str, **data: object) -> Entry:
+    """One entry of a call's log, as its history is rebuilt from."""
+    return Entry(seq=seq, ts=float(seq), call="call_x", agent="clinica-norte", type=kind, ephemeral=False, data=data)
+
+
+# A reply cut when its worker went away is not in the log: the caller's words are the last thing in it,
+# and the worker that takes the call up answers them. A call the agent spoke last on waits for the caller.
+def test_a_history_awaits_an_answer_when_it_ends_on_the_callers_words_or_on_a_tools_answer() -> None:
+    asked = entry(1, "turn.user", text="I was charged twice.")
+    answered = entry(2, "turn.agent", text="Let me look at that.")
+    called = entry(3, "tool.call", call_id="t1", name="find_invoices", arguments={})
+    found = entry(4, "tool.result", call_id="t1", name="find_invoices", output={"invoices": 2})
+    assert not awaits_an_answer(history_of([]).history)
+    assert awaits_an_answer(history_of([asked]).history)
+    assert not awaits_an_answer(history_of([asked, answered]).history)
+    assert awaits_an_answer(history_of([asked, answered, called, found]).history)

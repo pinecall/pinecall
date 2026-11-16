@@ -53,8 +53,11 @@ class Dispatch(BaseModel):
     # A dialled call's own opening: the words it opens with, and what the call is for.
     greeting: str | None = None
     instruction: str | None = None
+    # A call whose worker went away, sent to the worker that takes it up: how many entries the log took
+    # from the worker that left, and when the call started, for a job that can only tell the caller and end it.
     worker_gone: bool = False
     entries_written: int = 0
+    started_at: float | None = None
     continues: str | None = None
     # The voice and the models a test room asked for, over the agent's own for this call alone
     # (agents/service/settings.py: test_values); the gateway signs it, the browser cannot change it.

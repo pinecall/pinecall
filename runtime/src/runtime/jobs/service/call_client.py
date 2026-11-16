@@ -48,6 +48,8 @@ logger = logging.getLogger(__name__)
 
 ALREADY_OVER = 409
 NOT_SERVED = 404
+# The gateway's word that another worker took the call up: this one's end of it is not the call's.
+TAKEN_UP = 410
 
 # The call's recording kept as the seal names it; None when the call has none.
 type KeepRecording = Callable[[], Awaitable[str | None]]
@@ -82,6 +84,12 @@ class CallClient:
         self.measures: Path | None = None
         self.lent: list[str] = []
         self.keep_recording: KeepRecording | None = None
+        # A call taken up from a worker that went away: how many entries the log had taken from its
+        # writers, and which of its workers this one is, said with its seal.
+        self.written = 0
+        self.taken_up = 0
+        # Set when the gateway says another worker took the call up: the room is that worker's.
+        self.passed_on = False
 
     @property
     def scope(self) -> Scope:
@@ -139,17 +147,21 @@ class CallClient:
         answer = await self._on_the_call("POST", f"/v1/calls/{self.call}/lookup", asked)
         return LookupResponse.model_validate(answer).output
 
-    # Sealed already is this seal, whose answer a gateway that died took with it.
+    # Sealed already is this seal, whose answer a gateway that died took with it. Taken up is a call
+    # another worker runs now, because this one was lost to its room for a while: it goes on there.
     async def seal(self, usage: list[ModelUsage], outcome: str) -> None:
         """Hand the end of the call to the gateway, which prices, judges and seals it."""
         recording = None if self.keep_recording is None else await self.keep_recording()
-        sealing = SealCallRequest(usage=usage, outcome=outcome, recording=recording, lent=list(self.lent))
+        sealing = SealCallRequest(
+            usage=usage, outcome=outcome, recording=recording, lent=list(self.lent), taken_up=self.taken_up
+        )
         path = f"/v1/calls/{self.call}/sealed"
         try:
             await self._ask_again(lambda: self._on_the_call("POST", path, sealing.dump(), A_SEAL_S), A_SEAL_S, path)
         except UpstreamError as refused:
-            if refused.answered != ALREADY_OVER:
+            if refused.answered not in (ALREADY_OVER, TAKEN_UP):
                 raise
+            self.passed_on = refused.answered == TAKEN_UP
         await self.entries.close()
 
     # A call sealed already has nothing waiting for it: the same answer a seal asked twice gets.

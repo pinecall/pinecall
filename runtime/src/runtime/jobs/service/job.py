@@ -134,8 +134,18 @@ class Job:
 
     async def start(self) -> None:
         """Start the session, watch the room, follow the app's commands and start the call's clocks."""
+        setup = self.setup
+        await setup.running.start(notice=setup.notice, worker=self.warmed.told.worker)
+        self._watch()
+
+    # The call is another worker's that went away: the same call, in the middle of its conversation.
+    async def take_up(self, taken: session.Resumption, says: str) -> None:
+        """Go on with a call from what its log holds, its caller told first; then as any call this job started."""
+        await self.setup.running.resume(taken, notice=says)
+        self._watch()
+
+    def _watch(self) -> None:
         setup, running = self.setup, self.setup.running
-        await running.start(notice=setup.notice, worker=self.warmed.told.worker)
         setup.room.watch()
         # After the start, which opens the call's writer: a greeting flushes it before it reads the state.
         if setup.widget is not None:
@@ -206,8 +216,10 @@ class Job:
         if setup.widget is not None:
             with survive("sending a widget the call's end", call):
                 await setup.widget.finish(A_WIDGET_READS_THE_END_S)
-        with survive("letting go of the room", call):
-            await release_room(self.ctx.api, self.ctx.room.name, setup.running.ended)
+        # A call another worker took up while this one was lost to its room goes on there, in its room.
+        if not self.link.passed_on:
+            with survive("letting go of the room", call):
+                await release_room(self.ctx.api, self.ctx.room.name, setup.running.ended)
         # The exporter's flush goes over the network, in the thread it is called from.
         with survive("flushing the org's spans", call):
             await asyncio.to_thread(self.warmed.spans.release)
@@ -283,7 +295,7 @@ async def set_up_spoken(
     audio = recording_path(told.recordings_root, context.call) if declaration.record else None
     if audio is not None:
         link.keep_recording = partial(keep_recording, warmed.recordings, link, route.org, audio)
-    call = session.Call(context, declaration, link, audio, _history_of(link))
+    call = session.Call(context, declaration, link, audio, _history_of(link), written=link.written)
     room = _room_of(ctx, call, link)
     clip = await find_hold_clip(warmed.gateway, route.agent, arrived.scope, held)
     melody = None if clip is None else session.HoldMusic(clip, ctx.room, warmed.player(), held.after_s)
@@ -325,7 +337,7 @@ async def set_up_typed(
 ) -> Setup:
     """A written call in a room set up: the model alone, and the quiet that ends it."""
     told, route = warmed.told, arrived.route
-    call = session.Call(arrived.context, declaration, link, None, _history_of(link))
+    call = session.Call(arrived.context, declaration, link, None, _history_of(link), written=link.written)
     room = _room_of(ctx, call, link)
     running = session.open_written(
         call,

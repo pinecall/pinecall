@@ -21,6 +21,7 @@ from runtime.session.service import ToolUse
 from runtime.wire.base import BatchedEntry
 from runtime.wire.worker import OpenCallRequest, SealCallRequest
 from tests.conftest import THE_FLEET_KEY, Gateway, Tenant, holding, needs_the_services, received, used_of
+from tests.fakes.livekit import Server
 from tests.live.gateways import a_second_gateway
 
 pytestmark = needs_the_services
@@ -209,3 +210,87 @@ async def test_a_tools_answer_reaches_the_worker_after_the_commands_its_app_sent
         await worker.aclose()
     assert result.output == "passed"
     assert taken_before_the_answer == ["identity", "tools", "view"]
+
+
+A_START: JsonObject = {**NO_CALLER, "caller": None, "medium": "voice", "started_at": 100.0}
+
+
+def said(kind: str, text: str) -> BatchedEntry:
+    """A turn of the call as its worker's writer sends it."""
+    return BatchedEntry(type=kind, data={"text": text}, ts=time.time())
+
+
+async def left_by_its_worker(fleet: GatewayClient, tenant: Tenant, agent: str) -> CallClient:
+    """A call a worker opened, started and spoke two turns of, and then went away from."""
+    first = await opened(fleet, tenant, agent)
+    started = BatchedEntry(type="call.started", data=A_START, ts=time.time())
+    turns = [started, said("turn.user", "I was charged twice."), said("turn.agent", "Let me look at that.")]
+    await first.append_many(turns, after=0)
+    return first
+
+
+async def test_a_call_whose_worker_went_away_is_handed_whole_to_the_worker_that_takes_it_up(
+    fleet: GatewayClient, tenant: Tenant, agent: str, store: Store, livekit: Server
+) -> None:
+    """The caller alone in the room: the taker is told how the call opened, what was said and where its log
+    stands, and the log says once that the worker went away."""
+    first = await left_by_its_worker(fleet, tenant, agent)
+    call = first.call
+    livekit.rooms.people = {call}
+    taken = await fleet.take_up(call)
+    assert (taken.opening.agent, taken.opening.context.call) == (agent, call)
+    assert (taken.medium, taken.started_at) == ("voice", 100.0)
+    assert [(entry.type, entry.data["text"]) for entry in taken.history] == [
+        ("turn.user", "I was charged twice."),
+        ("turn.agent", "Let me look at that."),
+    ]
+    # The gateway's word of the loss is the writer's fourth entry: the taker's writer follows on from it.
+    assert (taken.written, taken.taken_up) == (4, 1)
+    lost = [entry.data for entry in await store.whole_of(call) if entry.type == "error"]
+    assert [(one["code"], one["recoverable"]) for one in lost] == [("worker_lost", True)]
+    await first.aclose()
+
+
+# A worker lost to its room for a while is not dead: when it comes back it ends "its" call. The count
+# of the log answers its late batch as one already taken, and its seal is refused as another's.
+async def test_the_worker_a_call_was_taken_from_can_no_longer_end_it(
+    fleet: GatewayClient, tenant: Tenant, agent: str, store: Store, livekit: Server
+) -> None:
+    first = await left_by_its_worker(fleet, tenant, agent)
+    call = first.call
+    livekit.rooms.people = {call}
+    taken = await fleet.take_up(call)
+    late = BatchedEntry(type="call.ended", data=AN_END, ts=time.time())
+    await first.append_many([late], after=3)
+    assert "call.ended" not in [entry.type for entry in await store.whole_of(call)]
+    await first.seal([], "done")
+    assert first.passed_on, "the gateway says the call is another worker's now"
+    assert not await store.is_sealed(call)
+    second = CallClient(fleet, call, taken.opening)
+    second.written, second.taken_up = taken.written, taken.taken_up
+    await second.append_many([BatchedEntry(type="call.ended", data=AN_END, ts=time.time())], after=taken.written)
+    await second.seal([], "done")
+    assert not second.passed_on
+    assert await store.is_sealed(call)
+    await first.aclose()
+    await second.aclose()
+
+
+async def test_a_call_is_taken_up_only_while_its_caller_waits_alone_and_only_once_it_started(
+    fleet: GatewayClient, tenant: Tenant, agent: str, livekit: Server
+) -> None:
+    """A room with an agent in it, or with nobody, is left as it is (410); a call that never started has
+    nothing to go on with (409), and its caller is told instead."""
+    first = await left_by_its_worker(fleet, tenant, agent)
+    refused = await fleet.http.post(f"/v1/calls/{first.call}/taken-up")
+    assert refused.status_code == 410, refused.text
+    livekit.rooms.people = {first.call}
+    livekit.rooms.existing = {first.call: True}
+    refused = await fleet.http.post(f"/v1/calls/{first.call}/taken-up")
+    assert refused.status_code == 410, refused.text
+    unstarted = await opened(fleet, tenant, agent)
+    livekit.rooms.people = {unstarted.call}
+    refused = await fleet.http.post(f"/v1/calls/{unstarted.call}/taken-up")
+    assert refused.status_code == 409, refused.text
+    await first.aclose()
+    await unstarted.aclose()

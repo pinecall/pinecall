@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **A call whose worker dies goes on in another worker.** Until now a worker killed, a machine gone or a
+  job's process dead ended the call: the caller heard one sentence from another worker and was promised
+  a call back. The gateway now offers the room to the fleet again, and the worker that takes it reads the
+  call from its log (`POST /v1/calls/{call}/taken-up`), tells the caller "We are sorry, there was a
+  technical problem on our side. Please stay on the line, we are picking up right where we left off." in
+  the agent's language, answers what they said last if the loss cut the reply, and goes on: the same call,
+  the same log, the same app holding it. The log says the loss once (`error`, `worker_lost`). The sentence
+  and the call back are what happens only when no worker can go on with the call, and that job now writes
+  the call's `drained` end itself. A worker that was only lost to its room for a while cannot end a call
+  another took up: its late batch writes nothing and its seal is answered `410`. What goes with the dead
+  worker: the reply it was saying, its models' token counts, and the first part of the recording.
+
 - **A model is told which of its tools are closed, so an agent of a team no longer passes the call to itself.**
   A call's model holds every tool for the whole call, since the list is part of the cached prompt, and
   the app opens a subset with `tools.set`. Nothing told the model which: an agent of a team was offered

@@ -5,7 +5,7 @@ from typing import Any, Literal
 
 from pydantic import AliasChoices, ConfigDict, Field
 
-from runtime.enums import Channel, Direction, Env, HoldPlayed
+from runtime.enums import Channel, Direction, Env, HoldPlayed, Medium
 from runtime.wire.base import BatchedEntry, Entry, WireModel
 from runtime.wire.declaration import (
     DocsConfig,
@@ -417,6 +417,21 @@ class OpenCallResponse(WireModel):
     history: list[Entry] = Field(default_factory=list[Entry])
 
 
+class TakenUpResponse(WireModel):
+    """A call whose worker went away, as the worker that takes it up needs it: its opening and what its log holds."""
+
+    opening: OpenCallRequest
+    # Spoken or written, as its `call.started` says: what the worker builds to go on with it.
+    medium: Medium
+    started_at: float
+    # Its turns and its tools' calls and answers, oldest first, behind those of the calls it continues.
+    history: list[Entry] = Field(default_factory=list[Entry])
+    # How many entries the log took from the call's writers so far: this worker's writer follows on.
+    written: int
+    # Which of the call's workers this one is: it says so when it seals.
+    taken_up: int
+
+
 class AppendEntryRequest(WireModel):
     """One entry a worker writes to its call's log."""
 
@@ -495,3 +510,6 @@ class SealCallRequest(WireModel):
     recording: str | None = None
     # The vendors that ran on the box's own key: the operator bills their usage.
     lent: list[str] = Field(default_factory=list[str])
+    # Which of the call's workers seals it: 0 for the one that opened it, one more each time a worker took
+    # it up from one that went away. The seal of a worker the call was taken from is refused.
+    taken_up: int = 0

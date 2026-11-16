@@ -51,6 +51,12 @@ class Conflict(PinecallError):
     status = 409
 
 
+class Gone(PinecallError):
+    """What the request speaks for is no longer the asker's: another took it up."""
+
+    status = 410
+
+
 class PayloadTooLarge(PinecallError):
     """A body over what the endpoint takes."""
 

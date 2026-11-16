@@ -173,14 +173,21 @@ class Session:
             self._greet()
         await self.line.open()
 
-    # The caller is in the middle of the conversation: no call.started, no greeting.
-    async def resume(self, taken: history.Resumption) -> None:
+    # The caller is in the middle of the conversation: no call.started, no greeting. A spoken call
+    # taken up from a worker that went away says first what happened (`notice`), then answers what the
+    # caller said last if nobody had: a reply the loss cut is not in the log, so their words stand
+    # unanswered at the end of the history.
+    async def resume(self, taken: history.Resumption, *, notice: str | None = None) -> None:
         """Open a call taken up again, with the history it had and where it stood."""
         self.call.resume_from(taken.turns, taken.last_said, taken.speeches)
         if taken.started_at is not None:
             self.started_at = taken.started_at
         self.call.writing.open()
         await self._open(taken.history)
+        if notice is not None:
+            self.live.say(notice, allow_interruptions=False)
+            if history.awaits_an_answer(taken.history):
+                self.live.generate_reply()
         await self.line.open()
 
     def hang_up(self, reason: EndReason, by: EndedBy = "agent", *, at_once: bool = False) -> None:

@@ -84,6 +84,9 @@ class Served:
         self.sealing = asyncio.Lock()
         # Set once the app bound to the call said its end hook ran (call.done): its seal waits for it.
         self.hooked = asyncio.Event()
+        # How many times a worker took the call up from one that went away: the seal of an earlier one
+        # is refused, so a worker that was only slow cannot end a call another now runs.
+        self.taken_up = 0
 
     @property
     def call(self) -> str:
