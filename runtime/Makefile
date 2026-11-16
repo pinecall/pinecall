@@ -193,13 +193,15 @@ endif
 # `make edge` and `make postgres` are run when those charts or their values change, after `make diff`.
 HELM      = helm --kube-context $(CONTEXT)
 CHARTS    = $(INFRA)/charts
+# A chart's comments and the order of its keys are not a change: the manifests are compared as YAML.
+DIFF      = --normalize-manifests
 
 diff:             ## CLUSTER=… TAG=<commit>: what releasing each chart would change, nothing touched (needs the helm-diff plugin)
 	@$(HELM) plugin list | grep -q '^diff' || \
-	  { echo "make diff: helm plugin install https://github.com/databus23/helm-diff" >&2; exit 2; }
-	$(HELM) diff upgrade pinecall-edge $(CHARTS)/edge $(CHART_VALUES)
-	$(HELM) diff upgrade pinecall-postgres $(CHARTS)/postgres $(CHART_VALUES)
-	$(HELM) diff upgrade pinecall $(CHARTS)/pinecall $(CHART_VALUES) $(IMAGE)
+	  { echo "make diff: helm plugin install https://github.com/databus23/helm-diff --verify=false" >&2; exit 2; }
+	$(HELM) diff upgrade pinecall-edge $(CHARTS)/edge $(CHART_VALUES) $(DIFF)
+	$(HELM) diff upgrade pinecall-postgres $(CHARTS)/postgres $(CHART_VALUES) $(DIFF)
+	$(HELM) diff upgrade pinecall $(CHARTS)/pinecall $(CHART_VALUES) $(IMAGE) $(DIFF)
 
 edge:             ## CLUSTER=…: charts/edge released: the front door, its routes and certificates
 	$(HELM) upgrade --install pinecall-edge $(CHARTS)/edge $(CHART_VALUES) --rollback-on-failure --timeout 10m

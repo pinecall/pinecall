@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **`make diff` says what a release would change, and nothing else.** It compared the charts as text, so the
+  comments of every template read as a change of 23 resources on a cluster that matched its commit. The
+  manifests are compared as YAML (`--normalize-manifests`), and the line that names the plugin to install says
+  the form Helm 4 takes (`--verify=false`).
+
 - **The console's Talk panel says a recovered error as an aside.** A lookup that came late for a spoken turn
   (`search_skipped`, `recall_skipped`) and a fact that could not be kept are `error` entries the call went on
   from: the turn was answered. The panel drew them as a red `✗` line, which read as a call that broke. They are
