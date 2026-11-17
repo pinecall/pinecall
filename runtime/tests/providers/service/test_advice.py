@@ -59,3 +59,12 @@ def test_what_the_host_lends_comes_before_the_orgs_own_key_and_a_key_to_bring_co
     bring = advise(configured(), Keyring(box={acme.ACME: "box-key"}, lends=frozenset()), nothing_served)
     assert {one.runs_on for one in bring} == {"needs a key"}
     assert stage_of(bring, Stage.tts).choice == f"{acme.ACME}/{acme.VOICE}"
+
+
+def test_a_host_that_lends_one_model_of_a_vendor_lends_the_stage_that_names_it() -> None:
+    """A trial lends models, not vendors: the stage whose choice is a lent model runs on the host's key."""
+    one_model = Keyring(box={acme.ACME: "box-key"}, lends=frozenset({f"{acme.ACME}/{acme.MODEL}"}))
+    advised = advise(configured(), one_model, Served())
+    thinking = stage_of(advised, Stage.llm)
+    assert (thinking.choice, thinking.runs_on) == (f"{acme.ACME}/{acme.MODEL}", "lent by the runtime")
+    assert stage_of(advised, Stage.tts).runs_on == "needs a key"

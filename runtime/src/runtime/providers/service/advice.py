@@ -112,7 +112,12 @@ def _advise_stage(stage: Stage, catalog: Catalog, keys: Keyring, served: Served)
         best = _best_served(stage, default, listed, catalog)
         return Advised(stage, model_key(default.vendor, best), "served here", listed)
     doing = _vendors_doing(stage, default)
-    lent = [vendor for vendor in doing if vendor in keys.box and is_lent(keys.lends, vendor, None)]
+    # The model the choice names is what is asked of the lending: a trial lends models, not vendors.
+    lent = [
+        vendor
+        for vendor in doing
+        if vendor in keys.box and is_lent(keys.lends, vendor, catalog.model_for(stage, vendor))
+    ]
     if lent:
         return Advised(stage, _name(lent[0], stage, catalog), "lent by the runtime")
     own = [vendor for vendor in doing if vendor in keys.own and _base_url(catalog, stage, vendor) is None]

@@ -32,9 +32,11 @@ PROTOCOLS = (
 # words 20 of 20 once told this (2026-11-17). It has nobody to hand over to either.
 WITHOUT_TOOLS = (
     "- You have no tools on this call: you can talk, and nothing else. You cannot book, send or"
-    " change anything, and you never call a function. When the caller asks for something to be"
-    " done, take what they give you, read it back, and say plainly that you have taken it down"
-    " and cannot complete it yourself. Never say you have done something, or that you are about to.\n"
+    " change anything yourself, and you never call a function. When the caller asks for something"
+    " to be done, stay warm and helpful: take the details, read them back once, and tell them in"
+    " your own words that you have noted it and cannot confirm or complete it yourself. Never say"
+    " it is done, booked or sent, and never promise what happens next unless your instructions"
+    " say it.\n"
     "- Never ask the caller to wait: once you stop talking, nothing happens until they speak again."
 )
 

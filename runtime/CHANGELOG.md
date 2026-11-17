@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- **`pinecall login` no longer says "needs a key" of a stage the runtime lends.** The advice asked whether the
+  host lends the whole vendor, and a trial lends models (`google/gemini-3.5-flash-lite`): a new org read `needs a
+  key` beside the model its calls already ran on, and was advised another vendor's voice than the one it speaks
+  with. The lending is asked for the model the stage names.
+
+- **A Studio agent with no tool says it in its own words.** Told what it could not do in one fixed sentence, the
+  model repeated the sentence ("I have taken this down, but I cannot complete it myself") whatever was asked. It
+  is told to stay warm, read the details back once, and say in its own words that it has noted them and cannot
+  confirm it itself; never that something is done, nor what happens next unless its instructions say it.
+
 ## 0.11.43 — a Mac's own Ollama keeps its models, a Studio agent with no tool answers, and a failed release is said first (2026-11-17)
 
 - **`setup` leaves alone a model the machine's own Ollama already holds.** On a machine where an Ollama already
