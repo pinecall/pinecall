@@ -95,6 +95,13 @@ class HintedEars(_Ears):
 
 
 # Each kind of ears is a plugin of its own, its STT the class a vendor's would be.
+class EarsThatEndTheTurn(_Ears):
+    """As Deepgram's `STTv2`: `eot_timeout_ms`, which it takes from 500 to 60000."""
+
+    def __init__(self, *, api_key: str, eot_timeout_ms: int | None = None) -> None:
+        super().__init__(api_key=api_key, eot_timeout_ms=eot_timeout_ms)
+
+
 def ears_of(made: type) -> str:
     """The vendor whose plugin's ears are this class."""
     return install_plugin(f"ears-{made.__name__.lower()}", STT=made)
@@ -220,6 +227,19 @@ def test_the_silence_is_the_detectors_on_ears_that_leave_the_turn_open_and_the_e
     with pytest.raises(ValidationError, match="takes no endpointing_ms"):
         ears = Running(vendor=vendor, credentials="k", ends_the_turn=True)
         signatures.refuse_untaken_settings(ears, voice, patient, sets_a_voice=False)
+
+
+# 2026-11-17: a class set 250 on Flux, Deepgram refused the connection, and the agent greeted a caller it never heard.
+def test_a_silence_under_what_the_ears_that_end_the_turn_take_is_refused_where_it_is_set() -> None:
+    vendor = ears_of(EarsThatEndTheTurn)
+    voice = Running(vendor=vendor, credentials="k")
+    ears = Running(vendor=vendor, credentials="k", ends_the_turn=True)
+    signatures.refuse_untaken_settings(ears, voice, Patient(endpointing_ms=500), sets_a_voice=False)
+    with pytest.raises(ValidationError, match=r"endpointing_ms 250: .* 500 to 60000 ms"):
+        signatures.refuse_untaken_settings(ears, voice, Patient(endpointing_ms=250), sets_a_voice=False)
+    # Ears that leave the turn open hand the silence to the session's detector, which takes any.
+    left_open = Running(vendor=vendor, credentials="k")
+    signatures.refuse_untaken_settings(left_open, voice, Patient(endpointing_ms=250), sets_a_voice=False)
 
 
 def test_an_option_written_as_a_whole_number_reaches_a_float_parameter_as_a_float() -> None:

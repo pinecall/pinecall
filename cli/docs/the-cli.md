@@ -1541,7 +1541,8 @@ options run on your own key alone, as every stage's do. `clear judge` goes back 
 
 **How a turn is decided is four numbers, and two of them are confidences.** `--endpointing-ms` is
 the silence a caller is left in before the turn is called finished: ears that decide the turn
-themselves (Flux) take it as their end-of-turn timeout, and on ears that leave it open it is the
+themselves (Flux) take it as their end-of-turn timeout, the longest they wait, from 500 to 60000 ms
+(a value outside that is refused where it is set), and on ears that leave it open it is the
 least silence before the detector on the worker (`--end-of-turn livekit` or `smart-turn`) is asked
 whether the caller is done, 700 ms unless set, so a caller who pauses between sentences is not
 spoken over (lower answers sooner and cuts more sentences in two; higher the other way); and

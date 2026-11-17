@@ -41,6 +41,10 @@ SETTING_NAMES: dict[str, tuple[str, ...]] = {
     "eager_eot_threshold": ("eager_eot_threshold",),
     VOICE: THE_VOICE,
 }
+# Ears that end the turn take the agent's endpointing as the longest they wait, and only inside this
+# band (Deepgram's Flux: 500 to 60000 ms). Outside it they refuse the connection and the call opens
+# deaf: on 2026-11-17 a class set 250 on Flux, and its agent greeted a caller it never heard.
+EOT_TIMEOUT_BAND_MS = (500, 60_000)
 
 
 # What an agent says about turns belongs to `agents`, above this domain: the five knobs the ears may
@@ -247,7 +251,24 @@ def refuse_untaken_settings(ears: Running, voice: Running, turn: TurnSettings | 
     if not ears.ends_the_turn:
         heard.pop(ENDPOINTING)
     refuse_untaken(Stage.stt, ears, [name for name, value in heard.items() if value is not None])
+    refuse_a_silence_out_of_band(ears, turn)
     refuse_untaken(Stage.tts, voice, [VOICE] if sets_a_voice else [])
+
+
+# Held where a class declares itself too (`agent.configure`): a class sets its turn with no PUT.
+def refuse_a_silence_out_of_band(ears: Running, turn: TurnSettings | None) -> None:
+    """Refuse an endpointing that ears which end the turn would refuse the call for."""
+    if turn is None or turn.endpointing_ms is None or not ears.ends_the_turn:
+        return
+    if EOT_TIMEOUT not in parameters_of(class_of(Stage.stt, ears)):
+        return
+    low, high = EOT_TIMEOUT_BAND_MS
+    if not low <= turn.endpointing_ms <= high:
+        raise ValidationError(
+            f"endpointing_ms {turn.endpointing_ms}: {ears.vendor}'s ears end the turn themselves and take it "
+            f"as the longest they wait, {low} to {high} ms, so a call would open deaf: set it inside that, "
+            "and eot_threshold for how sure they must be that the caller finished"
+        )
 
 
 # A voice is never untaken by a tts: a plugin with no voice argument speaks it as its model.

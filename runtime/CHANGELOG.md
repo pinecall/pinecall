@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- **A caller's audio is heard as it comes: the model and the level that muted the room behind a caller are on
+  no call.** Both sat on every spoken call since 0.11.40 (`session/far_voices.py`, `session/nearest_voice.py`).
+  On a phone call the caller's "Hi" came 12 to 20 dB over the sentence after it, the level took its bar from
+  the greeting, 2.85 s of that sentence's 4.5 s were muted, and the ears closed the turn in the middle of it:
+  "our company is interested in SOC 2 compliance" reached the agent as "…is interested in you." and, a turn
+  later, "compliance.". The same recording through Flux with nothing in the way is one turn. Neither step was
+  ever heard on a phone's 8 kHz before production, so a spoken call's audio goes to the ears through nothing of
+  ours, as before 0.11.40. A television behind a caller is heard again as the caller's. `voice_isolation` is
+  still declared and set, and read by nothing; the two modules stay in the tree, on no call.
+
+- **An `endpointing_ms` that ears which end the turn would refuse is refused where it is set.** Flux takes the
+  agent's endpointing as its end-of-turn timeout, from 500 to 60000 ms. A class that set 250 was taken, Deepgram
+  refused the connection of every call (`component_dead_end … status_code=400`), and the agent greeted a caller
+  it never heard. `agent.configure` and `PUT /v1/agents/{slug}/settings` answer `endpointing_ms 250: …` with the
+  band; ears that leave the turn open take any silence, as before.
+
 - **A call in a language the default transcriber does not hear runs one that does.** Deepgram's Flux hears ten
   languages and writes any other as English that sounds alike: a new org's agent in Egyptian Arabic read
   "Detail it Morattossel" and told its caller it could not hear. The providers row now says what a vendor's

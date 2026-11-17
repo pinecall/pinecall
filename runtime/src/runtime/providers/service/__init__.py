@@ -17,7 +17,11 @@ from runtime.providers.service.prices import completion_usage, cost_of
 from runtime.providers.service.questions import Answerer, Line, Patience, ask, open_answerer
 from runtime.providers.service.readiness import Runnable, runnable_on
 from runtime.providers.service.refusals import name_stage, say_failure, sentence_of, stage_named_in, vendor_named_in
-from runtime.providers.service.signatures import default_voice, refuse_untaken_settings
+from runtime.providers.service.signatures import (
+    default_voice,
+    refuse_a_silence_out_of_band,
+    refuse_untaken_settings,
+)
 from runtime.providers.service.speech import TimedWord, speak
 from runtime.providers.service.stages import (
     build_ears,
@@ -66,6 +70,7 @@ __all__ = [
     "open_answerer",
     "parse_lending",
     "put_box_credentials",
+    "refuse_a_silence_out_of_band",
     "refuse_realtime_as_llm",
     "refuse_untaken_settings",
     "refuse_what_cannot_run",

@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 from livekit.agents import NOT_GIVEN, CloseReason, NotGivenOr, llm, stt, tts
 from livekit.agents.voice import AgentSession
-from livekit.agents.voice.room_io import AudioInputOptions, RoomOptions, TextInputEvent, TextInputOptions
+from livekit.agents.voice.room_io import RoomOptions, TextInputEvent, TextInputOptions
 from livekit.agents.voice.run_result import RunResult
 
 from runtime.enums import Channel, Medium, Stage
@@ -27,7 +27,6 @@ from runtime.session.hold import HoldMusic
 from runtime.session.line import Line
 from runtime.session.listener import Listener
 from runtime.session.lookups import Lookups
-from runtime.session.nearest_voice import NearestVoice
 from runtime.session.room import CallRoom, RoomCommand
 from runtime.session.stages import NAME_OF, Built, is_spoken, opening_turn, sign_calls, write_switches
 from runtime.session.started import start_of
@@ -426,23 +425,19 @@ class Session:
     # `record` is said: left unset, livekit asks its cloud; the call's own recorder is ours. A
     # visitor who left may come back (docs/protocol/tokens.md): their call waits, not livekit. No
     # session host: it hands every participant the raw turns, the tools and the prompt (projections.md).
-    # The room behind the caller is taken down and muted before livekit's gain levels it up to a voice
-    # (far_voices.py, nearest_voice.py); the gain is said, since livekit drops its own once it is handed
-    # a processor.
+    # The caller's audio is heard as it comes, through nothing of ours. The model that takes far voices
+    # down and the level that muted the room behind a caller (far_voices.py, nearest_voice.py) are on no
+    # call since 2026-11-17: on a phone call the level muted 2.85 s of a sentence of 4.5 s, the caller's
+    # own, said after a louder "Hi", and the ears closed the turn in the middle of it. Neither was ever
+    # heard on a phone's 8 kHz before production. `voice_isolation` is still declared and set, and read
+    # by nothing.
     def room_options(self) -> RoomOptions:
         """How livekit takes the room: the one participant heard, its audio, and who leaving ends it."""
         spoken = is_spoken(self.live, self.built)
-        # The model is the agent's own setting (`voice_isolation`, on unless said) on a box that has
-        # it; the level that mutes what is far under the caller is read either way.
-        model = self.far_voices if spoken and self.call.declaration.voice_isolation else None
-        nearest = NearestVoice(
-            caller_has_the_floor=lambda: not self.call.agent_speaking,
-            far_voices=None if model is None else model.open_stream(),
-        )
         return RoomOptions(
             participant_identity=or_not_given(self.participant),
             close_on_disconnect=self.call.context.channel is not Channel.web,
-            audio_input=AudioInputOptions(noise_cancellation=nearest, auto_gain_control=True) if spoken else False,
+            audio_input=NOT_GIVEN if spoken else False,
             audio_output=NOT_GIVEN if spoken else False,
             text_input=TextInputOptions(text_input_cb=self._on_text_input),
         )

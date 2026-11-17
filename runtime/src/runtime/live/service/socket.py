@@ -314,8 +314,8 @@ class AppSocket:
             handoff.tell_taking(self.live.calls, scope, slug, self.id)
 
     # A class that searches with no base attached, gives a plugin options on a key the box lends,
-    # or asks ears that cannot end the turn to, is refused when it is declared, not mid-call; so are a
-    # judge or a persona the class declares that a PUT would refuse.
+    # asks ears that cannot end the turn to, or sets a silence its ears refuse the call for, is refused
+    # when it is declared, not mid-call; so are a judge or a persona the class declares that a PUT would refuse.
     async def _configure(self, slug: str, wanted: AgentConfigure) -> None:
         found = self._holds(slug)
         first = slug not in self.configured
@@ -330,6 +330,10 @@ class AppSocket:
                 )
             keyring = await providers.keys_of(session_, self.live.vault, self.scope)
             providers.refuse_what_cannot_run(running, catalog, keyring)
+            # The ears are built only for a class that sets the silence: no other declaration asks them anything.
+            if running.turn is not None and running.turn.endpointing_ms is not None:
+                ears = providers.build_pipeline(running, catalog, keyring).stt
+                providers.refuse_a_silence_out_of_band(ears, running.turn)
             await judging.check_declaration(session_, catalog, keyring, self.scope.org, slug, declaration)
             # Kept past this socket: what the class fixes is read from here once nobody holds the agent.
             await agents.put_declaration(session_, self.scope, slug, wanted.config, sdk=found.sdk, first=first)

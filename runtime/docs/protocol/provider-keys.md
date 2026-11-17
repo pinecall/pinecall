@@ -75,6 +75,8 @@ A knob the org sets that the vendor takes under no name — a turn's `eot_thresh
 **refused where it is set**, `400 soniox's stt takes no eager_eot_threshold` on
 `PUT /v1/agents/{slug}/settings` with a `pipeline` key, instead of being dropped on every call. A
 turn's `endpointing_ms` is never untaken: ears that end the turn themselves take it as their timeout,
+inside the band they take it in (Flux: 500 to 60000 ms; outside it, `400 endpointing_ms 250: …` where a
+class declares it or a PUT sets it, since those ears would refuse the call and leave it deaf),
 and on ears that leave the turn open it is the least silence before the session's own detector
 (livekit's or Smart Turn) is asked whether the caller is done, said on the call's `turn.detection`.
 A set a `words` key writes carries those knobs over untouched and is not refused for them, and a
