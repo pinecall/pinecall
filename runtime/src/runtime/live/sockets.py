@@ -2,6 +2,7 @@
 
 import asyncio
 from typing import Protocol
+from uuid import uuid4
 
 from runtime.enums import Env
 from runtime.live.peers import APP_INBOX, DEV_ANSWERS, SOCKETS_CHANNEL
@@ -14,6 +15,13 @@ from runtime.wire.signal import Bound, ForApp, Killed, SocketRow, SocketsShare
 
 # Minted, never id(websocket): CPython reuses addresses, and the id travels back as `?app=`.
 type SocketId = str
+
+SOCKET_PREFIX = "app_"
+
+
+def new_socket_id() -> SocketId:
+    """A new id for an app socket."""
+    return f"{SOCKET_PREFIX}{uuid4().hex[:12]}"
 
 
 # What this registry needs of a socket open here; `live.service.socket.AppSocket` is the one that is.

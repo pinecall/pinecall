@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **An agent whose process is connected is never left ringing nowhere.** A line was given once, by the gateway
+  its process registered on, against what that gateway had heard by then. A tenant's process restarted in 72
+  seconds, as it had four times that day, and its number rang nowhere for six minutes: one gateway had pruned
+  the line it let go and went on saying it in its share, the other had pruned the line it gave and went on
+  saying that, and the new process read a stale line as held and took none (`POST /v1/calls` answered `409 …
+  nothing takes an unclaimed call`). An hour later a release rolled the gateways, the process connected to a
+  new one while the old one still said the line, and the line went with the old gateway. A gateway now says its
+  share again when it prunes it, and every time its view moves a line nobody holds and nobody let go of in the
+  last minute is given to the newest process that takes a ring, by the gateway that process is on. `pinecall
+  line release` with nobody else running the agent still leaves the line with nobody, for a minute: then it is
+  the releaser's again, while their process runs.
+
 - **A caller's audio is heard as it comes: the model and the level that muted the room behind a caller are on
   no call.** Both sat on every spoken call since 0.11.40 (`session/far_voices.py`, `session/nearest_voice.py`).
   On a phone call the caller's "Hi" came 12 to 20 dB over the sentence after it, the level took its bar from

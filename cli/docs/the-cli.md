@@ -576,7 +576,9 @@ rings in this terminal · also running: berna@clinica.test
 ```
 
 `release` gives it up, and whoever else is still running the agent picks it up — which is also
-what happens on its own when the terminal holding it closes. A claim on an agent this terminal is
+what happens on its own when the terminal holding it closes. A line is never left with nobody while a
+process that takes rings runs the agent: released with nobody else running it, it is the releaser's
+again after a minute, and a line lost with a gateway is given to the newest such process at once. A claim on an agent this terminal is
 not running is refused: a ring lands on the line, so a corner with no app in it would take the
 call and drop it. Production has one corner and the platform holds it, so there is nothing to claim
 there — only your own phone is diverted, as above; `pinecall start` prints the line only for an

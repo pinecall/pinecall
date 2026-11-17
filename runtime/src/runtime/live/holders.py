@@ -5,7 +5,6 @@ import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import Any
-from uuid import uuid4
 
 from runtime.actor import THE_ORGS_OWN, Scope
 from runtime.agents.declaration import Declaration
@@ -15,7 +14,7 @@ from runtime.enums import Env
 from runtime.exceptions import Conflict, NotFound, ValidationError
 from runtime.live.peers import HELD_CHANNEL
 from runtime.live.sockets import SocketId
-from runtime.shared_state import Assigned, SharedState, newest
+from runtime.shared_state import Assigned, SharedState, let_go_lately, newest
 from runtime.signal import Signal
 from runtime.wire.base import Entry
 from runtime.wire.commands import AgentRegister
@@ -24,8 +23,6 @@ from runtime.wire.signal import Assignment, HeldShare, Registered
 
 # A slug is one org's: the scope names the org, the env and whose copy it is.
 type Held = tuple[Scope, str]
-
-SOCKET_PREFIX = "app_"
 
 
 class NotRegistered(ValidationError):
@@ -114,11 +111,6 @@ class Registration:
         return (self.scope, self.slug)
 
 
-def new_socket_id() -> SocketId:
-    """A new id for an app socket."""
-    return f"{SOCKET_PREFIX}{uuid4().hex[:12]}"
-
-
 def orgs_own(scope: Scope) -> Scope:
     """The org's own scope in the env."""
     return replace(scope, holder=THE_ORGS_OWN)
@@ -146,7 +138,7 @@ class Holders:
             signal,
             HELD_CHANNEL,
             load=HeldShare.model_validate,
-            dump=_dump_share,
+            dump=lambda share: share.model_dump(mode="json"),
             empty=HeldShare(),
             on_change=self._merge,
         )
@@ -449,8 +441,25 @@ class Holders:
             for item in kept:
                 held_by.setdefault(item.owner, set()).add(key)
         self._holders, self._held_by = holders, held_by
-        self._lines = newest(self._mine_lines, (_read_assigned(one) for share in theirs for one in share.lines))
-        self._phones = newest(self._mine_phones, (_read_assigned(one) for share in theirs for one in share.phones))
+        said = (len(self._mine_lines), len(self._mine_phones))
+        heard = [Assigned(**one.model_dump()) for share in theirs for one in share.lines]
+        self._lines = newest(self._mine_lines, heard)
+        self._phones = newest(self._mine_phones, (Assigned(**one.model_dump()) for it in theirs for one in it.phones))
+        # What was pruned here is still in the share last said, which every beat says again.
+        if (len(self._mine_lines), len(self._mine_phones)) != said:
+            self._say()
+        self._give_unheld_lines(let_go_lately((*self._mine_lines.values(), *heard)))
+
+    # A line was given once, where its process registered: read off a share since pruned, or gone with its
+    # gateway, it left a connected agent ringing nowhere (2026-11-17, twice). Whenever the view moves, a line
+    # nobody holds and nobody let go of lately goes to the newest process taking rings, by its own gateway.
+    def _give_unheld_lines(self, let_go: set[tuple[str, str]]) -> None:
+        for scope, slug in list(self._mine):
+            if (key := (scope.env, slug)) in self._lines or key in let_go:
+                continue
+            waiting = self.list_waiting_for_line(scope, slug)
+            if waiting and any(item.owner == waiting[0].owner for item in self._mine.get(waiting[0].held_as, ())):
+                self._assign(self._mine_lines, scope.env, slug, waiting[0].scope.holder)
 
     def _newest(self, held: Held) -> Registration | None:
         holding = self._holders.get(held)
@@ -489,11 +498,3 @@ def _tell(item: Registration, said: Mapping[str, Any] | None) -> Registered:
 def _read(told: Registered) -> Registration:
     scope = Scope(told.scope.org, told.scope.env, told.scope.holder)
     return Registration(scope=scope, **told.model_dump(exclude={"scope", "config"}))
-
-
-def _read_assigned(told: Assignment) -> Assigned:
-    return Assigned(told.env, told.key, told.holder, told.at)
-
-
-def _dump_share(share: HeldShare) -> object:
-    return share.model_dump(mode="json")

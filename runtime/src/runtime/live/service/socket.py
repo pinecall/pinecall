@@ -21,14 +21,14 @@ from runtime.exceptions import Conflict, PinecallError, QuotaExceeded, Validatio
 from runtime.judging import service as judging
 from runtime.kit.loops import is_cancellation
 from runtime.kit.text import Json, JsonObject
-from runtime.live.holders import AnotherOrgs, Holders, NotRegistered, Registration, new_socket_id
+from runtime.live.holders import AnotherOrgs, Holders, NotRegistered, Registration
 from runtime.live.parts import LiveParts
 from runtime.live.peers import APP_INBOX
 from runtime.live.served import Served
 from runtime.live.service import commands, handoff, openings
 from runtime.live.service.codes import NoSuchCode
 from runtime.live.service.whatsapp import Threads
-from runtime.live.sockets import SocketId, Sockets
+from runtime.live.sockets import SocketId, Sockets, new_socket_id
 from runtime.postgres import DatabaseError, busy
 from runtime.providers import service as providers
 from runtime.scoping import box_task

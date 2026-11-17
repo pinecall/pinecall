@@ -150,3 +150,11 @@ def newest(mine: dict[tuple[str, str], Assigned], theirs: Iterable[Assigned]) ->
         if latest[key] is not kept or (kept.holder is None and now - kept.at > FORGOTTEN_AFTER_S):
             del mine[key]
     return {key: setting.holder for key, setting in latest.items() if setting.holder is not None}
+
+
+# A key set to nobody is let go on purpose for as long as that is remembered; after it, or with no
+# such setting at all, a key nobody holds was lost, and its owner may give it again.
+def let_go_lately(settings: Iterable[Assigned]) -> set[tuple[str, str]]:
+    """The keys somebody set to nobody within what is still remembered."""
+    since = time.time() - FORGOTTEN_AFTER_S
+    return {(one.env, one.key) for one in settings if one.holder is None and one.at >= since}
