@@ -4,7 +4,7 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## [0.11.42] — a machine of your own sets up from nothing, a refused call says why, and the night's retention runs again (2026-11-17)
 
 - **`chat` reads the end of a call as its end.** When the gateway ended a written call (a vendor refused it for
   good, the desk ended it) and closed the socket saying so, `chat` printed "the gateway went away — the call is

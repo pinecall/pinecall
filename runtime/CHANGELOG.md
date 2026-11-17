@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.42 — a machine of your own sets up from nothing, a refused call says why, and the night's retention runs again (2026-11-17)
 
 - **The nightly retention runs again.** Since the runtime's cutover (2026-11-12) the CronJob ended every night
   on `LIVEKIT_API_KEY and LIVEKIT_API_SECRET are unset: this process cannot reach the SFU`, seven tries a night.
