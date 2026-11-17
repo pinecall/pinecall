@@ -102,7 +102,7 @@ JUDGE_FIELDS: tuple[str, ...] = next(one.set_by for one in SETTINGS if one.name 
 WORDS_FIELDS: frozenset[str] = frozenset(name for one in SETTINGS if one.words for name in one.set_by)
 PIPELINE_ONLY: tuple[str, ...] = tuple(name for name in FIELDS if name not in WORDS_FIELDS)
 # What a test room may change for its own call: the voice, the models, the language they run in, and
-# whether each of the call's two small models has its say (the room behind the caller, who takes the floor).
+# whether the model that says who takes the floor has its say.
 TEST_FIELDS: frozenset[str] = frozenset(name for one in SETTINGS for name in one.in_a_test)
 
 

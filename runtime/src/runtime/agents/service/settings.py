@@ -237,7 +237,7 @@ def check_test_values(body: Mapping[str, Any] | None, *, env: Env) -> dict[str, 
     stray = sorted(set(body) - TEST_FIELDS)
     if stray:
         raise ValidationError(
-            f"a test room changes only the voice, the models and the call's two small models, so {', '.join(stray)} "
+            f"a test room changes only the voice, the models and who judges an interruption, so {', '.join(stray)} "
             f"{'is' if len(stray) == 1 else 'are'} not its to set"
         )
     for name, value in body.items():

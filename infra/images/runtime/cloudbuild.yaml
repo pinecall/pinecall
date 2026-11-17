@@ -1,7 +1,7 @@
 # The runtime's image, built whole by Cloud Build from one commit's tree (the context `make image`
 # sends), checked before it is pushed: the package answers, every installed voice plugin imports
-# for livekit's preload, Smart Turn's weights are on the image offline, and a call's two small models
-# each load and take a frame as the image's own user.
+# for livekit's preload, Smart Turn's weights are on the image offline, and the model that says who
+# takes the floor loads and takes a frame as the image's own user.
 steps:
   - name: gcr.io/cloud-builders/docker
     # BuildKit: the last stage mounts uv and the wheel for one step instead of keeping them.

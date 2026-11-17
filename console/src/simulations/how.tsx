@@ -1,4 +1,4 @@
-/** How a caller calls: typed, spoken or spoken over a room, for how many turns, with each of the agent's two small models as it is set or its opposite; and what that asks of the door. */
+/** How a caller calls: typed, spoken or spoken over a room, for how many turns, with the agent's model of interruptions as it is set or its opposite; and what that asks of the door. */
 
 import type { ReactNode } from "react";
 
@@ -70,8 +70,8 @@ function loudness(db: number): string {
   return "Faint";
 }
 
-/** `isolates` is whether this form may run a call with a model its agent is not set to: the sandbox's, one call at a time. */
-export function HowTheyCall({ title, how, onChange, isolates = false }: { title: string; how: How; onChange: (how: How) => void; isolates?: boolean }): ReactNode {
+/** `chooses` is whether this form may run a call with a model its agent is not set to: the sandbox's, one call at a time. */
+export function HowTheyCall({ title, how, onChange, chooses = false }: { title: string; how: How; onChange: (how: How) => void; chooses?: boolean }): ReactNode {
   const { line, room, db, loss, turns } = how;
   return (
     <section className="dash-card" aria-label={title}>
@@ -129,7 +129,7 @@ export function HowTheyCall({ title, how, onChange, isolates = false }: { title:
           </label>
         </div>
       )}
-      {isolates &&
+      {chooses &&
         line !== "chat" &&
         MODELS.map((model) => (
           <div key={model.knob} className="sim-level sim-model">

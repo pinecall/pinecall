@@ -279,7 +279,7 @@ export function Composer({ agents, asked, askedCaller = null, typical, onStarted
           </section>
         )}
 
-        <HowTheyCall title="How they call" how={how} onChange={setHow} isolates={!comparing} />
+        <HowTheyCall title="How they call" how={how} onChange={setHow} chooses={!comparing} />
 
         {refused !== null && <p className="app-refused">{refused}</p>}
         <footer className="sim-foot">

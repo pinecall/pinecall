@@ -3,8 +3,8 @@
 # nothing else: the build's context is that commit's tree (`make image` sends `git archive`), so
 # what no commit holds cannot be in it. Three stages: the console and the widget from the
 # lockfile, the wheel with those pages inside, and the image that installs it with the voice
-# plugins, Smart Turn v3's weights and a call's two small models (the one that takes far voices
-# down, the one that says who takes the floor), so a pod never reaches the internet to start. Nothing secret
+# plugins, Smart Turn v3's weights and the model that says who takes the floor, so a pod never
+# reaches the internet to start. Nothing secret
 # is in it: every key comes from the pod's environment at run time.
 
 # Each base by the digest of its multi-architecture index: the tag says which one, the digest is
