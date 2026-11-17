@@ -106,6 +106,26 @@ CLOSED_NOW = (
 )
 
 
+# The pair a history opens with (history.date_pair), named here because a request may say it in words.
+CLOCK_CALL_ID = "clock_1"
+CLOCK_IN_WORDS = "The date as this call opened: {answer}"
+
+# A call with no tool says so, and its model reads no call. Every SDK tells its agent "To act, call a
+# tool", and a history opens with the clock's pair, a call to a function nobody declares: on the turn
+# a caller asked for something done, Gemini wrote a call and Google ended the turn on
+# MALFORMED_FUNCTION_CALL 19 times of 20, nothing said. With the pair said as a line it wrote the
+# call out as text instead; with this note after the caller's words too, 30 of 30 answered in words
+# (gemini-3.5-flash-lite, 2026-11-17). Said where the view is, after the caller's words.
+NO_TOOLS = (
+    "You have no tools on this call: you can talk, and nothing else. You cannot book, send, save or"
+    " change anything yourself, and you never call a function or write one out. When the caller asks"
+    " for something to be done, stay warm and helpful: take the details, read them back once, and"
+    " tell them in your own words that you have noted what they said and cannot confirm or complete"
+    " it yourself. Never say it is done, booked, sent, saved or recorded, never offer to hand over to"
+    " a person, and never promise what happens next unless your instructions say it."
+)
+
+
 # Always a new context: livekit reuses its own across a turn's tool steps, so additions would
 # pile up. The order is the one prompt-injection.md states: static blocks, history, the view after
 # the caller's words, and last what the agent is still saying.
@@ -115,12 +135,18 @@ def request(
     lookups: Sequence[llm.ChatItem] = (),
     saying: Sequence[str] = (),
     closed: Sequence[str] = (),
+    *,
+    has_tools: bool = True,
 ) -> Request:
     """One request: the history and its lookups, the view and the tools closed now after the caller, what is said."""
     items = _ahead_of_the_caller(history.items, lookups)
     dynamic = [llm.ChatMessage(role="system", content=[text]) for text in blocks.of("dynamic")]
     if closed:
         dynamic.append(llm.ChatMessage(role="system", content=[CLOSED_NOW.format(names=", ".join(closed))]))
+    if not has_tools:
+        items, clock = _clock_in_words(items)
+        # Ahead of the view, which stays the last thing the model reads.
+        dynamic = [*clock, llm.ChatMessage(role="system", content=[NO_TOOLS]), *dynamic]
     said = [llm.ChatMessage(role="system", content=[ALREADY_SAID.format(line=line)]) for line in saying]
     return Request([*_after_the_caller(items, dynamic), *said], blocks.of("static"))
 
@@ -152,6 +178,18 @@ def knowledge_changed(blocks: Blocks) -> PromptChanged | None:
     """The entry saying the knowledge file reached the prompt, when there is one."""
     text = blocks.texts.get(KNOWLEDGE_BLOCK, "")
     return PromptChanged(name=KNOWLEDGE_BLOCK, hash=sha256_of(text), chars=len(text)) if text else None
+
+
+# The clock's pair taken out of the items, and its answer as the line that says it instead.
+def _clock_in_words(items: Sequence[llm.ChatItem]) -> tuple[list[llm.ChatItem], list[llm.ChatMessage]]:
+    kept: list[llm.ChatItem] = []
+    said: list[llm.ChatMessage] = []
+    for item in items:
+        if isinstance(item, llm.FunctionCallOutput) and item.call_id == CLOCK_CALL_ID:
+            said.append(llm.ChatMessage(role="system", content=[CLOCK_IN_WORDS.format(answer=item.output)]))
+        elif not (isinstance(item, llm.FunctionCall) and item.call_id == CLOCK_CALL_ID):
+            kept.append(item)
+    return kept, said
 
 
 # Lookups go before the caller's newest message (livekit appends it after

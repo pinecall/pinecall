@@ -55,6 +55,10 @@ describe("the agent", () => {
     expect(() => contextFor({}, project(["front-desk", "sales"])).slug("sessions")).toThrow(/--agent front-desk or --agent sales/);
   });
 
+  it("with no agent here and none named says an agent with no folder is named by its slug", () => {
+    expect(() => contextFor({}, folder()).slug("simulate")).toThrow(/no agent here[^]*--agent <slug>/);
+  });
+
   it("a path given to --agent points at --file", () => {
     expect(() => contextFor({}, folder()).slug("sessions", { agent: "agents/sales/agent.ts" })).toThrow("a file is --file agents/sales/agent.ts");
   });

@@ -160,7 +160,15 @@ class CallAgent(Agent):
         spliced = self.lookups.items
         # The platform ran these calls, not the model: a model that checks who wrote a call takes them signed.
         stages.sign_calls(self._models(), [item.call_id for item in spliced if isinstance(item, llm.FunctionCall)])
-        sent = request(chat_ctx, self.blocks, spliced, [line for _, line in self.saying], self.call.list_closed_tools())
+        # A call with no tool at all is told so, the clock in words: prompt.NO_TOOLS says why.
+        sent = request(
+            chat_ctx,
+            self.blocks,
+            spliced,
+            [line for _, line in self.saying],
+            self.call.list_closed_tools(),
+            has_tools=bool(tools),
+        )
         # A step livekit forces to answer in words (tool_choice "none") is offered no tool, as some
         # of its plugins already do: a model offered one may call it anyway, livekit drops the
         # call, and the turn ends with nothing said.

@@ -150,7 +150,16 @@ export function slugOf(cwd: string, verb: string, choice: AgentChoice = {}): str
     if (A_PATH.test(choice.agent)) throw new UsageError(`--agent takes an agent's slug; a file is --file ${choice.agent}`);
     return choice.agent;
   }
+  if (agentFilesOf(cwd).length === 0) throw new UsageError(`${noAgentHere(cwd)}\n  → an agent with no folder, as one built in Studio, is named by its slug: --agent <slug>`);
   return oneAgentOf(cwd, verb).name;
+}
+
+/** The agent's folder when this project holds it; none for an agent the gateway alone knows, as one built in Studio. */
+export function homeIfHere(cwd: string, choice: AgentChoice = {}): AgentHome | undefined {
+  if (choice.file !== undefined) return homeOf(choice.file);
+  const homes = agentFilesOf(cwd).map(homeOf);
+  if (choice.agent === undefined) return homes.length === 1 ? homes[0] : undefined;
+  return homes.find((home) => home.name === choice.agent);
 }
 
 /** The gateway knows no agent of that name, and the name is one of this project's: nothing has held it yet. */

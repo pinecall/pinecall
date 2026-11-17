@@ -27,7 +27,8 @@ def test_the_identity_fills_the_calls_values_and_leaves_an_unknown_one_empty() -
 
 
 def test_an_agent_with_no_tool_is_told_it_has_none_and_never_to_call_one() -> None:
-    """Saved with no tool and no data collection, it is not told to act by calling a tool, nor to hand over."""
+    """Saved with no tool and no data collection, it is not told to act by calling a tool, nor to hand over:
+    what a call with no tool is told is the session's to say."""
     text = prompt.identity(clinic(tools=[], collect=None), {"call": {"channel": "phone", "medium": "voice"}})
     assert f"<protocols>\n{prompt.WITHOUT_TOOLS}\n</protocols>" in text
     assert "To act, call a tool" not in text and "hand over to a person" not in text

@@ -153,6 +153,12 @@ describe("pinecall simulate --judge", () => {
   const held = { name: "grounded", verdict: "held", criteria: "", reason: "", evidence: { seqs: [] } };
   const broken = { ...held, verdict: "broken", reason: "made up a price" };
 
+  it("with --agent and no folder simulates the agent the gateway holds: one built in Studio has no class here", async () => {
+    sealed({ passed: true, judges: [held], judge_calls: 1, evals: 1 });
+    const ran = await run(["simulate", "--agent", "e2e-dental", "--persona", "apurado", "--voice", "--judge"], { cwd: folder() });
+    expect(ran.code).toBe(0);
+  });
+
   it("exits 0 when every judge held and 1 when one answered broken", async () => {
     sealed({ passed: true, judges: [held], judge_calls: 1, evals: 1 });
     expect((await run(["simulate", "--persona", "apurado", "--voice", "--judge"])).code).toBe(0);
@@ -285,6 +291,13 @@ describe("pinecall personas", () => {
     const ran = await run(["personas", "add", "apurado", "--goal", "book tomorrow", "--style", "curt", "--fact", "name=Luis", "--fact", "phone=305 555 0101"]);
     expect(ran.code).toBe(0);
     expect(sent[0]!.body).toMatchObject({ goal: "book tomorrow", style: "curt", facts: { name: "Luis", phone: "305 555 0101" } });
+  });
+
+  it("with --agent and no folder asks the gateway by slug: an agent built in Studio has no class here", async () => {
+    answer("get", "/v1/agents/:slug/personas", { personas: [A_PERSONA] });
+    const ran = await run(["personas", "list", "--agent", "e2e-dental"], { cwd: folder() });
+    expect(ran.code).toBe(0);
+    expect(ran.out).toMatch(/\napurado\s+yours\s+on\s+book the first slot tomorrow\n/);
   });
 
   it("generate refuses more than ten", async () => {

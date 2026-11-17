@@ -89,7 +89,8 @@ export function register(program: Command, ctx: Context): void {
         callerVoice: flags.callerVoice,
         repeats: numberOf("--repeats", flags.repeats),
       });
-      const agent = ctx.agent("simulate", { file: flags.file, agent: flags.agent }).name;
+      // The gateway places the call and keeps the personas: an agent with no folder (one built in Studio) is its slug.
+      const agent = ctx.slug("simulate", { file: flags.file, agent: flags.agent });
       const against = (flags.against ?? []).map(service.parseAgainst);
       // Several configurations, or one rung several times, are several calls: placed together, read as one table.
       if (against.length > 1 || input.repeats > 1) {

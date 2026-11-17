@@ -8,6 +8,7 @@ import { HELP } from "../help.js";
 import * as render from "../render/index.js";
 import * as service from "../service/index.js";
 import { numberOf, repeated } from "../../kit/flags.js";
+import { homeIfHere } from "../../project/layout.js";
 import { simulateAtTheTerminal } from "./terminal.js";
 
 export function registerRuns(program: Command, ctx: Context): void {
@@ -173,7 +174,7 @@ export function registerCases(program: Command, ctx: Context): void {
 
 export function registerPersonas(program: Command, ctx: Context): void {
   const personas = program.command("personas").description("an agent's synthetic callers: Pinecall's switched on or off, its own written, generated, tried, or the class's").addHelpText("after", HELP.personas);
-  const agentOf = (flags: { agent?: string | undefined; file?: string | undefined }): string => ctx.agent("personas", { agent: flags.agent, file: flags.file }).name;
+  const agentOf = (flags: { agent?: string | undefined; file?: string | undefined }): string => ctx.slug("personas", { agent: flags.agent, file: flags.file });
   personas
     .command("list", { isDefault: true })
     .description("the agent's callers: Pinecall's, on or off, and its own (the class's, when it owns them)")
@@ -278,8 +279,9 @@ export function registerPersonas(program: Command, ctx: Context): void {
     .option("--save", "keep every one: as the agent's own, or as code in agents/<agent>/harness.* when the class owns them")
     .action(async (n, flags) => {
       const input = service.GenerateInput.parse({ n: numberOf("generate", n), about: flags.about, fromCall: flags.fromCall, template: flags.template, save: flags.save === true });
-      const home = ctx.agent("personas", { agent: flags.agent, file: flags.file });
-      ctx.io.result(await service.generatePersonas(ctx, home.name, input, home), render.generated);
+      // Kept as code only beside a class that owns its callers; an agent with no folder keeps them on the gateway.
+      const choice = { agent: flags.agent, file: flags.file };
+      ctx.io.result(await service.generatePersonas(ctx, agentOf(flags), input, homeIfHere(ctx.cwd, choice)), render.generated);
     });
   personas
     .command("pull")

@@ -7,6 +7,7 @@ from runtime.calls.log.store import Store
 from runtime.exceptions import Conflict
 from runtime.session.commands import apply
 from runtime.session.history import history_of
+from runtime.session.prompt import CLOCK_IN_WORDS
 from runtime.session.session import Place
 from runtime.wire.commands import CallAttention, ReleaseVerb, TakeoverVerb
 from tests.conftest import needs_the_database
@@ -14,6 +15,11 @@ from tests.fakes.livekit import Server
 from tests.session.conftest import Box, a_room, a_session, hear, heard_live, kinds, model_of, supervised
 
 AGENT = Declaration(slug="clinica-norte")
+
+
+def _says_the_day(item: object) -> bool:
+    """Whether this item of a request is the line the clock's pair is said as to a model with no tool."""
+    return str(getattr(item, "text_content", "") or "").startswith(CLOCK_IN_WORDS.format(answer=""))
 
 
 @needs_the_database
@@ -53,13 +59,13 @@ async def test_the_reply_is_written_piece_by_piece_as_it_came(box: Box) -> None:
 
 
 @needs_the_database
-async def test_a_text_call_is_told_what_day_it_is_before_the_caller_says_a_word(box: Box) -> None:
+async def test_a_text_call_with_no_tool_is_told_what_day_it_is_in_words_and_reads_no_call(box: Box) -> None:
     session = a_session(box, AGENT, ["Hola"])
     await session.start()
     await hear(session, "¿qué día es?")
     params = model_of(session).requests[0].items
-    names = [getattr(item, "name", None) for item in params]
-    assert names.index("current_date") < [getattr(item, "role", None) for item in params].index("user")
+    assert [item for item in params if getattr(item, "type", "") != "message"] == []
+    assert len([item for item in params if _says_the_day(item)]) == 1
     await session.end("caller_hung_up", "caller")
 
 
@@ -70,8 +76,7 @@ async def test_the_date_is_seeded_once_a_call_and_never_once_a_turn(box: Box) ->
     await hear(session, "hola")
     await hear(session, "otra vez")
     last = model_of(session).requests[-1].items
-    calls = [item for item in last if getattr(item, "type", "") == "function_call"]
-    assert [getattr(item, "name", "") for item in calls] == ["current_date"]
+    assert len([item for item in last if _says_the_day(item)]) == 1
     await session.end("caller_hung_up", "caller")
 
 

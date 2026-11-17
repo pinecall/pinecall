@@ -13,6 +13,7 @@ from runtime.agents.declaration import Declaration
 from runtime.kit.time import now_in
 from runtime.session import stages
 from runtime.session.call import SPEECH, CallContext
+from runtime.session.prompt import CLOCK_CALL_ID
 from runtime.session.tools import output_text
 from runtime.wire import events as wire
 from runtime.wire.base import Entry
@@ -20,7 +21,6 @@ from runtime.wire.base import Entry
 # A tool pair, not a system message: a system message in the middle of the conversation becomes
 # a user turn for the providers that take one system text.
 CLOCK_TOOL = "current_date"
-CLOCK_CALL_ID = "clock_1"
 WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
 
 

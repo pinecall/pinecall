@@ -1,6 +1,7 @@
 """The prompt's blocks, and the request each turn sends: cached prefix first, the view last."""
 
 import json
+from datetime import date
 
 import pytest
 from livekit.agents import llm
@@ -8,9 +9,12 @@ from livekit.agents import llm
 from runtime.agents.declaration import DEFAULT_LAYOUT, Greeting, PromptBlock
 from runtime.exceptions import ValidationError
 from runtime.kit.text import a_list, a_mapping, sha256_of
+from runtime.session.history import date_pair
 from runtime.session.prompt import (
     ALREADY_SAID,
+    CLOCK_IN_WORDS,
     CLOSED_NOW,
+    NO_TOOLS,
     Blocks,
     Request,
     greeting_for,
@@ -301,3 +305,41 @@ def test_an_opening_is_not_cut_short_unless_it_says_so() -> None:
     assert not interruptible(Greeting(say="Buenas."))
     assert not interruptible(Greeting(reply="", allow_interruptions=False))
     assert interruptible(Greeting(say="Buenas.", allow_interruptions=True))
+
+
+# ── a call with no tool ──
+
+THE_DAY = json.dumps({"today": "2026-09-28", "weekday": "monday"})
+
+
+def _opened(blocks: Blocks) -> llm.ChatContext:
+    """A history as a call's is: the instructions, the clock's pair, then the conversation."""
+    history = _with_instructions(blocks)
+    history.items[1:1] = date_pair(date(2026, 9, 28))
+    return history
+
+
+def test_a_call_with_no_tool_reads_the_clock_as_a_line_and_is_told_it_has_none() -> None:
+    blocks = _written(identity="Recepción", view="Turnos libres")
+    history = _opened(blocks)
+    params = request(history, blocks, has_tools=False).items
+    assert [item.type for item in params if item.type != "message"] == []
+    after = [item.text_content for item in params[3:] if isinstance(item, llm.ChatMessage)]
+    assert after == [CLOCK_IN_WORDS.format(answer=THE_DAY), NO_TOOLS, "Turnos libres"]
+    assert [item.type for item in history.items[1:3]] == ["function_call", "function_call_output"]
+
+
+def test_a_call_with_a_tool_reads_the_clocks_pair_and_no_word_about_tools() -> None:
+    blocks = _written(identity="Recepción")
+    params = request(_opened(blocks), blocks).items
+    assert [item.type for item in params[1:3]] == ["function_call", "function_call_output"]
+    assert NO_TOOLS not in [item.text_content for item in params if isinstance(item, llm.ChatMessage)]
+
+
+@pytest.mark.parametrize("format", ["google", "anthropic", "openai"])
+def test_the_day_reaches_the_model_of_a_call_with_no_tool_in_every_format(format: str) -> None:
+    blocks = _written(identity="Recepción")
+    messages, _ = request(_opened(blocks), blocks, has_tools=False).to_provider_format(format)
+    sent = json.dumps(messages)
+    assert "2026-09-28" in sent and "You have no tools on this call" in sent
+    assert "current_date" not in sent

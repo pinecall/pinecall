@@ -4,6 +4,16 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+- **`simulate` and `personas` reach an agent built in Studio.** Both asked for the agent's folder, and a Studio
+  agent has none: `pinecall simulate --agent front-desk --persona in-a-hurry` answered `no agent here`, from the
+  project and from any other folder, while `pinecall chat front-desk` talked to it. They only ever read the
+  agent's name there, so they take its slug as `chat` and `sessions` do and ask the gateway, which keeps the
+  callers and places the call. `personas generate --save` keeps the callers on the gateway when there is no class
+  to write them into; `personas pull`, which writes code into a class, still needs one. With no agent here and
+  none named, the refusal now says how an agent with no folder is named.
+
 ## [0.11.43] — a Mac's own Ollama keeps its models, a Studio agent with no tool answers, and a failed release is said first (2026-11-17)
 
 - **`deploy list` says a live release failed.** A release that was serving and was started again (its secrets

@@ -7,6 +7,13 @@
   key` beside the model its calls already ran on, and was advised another vendor's voice than the one it speaks
   with. The lending is asked for the model the stage names.
 
+- **An agent with no tool, written as a class or in Studio, answers the turn it lost.** A class with no tool
+  read "To act, call a tool" from its SDK, and every history opened with the clock's pair, a call to a function
+  nobody declared: on the turn a caller asked for something done, Gemini wrote a call and Google ended the turn on
+  `MALFORMED_FUNCTION_CALL`, nothing said. A call with no tool is told so by the session on every request, after
+  the caller's words, whatever SDK wrote its prompt, and reads the day as a line of text; a call with a tool
+  reads what it read.
+
 - **A Studio agent with no tool says it in its own words.** Told what it could not do in one fixed sentence, the
   model repeated the sentence ("I have taken this down, but I cannot complete it myself") whatever was asked. It
   is told to stay warm, read the details back once, and say in its own words that it has noted them and cannot

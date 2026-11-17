@@ -87,11 +87,13 @@ production ([below](#where-the-gateway-and-the-key-come-from)) — and a verb th
 anything, `prompt`, refuses it instead of accepting an environment it never visits.
 
 `--agent` reads two ways, and the verb says which. A verb that reads the agent's files — `start`,
-`test`, `simulate`, `personas`, `docs push`, `docs pull`, `cases pull` — takes the name of a folder under
+`test`, `docs push`, `docs pull`, `cases pull`, `personas pull` — takes the name of a folder under
 `agents/`, and runs in the project. A verb that asks the gateway alone — `sessions`, `agent`,
-`lexicon`, `judges`, `cases`, `line`, `memory policy`, `docs attach` — takes the agent's slug and
-runs from any folder; beside an agent's class, both read as that agent, and at the root of a project of
-several agents both are refused with the names until `--agent` picks one.
+`lexicon`, `judges`, `cases`, `line`, `memory policy`, `docs attach`, `simulate`, `personas` — takes
+the agent's slug and runs from any folder; beside an agent's class, both read as that agent, and at the
+root of a project of several agents both are refused with the names until `--agent` picks one. So an
+agent with no folder, as one built in [Studio](#studio), is simulated and given its callers from a
+terminal by its slug: `pinecall simulate --agent front-desk --persona in-a-hurry`.
 
 ---
 
@@ -798,7 +800,9 @@ prints them a turn at a time. With `--judge` the score follows: how many judges 
 or broke, the ones that broke with their reason and the lines they cite (`#30`), the ones that held by
 name, and the ones that did not apply on one line.
 
-`--persona` names one of the agent's callers, kept by the gateway — not a file of the project. The model
+`--persona` names one of the agent's callers, kept by the gateway — not a file of the project — so
+`--agent <slug>` simulates an agent from any folder, one built in Studio too (`pinecall personas
+list --agent <slug>` names its callers). The model
 that plays it is the persona's own `llm` when it set one; with `--judge`, a caller that wrote a
 rule adds a `persona` row to the score — `held` when it hung up satisfied, `broken` when it
 declined, which is exit 1 like any broken judge.

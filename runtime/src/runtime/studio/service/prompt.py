@@ -26,19 +26,10 @@ PROTOCOLS = (
     "- If you cannot solve it, say so and offer to hand over to a person."
 )
 
-# Studio's own words, which no SDK writes: an agent saved with no tool and no data collection. Told
-# to act by calling a tool and offered none, a model writes a call all the same: with the clock's
-# pair in its history Gemini ended that turn on MALFORMED_FUNCTION_CALL 19 times of 20, and on its
-# words 20 of 20 once told this (2026-11-17). It has nobody to hand over to either.
-WITHOUT_TOOLS = (
-    "- You have no tools on this call: you can talk, and nothing else. You cannot book, send or"
-    " change anything yourself, and you never call a function. When the caller asks for something"
-    " to be done, stay warm and helpful: take the details, read them back once, and tell them in"
-    " your own words that you have noted it and cannot confirm or complete it yourself. Never say"
-    " it is done, booked or sent, and never promise what happens next unless your instructions"
-    " say it.\n"
-    "- Never ask the caller to wait: once you stop talking, nothing happens until they speak again."
-)
+# An agent saved with no tool and no data collection is not told to act by calling a tool, nor to
+# offer a person it cannot hand over to: what it is told instead is the session's to say, on every
+# request that has no tool (session/prompt.py, NO_TOOLS), whoever wrote the agent.
+WITHOUT_TOOLS = "- Never ask the caller to wait: once you stop talking, nothing happens until they speak again."
 
 SPOKEN = (
     "You are on a phone call. Everything you write is read aloud by a voice: short spoken"
