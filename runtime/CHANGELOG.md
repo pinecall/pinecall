@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **The nightly retention runs again.** Since the runtime's cutover (2026-11-12) the CronJob ended every night
+  on `LIVEKIT_API_KEY and LIVEKIT_API_SECRET are unset: this process cannot reach the SFU`, seven tries a night.
+  `retention run` opened the process's whole state, the SFU's clients with it, and the chart hands its pod the
+  database, the vault and the recordings' place alone, as the night needs. Nothing was forgotten in those nights
+  and no day of the log was made ahead: the days made reached the 18th. The verb opens what the night stands on
+  and no more (the log's engine is built from the settings, the sessions and the signal it is given, not from the
+  process's handles), so the job runs on what the chart gives it.
+
 - **`setup` with open models ends when typed at a terminal.** With a model of its own to serve, `setup` never
   came back: the models were pulled and loaded, and the last step of the puller, `ollama run <model> ""`, sat
   reading its prompt from stdin, which under `docker compose run` was the terminal `setup` was typed at. Seen on

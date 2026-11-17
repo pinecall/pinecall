@@ -139,7 +139,7 @@ async def orgs_rm(ctx: typer.Context, org: str) -> int:
     """The org erased whole, its calls and recordings too; refused while a key or route names it."""
     context = context_of(ctx)
     handles = await context.handles()
-    *_, logs = builders.build_log_engine(handles, context.stack)
+    *_, logs = builders.build_log_engine(handles.settings, handles.sessions, handles.signal, context.stack)
     erasing = Erasing(builders.build_recordings(context.settings, handles.http), logs)
     async with handles.sessions.begin() as session:
         with box_wide():

@@ -135,7 +135,9 @@ async def lifespan(app: FastAPI, outside: Outside = THE_INTERNET) -> AsyncGenera
     async with AsyncExitStack() as stack:
         handles = await builders.open_connections(load_settings(), stack, outside)
         signer = builders.build_signer(handles.settings)
-        writer, log_store, relay, feeds, logs = builders.build_log_engine(handles, stack)
+        writer, log_store, relay, feeds, logs = builders.build_log_engine(
+            handles.settings, handles.sessions, handles.signal, stack
+        )
         loops = Loops()
         stack.push_async_callback(loops.stop)
         outbox = Outbox(handles.sessions, handles.vault, builders.read_box_mailbox(handles.settings))

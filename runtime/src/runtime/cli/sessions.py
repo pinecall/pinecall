@@ -87,7 +87,7 @@ async def sessions_tail(
     """A call followed as it is written, until it seals."""
     context = context_of(ctx)
     handles = await context.handles()
-    *_, logs = builders.build_log_engine(handles, context.stack)
+    *_, logs = builders.build_log_engine(handles.settings, handles.sessions, handles.signal, context.stack)
     async with handles.sessions() as session:
         named = call or await lists.find_newest_live_call(session)
     if named is None:

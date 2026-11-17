@@ -52,7 +52,7 @@ async def a_live_side(
     async with AsyncExitStack() as stack:
         http = await stack.enter_async_context(httpx.AsyncClient(transport=httpx.MockTransport(nowhere)))
         handles = Handles(load_settings(), vault, http, servers, signal, engine, sessions)
-        _, store, _, feeds, logs = builders.build_log_engine(handles, stack)
+        _, store, _, feeds, logs = builders.build_log_engine(handles.settings, handles.sessions, handles.signal, stack)
         loops = Loops()
         stack.push_async_callback(loops.stop)
         outbox = Outbox(sessions, vault, None)

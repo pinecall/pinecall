@@ -6,6 +6,7 @@ from contextlib import AsyncExitStack
 from pathlib import Path
 
 import httpx
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from runtime.accounts.service.members import list_test_phones
 from runtime.alerts.service.alerts import Alerting
@@ -49,6 +50,7 @@ from runtime.platform.service.attempts import AttemptThrottle
 from runtime.postgres import create_engine, session_maker
 from runtime.providers.service.health import VendorHealth
 from runtime.redis import open_signal
+from runtime.signal import Signal
 from runtime.signin.service.turnstile import Turnstile
 from runtime.telephony.service.carrier import SipNames
 
@@ -64,14 +66,18 @@ logger = logging.getLogger(__name__)
 # leaves them): an append never waits for an endpoint, nor an endpoint for an append. Its drain is pushed
 # before everything that appends on its way out, so it runs after them and before the engines close:
 # every append a request was promised is written.
-def build_log_engine(handles: Handles, stack: AsyncExitStack) -> tuple[Writer, Store, Relay, Feeds, Logs]:
+# Given what it stands on and no more: the nightly retention builds it with neither the SFU nor Redis,
+# which its CronJob is not handed, and until 2026-11-17 this took the process's whole handles.
+def build_log_engine(
+    settings: Settings, sessions: async_sessionmaker[AsyncSession], signal: Signal, stack: AsyncExitStack
+) -> tuple[Writer, Store, Relay, Feeds, Logs]:
     """The log's engine: the writer on its own pool, the store, the relay, the feeds and the logs."""
-    writing = create_engine(handles.settings, pool_size=len(LANES))
+    writing = create_engine(settings, pool_size=len(LANES))
     stack.push_async_callback(writing.dispose)
     writer = Writer(session_maker(writing))
     stack.push_async_callback(writer.drain)
-    store = Store(handles.sessions, writer)
-    relay = Relay(handles.signal, store)
+    store = Store(sessions, writer)
+    relay = Relay(signal, store)
     stack.push_async_callback(relay.close)
     feeds = Feeds(relay, store)
     return writer, store, relay, feeds, Logs(store, relay, feeds)
