@@ -18,6 +18,7 @@ CALLING_FOR = {
     "de": "Hier spricht ein automatischer Assistent im Auftrag von {org}.",
     "it": "Sono un assistente automatico che chiama per conto di {org}.",
     "ar": "هذا مساعد آلي يتصل بالنيابة عن {org}.",
+    "hi": "यह {org} की ओर से कॉल करने वाला एक स्वचालित सहायक है।",
 }
 MAY_BE_RECORDED = {
     "en": "This call may be recorded.",
@@ -27,6 +28,7 @@ MAY_BE_RECORDED = {
     "de": "Dieser Anruf kann aufgezeichnet werden.",
     "it": "Questa chiamata può essere registrata.",
     "ar": "قد يتم تسجيل هذه المكالمة.",
+    "hi": "यह कॉल रिकॉर्ड की जा सकती है।",
 }
 FALLBACK_LANGUAGE = "en"
 

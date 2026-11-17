@@ -12,6 +12,9 @@
   every language Configure does, Arabic, Hindi and eight more of India's among them, found by typing; nothing
   pinned reads as the guess it is. A simulated caller murmurs in Arabic and in Hindi.
 
+- **A call in Hindi says its recording notice and its disclosure in Hindi.** Both were said in English to an
+  agent whose language is `hi`; the other languages of India still hear them in English.
+
 - **The count of an agent's calls reads the copies its list reads.** `GET /v1/insights` counted the reader's
   own copy alone, while a list of calls reads the reader's and the org's, and every copy for whoever opens
   colleagues': an operator looking at an org's agent read "0 calls in 30 days" over a list of seven. The window,

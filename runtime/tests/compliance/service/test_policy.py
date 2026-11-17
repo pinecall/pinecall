@@ -12,6 +12,7 @@ from runtime.compliance.service.policy import CALLING_FOR, MAY_BE_RECORDED, Poli
         ("ar", "قد يتم تسجيل هذه المكالمة."),
         ("ar-AE", "قد يتم تسجيل هذه المكالمة."),
         ("es_MX", "Esta llamada puede ser grabada."),
+        ("hi-IN", "यह कॉल रिकॉर्ड की जा सकती है।"),
         ("ja", "This call may be recorded."),
         (None, "This call may be recorded."),
     ],
