@@ -22,6 +22,7 @@ from runtime.scoping import box_wide
 
 MODELS_FAILED = "docker compose could not bring the models up:\n{output}"
 PULL_FAILED = "pulling the models did not finish:\n{output}"
+HOST_PULL_FAILED = "the Ollama this machine runs did not pull {model}:\n{output}"
 
 
 def models_up(where: Path, choices: Choices, *, host_ollama: bool, card: bool = False) -> list[str]:
@@ -105,15 +106,21 @@ def a_card_for_docker() -> bool:
 
 
 def pull_on_host(models: list[str]) -> None:
-    """The models pulled by the Ollama this machine already runs."""
-    if which("ollama") is None:
+    """The models the Ollama this machine already runs does not hold yet, pulled by it."""
+    # A model it holds is left as it is: `ollama pull` asks the registry even then, and an Ollama older
+    # than the registry's manifest wants is refused (412) for a model it already runs (a Mac, 2026-11-17).
+    held = set(machine.ollama_models())
+    missing = [model for model in models if _tag(model) not in held]
+    if missing and which("ollama") is None:
         raise UpstreamError(
-            f"something answers on :{MODEL_PORTS['Ollama']} but `ollama` is not on PATH: pull {', '.join(models)} there"
+            f"something answers on :{MODEL_PORTS['Ollama']} but `ollama` is not on PATH: "
+            f"pull {', '.join(missing)} there"
         )
-    for model in models:
+    for model in missing:
         pulled = subprocess.run(["ollama", "pull", model], capture_output=True, text=True, check=False)
         if pulled.returncode != 0:
-            raise UpstreamError(PULL_FAILED.format(output=(pulled.stderr or pulled.stdout).strip()[-2000:]))
+            output = (pulled.stderr or pulled.stdout).strip()[-2000:]
+            raise UpstreamError(HOST_PULL_FAILED.format(model=model, output=output))
 
 
 # A turn's lookup waits 3 s for its search; the embedder's first request after a start loads the
@@ -161,6 +168,11 @@ def _compose(
     )
     if done.returncode != 0:
         raise UpstreamError(failed.format(output=(done.stderr or done.stdout).strip()[-2000:]))
+
+
+# Ollama lists every model under its tag: one named bare is its `latest`.
+def _tag(model: str) -> str:
+    return model if ":" in model.rpartition("/")[2] else f"{model}:latest"
 
 
 async def models(runtime: Context, where: Path, choices: Choices, keys: dict[str, str], *, card: bool) -> None:

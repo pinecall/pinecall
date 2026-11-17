@@ -1,4 +1,4 @@
-"""The model servers `setup` brings up: what is pulled when nothing thinks here, and the loop left free meanwhile."""
+"""The model servers `setup` brings up: what is pulled and by whom, and the loop left free meanwhile."""
 
 import asyncio
 import subprocess
@@ -12,6 +12,7 @@ from runtime.cli.output import Printer
 from runtime.cli.setup import models
 from runtime.cli.setup.choices import LOCAL_EMBEDDER, MODEL_PORTS, Choices
 from runtime.config import load_settings
+from runtime.exceptions import UpstreamError
 from runtime.providers.catalog import Catalog
 from runtime.providers.service import machine
 
@@ -76,6 +77,42 @@ def test_the_puller_reads_nothing_of_the_terminal_setup_was_typed_at(
     monkeypatch.setattr(subprocess, "run", run)
     models.models_up(tmp_path, Choices(stt="deepgram", llm="local/gemma4:12b", tts="cartesia"), host_ollama=False)
     assert handed and all(stdin is subprocess.DEVNULL for stdin in handed)
+
+
+def pulls_on_host(monkeypatch: pytest.MonkeyPatch, held: tuple[str, ...], *, refused: str = "") -> list[list[str]]:
+    """Every command `pull_on_host` hands this machine's Ollama, which holds `held` and refuses with `refused`."""
+    ran: list[list[str]] = []
+
+    def run(command: list[str], **_how: object) -> subprocess.CompletedProcess[str]:
+        ran.append(command)
+        return subprocess.CompletedProcess(command, 1 if refused else 0, "", refused)
+
+    def on_path(_name: str) -> str:
+        return "/usr/local/bin/ollama"
+
+    monkeypatch.setattr(machine, "ollama_models", lambda: held)
+    monkeypatch.setattr(models, "which", on_path)
+    monkeypatch.setattr(subprocess, "run", run)
+    return ran
+
+
+def test_a_model_this_machines_ollama_holds_is_not_asked_of_the_registry_again(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A held model is left as it is, named bare or by its tag; the one missing is the one pulled."""
+    ran = pulls_on_host(monkeypatch, ("bge-m3:latest", "gemma3:1b"))
+    models.pull_on_host([LOCAL_EMBEDDER, "gemma3:1b", "gemma4:12b"])
+    assert ran == [["ollama", "pull", "gemma4:12b"]]
+
+
+def test_a_pull_this_machines_ollama_refuses_says_which_model_and_why(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An Ollama too old for a model answers 412: setup says whose Ollama, the model, and Ollama's own words."""
+    refusal = "Error: pull model manifest: 412: requires a newer version of Ollama"
+    pulls_on_host(monkeypatch, (), refused=refusal)
+    with pytest.raises(UpstreamError) as said:
+        models.pull_on_host(["gemma4:12b"])
+    assert "the Ollama this machine runs did not pull gemma4:12b" in str(said.value)
+    assert refusal in str(said.value)
 
 
 async def test_the_loop_stays_free_while_the_models_come_up(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

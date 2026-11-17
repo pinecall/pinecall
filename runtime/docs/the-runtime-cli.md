@@ -152,7 +152,10 @@ and the runtime's, which lends it to every org made later until that org brings 
 whether an Ollama already answers — and serves the best measured model that fits beside the ears
 (Whisper), the voice (Kokoro) and the embedder (bge-m3), through the runtime's `openai` plugin with a
 `base_url` per stage; on a card Docker can reach, all of it runs on the GPU. A machine with no GPU
-serves none, and its defaults are deepgram, anthropic and cartesia. These are the runtime's
+serves none, and its defaults are deepgram, anthropic and cartesia. Where an Ollama already answers
+(a Mac's, on Metal), it is the one that thinks: a model it holds is used as it is, one it lacks is
+pulled by it, and an Ollama too old for that model refuses in its own words — update it and run
+`setup` again. These are the runtime's
 defaults, what an agent naming no stage runs on; an agent names its own (`pinecall agent set
 --llm groq`).
 

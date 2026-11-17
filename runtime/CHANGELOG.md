@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **`setup` leaves alone a model the machine's own Ollama already holds.** On a machine where an Ollama already
+  answers (a Mac), `setup` ran `ollama pull` for every open model, the ones held too. A pull asks the registry even
+  then, and an Ollama older than the registry's manifest wants was refused (`412: requires a newer version of
+  Ollama`) for a model it already ran: `setup` ended on `pulling the models did not finish` and started nothing.
+  A model held is used as it is; one that is missing is pulled, and a refusal names whose Ollama, the model, and
+  Ollama's own words.
+
 - **A Studio agent with no tool answers the turn it used to lose.** Every Studio agent was told "To act, call a
   tool in the same reply", one saved with no tool and no data collection too. On the turn a caller confirmed
   something to be done ("Yes, that's right", after a booking read back), Gemini wrote a call to a function nobody
