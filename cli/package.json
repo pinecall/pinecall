@@ -1,6 +1,6 @@
 {
   "name": "pinecall",
-  "version": "0.11.42",
+  "version": "0.11.43",
   "description": "The pinecall CLI: an agent's project in any language \u2014 prompt, chat, test, simulate, start, deploy \u2014 against the Pinecall gateway",
   "license": "Apache-2.0",
   "author": "Pinecall <hello@pinecall.io>",

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.43 — a Mac's own Ollama keeps its models, a Studio agent with no tool answers, and a failed release is said first (2026-11-17)
 
 - **`setup` leaves alone a model the machine's own Ollama already holds.** On a machine where an Ollama already
   answers (a Mac), `setup` ran `ollama pull` for every open model, the ones held too. A pull asks the registry even

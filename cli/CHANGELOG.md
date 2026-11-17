@@ -4,7 +4,7 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## [0.11.43] — a Mac's own Ollama keeps its models, a Studio agent with no tool answers, and a failed release is said first (2026-11-17)
 
 - **`deploy list` says a live release failed.** A release that was serving and was started again (its secrets
   changed, its process went away) can fail like a new one, and the gateway says why. The list put the reason under

@@ -5,6 +5,10 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
+## 0.11.43 — a Mac's own Ollama keeps its models, a Studio agent with no tool answers, and a failed release is said first (2026-11-17)
+
+- Released with the runtime: nothing of this package changed.
+
 ## 0.11.42 — a machine of your own sets up from nothing, a refused call says why, and the night's retention runs again (2026-11-17)
 
 - **A rule's judge reads what the call carried.** `app.rule("…")` adds a judge to every agent of the app; it read the

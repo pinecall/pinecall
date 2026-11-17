@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.43 — a Mac's own Ollama keeps its models, a Studio agent with no tool answers, and a failed release is said first (2026-11-17)
+
+- Released with the runtime: nothing of this package changed.
+
 ## 0.11.42 — a machine of your own sets up from nothing, a refused call says why, and the night's retention runs again (2026-11-17)
 
 - **A rule's judge reads what the call carried.** `app.rule("…")` adds a judge to every agent of the app; it read the
