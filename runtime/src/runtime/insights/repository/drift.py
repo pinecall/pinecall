@@ -181,6 +181,15 @@ class Days:
     first: date
     last: date
     agent: str | None = None
+    # The copies counted: the scope's own alone when empty, every copy of the env when None.
+    holders: tuple[str, ...] | None = ()
+
+    # A list of calls reads the reader's copy and the org's, and every copy for whoever sees them all; the
+    # window counted the reader's alone, so an operator read "0 calls" over a list of seven (2026-11-17).
+    @property
+    def copies(self) -> list[str] | None:
+        """The holders whose calls the window counts; None for every copy of the env."""
+        return None if self.holders is None else list(self.holders or (self.scope.holder,))
 
     @property
     def count(self) -> int:
@@ -382,12 +391,13 @@ def _of_agent(table: Folded, scope: Scope, agent: str) -> tuple[ColumnElement[bo
 
 
 def _in_days(table: Folded, days: Days) -> tuple[ColumnElement[bool], ...]:
-    scope = days.scope
-    within = (
+    scope, copies = days.scope, days.copies
+    within: tuple[ColumnElement[bool], ...] = (
         table.org == scope.org,
         table.env == scope.env,
-        table.holder == scope.holder,
         table.day >= days.first,
         table.day <= days.last,
     )
+    if copies is not None:
+        within = (*within, table.holder.in_(copies))
     return within if days.agent is None else (*within, table.agent == days.agent)

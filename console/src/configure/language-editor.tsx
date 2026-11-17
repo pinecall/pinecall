@@ -7,7 +7,7 @@ import { Field } from "../ui/setting";
 import { EditDialog } from "./dialog";
 
 // The languages offered by name; any other is typed as its tag, and the gateway checks it with the vendors.
-const TAGS: readonly string[] = ["en", "es", "pt", "fr", "de", "it", "nl", "ca", "sv", "da", "nb", "fi", "pl", "cs", "ro", "hu", "el", "tr", "ru", "uk", "ar", "he", "hi", "id", "vi", "th", "ja", "ko", "zh"];
+const TAGS: readonly string[] = ["en", "es", "pt", "fr", "de", "it", "nl", "ca", "sv", "da", "nb", "fi", "pl", "cs", "ro", "hu", "el", "tr", "ru", "uk", "ar", "he", "fa", "hi", "bn", "ta", "te", "mr", "gu", "kn", "ml", "pa", "id", "vi", "th", "ja", "ko", "zh"];
 const NAMES = new Intl.DisplayNames(["en"], { type: "language" });
 const OTHER = "other";
 
@@ -21,13 +21,18 @@ export function languageName(tag: string): string | null {
   }
 }
 
+/** Every language offered by name, a row each: its name, its tag beside it, found by either. */
+export function languageItems(): SelectItem[] {
+  return TAGS.map((one) => ({ value: one, label: languageName(one) ?? one, tags: <span className="cfg-tag">{one}</span>, keywords: one }));
+}
+
 export function LanguageEditor({ initial, ears, voice, saving, refused, onClose, onSave }: { initial: string; ears: string; voice: string; saving: boolean; refused: string | null; onClose: () => void; onSave: (tag: string) => Promise<boolean> }): ReactNode {
   const [picked, setPicked] = useState(initial === "" || TAGS.includes(initial) ? initial : OTHER);
   const [typed, setTyped] = useState(initial);
   const tag = picked === OTHER ? typed.trim() : picked;
   const items: SelectItem[] = [
     { value: "", label: "Not set", detail: `${ears} and ${voice} each run their own default.` },
-    ...TAGS.map((one) => ({ value: one, label: languageName(one) ?? one, tags: <span className="cfg-tag">{one}</span>, keywords: one })),
+    ...languageItems(),
     { value: OTHER, label: "Another language…", detail: "One not listed here, by its tag: gl, eu, sw." },
   ];
   return (
@@ -45,7 +50,7 @@ export function LanguageEditor({ initial, ears, voice, saving, refused, onClose,
       <dl className="cfg-reach">
         <dt>What it reaches</dt>
         <dd>
-          <b>The transcriber.</b> {tag === "" ? `${ears} listens in its own default language.` : `${ears} is told to expect ${languageName(tag) ?? tag}.`}
+          <b>The transcriber.</b> {tag === "" ? `${ears} guesses among the languages it knows.` : `One that hears ${languageName(tag) ?? tag} listens for it: Pinecall picks it unless this agent names its own.`}
         </dd>
         <dd>
           <b>The voice.</b> {tag === "" ? `${voice} speaks its own default language.` : `${voice} speaks it, and a voice nobody picked is that language's default.`}

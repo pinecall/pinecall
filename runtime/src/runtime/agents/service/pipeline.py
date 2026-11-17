@@ -103,6 +103,8 @@ class Report:
     measured: Measured
     # Which stage has no key to run on, and why, before a call fails for want of it.
     unavailable_reasons: Mapping[str, str] = field(default_factory=dict[str, str])
+    # Which stage runs but not well, and why: ears that do not hear the agent's language.
+    warnings: Mapping[str, str] = field(default_factory=dict[str, str])
     # The picker reads GET /v1/voices; no names are curated in code.
     voices: tuple[str, ...] = ()
 
@@ -196,6 +198,7 @@ async def report_on(session: AsyncSession, vault: Vault, scope: Scope, agent: Ag
         voice_defaults=dict(catalog.voices),
         measured=measured,
         unavailable_reasons=list_unavailable(resolved, catalog, keys),
+        warnings=list_warnings(resolved, catalog),
     )
 
 
@@ -209,12 +212,17 @@ def _plan_stage(stage: Stage, declaration: Declaration, catalog: Catalog, *, lan
             voice_id=None if voice is None else voice.voice_id,
             language=language,
         )
-    named = declaration.stt if stage is Stage.stt else declaration.llm
-    return StagePlan(
-        vendor=default.vendor if named is None else named.vendor,
-        model=None if named is None else named.model or None,
-        language=language,
-    )
+    if stage is Stage.llm:
+        named = declaration.llm
+        return StagePlan(
+            vendor=default.vendor if named is None else named.vendor,
+            model=None if named is None else named.model or None,
+        )
+    if declaration.stt is not None:
+        return StagePlan(vendor=declaration.stt.vendor, model=declaration.stt.model or None, language=language)
+    # Ears nobody named are the default's, said with no model, or the ones that hear the language, said whole.
+    ears = catalog.ears_for(language)
+    return StagePlan(vendor=ears.vendor, model=None if ears is default else ears.model, language=language)
 
 
 # Checked as the call builds it (`providers.stage_on_its_key`): the vendor the agent names or the row's, on
@@ -225,13 +233,36 @@ def list_unavailable(declaration: Declaration, catalog: Catalog, keys: providers
     """Each stage the next call could not run, with the reason; empty when all three run."""
     named = {"hears": declaration.stt, "decides": declaration.llm, "speaks": declaration.voice}
     stage_of = {"hears": Stage.stt, "decides": Stage.llm, "speaks": Stage.tts}
+    ears = catalog.ears_for(primary_language(declaration.language))
     missing: dict[str, str] = {}
     for where, own in named.items():
         stage = stage_of[where]
-        default = catalog.defaults[stage]
+        default = ears if stage is Stage.stt else catalog.defaults[stage]
         vendor, model = (default.vendor, default.model) if own is None else (own.vendor, own.model or None)
         try:
             providers.running_on(keys, vendor, model or catalog.model_for(stage, vendor))
         except PinecallError as refused:
             missing[where] = str(refused)
     return missing
+
+
+# A call that is not heard is not refused: it runs, and its agent answers what nobody said. Said here,
+# where the agent is set, in the words that fix it.
+def list_warnings(declaration: Declaration, catalog: Catalog) -> dict[str, str]:
+    """Each stage that runs but not well, with the reason: ears that do not hear the agent's language."""
+    language = primary_language(declaration.language)
+    if language is None:
+        return {}
+    named = declaration.stt
+    ears = catalog.ears_for(language)
+    vendor, model = (ears.vendor, ears.model) if named is None else (named.vendor, named.model or None)
+    listed = catalog.find_heard(vendor, model)
+    if listed is None or language in listed:
+        return {}
+    whose = f"{vendor}/{model or catalog.model_for(Stage.stt, vendor)}"
+    fix = (
+        "no transcriber this runtime lists hears it: name one that does"
+        if named is None
+        else "take the transcriber out of its settings and Pinecall picks one that does"
+    )
+    return {"hears": f"{whose} does not hear {language} (it hears {', '.join(listed)}): {fix}"}

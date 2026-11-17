@@ -67,7 +67,11 @@ def build_pipeline(declaration: AgentStages, catalog: Catalog, keys: Keyring) ->
     language = primary_language(declaration.language)
     llm = thinking_of(declaration, catalog, keys)
     stt = _back_by(
-        stage_on_its_key(Stage.stt, declaration.stt, catalog, keys), Stage.stt, declaration.stt_fallbacks, catalog, keys
+        stage_on_its_key(Stage.stt, declaration.stt, catalog, keys, language),
+        Stage.stt,
+        declaration.stt_fallbacks,
+        catalog,
+        keys,
     )
     tts = _back_by(
         stage_on_its_key(Stage.tts, declaration.voice, catalog, keys),
@@ -78,7 +82,13 @@ def build_pipeline(declaration: AgentStages, catalog: Catalog, keys: Keyring) ->
     )
     heard = dict.fromkeys(item for item in (language, *catalog.hints) if item)
     voice = declaration.voice.voice_id if declaration.voice else None
-    ears = [dataclasses.replace(item, language=language, hints=tuple(heard)) for item in (stt, *stt.fallbacks)]
+    # Ears are told to listen for the languages they hear alone: Flux refuses a hint it does not know.
+    ears = [
+        dataclasses.replace(
+            item, language=language, hints=tuple(one for one in heard if catalog.hears(item.vendor, item.model, one))
+        )
+        for item in (stt, *stt.fallbacks)
+    ]
     # The agent's voice is its vendor's; a vendor that takes over speaks the row's for the language.
     voices = [
         dataclasses.replace(
@@ -115,12 +125,14 @@ def thinking_of(declaration: AgentStages, catalog: Catalog, keys: Keyring) -> Ru
 # An agent that names its vendor runs it alone; one on the row's default runs the default's
 # fallbacks behind it, each on its own key, in the row's order. A fallback this org cannot key is
 # left out.
-def stage_on_its_key(stage: Stage, named: Model | Voice | None, catalog: Catalog, keys: Keyring) -> Running:
-    """One stage on its key: the vendor named or the default, with the operator's options."""
+def stage_on_its_key(
+    stage: Stage, named: Model | Voice | None, catalog: Catalog, keys: Keyring, language: str | None = None
+) -> Running:
+    """One stage on its key, as the operator tuned it: the vendor named, else the default, or ears for the language."""
     if named is not None:
         chosen = _run_on_its_key(stage, named.vendor, named.model or None, catalog, keys)
         return _run_as_named(stage, chosen, named)
-    default = catalog.defaults[stage]
+    default = catalog.ears_for(language) if stage is Stage.stt else catalog.defaults[stage]
     chosen = _run_on_its_key(stage, default.vendor, default.model, catalog, keys)
     return chosen.over(*_list_with_a_key(stage, ((one.vendor, one.model) for one in default.fallbacks), catalog, keys))
 

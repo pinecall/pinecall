@@ -23,6 +23,8 @@ interface Said {
   note?: string | undefined;
   /** Nobody chose it: said in the quiet colour. */
   unset?: boolean;
+  /** What is wrong with it as it stands, said whole under it. */
+  warn?: string | undefined;
 }
 
 function Row({ name, about, said, from, readOnly, onEdit }: { name: string; about: string; said: Said; from: From; readOnly: boolean; onEdit: () => void }): ReactNode {
@@ -37,6 +39,11 @@ function Row({ name, about, said, from, readOnly, onEdit }: { name: string; abou
           {said.main}
         </span>
         {said.note !== undefined && <span className="cfg-set-note dash-clip">{said.note}</span>}
+        {said.warn !== undefined && (
+          <span className="cfg-set-warn" role="status">
+            {said.warn}
+          </span>
+        )}
       </div>
       <Origin from={from} />
       {from !== "class" && !readOnly ? <Pencil label={`Change ${name.toLowerCase()}`} onClick={onEdit} /> : <span />}
@@ -99,7 +106,7 @@ export function SettingsList({ readOnly, report, answer, config, fixed, lexicon,
 
   const language = knobOf(answer, "language");
   const tag = language.value ?? report.speaks.language ?? report.hears.language ?? null;
-  const languageSaid: Said = tag === null ? { main: "Not set", note: `${ears} and ${voice} each run their own default`, unset: true } : { main: languageName(tag) ?? tag, note: `${tag}, told to ${ears} and ${voice}` };
+  const languageSaid: Said = tag === null ? { main: "Not set", note: `${ears} guesses, ${voice} speaks its default`, unset: true } : { main: languageName(tag) ?? tag, note: `${tag}, heard by ${ears} and spoken by ${voice}`, warn: report.warnings["hears"] };
 
   const zone = knobOf(answer, "timezone");
   const zoneSaid: Said = fixed.has("timezone") ? { main: IN_THE_CLASS } : zone.value === null ? { main: "Not set", note: "The agent is told the day, and no hour", unset: true } : { main: zone.value };

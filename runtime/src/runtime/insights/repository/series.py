@@ -11,10 +11,12 @@ from sqlalchemy.sql.elements import TextClause
 from runtime.insights.repository.drift import Days
 from runtime.kit.time import A_DAY_S, day_of
 
-# The scope's calls, or one agent's when the window names one, inside the window.
+# The calls of the copies the window counts (holders null is every copy of the env), or one agent's
+# when the window names one, inside the window.
 CALLS = """
 from call_log_head head left join call_facts f on f.call = head.log
-where head.org = :org and head.env = :env and head.holder = :holder
+where head.org = :org and head.env = :env
+  and (cast(:holders as text[]) is null or head.holder = any(cast(:holders as text[])))
   and head.call is not null and (cast(:agent as text) is null or head.agent = :agent)
 """
 WINDOWED = "head.started_at >= :start and head.started_at < :end"
@@ -25,7 +27,8 @@ BY_DAY = "floor(head.started_at / :a_day)::bigint as epoch_day"
 TURNS = """
 from call_log_head head join call_facts f on f.call = head.log
 cross join lateral unnest(f.e2e) as turn(seconds)
-where head.org = :org and head.env = :env and head.holder = :holder
+where head.org = :org and head.env = :env
+  and (cast(:holders as text[]) is null or head.holder = any(cast(:holders as text[])))
   and head.call is not null and (cast(:agent as text) is null or head.agent = :agent)
 """
 
@@ -290,7 +293,7 @@ def _params(days: Days) -> dict[str, Any]:
     return {
         "org": scope.org,
         "env": scope.env.value,
-        "holder": scope.holder,
+        "holders": days.copies,
         "start": days.start,
         "end": days.end,
         "agent": days.agent,

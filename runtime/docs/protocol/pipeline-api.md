@@ -21,11 +21,16 @@ What one agent would hear, decide and speak with on its next call, and how fast 
   "voice_defaults": { "elevenlabs/es": "a-voice", "google/en": "Kore" },
   "calls": 12,
   "medians": [ { "name": "transcription_delay", "seconds": 0.13, "turns": 41 } ],
-  "unavailable_reasons": { "speaks": "elevenlabs has no key: the org brought none and the box holds none" } }
+  "unavailable_reasons": { "speaks": "elevenlabs has no key: the org brought none and the box holds none" },
+  "warnings": { "hears": "deepgram/flux-general-multi does not hear ar (it hears en, es, fr, …): take the transcriber out of its settings and Pinecall picks one that does" } }
 ```
 
 Each stage is the vendor a call **would** be built with: the agent's settings, else the providers
-row's default for that modality. `talks` is the realtime model a voice call runs on alone, where the
+row's default for that modality. Ears nobody named follow the agent's language: where the row lists what the
+default's ears hear and the language is not among them, `hears` is the first of the row's `ears` that hear
+it, said with its model ([operator-api.md](operator-api.md)). Ears the agent names are never swapped, and
+`warnings` says so under `hears` when they do not hear its language, with what fixes it: such a call is not
+refused, it runs and is heard wrong. `talks` is the realtime model a voice call runs on alone, where the
 agent names one (`{ "vendor": "xai", "model": "grok-voice-3.0", … }`): then its voice calls use
 no `hears`, and `speaks` only where the realtime model cannot say given words itself (the recording
 notice, a greeting given as words, a read-back) — xAI's can, so its calls use no `speaks` at all — and

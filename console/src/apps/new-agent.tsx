@@ -5,6 +5,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { readReport, type Report } from "../configure/door";
+import { languageItems } from "../configure/language-editor";
 import { VoicePicker } from "../configure/stage-editor";
 import { AddNumberPanel } from "../numbers/add-number";
 import { TestLine } from "../numbers/test-line";
@@ -37,15 +38,8 @@ const STARTS: readonly { value: string; label: string; detail: string; instructi
 const HERE = Intl.DateTimeFormat().resolvedOptions().timeZone;
 const ZONES = [{ value: "", label: "None", detail: "The agent is told the day only, and no hour" }, ...Intl.supportedValuesOf("timeZone").map((zone) => ({ value: zone, label: zone }))];
 
-const LANGUAGES = [
-  { value: "", label: "Whichever the caller speaks", detail: "Nothing is pinned" },
-  { value: "en", label: "English" },
-  { value: "es", label: "Spanish" },
-  { value: "pt", label: "Portuguese" },
-  { value: "fr", label: "French" },
-  { value: "de", label: "German" },
-  { value: "it", label: "Italian" },
-];
+// Nothing pinned is a guess: a transcriber left to itself hears a few languages well and writes the rest as one of those.
+const LANGUAGES = [{ value: "", label: "Not pinned", detail: "The transcriber guesses. Pick the language your callers speak and it is heard right" }, ...languageItems()];
 
 function nameRefused(name: string, taken: ReadonlySet<string>): string | null {
   if (!A_NAME.test(name)) return "A name is lowercase letters, digits and dashes, starting with a letter: front-desk.";
@@ -153,7 +147,7 @@ export function NewAgentPanel({ taken, onMade, onOpen, onClose }: { taken: Reado
       <SidePanel
         title="How it sounds"
         icon="speaker"
-        about={`${made} is made. Pick the language it is pinned to, the voice it speaks in and the time zone its clock is read in, or skip and change them in Configure.`}
+        about={`${made} is made. Pick the language its callers speak, so a transcriber that hears it listens, then the voice it speaks in and the time zone its clock is read in. Each can be changed in Configure.`}
         onClose={() => onOpen(made, false)}
         footer={
           <>
@@ -174,7 +168,7 @@ export function NewAgentPanel({ taken, onMade, onOpen, onClose }: { taken: Reado
         }
       >
         <Field label="Language">
-          <Select label="Language" searchable={false} items={LANGUAGES} value={language} onChange={(picked) => (setLanguage(picked), setVoice(""))} />
+          <Select label="Language" searchable searchPlaceholder="Search languages" items={LANGUAGES} value={language} onChange={(picked) => (setLanguage(picked), setVoice(""))} />
         </Field>
         <Field label="Voice">{speaks === null ? <p className="dash-quiet">Reading its voices…</p> : <VoicePicker key={language} vendor={speaks.vendor} model={speaks.model} language={language === "" ? null : language} voice={voice} onVoice={setVoice} />}</Field>
         <Field label="Time zone">

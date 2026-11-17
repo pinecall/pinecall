@@ -121,3 +121,41 @@ def test_an_agents_own_fallbacks_take_the_place_of_the_stages_and_one_with_no_ke
     assert pipeline.build_pipeline(Stages(), _tuned(), keys).stt.fallbacks == ()
     backed = pipeline.build_pipeline(Stages(stt_fallbacks=named), _tuned(), keys)
     assert [one.model for one in backed.stt.fallbacks] == [acme.EARS]
+
+
+WIDE_EARS = "acme-ears-wide"
+
+
+def _by_language() -> Catalog:
+    row = configured().model_dump(mode="json")
+    row["heard"] = {f"stt/{acme.ACME}/{acme.EARS}": ["en", "es"]}
+    row["ears"] = [{"vendor": acme.ACME, "model": WIDE_EARS}]
+    row["hints"] = ["es", "en"]
+    return Catalog.model_validate(row)
+
+
+# Deepgram's Flux hears ten languages and wrote a call in Arabic as English that sounds alike: the agent
+# read "Detail it Morattossel" and said it could not hear (2026-11-17).
+def test_a_call_in_a_language_the_defaults_ears_do_not_hear_runs_the_ears_that_do() -> None:
+    """Spanish and no language stay on the default's ears; Arabic, by any tag, runs the row's ears for the rest."""
+    keys = Keyring(box={acme.ACME: "box-key"})
+    assert pipeline.build_pipeline(Stages(language="es"), _by_language(), keys).stt.model == acme.EARS
+    assert pipeline.build_pipeline(Stages(), _by_language(), keys).stt.model == acme.EARS
+    arabic = pipeline.build_pipeline(Stages(language="ar-EG"), _by_language(), keys).stt
+    assert (arabic.model, arabic.language, arabic.hints) == (WIDE_EARS, "ar", ("ar", "es", "en"))
+
+
+def test_ears_an_agent_names_stay_its_own_and_are_told_the_languages_they_hear_alone() -> None:
+    """Named ears are never swapped; a hint they do not hear is not sent, since the vendor refuses it."""
+    keys = Keyring(box={acme.ACME: "box-key"})
+    named = Stages(language="ar", stt=Model(vendor=acme.ACME, model=acme.EARS))
+    ears = pipeline.build_pipeline(named, _by_language(), keys).stt
+    assert (ears.model, ears.hints) == (acme.EARS, ("es", "en"))
+
+
+def test_a_language_no_listed_ears_hear_stays_on_the_defaults() -> None:
+    """With nothing else to run, the default's ears take the call: the report warns, the call is not refused."""
+    row = _by_language().model_dump(mode="json")
+    row["heard"][f"stt/{acme.ACME}/{WIDE_EARS}"] = ["ar"]
+    keys = Keyring(box={acme.ACME: "box-key"})
+    assert pipeline.build_pipeline(Stages(language="hi"), Catalog.model_validate(row), keys).stt.model == acme.EARS

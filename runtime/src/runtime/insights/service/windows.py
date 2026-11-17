@@ -6,8 +6,9 @@ from datetime import date, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from runtime.actor import Scope
+from runtime.actor import Actor, Scope
 from runtime.billing import service as billing
+from runtime.calls import service as calls
 from runtime.enums import Stage
 from runtime.exceptions import ValidationError
 from runtime.insights.models import StageDay
@@ -163,12 +164,12 @@ class Series:
 
 
 # The windows the console offers are whole UTC days: today, a week, a month.
-def read_days(scope: Scope, last: date | None, count: int, agent: str | None) -> Days:
-    """The window of so many whole UTC days of the scope ending on the day named, today when none is."""
+def read_days(actor: Actor, last: date | None, count: int, agent: str | None) -> Days:
+    """The window of so many whole UTC days ending on the day named, today when none is: of the copies the key lists."""
     if count not in WINDOWS:
         raise ValidationError(f"days={count} is not a window: one of 1, 7 or 30")
     end = last or now().date()
-    return Days(scope, end - timedelta(days=count - 1), end, agent)
+    return Days(actor.scope, end - timedelta(days=count - 1), end, agent, calls.list_copies(actor))
 
 
 # The window is the scope's, or one agent's of it; the budget is the org's across both envs and its
@@ -252,7 +253,7 @@ async def series_window(
 
 async def _list_series(session: AsyncSession, days: Days) -> list[SeriesDay]:
     counts, folds = SeriesRepository(session), DriftRepository(session)
-    calls = {row.day: row for row in await counts.list_call_days(days)}
+    started = {row.day: row for row in await counts.list_call_days(days)}
     e2e = {row.day: row for row in await counts.list_latency_days(days)}
     endings = await counts.list_day_endings(days)
     stages = await folds.list_stages(days)
@@ -260,7 +261,7 @@ async def _list_series(session: AsyncSession, days: Days) -> list[SeriesDay]:
     tools = {row.day: row for row in await folds.list_tool_counts(days)}
     found: list[SeriesDay] = []
     for day in _each_day(days):
-        counted, waited, ran = calls.get(day), e2e.get(day), tools.get(day)
+        counted, waited, ran = started.get(day), e2e.get(day), tools.get(day)
         found.append(
             SeriesDay(
                 day=day,

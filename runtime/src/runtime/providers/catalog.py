@@ -162,6 +162,12 @@ class Catalog(Schema):
     tuning: dict[str, StageOptions] = Field(default_factory=dict[str, StageOptions])
     # Languages the ears listen for beside the call's own.
     hints: tuple[str, ...] = ()
+    # `stt/deepgram/flux-general-multi`: the languages those ears hear, by base code; ears the row lists
+    # nothing for hear whatever language a call is in.
+    heard: dict[str, tuple[str, ...]] = Field(default_factory=dict[str, tuple[str, ...]])
+    # The ears a call runs where the default's do not hear its language and its agent names none: the
+    # first of these that hear it.
+    ears: tuple[StageChoice, ...] = ()
     # A model's price, by the longest prefix of its id: dated snapshots price by family.
     rates: dict[str, Rate] = Field(default_factory=dict[str, Rate])
     # `cartesia/sonic-3.6`: the name the vendor gives a model where it is not the id; the models file's.
@@ -194,6 +200,25 @@ class Catalog(Schema):
         prefixes = (key.removeprefix(under) for key in self.tuning if key.startswith(under))
         named = None if model is None else longest_prefix(prefixes, model)
         return self.tuning.get(own if named is None else f"{under}{named}")
+
+    def find_heard(self, vendor: str, model: str | None) -> tuple[str, ...] | None:
+        """The languages a vendor's ears hear, on the model named or the one the row runs; None where it lists none."""
+        named = model or self.model_for(Stage.stt, vendor)
+        return None if named is None else self.heard.get(f"{stage_key(Stage.stt, vendor)}{_SEPARATOR}{named}")
+
+    def hears(self, vendor: str, model: str | None, language: str) -> bool:
+        """Whether a vendor's ears hear the language: they do unless the row lists what they hear without it."""
+        listed = self.find_heard(vendor, model)
+        return listed is None or language in listed
+
+    # Flux hears ten languages and writes any other as English that sounds alike: a call in Arabic ran on
+    # it and its agent read "Detail it Morattossel" (2026-11-17).
+    def ears_for(self, language: str | None) -> StageChoice:
+        """The ears a call in the language runs where its agent names none: the default's, or the first that hear it."""
+        default = self.defaults[Stage.stt]
+        if language is None or self.hears(default.vendor, default.model, language):
+            return default
+        return next((one for one in self.ears if self.hears(one.vendor, one.model, language)), default)
 
     def leads_for(self, stage: Stage, vendor: str) -> tuple[str, ...]:
         """The models a picker leads with for a vendor and stage, in order."""

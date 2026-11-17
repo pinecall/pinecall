@@ -19,7 +19,7 @@ async def get_insights(
     actor: CallsKey, agent: TheAllowedFilter, session: Session, query: Annotated[schemas.InsightsQuery, Query()]
 ) -> schemas.Insights:
     """Whole UTC days of the key's env and scope at a glance, and the month's spend."""
-    days = windows.read_days(actor.scope, query.day, query.days, agent)
+    days = windows.read_days(actor, query.day, query.days, agent)
     return schemas.Insights.of(await windows.window_of(session, days))
 
 
@@ -30,7 +30,7 @@ async def get_series(
     actor: CallsKey, agent: TheAllowedFilter, session: Session, query: Annotated[schemas.InsightsQuery, Query()]
 ) -> schemas.Series:
     """Every UTC day of the window: calls, endings, cost, latencies, judges and tools."""
-    days = windows.read_days(actor.scope, query.day, query.days, agent)
+    days = windows.read_days(actor, query.day, query.days, agent)
     return schemas.Series.of(await windows.series_of(session, days))
 
 
@@ -40,7 +40,7 @@ async def list_tools(
     actor: CallsKey, agent: TheAllowedFilter, session: Session, query: Annotated[schemas.InsightsQuery, Query()]
 ) -> schemas.ToolsReport:
     """Every tool of the window: results, failures, median seconds and the newest failure."""
-    days = windows.read_days(actor.scope, query.day, query.days, agent)
+    days = windows.read_days(actor, query.day, query.days, agent)
     return schemas.ToolsReport.of(await tool_days.tools_of_window(session, days))
 
 
@@ -50,7 +50,7 @@ async def list_slow_turns(
     actor: CallsKey, agent: TheAllowedFilter, session: Session, query: Annotated[schemas.SlowQuery, Query()]
 ) -> schemas.SlowTurns:
     """The slowest turns of the window with where each one's wait went, the slowest first."""
-    days = windows.read_days(actor.scope, query.day, query.days, agent)
+    days = windows.read_days(actor, query.day, query.days, agent)
     return schemas.SlowTurns.of(await slow_turns.slowest_of_window(session, days, query.limit))
 
 

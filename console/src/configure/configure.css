@@ -80,6 +80,7 @@
 .cfg-set-name { font-weight: 500; }
 .cfg-set-about, .cfg-set-note { color: var(--quiet); font-size: 12.5px; line-height: 1.4; }
 .cfg-set-unset { color: var(--quiet); }
+.cfg-set-warn { color: var(--warn); font-size: 12.5px; line-height: 1.4; }
 .cfg-origin { display: inline-flex; cursor: help; }
 .cfg-tag { padding: 1px 6px; border-radius: 4px; background: var(--raised); color: var(--quiet); font-family: var(--mono); font-size: 11.5px; }
 

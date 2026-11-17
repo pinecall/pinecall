@@ -51,6 +51,8 @@ MURMURS: Mapping[str, tuple[str, ...]] = {
     "fr": ("hm hm", "oui"),
     "de": ("mhm", "ja"),
     "it": ("mh mh", "sì"),
+    "ar": ("آه", "تمام", "أيوه"),
+    "hi": ("हाँ", "जी", "अच्छा"),
 }
 
 

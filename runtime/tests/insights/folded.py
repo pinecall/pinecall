@@ -14,8 +14,8 @@ from runtime.wire.scores import CallScore
 NOT_JUDGED = CallScore(judges=[], judge_calls=0)
 
 
-async def opened(sessions: async_sessionmaker[AsyncSession], org: str, call: str, agent: str) -> None:
-    """A sealed head for the call, claimed in the org's sandbox and started now, as a fold finds it."""
+async def opened(sessions: async_sessionmaker[AsyncSession], org: str, call: str, agent: str, holder: str = "") -> None:
+    """A sealed head for the call, claimed in the org's sandbox by the org or a holder, started now."""
     async with sessions.begin() as session:
         session.add(
             CallLogHead(
@@ -24,7 +24,7 @@ async def opened(sessions: async_sessionmaker[AsyncSession], org: str, call: str
                 agent=agent,
                 org=org,
                 env=Env.sandbox,
-                holder="",
+                holder=holder,
                 sealed=True,
                 started_at=time.time(),
                 config_version=1,

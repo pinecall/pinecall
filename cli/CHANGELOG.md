@@ -6,6 +6,9 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **`pinecall pipeline` says when a transcriber does not hear the agent's language**, in the gateway's words
+  and with what fixes it, under the stages.
+
 - **`simulate` and `personas` reach an agent built in Studio.** Both asked for the agent's folder, and a Studio
   agent has none: `pinecall simulate --agent front-desk --persona in-a-hurry` answered `no agent here`, from the
   project and from any other folder, while `pinecall chat front-desk` talked to it. They only ever read the

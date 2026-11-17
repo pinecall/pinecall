@@ -255,6 +255,11 @@ export function pipeline(report: PipelineReport): string[] {
     lines.push("");
     for (const [vendor, why] of off) lines.push(`  ${vendor} is not available here: ${why}`);
   }
+  const warned = Object.entries(report.warnings ?? {});
+  if (warned.length > 0) {
+    lines.push("");
+    for (const [stage, why] of warned) lines.push(`  ${stage}: ${why}`);
+  }
   return lines;
 }
 

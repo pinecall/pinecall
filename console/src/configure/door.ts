@@ -43,6 +43,8 @@ const ReportSchema = z.looseObject({
   voice_defaults: z.record(z.string(), z.string()).default({}),
   calls: z.number(),
   medians: z.array(z.object({ name: z.string(), seconds: z.number(), turns: z.number() })),
+  // By stage, why it runs but not well: ears that do not hear the agent's language; a runtime before it answers none.
+  warnings: z.record(z.string(), z.string()).default({}),
 });
 
 export type Report = z.infer<typeof ReportSchema>;

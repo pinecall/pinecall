@@ -64,6 +64,8 @@ export interface PipelineReport {
   calls: number;
   medians: PipelineMedian[];
   unavailable_reasons: Record<string, string>;
+  /** By stage, why it runs but not well: ears that do not hear the agent's language; a runtime before it says none. */
+  warnings?: Record<string, string>;
 }
 
 /** The catalogue as the voices read it: which vendor lists its voices, and the gateway's own vendor per stage. */

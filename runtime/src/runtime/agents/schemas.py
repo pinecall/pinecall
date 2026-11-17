@@ -306,6 +306,8 @@ class PipelineReport(Row):
     calls: int
     medians: list[Measured]
     unavailable_reasons: dict[str, str]
+    # By stage (`hears`), why it runs but not well: ears that do not hear the agent's language.
+    warnings: dict[str, str] = Field(default_factory=dict[str, str])
 
 
 class WidgetSettings(WireModel):

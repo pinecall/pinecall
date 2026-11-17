@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **A call in a language the default transcriber does not hear runs one that does.** Deepgram's Flux hears ten
+  languages and writes any other as English that sounds alike: a new org's agent in Egyptian Arabic read
+  "Detail it Morattossel" and told its caller it could not hear. The providers row now says what a vendor's
+  ears hear (`heard`) and which ears a call runs for the rest (`ears`): an agent with a language set and no
+  transcriber named runs the first that hear it, and ears are told only the hints they know. A transcriber the
+  agent names is never swapped; `GET /v1/agents/{slug}/pipeline` answers `warnings.hears` when it does not hear
+  the language, and the console's Configure says it under Language. The Studio's "How it sounds" step offers
+  every language Configure does, Arabic, Hindi and eight more of India's among them, found by typing; nothing
+  pinned reads as the guess it is. A simulated caller murmurs in Arabic and in Hindi.
+
+- **The count of an agent's calls reads the copies its list reads.** `GET /v1/insights` counted the reader's
+  own copy alone, while a list of calls reads the reader's and the org's, and every copy for whoever opens
+  colleagues': an operator looking at an org's agent read "0 calls in 30 days" over a list of seven. The window,
+  its series, its tools and its slowest turns count the same copies as the list.
+
 - **`pinecall login` no longer says "needs a key" of a stage the runtime lends.** The advice asked whether the
   host lends the whole vendor, and a trial lends models (`google/gemini-3.5-flash-lite`): a new org read `needs a
   key` beside the model its calls already ran on, and was advised another vendor's voice than the one it speaks

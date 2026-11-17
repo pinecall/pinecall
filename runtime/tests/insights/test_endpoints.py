@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from runtime.wire.base import Entry
 from tests.calls.factories import a_call_with_tools, a_tool_result, entry
 from tests.conftest import Gateway, Tenant, needs_the_services
-from tests.insights.folded import fold_call
+from tests.insights.folded import fold_call, opened
 
 pytestmark = needs_the_services
 
@@ -115,3 +115,18 @@ async def test_the_series_names_every_vendor_of_the_window_with_its_stage(
     assert (spoken["vendor"], spoken["model"], spoken["turns"]) == ("elevenlabs", "flash", 2)
     assert spoken["median_s"] == pytest.approx(0.3, rel=0.06) and spoken["p95_s"] is not None
     assert len(body["series"]) == 7
+
+
+# An operator opened a new org's agent: the list showed its seven calls and the ring over it said "0 calls
+# in 30 days", because the window counted the reader's own copy alone (2026-11-17).
+async def test_the_window_counts_the_copies_a_list_of_calls_reads(
+    gateway: Gateway, tenant: Tenant, sessions: async_sessionmaker[AsyncSession], call: str, agent: str
+) -> None:
+    """The org's own copy and a colleague's both count for an admin in the sandbox; a server key counts the org's."""
+    await opened(sessions, tenant.org, call, agent)
+    await opened(sessions, tenant.org, f"{call}_theirs", agent, holder="m_a_colleague")
+    asked_as = {"days": 7, "agent": agent}
+    person = await gateway.http.get("/v1/insights", params=asked_as, headers=tenant.person)
+    assert person.status_code == 200, person.text
+    assert (person.json()["conversations"]["now"], person.json()["channels"]["web"]) == (2, 0)
+    assert (await asked(gateway, tenant, "/v1/insights", **asked_as))["conversations"]["now"] == 1

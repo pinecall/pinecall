@@ -26,7 +26,10 @@ Rows of `box_settings`, each read and written whole. The console's Box settings 
   voice as its model), the voices a picker
   offers per vendor and language where the vendor's plugin lists none (`listed`: `"cartesia/es":
   [{id, name, gender, country, accent, description}]`, [provider-keys.md](provider-keys.md#the-voices)), what each vendor is told
-  (`tuning`), the language hints, the rates a call is priced at in dollars, the judge model and what
+  (`tuning`), the language hints, the languages a vendor's ears hear (`heard`: `"stt/deepgram/flux-general-multi":
+  ["en", "es", …]`, by base code; ears listed with none hear whatever a call is in) and the ears a call runs
+  where the default's do not hear its language and its agent names none (`ears`, stages as a default is: the
+  first that hear it), the rates a call is priced at in dollars, the judge model and what
   judging one call may spend on it (`judge.ceiling_usd`: a model judge past it is `skipped`), what
   one simulated call's caller may spend on its lines and its voice (`caller.ceiling_usd`: past it
   the caller hangs up; absent, it spends what its turns ask) and the model a persona that names
