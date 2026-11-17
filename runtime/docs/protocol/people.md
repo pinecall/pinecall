@@ -304,7 +304,9 @@ one — a sign-up with neither is `400`. A deployment that cannot mail takes
 none (`503`), and one with Turnstile refuses `403` a token missing or refused, before anything is
 counted. Every address is answered alike, so the endpoint says nobody whether one has an
 account: an address with a password signs up with it, and with another is mailed that it has an
-account instead of a code; one invited somewhere is mailed to accept that first. A slug taken is
+account instead of a code; one that took a seat with no password (Google, its org's own provider) is
+mailed that it has an account to sign in to as it did before; one only invited somewhere is mailed
+to accept that first. A slug taken is
 `409`. `POST /v1/signup/verify {email, code}` makes
 the org, allowed what the platform's admission gives a newborn org, its admin active, and answers
 `201` with the key shape plus `slug`, `member`, and a login `code` for the console; the console

@@ -1,4 +1,4 @@
-"""The emails of signing in: a forgotten password, a sign-up's code, and the two notes sent instead of one."""
+"""The emails of signing in: a forgotten password, a sign-up's code, and the three notes sent instead of one."""
 
 from runtime.mail import service as mail
 from runtime.platform import service as platform
@@ -30,6 +30,20 @@ def account_exists_email(to: str, brand: platform.Brand) -> mail.Email:
             f"Somebody tried to sign up for {brand.name} with this address, which already has an "
             "account. To make another org, sign up again with the password you have; if you forgot "
             "it, reset it from the sign-in page."
+        ),
+    )
+
+
+def account_without_password_email(to: str, brand: platform.Brand) -> mail.Email:
+    """Sent instead of a sign-up code when the address has an account that no password opens."""
+    return mail.write_notice(
+        to,
+        brand,
+        "You already have an account",
+        (
+            f"Somebody tried to sign up for {brand.name} with this address, which already has an "
+            "account. It has no password: sign in the way you did before, with Google or with your "
+            "company's sign-in, from the sign-in page."
         ),
     )
 

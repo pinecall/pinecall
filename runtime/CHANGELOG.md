@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **A sign-up with the address of an account that has no password says so.** Somebody who had come in with Google
+  and then filled the sign-up form with the same address was mailed "You have an invitation waiting", and nobody had
+  invited them: a seat with no password was read as an invitation, whatever its status. An address with an active
+  seat and no password (Google, its org's own provider) is mailed that it has an account, to sign in to as it did
+  before; the invitation's note goes only to an address that is invited and nothing else.
+
 ## 0.11.42 — a machine of your own sets up from nothing, a refused call says why, and the night's retention runs again (2026-11-17)
 
 - **The nightly retention runs again.** Since the runtime's cutover (2026-11-12) the CronJob ended every night

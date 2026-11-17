@@ -10,7 +10,7 @@ from typing import Any, Literal
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from runtime.accounts import service as accounts
-from runtime.enums import Role
+from runtime.enums import MemberStatus, Role
 from runtime.exceptions import Conflict, NotFound, ServiceUnavailable, ValidationError
 from runtime.kit.crypto import Vault
 from runtime.kit.text import parse_slug, slug_of
@@ -260,15 +260,7 @@ async def begin(
         raise ValidationError("a person has a name: it is what a seat says when they sit")
     hashed = await accounts.hash_password(asking.password, shortest)
     brand = await platform.get_brand(session)
-    # Somebody who has a password signs up with it, or anybody could mint keys in their name; a
-    # sign-up for an invited address would choose that person's password for them.
-    person = await accounts.find_person(session, asking.email)
-    known = person is not None and person.password_hash is not None
-    notice = None
-    if known and not await accounts.password_matches(person, asking.password):
-        notice = emails.account_exists_email(asking.email, brand)
-    elif person is not None and not known and await accounts.memberships_of(session, person):
-        notice = emails.invitation_waiting_email(asking.email, brand)
+    notice = await note_instead_of_a_code(session, asking, brand)
     if notice is not None:
         await outbox.post_after_commit(session, None, notice)
         return Mailed(asking.email, sign_ups.secrets.clock() + SIGNUP.ttl_s)
@@ -280,6 +272,25 @@ async def begin(
         session, None, emails.signup_code_email(asking.email, drawn.code, asking.person, brand)
     )
     return Mailed(asking.email, drawn.expires_at)
+
+
+# Somebody who has a password signs up with it, or anybody could mint keys in their name. A sign-up
+# for an address with no password would choose that person's password for them: one who took a seat
+# without one (Google's proof, their org's own provider) has an account to sign in to, and one only
+# invited has an invitation to accept. Until 2026-11-17 both were mailed about an invitation, so a
+# founder who had come in with Google was told to accept one nobody had sent.
+async def note_instead_of_a_code(session: AsyncSession, asking: Asking, brand: platform.Brand) -> mail.Email | None:
+    """What is mailed instead of a code to an address a sign-up may not take; None for one it may."""
+    person = await accounts.find_person(session, asking.email)
+    if person is None:
+        return None
+    if person.password_hash is not None:
+        matches = await accounts.password_matches(person, asking.password)
+        return None if matches else emails.account_exists_email(asking.email, brand)
+    seats = await accounts.memberships_of(session, person)
+    if any(seat.status is MemberStatus.active for seat in seats):
+        return emails.account_without_password_email(asking.email, brand)
+    return emails.invitation_waiting_email(asking.email, brand) if seats else None
 
 
 async def verify(
