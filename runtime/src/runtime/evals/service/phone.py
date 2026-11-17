@@ -1,7 +1,9 @@
 """The phone line: the simulated caller in a room of its own, its leg dialled over SIP into the agent's, the hang-up."""
 
+import asyncio
 from typing import override
 
+from livekit.agents.utils import aio
 from livekit.protocol.models import ParticipantInfo, TrackType
 
 from runtime.evals.service import turns
@@ -18,8 +20,8 @@ from runtime.telephony import service as telephony
 # what a phone call goes through (G.711 at 8 kHz, the SIP service's jitter buffer, a BYE to hang up).
 # The leg dials the call's own id, which a rule of the env's SIP seats in the room of that name
 # (`telephony.service.simulated_rings`): the gateway named the room and offers it as it offers the
-# spoken line's. The leg is answered before the room is offered, so the job that takes it finds its
-# caller there.
+# spoken line's. The env's SIP answers the leg only once somebody in that room hears it, so the leg
+# rings while the room is offered, and is answered as the agent's job arrives and finds its caller.
 class PhoneLine(SpokenLine):
     """A phone call as its simulated caller is on it: a room of its own, a leg into the agent's, a voice."""
 
@@ -40,8 +42,10 @@ class PhoneLine(SpokenLine):
         self._stack.push_async_callback(close_room, parts.servers[self.env], call)
         self._stack.push_async_exit(self._wait_for_the_end)
         await self._join(telephony.callers_room(call), telephony.RINGS_FROM, speech, interferer)
-        await telephony.ring_simulated_caller(parts.servers, parts.names, self.env, call)
+        ringing = asyncio.ensure_future(telephony.ring_simulated_caller(parts.servers, parts.names, self.env, call))
+        self._stack.push_async_callback(aio.cancel_and_wait, ringing)
         await parts.offering.offer(call, the_fleet, self._dispatch)
+        await ringing
         await self._wait_for_the_agent()
 
     # The caller's own room holds its leg alone: the agent is asked for where it sits, in the call's.

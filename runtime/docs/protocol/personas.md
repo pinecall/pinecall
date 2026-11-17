@@ -77,8 +77,9 @@ the RTCP that asks for a packet again) each cross a link of that shape before th
 sees them, and a packet never overtakes the one before it. So a lost packet is a packet the room never
 got, concealed or asked for again as on a real path, and not ten milliseconds silenced before they
 were encoded, which is what `packet_loss` was until 2026-11-17; the caller also hears each answer
-`delay_ms` late, and answers that much later. A line that names none joins as it always did, with no
-relay. The gateway's log says what the network did when the call ends (`the caller's network carried
+`delay_ms` late, and answers that much later, and stays on the line after hanging up until the agent
+has heard it: the hang-up is a packet like the rest. A line that names none joins as it always did,
+with no relay. The gateway's log says what the network did when the call ends (`the caller's network carried
 … packets up and lost …`).
 
 **By phone.** `via: "sip"` (`"webrtc"` unless said) has the caller ring the agent instead of sitting

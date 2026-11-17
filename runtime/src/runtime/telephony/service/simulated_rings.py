@@ -16,6 +16,7 @@ from livekit.protocol.sip import (
 
 from runtime.enums import Env
 from runtime.exceptions import ServiceUnavailable
+from runtime.fleet import service as fleet
 from runtime.livekit import ROOM_GONE, Servers
 from runtime.telephony.service import hand_over, sfu
 from runtime.telephony.service.carrier import SipNames
@@ -31,8 +32,10 @@ RINGS_FROM = Env.production
 LEG = "simulated_ring"
 # The room a simulated caller speaks in, beside the call's own.
 OF_THE_CALLER = "-caller"
-# The env's SIP answers a leg it admits at once.
-RINGS_S = 10.0
+# The env's SIP answers an inbound leg only once somebody in its room hears it (livekit-sip waits for
+# the leg's track to be subscribed): a simulated caller's leg rings until the job the room is offered
+# to arrives, so it rings for as long as an agent may take to join.
+RINGS_S = fleet.AN_AGENT_JOINS_WITHIN_S
 # What a carrier sends a call in: G.711 µ-law at 8 kHz. Two livekit-sip would agree on G.722, which
 # no phone network carries to us, and the agent would hear a line twice as wide as a caller's.
 A_CARRIERS_CODEC = SIPCodec(name="PCMU", rate=8000)
@@ -96,6 +99,9 @@ def ring_of(call: str, trunk: LegTrunk) -> CreateSIPParticipantRequest:
     return request
 
 
+# Answered means heard: this returns once an agent sits in the call's room, so the room is offered
+# while the leg rings, never after it (awaited first, on 2026-11-17, the leg rang ten seconds in a
+# room nobody had been sent to and was given up).
 async def ring_simulated_caller(servers: Servers, names: SipNames, env: Env, call: str) -> None:
     """Dial the simulated caller's leg into the call's room and wait for the env's SIP to answer it."""
     trunk = hand_over.hand_over_trunk(servers, names, A_SIMULATED_CALLER)

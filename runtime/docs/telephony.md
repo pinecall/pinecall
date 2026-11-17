@@ -146,8 +146,11 @@ choose between two. What tells a simulated ring from a hand-over is who calls. A
 trunk, `simulation`, lists the calling number `simulated_caller` alone, and livekit prefers a rule
 that names the caller over one that names none. It is of the callee's kind with no prefix, so the
 room is what the leg dialled, and the leg dials the call's own id: the caller lands in the room the
-gateway named and claimed before anything rang, which the gateway then offers to the sandbox's fleet
-as it offers a simulated call's room on the web. The rule dispatches nobody itself.
+gateway named and claimed before anything rang, which the gateway offers to the sandbox's fleet as it
+offers a simulated call's room on the web. The rule dispatches nobody itself. livekit-sip answers an
+inbound leg only once somebody in its room hears it (it waits for the leg's track to be subscribed),
+so the leg rings while the room is offered, for as long as an agent may take to join, and is answered
+as the job arrives and finds its caller there.
 
 The job that takes the room is told, on its dispatch (`dialled`), the number the caller rang: the
 number the agent answers at in the sandbox, or the box's test line for an agent that answers at none.

@@ -106,6 +106,11 @@ class SpokenLine:
         parts, leg = self._parts, self._on_the_line()
         await turns.wait_for_answer(parts.logs, parts.store, self._spoken.call, self._lines, since=leg.said_at)
         await self._room.local_participant.publish_data(b"{}", reliable=True, topic=session.HANGUP)
+        # On a line with a network the hang-up is a packet like the rest, held or lost and sent again: the
+        # caller stays on until the agent heard it. Leaving at once, as on a clean line, took the packet
+        # with it, and the call ended ten seconds later by its room closing (2026-11-17).
+        if not self._spoken.network.is_clean:
+            await self._hear_the_end()
 
     def list_said(self) -> Sequence[Said]:
         """What the caller said and when, by the log's clock."""
@@ -219,8 +224,10 @@ class SpokenLine:
     async def _wait_for_the_end(
         self, _kind: type[BaseException] | None, error: BaseException | None, _trace: TracebackType | None
     ) -> None:
-        if error is not None:
-            return
+        if error is None:
+            await self._hear_the_end()
+
+    async def _hear_the_end(self) -> None:
         call = self._spoken.call
         log = self._parts.logs.reading(call)
         subscription = await log.follow()
