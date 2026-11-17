@@ -61,6 +61,18 @@ async def test_a_ring_handed_over_waits_for_its_leg_to_say_the_number_it_dialled
     assert resolve_route(HANDED, arrived, [], None) == IN_THE_SANDBOX
 
 
+# A simulated caller's leg dials the call's own room, which a rule of the SIP service seats it in: what
+# the leg says it dialled is that room's name, and the number it rang is the dispatch's to say.
+async def test_a_simulated_callers_ring_waits_for_its_leg_and_takes_the_number_from_its_dispatch() -> None:
+    rung = Dispatch(agent="front", org="org_a", env=IN_THE_SANDBOX.env, caller="simulated_caller", dialled=NUMBER)
+    leg = seat(
+        "sip_simulated_caller", kind=SIP, attributes={CALLER_NUMBER: "simulated_caller", DIALLED_NUMBER: "call_1"}
+    )
+    arrived = await arrival_of(rung, Room("call_1", leg))
+    assert arrived == replace(A_PHONE, caller="simulated_caller")
+    assert resolve_route(rung, arrived, [], None) == IN_THE_SANDBOX
+
+
 async def test_the_leg_already_seated_when_the_agent_arrives_is_found_without_waiting() -> None:
     offline = Room("call_1", a_caller_seat())
     found = await asyncio.wait_for(caller_leg(offline, Channel.phone), 0.5)

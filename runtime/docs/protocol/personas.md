@@ -20,7 +20,8 @@ nobody keyed `503` (the sentence a persona written for it is refused with, so a 
 120 a minute at most (`429` past them), `heard` holds 80 turns, and a turn, the `goal` and the
 `style` 4000 characters each (`422` past them).
 
-`POST /v1/evals/voice` `{call, agent, persona, turns, interferer_db?, packet_loss?, ambience?, pause_s?, state?}` places
+`POST /v1/evals/voice` `{call, agent, persona, turns, interferer_db?, packet_loss?, ambience?, pause_s?, via?,
+delay_ms?, jitter_ms?, rate_kbps?, state?}` places
 a spoken call: the agent is dispatched into the room named `call` with the persona, its rule and
 `state` (the object the agent opens the call in, on its `call.started`; absent, the class's own) on
 the dispatch, the caller joins and speaks in a voice the agent does not use (the persona's own unless it is the
@@ -38,7 +39,7 @@ rates, and whether it hung up because the call had spent the providers row's
 one said. A model or a voice the rates do not price costs nothing here, as on a call.
 
 `POST /v1/simulations` `{agent, persona, voice?, turns?, interferer_db?, packet_loss?, ambience?,
-pause_s?, played_by?, against?}` is the simulation the console starts: one of the agent's personas, by name, put on the agent as anybody
+pause_s?, via?, delay_ms?, jitter_ms?, rate_kbps?, played_by?, against?}` is the simulation the console starts: one of the agent's personas, by name, put on the agent as anybody
 calls it, so whatever holds it answers — a process deployed, on a server of the org's, or a
 developer's `pinecall start`. Spoken (`voice`, the default) it is the call above; written, it is
 the chat the widget has, each line the persona's model improvises said once the agent's whole
@@ -63,8 +64,34 @@ same sound every run. The ambience is the room's, not the voice's: it plays from
 caller joins until it hangs up, under the agent's answers and through every silence, so the agent
 speaks over the television and ends a turn against the street; it sits `interferer_db` under how
 loud the caller speaks over the call (its frames that carry speech, a vendor's usual level before
-its first word) and keeps that level whether the caller is speaking or not, and `packet_loss` is
-lost off the whole line, the silences too. What can be refused is refused before the answer: a persona neither the agent
+its first word) and keeps that level whether the caller is speaking or not.
+
+**The line's network.** `packet_loss` (the share of packets lost at random, the persona's own unless
+the request says one), `delay_ms` (the milliseconds every packet is held, 0 to 2000), `jitter_ms`
+(how far each packet's hold moves around that, either way, 0 to 500) and `rate_kbps` (the kilobits a
+second the line carries, 8 or more; a voice needs about 64, and under it the line's queue drops what
+would wait more than 300 ms) are done to the call's real packets. A line that names any of them sends
+every packet of the caller's through a TURN relay inside the gateway, the caller's only ICE server,
+with relays alone allowed: what the caller sends and what comes back to it (the audio, the ICE checks,
+the RTCP that asks for a packet again) each cross a link of that shape before the SFU or the caller
+sees them, and a packet never overtakes the one before it. So a lost packet is a packet the room never
+got, concealed or asked for again as on a real path, and not ten milliseconds silenced before they
+were encoded, which is what `packet_loss` was until 2026-11-17; the caller also hears each answer
+`delay_ms` late, and answers that much later. A line that names none joins as it always did, with no
+relay. The gateway's log says what the network did when the call ends (`the caller's network carried
+… packets up and lost …`).
+
+**By phone.** `via: "sip"` (`"webrtc"` unless said) has the caller ring the agent instead of sitting
+in its room. The caller sits in a room of its own, on production's LiveKit, and that room dials a leg
+over SIP to the env's own SIP service, in a carrier's codec (G.711 µ-law at 8 kHz), through the trunk
+that admits production's hand-overs ([telephony.md](../telephony.md), "A simulated caller's ring").
+The agent's room holds a phone leg: the call's channel is `phone`, the caller is heard through what
+a phone call goes through, hanging up is a BYE, and the call is the agent's at the number it answers
+in the env, or, when it answers at none, at the box's test line (`409` when there is neither). The
+ring came through no carrier: it does not count as a call that reached the number, and is asked no
+carrier account. It runs in the sandbox alone, on a box whose envs have a SIP service each (`503`
+otherwise), and on a spoken call (`400` on a written one). The line's network is the caller's own
+room's, so `via: "sip"` takes the same four numbers. What can be refused is refused before the answer: a persona neither the agent
 nor Pinecall has by that name, or nobody holding the agent in the key's world and scope, `404`; the
 org's limits as on a call, `simulations` among them (`429`, with `credits.exhausted` on the agent's log, and the call is never opened nor counted), a caller whose model, or whose voice when spoken, is on a vendor nobody keyed (`503`), and the org's simulated calls already on the
 line in the world — ten at most, on every gateway together, `429` with `Retry-After` for the
@@ -115,7 +142,7 @@ key that opens `pipeline` (`403` otherwise); a model the deployment lacks or nob
 the settings would refuse it. The call keeps what it ran on: the runs' rows carry it as `against`.
 
 `POST /v1/simulations/compare` `{agent, persona, more_personas?, repeats?, voice?, turns?, interferer_db?,
-packet_loss?, ambience?, played_by?, against: [{…}, …]}` puts each caller — `persona`, then each of
+packet_loss?, ambience?, via?, delay_ms?, jitter_ms?, rate_kbps?, played_by?, against: [{…}, …]}` puts each caller — `persona`, then each of
 `more_personas` — against the agent under each of the values named, one to ten, `repeats` times each
 (1 to 10, once unless said): one call per caller, values and repeat, a round of every pair before the
 next round, under one id. One call tells whether a model can do a task; several tell how often it

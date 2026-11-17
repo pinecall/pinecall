@@ -3,7 +3,7 @@
 import asyncio
 import logging
 from collections.abc import Sequence
-from contextlib import AsyncExitStack
+from contextlib import AbstractAsyncContextManager, AsyncExitStack
 from types import TracebackType
 from typing import Never, Self
 
@@ -20,6 +20,7 @@ from runtime.exceptions import ServiceUnavailable
 from runtime.fleet import service as fleet
 from runtime.kit.retry import until
 from runtime.kit.time import epoch
+from runtime.kit.turn import Relay
 from runtime.live import service as live
 from runtime.livekit import close_room
 from runtime.providers import service as providers
@@ -110,23 +111,47 @@ class SpokenLine:
         """What the caller said and when, by the log's clock."""
         return () if self._leg is None else tuple(self._leg.spoke)
 
+    @property
+    def env(self) -> Env:
+        """The env the call is placed in."""
+        return self._dispatch.env or Env.sandbox
+
     async def _open(self) -> None:
         parts, call = self._parts, self._spoken.call
-        env = self._dispatch.env or Env.sandbox
-        async with parts.sessions.begin() as session_:
-            the_fleet = await fleet.fleet_of_env(session_, env)
-        if self._waits_for_slot:
-            await wait_for_fleet_slot(
-                parts.sessions, parts.offering, parts.roster, parts.logs, env, self._dispatch.agent or "", the_fleet
-            )
-        speech = await self._stack.enter_async_context(providers.voice_outside_a_call(self._voice))
+        the_fleet = await self._wait_for_a_slot()
+        speech = await self._stack.enter_async_context(self._open_voice())
         interferer = await self._make_room_sound(speech)
-        visitor = live.Visitor(expires_at=epoch() + A_CALL_MAY_LAST_S, identity=A_SIMULATED_CALLER)
-        token = live.sign_room_token(parts.signer, call, "talk", visitor)
-        self._stack.push_async_callback(close_room, parts.servers[env], call)
+        self._stack.push_async_callback(close_room, parts.servers[self.env], call)
         self._stack.push_async_exit(self._wait_for_the_end)
         await parts.offering.offer(call, the_fleet, self._dispatch)
-        await self._room.connect(parts.settings.livekit_url_of(env), token)
+        await self._join(call, self.env, speech, interferer)
+        await self._wait_for_the_agent()
+
+    def _open_voice(self) -> AbstractAsyncContextManager[tts.TTS[Never]]:
+        return providers.voice_outside_a_call(self._voice)
+
+    async def _wait_for_a_slot(self) -> str:
+        parts = self._parts
+        async with parts.sessions.begin() as session_:
+            the_fleet = await fleet.fleet_of_env(session_, self.env)
+        if self._waits_for_slot:
+            await wait_for_fleet_slot(
+                parts.sessions,
+                parts.offering,
+                parts.roster,
+                parts.logs,
+                self.env,
+                self._dispatch.agent or "",
+                the_fleet,
+            )
+        return the_fleet
+
+    # The caller's seat in a room of an env's LiveKit: its leg published and carrying from here on.
+    async def _join(self, room: str, env: Env, speech: tts.TTS[Never], interferer: bytes) -> None:
+        parts = self._parts
+        visitor = live.Visitor(expires_at=epoch() + A_CALL_MAY_LAST_S, identity=A_SIMULATED_CALLER)
+        token = live.sign_room_token(parts.signer, room, "talk", visitor)
+        await self._room.connect(parts.settings.livekit_url_of(env), token, await self._cross_the_network())
         self._stack.push_async_callback(self._room.disconnect)
         leg = self._leg = CallerLeg(self._spoken, speech, parts.logs, parts.store, interferer)
         # Published before the agent arrives: audio pushed before a subscription is lost.
@@ -136,7 +161,36 @@ class SpokenLine:
         # The room behind the caller is heard from here: the agent greets a line that already has it.
         leg.open()
         self._stack.push_async_callback(leg.close)
-        await self._wait_for_the_agent()
+
+    # A line with a network of its own sends every packet through a relay in this process, the one
+    # ICE server the caller is given, and is told to use relays alone: what the line loses, how long
+    # it holds a packet and how much it carries are then done to the call's real packets, each way,
+    # before the SFU sees them. A clean line joins as it always did, with no relay to fail.
+    async def _cross_the_network(self) -> rtc.RoomOptions:
+        shape = self._spoken.network
+        if shape.is_clean:
+            return rtc.RoomOptions()
+        relay = Relay(shape)
+        await relay.open()
+        self._stack.push_async_callback(self._close_relay, relay)
+        server = rtc.IceServer(urls=[relay.url], username=relay.username, password=relay.password)
+        only_relays = rtc.RtcConfiguration(
+            ice_transport_type=rtc.IceTransportType.TRANSPORT_RELAY, ice_servers=[server]
+        )
+        return rtc.RoomOptions(rtc_config=only_relays)
+
+    async def _close_relay(self, relay: Relay) -> None:
+        await relay.close()
+        up, down = relay.uplink.counts, relay.downlink.counts
+        logger.info(
+            "%s: the caller's network carried %d packets up and lost %d (%d to its queue), %d down and lost %d",
+            self._spoken.call,
+            up.carried,
+            up.lost + up.dropped,
+            up.dropped,
+            down.carried,
+            down.lost + down.dropped,
+        )
 
     # Made in a thread: a café is eight voices resampled, and an office's hum is walked sample by sample.
     async def _make_room_sound(self, speech: tts.TTS[Never]) -> bytes:

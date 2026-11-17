@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- **A simulated caller rings the agent by phone, over SIP.** `via: "sip"` on `POST /v1/simulations`,
+  `/v1/simulations/compare` and `/v1/evals/voice` seats the caller in a room of its own and dials a leg from
+  it to the sandbox's own SIP service, in G.711 µ-law at 8 kHz, through the trunk that admits production's
+  hand-overs and a rule of its own (`simulation`) that puts the leg in the call's room. The agent answers a
+  phone call: the `phone` channel, a SIP leg for a caller, a BYE to hang up, at the number it answers in the
+  sandbox or at the box's test line. The sandbox alone, on a box whose envs have a SIP service each; a spoken
+  call alone. `docs/telephony.md`, "A simulated caller's ring".
+- **A simulated line has a network, and it is done to the call's real packets.** `delay_ms`, `jitter_ms` and
+  `rate_kbps` beside `packet_loss`: a line that names any of them sends every packet of the caller's through
+  a TURN relay inside the gateway (`kit/turn.py`), its only ICE server, relays alone allowed, and each way
+  crosses a link that loses at random, holds each packet the delay and its jitter and caps the rate behind a
+  300 ms queue (`kit/link.py`). `packet_loss` was ten milliseconds of the caller's track silenced before it
+  was encoded, which the room never missed as a packet: it is a packet the room never got now, concealed or
+  asked for again as on a real path, so the same number is gentler on the agent's ears than it was. A line
+  that names none joins as before, with no relay.
+
 - **An agent whose process is connected is never left ringing nowhere.** A line was given once, by the gateway
   its process registered on, against what that gateway had heard by then. A tenant's process restarted in 72
   seconds, as it had four times that day, and its number rang nowhere for six minutes: one gateway had pruned

@@ -135,6 +135,12 @@ export interface VoiceCallRequest {
   ambience?: string;
   /** Seconds of silence before each of the caller's lines, over the persona's own; 0 answers at once. */
   pause_s?: number;
+  /** How the caller reaches the agent: in its room over WebRTC, or ringing it by phone over SIP (the sandbox's alone). */
+  via?: "webrtc" | "sip";
+  /** The network the caller's packets cross: milliseconds each is held, how far that moves, kilobits a second carried. */
+  delay_ms?: number;
+  jitter_ms?: number;
+  rate_kbps?: number;
   state?: Record<string, unknown>;
 }
 
@@ -226,6 +232,12 @@ export interface SimulationRequest {
   packet_loss?: number;
   ambience?: string;
   pause_s?: number;
+  /** How the caller reaches the agent: in its room over WebRTC, or ringing it by phone over SIP (the sandbox's alone). */
+  via?: "webrtc" | "sip";
+  /** The network the caller's packets cross: milliseconds each is held, how far that moves, kilobits a second carried. */
+  delay_ms?: number;
+  jitter_ms?: number;
+  rate_kbps?: number;
   played_by?: { llm?: string; tts?: string; voice?: string };
   /** What the caller phones about this run, over the persona's goal; given, a caller of the library is not briefed. */
   scenario?: { goal: string; facts?: Record<string, string> };

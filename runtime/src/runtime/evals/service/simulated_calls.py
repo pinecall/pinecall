@@ -25,10 +25,12 @@ from runtime.evals.service.callers import (
     open_caller_model,
 )
 from runtime.evals.service.leg import Spoken
+from runtime.evals.service.phone import PhoneLine
 from runtime.evals.service.spoken import SpokenLine
 from runtime.evals.service.turns import NextLine, is_call_over
 from runtime.evals.service.written import WrittenLine
 from runtime.judging import service as judging
+from runtime.kit.link import LinkShape
 from runtime.kit.text import Json, JsonObject
 from runtime.providers import service as providers
 from runtime.providers.stage import Running
@@ -58,6 +60,10 @@ class Simulation:
     # comparison the call was placed in, with the others of its persona.
     against: JsonObject = field(default_factory=dict[str, Json])
     comparison: str | None = None
+    # Spoken alone: the network the caller's packets cross, and the number it rings when it reaches
+    # the agent by phone, over SIP; None for a caller that joins the agent's room.
+    network: LinkShape = field(default_factory=LinkShape)
+    rings: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,7 +74,8 @@ class Played:
     spending: Spending
 
 
-# The agent is dispatched into a room whoever holds it, and the caller speaks there in a voice of its own.
+# The agent is dispatched into a room whoever holds it, and the caller speaks there in a voice of its
+# own: seated in that room, or, when it rings a number, through a phone leg dialled into it.
 async def play_spoken(parts: Harness, simulation: Simulation) -> Played:
     """Play the persona out loud on the agent's line; the lines said, and what they cost."""
     scope, persona = simulation.scope, simulation.persona
@@ -82,6 +89,7 @@ async def play_spoken(parts: Harness, simulation: Simulation) -> Played:
         expects=list(persona.expects),
         state=dict(simulation.state),
         tuning=dict(simulation.against),
+        dialled=simulation.rings,
     )
     async with parts.sessions.begin() as session_:
         voice = await caller_voice(
@@ -90,8 +98,9 @@ async def play_spoken(parts: Harness, simulation: Simulation) -> Played:
         notice = await opens_with_a_notice(session_, scope, voice.language)
     await keep_against(parts, simulation)
     # The caller murmurs in the language it speaks: the line learns it here, with the voice.
-    spoken = Spoken(simulation.call, simulation.acts, language=voice.language, notice=notice)
-    line = SpokenLine(parts, dispatch, voice, spoken, waits_for_slot=simulation.waits_for_slot)
+    spoken = Spoken(simulation.call, simulation.acts, voice.language, notice, simulation.network)
+    on_the_line = SpokenLine if simulation.rings is None else PhoneLine
+    line = on_the_line(parts, dispatch, voice, spoken, waits_for_slot=simulation.waits_for_slot)
     return await play(parts, simulation, line, voice)
 
 

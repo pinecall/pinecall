@@ -70,6 +70,22 @@ def test_a_ring_handed_to_the_sandbox_keeps_the_production_number_it_dialled() -
     assert resolve_route(dispatch, A_PHONE, [], None) == IN_THE_SANDBOX
 
 
+# A simulated caller's leg dials the call's own room: the gateway says the number it rang, the agent's
+# own or the box's test line, and the call is the agent's at that number whatever routes it has.
+def test_a_simulated_callers_ring_is_the_agents_at_the_number_the_gateway_says_it_rang() -> None:
+    """An agent with no number of its own answers a simulated ring at the number its dispatch names."""
+    dispatch = Dispatch(agent="front", org="org_a", env=Env.sandbox, dialled=NUMBER, persona="in-a-hurry")
+    assert resolve_route(dispatch, A_PHONE, [], None) == IN_THE_SANDBOX
+
+
+def test_a_simulated_ring_whose_leg_never_came_is_a_call_in_the_room() -> None:
+    """With no phone leg the arrival is a page's, and the agent answers it as it answers the widget."""
+    dispatch = Dispatch(agent="front", org="org_a", env=Env.sandbox, dialled=NUMBER)
+    assert resolve_route(dispatch, A_PAGE, [], None) == Route(
+        org="org_a", agent="front", channel=Channel.web, env=Env.sandbox
+    )
+
+
 def test_a_ring_handed_over_whose_leg_named_nobody_is_refused_rather_than_run_here() -> None:
     """A handed-over ring that lost its agent on the way is refused, never answered by the number."""
     with pytest.raises(NotFound, match="names no agent"):

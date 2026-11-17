@@ -1,6 +1,7 @@
 """Telephony's rules, one module per noun; what another domain uses is named here, and nothing else."""
 
 from runtime.telephony.service.accounts import meta_token_for, twilio_account_of
+from runtime.telephony.service.carrier import SipNames
 from runtime.telephony.service.hand_over import hand_on, unbridge
 from runtime.telephony.service.legs import (
     CALLER_NUMBER,
@@ -32,6 +33,13 @@ from runtime.telephony.service.routes import (
     move_routes_with_agent,
     note_call,
 )
+from runtime.telephony.service.simulated_rings import (
+    RINGS_FROM,
+    callers_room,
+    check_simulated_ring,
+    hang_up_simulated_caller,
+    ring_simulated_caller,
+)
 from runtime.telephony.service.test_line import find_test_line
 
 __all__ = [
@@ -39,11 +47,15 @@ __all__ = [
     "LEG_PREFIX",
     "NO_LEG",
     "NO_TRUNK",
+    "RINGS_FROM",
     "Arrival",
     "Legs",
+    "SipNames",
     "Trunk",
     "arrival_of",
     "caller_leg",
+    "callers_room",
+    "check_simulated_ring",
     "count_managed",
     "dial_in",
     "end_reason_of",
@@ -53,6 +65,7 @@ __all__ = [
     "get_carrier_for_number",
     "get_number",
     "hand_on",
+    "hang_up_simulated_caller",
     "is_a_phone",
     "leg_to",
     "list_answered_routes",
@@ -63,6 +76,7 @@ __all__ = [
     "note_call",
     "outbound_leg",
     "release_numbers_of",
+    "ring_simulated_caller",
     "send_on",
     "send_tones",
     "sip_config",

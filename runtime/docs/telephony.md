@@ -129,6 +129,40 @@ The cloud's firewall in front of the sandbox's SIP node must admit 5060 from pro
 address too (Terraform's `sip_sources`, beside the carriers' networks); its RTP range is open to
 every address already.
 
+## A simulated caller's ring
+
+A simulation asked for `via: "sip"` ([protocol/personas.md](protocol/personas.md), "By phone") rings
+the sandbox's agent as a phone does, through the hand-over's path and no carrier:
+
+```
+the gateway plays the caller → room <call>-caller on production's LiveKit → production's livekit-sip
+   → INVITE sip:<call>@<the sandbox's SIP name>, From simulated_caller, PCMU alone
+   → the sandbox's livekit-sip: trunk hand-over, rule simulation → room <call> → the worker the gateway offers it to
+```
+
+The leg comes from the address and with the pair the `hand-over` trunk admits, so it is admitted by
+that trunk: a second trunk listing no number would be a second default one, and livekit refuses to
+choose between two. What tells a simulated ring from a hand-over is who calls. A second rule on the
+trunk, `simulation`, lists the calling number `simulated_caller` alone, and livekit prefers a rule
+that names the caller over one that names none. It is of the callee's kind with no prefix, so the
+room is what the leg dialled, and the leg dials the call's own id: the caller lands in the room the
+gateway named and claimed before anything rang, which the gateway then offers to the sandbox's fleet
+as it offers a simulated call's room on the web. The rule dispatches nobody itself.
+
+The job that takes the room is told, on its dispatch (`dialled`), the number the caller rang: the
+number the agent answers at in the sandbox, or the box's test line for an agent that answers at none.
+It waits for the phone leg as it waits for a handed-over one, and opens the call on the `phone`
+channel at that number. The gateway neither counts the ring as a call that reached the number nor
+asks which carrier account it came from: it came through none. The leg asks for G.711 µ-law alone,
+what a carrier sends: left to themselves two livekit-sip agree on G.722, twice as wide as any line a
+caller reaches the box on. The caller hanging up is its leg taken out of its own room, a BYE to the
+sandbox; either room closing ends the other's leg, and the gateway deletes both when the simulation
+ends, however it ended.
+
+The rule is kept with the trunk: made or mended at start, where the sandbox has a LiveKit of its own
+and production's SIP a name. Where the envs share one LiveKit there is no hand-over trunk and no ring
+by phone (`503`), and none in production, whose SIP admits no leg of the box's own.
+
 ## The box's test line
 
 A person with no production number, or none of their own, still calls their agent from a phone:
@@ -234,7 +268,8 @@ the gateway admits every routed number again on its environment's LiveKit with t
 takes a number off its org's trunks when nothing approved fences it, takes it off the other environment's
 LiveKit where it is still listed (one admitted before the environments had a LiveKit each), deletes
 nothing else, and never touches a carrier. Where the sandbox has a LiveKit of its own and
-production's SIP a name of its own, it makes or mends the sandbox's `hand-over` trunk and rule.
+production's SIP a name of its own, it makes or mends the sandbox's `hand-over` trunk and rule, and
+the `simulation` rule beside it.
 The operator's approval or refusal of a network does the same for that org at once.
 
 One livekit-sip holds 200 calls (its RTP range). A second, on the platform's Redis, answers every

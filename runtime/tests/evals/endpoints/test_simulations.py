@@ -125,6 +125,42 @@ async def test_a_spoken_caller_whose_voice_is_on_a_vendor_nobody_keyed_is_refuse
     assert "openai has no key" in answer.text
 
 
+# ── a caller that rings by phone, and the network its packets cross ──
+
+
+async def test_a_written_call_is_refused_a_phone_line(gateway: Gateway, tenant: Tenant, agent: str) -> None:
+    """Nothing rings on a written call: asked to reach the agent by phone, it is refused in a sentence."""
+    body = {"agent": agent, "persona": "in-a-hurry", "voice": False, "turns": 1, "via": "sip"}
+    answer = await gateway.http.post("/v1/simulations", json=body, headers=tenant.server)
+    assert answer.status_code == 400
+    assert "a written call rings nobody" in answer.text
+
+
+async def test_a_network_no_call_could_cross_is_refused_by_its_bounds(
+    gateway: Gateway, tenant: Tenant, agent: str
+) -> None:
+    """A delay past two seconds, a jitter past half of one and a rate under the line's own signalling are no network."""
+    for shape in ({"delay_ms": 2001}, {"jitter_ms": 501}, {"rate_kbps": 7}, {"via": "pstn"}):
+        body = {"agent": agent, "persona": "in-a-hurry", "voice": True, "turns": 1, **shape}
+        answer = await gateway.http.post("/v1/simulations", json=body, headers=tenant.server)
+        assert answer.status_code == 422, (shape, answer.text)
+
+
+# The suites' box has one LiveKit for both envs, as a box of one machine does: no SIP of its own admits
+# a leg dialled from the other.
+@needs_the_services
+async def test_a_ring_this_boxs_sip_would_not_admit_is_refused_before_a_call_is_claimed_or_counted(
+    gateway: Gateway, tenant: Tenant, agent: str
+) -> None:
+    body = {"agent": agent, "persona": "in-a-hurry", "voice": True, "turns": 1, "via": "sip"}
+    async with holding(gateway, tenant, agent):
+        answer = await gateway.http.post("/v1/simulations", json=body, headers=tenant.server)
+        assert answer.status_code == 503, answer.text
+        assert "rings by phone in the sandbox alone" in answer.text
+        assert await used_of(gateway, tenant, "concurrent_calls") == 0
+    assert await used_of(gateway, tenant, "simulations") == 0
+
+
 @needs_the_services
 async def test_a_simulation_past_the_orgs_simulations_is_refused_before_it_opens_and_said_on_the_agents_log(
     sessions: async_sessionmaker[AsyncSession], gateway: Gateway, tenant: Tenant, agent: str

@@ -768,6 +768,7 @@ your desk and red in CI until it is deployed (or `agent set … --team` gives it
 ```
 pinecall simulate --persona <name> [--judge] [--turns n (15, 1 to 40)] [--voice] [--listen]
                   [--background-noise dB] [--ambience cafe] [--packet-loss 0.05] [--pause 0]
+                  [--via webrtc|sip] [--delay ms] [--jitter ms] [--rate kbps]
                   [--goal "I want to move my Tuesday visit"] [--llm vendor/model] [--tts vendor] [--caller-voice id]
                   [--against stt=…,llm=…,tts=…,voice=…,end_of_turn=…]… [--repeats n (1, 1 to 10)]
                   [--agent <name>] [--file agent.tsx]
@@ -817,6 +818,29 @@ when that language has none), so the two sides are told apart by ear. The caller
 `--background-noise`, `--ambience` and `--packet-loss` spoil that line on purpose and are refused without it:
 `--background-noise` is dB under the caller of what plays behind it, `--ambience` which of `television`, `cafe`, `office` and `street` plays (the persona's own unless said);
 `--packet-loss` is the share of the caller's packets that never arrive, from 0 to 1, as `test` takes it.
+
+`--via sip` has the caller **ring the agent by phone** instead of sitting in its room: the caller's
+own room dials a leg over SIP to the sandbox's SIP service, in a carrier's codec (G.711 µ-law at
+8 kHz), and that leg lands in the call's room. The agent answers a phone call — the `phone` channel,
+a SIP leg for a caller, a hang-up that is a BYE — at the number it answers in the sandbox, or at the
+box's test line when it answers at none (neither: refused, `409`). No carrier is in it and nothing is
+billed by one. The sandbox's alone, on a deployment whose envs have a SIP service each (`503`
+otherwise); `--via webrtc` is the room, and what is used when the flag is left out.
+
+`--delay`, `--jitter` and `--rate` are **the network the caller's packets cross**, with
+`--packet-loss`: every packet held `--delay` milliseconds (0 to 2000), each one's hold moved up to
+`--jitter` milliseconds either way (0 to 500), and the line carrying `--rate` kilobits a second (8 or
+more; a voice needs about 64, and under it the line's queue drops what would wait past 300 ms). They
+are done to the call's real packets, each way, by a relay inside the gateway the caller is routed
+through — so a lost packet is one the room never got, concealed or asked for again as on a real
+path — and the caller hears each answer `--delay` late. The four, and `--via`, are a spoken call's
+and are refused without `--voice`, exit 2. The summary's line says what the call was placed on:
+
+```console
+$ pinecall simulate --persona in-a-hurry --voice --via sip --packet-loss 0.05 --delay 150 --jitter 40
+…
+call_6123e7d7deb875e2e9be7686 · 4 caller turns · 5 agent turns · a phone line, 5% packet loss, 150 ms delay ± 40 ms
+```
 
 `--llm`, `--tts` and `--caller-voice` play the caller on another model or voice **for this run
 alone**: `--llm google/gemini-3.5-flash-lite`, `--tts google --caller-voice Puck`. The persona keeps

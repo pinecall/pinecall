@@ -209,8 +209,8 @@ ONE_CONTEXT: dict[str, str] = {
     ),
     "evals": (
         "a test call placed against an agent and read after it: a golden run, a caller simulated, setups compared, "
-        "a finished call checked again. Its twenty-four nouns stand on one seam (`Line`: written or spoken) and one "
-        "skeleton of a played call; what a person asks of a judge that reads calls (a judge tried, a group "
+        "a finished call checked again. Its twenty-six nouns stand on one seam (`Line`: written, spoken or by phone) "
+        "and one skeleton of a played call; what a person asks of a judge that reads calls (a judge tried, a group "
         "diagnosed, callers written, the calibration) was decided into it (judging-1 A, judging-3 A, evals-1 A)"
     ),
 }

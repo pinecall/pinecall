@@ -8,7 +8,7 @@ import type { Persona } from "../../api/cases.js";
 import * as api from "../../api/evals.js";
 import type { Context } from "../../context.js";
 import { UsageError } from "../../errors.js";
-import { playedBy, ranOn, scoreOf, type Simulated, type SimulateInput, type SimulationListeners } from "./simulation.js";
+import { lineOf, playedBy, ranOn, scoreOf, type Simulated, type SimulateInput, type SimulationListeners } from "./simulation.js";
 import { mediansOf } from "./suite.js";
 
 /** The knobs `--against` takes, the test room's: each stage as vendor/model, a voice, a language, a temperature, who ends the turn. */
@@ -63,7 +63,7 @@ function wanted(agent: string, persona: Persona, input: SimulateInput): Omit<api
   const played = ranOn(input);
   // The gateway plays and briefs the caller; a goal given is the scenario it phones about instead.
   const scenario = input.goal === undefined ? {} : { scenario: { goal: input.goal } };
-  return { agent, persona: persona.name, voice: input.voice, turns: input.turns, ...degraded, ...(played === undefined ? {} : { played_by: played }), ...scenario };
+  return { agent, persona: persona.name, voice: input.voice, turns: input.turns, ...degraded, ...lineOf(input), ...(played === undefined ? {} : { played_by: played }), ...scenario };
 }
 
 /**

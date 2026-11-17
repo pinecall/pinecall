@@ -239,7 +239,10 @@ async def open_call(session: AsyncSession, live: LiveParts, actor: Actor, arriva
     context = arrival.context
     accounts.check_agent(actor, arrival.agent)
     scope = scope_of_call(actor, context)
-    if context.direction is Direction.inbound and context.route.number is not None:
+    # A simulated caller's ring came through no carrier: it is not a call the number's carrier sent,
+    # so it neither counts as one that reached the number nor is asked whose account it came from.
+    came_by_carrier = context.direction is Direction.inbound and context.persona is None
+    if came_by_carrier and context.route.number is not None:
         await _check_arrival(session, live.vault, scope, context.route.number, arrival.carrier_account)
     await _check_unclaimed_or_in(session, context.call, scope)
     await _spend_token(session, live, context, scope, arrival.agent)

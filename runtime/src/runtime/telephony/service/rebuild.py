@@ -14,7 +14,7 @@ from runtime.livekit import Servers
 from runtime.scoping import box_wide
 from runtime.telephony.models import NetworkState, Route
 from runtime.telephony.repository import RouteRepository
-from runtime.telephony.service import accounts, carrier, hand_over, networks, sfu
+from runtime.telephony.service import accounts, carrier, hand_over, networks, sfu, simulated_rings
 from runtime.telephony.service.carrier import Carrier, SipNames
 from runtime.telephony.service.fence import Fenced
 from runtime.telephony.service.networks import Standing
@@ -100,6 +100,8 @@ async def rebuild(session: AsyncSession, vault: Vault, servers: Servers, names: 
     handing = False
     with survive("admitting the sandbox's hand-over trunk"):
         handing = await hand_over.admit_hand_overs(session, servers, names)
+        # A simulated caller's ring comes in by the same trunk, under a rule of its own.
+        await simulated_rings.admit_simulated_rings(servers)
     logger.info(
         "SIP rebuilt from the tables: %d numbers stand, %d orgs refused, hand-overs admitted: %s",
         standing,

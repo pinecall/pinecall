@@ -196,9 +196,11 @@ def _is_an_undispatched_ring(dispatch: Dispatch, arrival: telephony.Arrival, rou
 
 
 # A widget's route is not stored: every agent answers on the widget, and the token endpoint
-# already checked the agent is the key's. A handed-over ring dialled production's number.
+# already checked the agent is the key's. A handed-over ring dialled production's number, and a
+# simulated caller's the number the gateway says it rang: the agent's own, or the box's test line.
 def _route_of_agent(agent: str, dispatch: Dispatch, arrival: telephony.Arrival, routes: Sequence[Route]) -> Route:
-    if dispatch.diverted_from is not None and arrival.number and dispatch.org and dispatch.env:
+    rings = dispatch.diverted_from is not None or dispatch.dialled is not None
+    if rings and arrival.channel is Channel.phone and arrival.number and dispatch.org and dispatch.env:
         return Route(org=dispatch.org, agent=agent, channel=arrival.channel, number=arrival.number, env=dispatch.env)
     found = next((route for route in routes if route.agent == agent and route.channel == arrival.channel), None)
     if found is not None:

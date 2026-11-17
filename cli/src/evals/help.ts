@@ -27,7 +27,10 @@ Examples
 A model in the gateway plays the caller: every turn improvised from the persona's goal, its style
 and its own facts — there is no script. The agent is whoever holds it — your \`pinecall start\`, a
 colleague's, production's with --prod; nothing is started here. The call lands in the log like
-any other. --background-noise, --ambience and --packet-loss are spoken runs only. --llm, --tts and
+any other. --background-noise, --ambience and --packet-loss are spoken runs only, and so are --via,
+--delay, --jitter and --rate: --via sip has the caller ring the agent by phone, a SIP leg in a
+carrier's codec dialled into its room (the sandbox's), and --delay, --jitter and --rate are done,
+with --packet-loss, to the call's real packets on their way to the room. --llm, --tts and
 --caller-voice play the caller on another model or voice for this run alone; the persona keeps its
 own. One of Pinecall's personas is briefed first: the gateway gives it the one concrete thing it
 phones this agent about, in the agent's own terms, and keeps its manner; --goal says it yourself,

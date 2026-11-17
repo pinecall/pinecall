@@ -165,7 +165,7 @@ running app, the apps and the line were decided into it.
 
 `evals/service/` has more than sixteen modules and is one context: a test call placed against an
 agent and read after it: a golden run, a caller simulated, setups compared, a finished call checked
-again. Its twenty-four nouns stand on one seam (`Line`: written or spoken, decided once) and one
+again. Its twenty-six nouns stand on one seam (`Line`: written, spoken or by phone, decided once) and one
 skeleton of a played call; what a person asks of a judge that reads calls (a judge tried, a group
 diagnosed, callers written, the calibration) was decided into it. `evals/parts.py` is `Harness`, one
 of each thing a test call reaches: the one value of the domain that carries collaborators together,

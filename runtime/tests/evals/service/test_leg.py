@@ -25,6 +25,7 @@ from runtime.evals.service.leg import (
     resample,
 )
 from runtime.judging import service as judging
+from runtime.kit.link import LinkShape
 from runtime.kit.pcm import QUIET, frames_of, mix_under, rms_of
 from tests.calls.factories import logs_on
 from tests.conftest import needs_the_database
@@ -80,11 +81,20 @@ def test_the_callers_level_is_that_of_its_speech_and_its_gaps_do_not_lower_it() 
 
 
 def test_the_line_is_described_in_the_words_a_report_prints() -> None:
-    assert describe(judging.Behavior()) == "a clean line"
-    assert describe(judging.Behavior(interferer_db=15.0)) == "television 15 dB under the caller"
-    assert describe(judging.Behavior(interferer_db=22.0, packet_loss=0.02, ambience="cafe")) == (
+    clean = LinkShape()
+    assert describe(judging.Behavior(), clean) == "a clean line"
+    assert describe(judging.Behavior(interferer_db=15.0), clean) == "television 15 dB under the caller"
+    assert describe(judging.Behavior(interferer_db=22.0, ambience="cafe"), LinkShape(loss=0.02)) == (
         "cafe 22 dB under the caller, 2% packet loss"
     )
+
+
+def test_a_lines_network_and_its_phone_are_part_of_how_it_is_described() -> None:
+    mobile = LinkShape(loss=0.05, delay_ms=150, jitter_ms=40, rate_kbps=64)
+    assert describe(judging.Behavior(), mobile) == "5% packet loss, 150 ms delay ± 40 ms, 64 kbps"
+    assert describe(judging.Behavior(), LinkShape(delay_ms=300)) == "300 ms delay"
+    assert describe(judging.Behavior(), LinkShape(), by_phone=True) == "a phone line"
+    assert describe(judging.Behavior(), LinkShape(loss=0.1), by_phone=True) == "a phone line, 10% packet loss"
 
 
 # ── how the caller acts, beside what it says ──
@@ -174,14 +184,15 @@ async def test_the_room_keeps_its_level_when_the_caller_speaks_and_when_it_stops
     assert abs(20 * math.log10(after / before)) < WITHIN_THE_ROUNDING_DB
 
 
+# What a line loses is lost on its network, packet by packet (`kit.link`): the track is never silenced
+# to stand for it, as it was until 2026-11-17.
 @needs_the_database
-async def test_a_lost_packet_is_the_silence_a_jitter_buffer_plays_whoever_was_speaking(store: Store, call: str) -> None:
+async def test_a_line_that_loses_packets_still_carries_every_frame_of_its_track(store: Store, call: str) -> None:
     television = tone_of(SAMPLE_RATE, 6000, period=31)
     leg = leg_on(store, call, judging.Behavior(interferer_db=15.0, packet_loss=0.5), television)
     frames = [leg.next_frame() for _ in range(A_SECOND_IN_FRAMES)]
     assert {len(frame) for frame in frames} == {len(SILENCE)}
-    # Half of a hundred, by chance: outside 20 to 80 once in a billion runs.
-    assert 20 < len([frame for frame in frames if frame == SILENCE]) < 80
+    assert SILENCE not in frames
 
 
 # The line is carried at the clock's rate into a real source: a line is said once its last frame left.

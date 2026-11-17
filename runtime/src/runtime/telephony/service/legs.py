@@ -117,8 +117,11 @@ async def arrival_of(dispatch: Dispatch, room: rtc.Room) -> Arrival:
     """What the job's dispatch and the room's SIP leg say of the call."""
     outbound = dispatch.direction is Direction.outbound
     # A dispatch that names its agent does not wait for a SIP leg, but a ring handed over from
-    # production does: its leg says the number dialled. An outbound job places its own.
-    is_placed = outbound or (dispatch.agent is not None and dispatch.diverted_from is None)
+    # production does: its leg says the number dialled. So does a simulated caller's ring, whose leg
+    # dials the call's own room: the number it rang is the dispatch's to say. An outbound job places
+    # its own.
+    rings = dispatch.diverted_from is not None or dispatch.dialled is not None
+    is_placed = outbound or (dispatch.agent is not None and not rings)
     leg = None if is_placed else await caller_leg(room, Channel.phone)
     data = {} if leg is None else dict(leg.attributes)
     dialled = data.get(DIALLED_NUMBER)
@@ -126,7 +129,7 @@ async def arrival_of(dispatch: Dispatch, room: rtc.Room) -> Arrival:
         caller=data.get(CALLER_NUMBER) or dispatch.caller or room.name,
         channel=Channel.phone if outbound or dialled else Channel.web,
         direction=Direction.outbound if outbound else Direction.inbound,
-        number=dialled,
+        number=dispatch.dialled if dialled and dispatch.dialled else dialled,
         carrier_account=data.get(TWILIO_ACCOUNT),
     )
 

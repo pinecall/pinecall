@@ -25,17 +25,18 @@ from runtime.evals.service.callers import (
     open_caller_model,
     voice_vendor,
 )
-from runtime.evals.service.leg import describe
 from runtime.evals.service.simulated_calls import Simulation, keep_against, play_spoken, play_written
-from runtime.exceptions import Conflict, NotFound, QuotaExceeded, TooManyRequests
+from runtime.exceptions import Conflict, NotFound, QuotaExceeded, TooManyRequests, ValidationError
 from runtime.fleet import service as fleet
 from runtime.judging import service as judging
-from runtime.kit.text import Json, JsonObject
+from runtime.kit.link import LinkShape
+from runtime.kit.text import JsonObject
 from runtime.kit.time import epoch, today_in
 from runtime.live import service as live
 from runtime.providers import service as providers
 from runtime.providers.stage import Voice
 from runtime.session import service as session
+from runtime.telephony import service as telephony
 from runtime.wire.room import A_SIMULATED_CALLER
 
 logger = logging.getLogger(__name__)
@@ -74,6 +75,13 @@ class Wanted:
     # What the caller phones about this run, over the persona's goal. Given, a caller of the library
     # is not briefed again.
     scenario: Scenario | None = None
+    # Spoken alone: the caller rings the agent by phone, over SIP, where it would join its room.
+    by_phone: bool = False
+    # Spoken alone: the network the caller's packets cross, beside what it loses: the milliseconds
+    # it holds each one, how far that moves, and the kilobits a second it carries (None: any).
+    delay_ms: float = 0.0
+    jitter_ms: float = 0.0
+    rate_kbps: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,6 +117,8 @@ async def place_simulation(
     """Put one of the agent's personas on it, written or spoken; the call it plays on, at once."""
     accounts.check_agent(actor, wanted.agent)
     scope = actor.scope
+    if wanted.by_phone and not wanted.spoken:
+        raise ValidationError("a written call rings nobody: a caller reaches the agent by phone on a spoken call")
     async with parts.sessions.begin() as session_:
         persona = await _get_persona(session_, scope, wanted)
         quotas = await billing.get_quotas(session_, scope.org, scope.env)
@@ -120,11 +130,13 @@ async def place_simulation(
     try:
         async with parts.sessions.begin() as session_:
             await admit_simulation(session_, parts, scope, wanted.agent, persona, spoken=wanted.spoken, waits=True)
+            rings = await get_number_to_ring(session_, parts, scope, wanted.agent) if wanted.by_phone else None
         caller = await _brief(parts, scope, wanted, persona)
         # What a caller of the library was briefed to phone about is kept as its scenario: placed again,
         # it phones about the same thing and is not briefed a second time.
         briefed = None if caller is persona else Scenario(caller.goal, dict(caller.facts))
         placed = as_placed(replace(wanted, scenario=wanted.scenario or briefed))
+        acts = act_as_asked(caller.behavior, wanted.interferer_db, wanted.packet_loss, wanted.ambience, wanted.pause_s)
         simulation = Simulation(
             call=call,
             agent=wanted.agent,
@@ -132,13 +144,13 @@ async def place_simulation(
             persona=caller,
             turns=wanted.turns,
             spoken=wanted.spoken,
-            acts=act_as_asked(
-                caller.behavior, wanted.interferer_db, wanted.packet_loss, wanted.ambience, wanted.pause_s
-            ),
+            acts=acts,
             state=dict(persona.state),
             waits_for_slot=wanted.spoken,
             against=against,
             comparison=comparison,
+            network=LinkShape(acts.packet_loss, wanted.delay_ms, wanted.jitter_ms, wanted.rate_kbps),
+            rings=rings,
         )
         if wanted.spoken:
             async with parts.sessions.begin() as session_:
@@ -173,6 +185,10 @@ def as_placed(wanted: Wanted) -> JsonObject:
         "pause_s": wanted.pause_s,
         "played_by": None if played is None else {"llm": played.llm, "tts": played.tts, "voice": played.voice},
         "scenario": None if scenario is None else {"goal": scenario.goal, "facts": dict(scenario.facts)},
+        "by_phone": wanted.by_phone,
+        "delay_ms": wanted.delay_ms,
+        "jitter_ms": wanted.jitter_ms,
+        "rate_kbps": wanted.rate_kbps,
     }
 
 
@@ -190,6 +206,11 @@ def as_wanted(agent: str, persona: str, placed: Mapping[str, Any]) -> Wanted:
         pause_s=placed.get("pause_s"),
         played_by=None if played is None else judging.Played(**played),
         scenario=None if scenario is None else Scenario(str(scenario["goal"]), dict(scenario["facts"])),
+        # A call placed before 2026-11-17 kept none of these: it joined the room, on a clean network.
+        by_phone=bool(placed.get("by_phone")),
+        delay_ms=float(placed.get("delay_ms") or 0.0),
+        jitter_ms=float(placed.get("jitter_ms") or 0.0),
+        rate_kbps=placed.get("rate_kbps"),
     )
 
 
@@ -260,6 +281,22 @@ async def admit_simulation(
     return name_of(stage)
 
 
+# A caller that rings by phone rings a number: the one the agent answers at in the env, or, for an
+# agent that answers at none, the box's test line, as a person testing it from a phone would. Asked
+# before a call is claimed, with whether the env's SIP would admit the ring at all.
+async def get_number_to_ring(session_: AsyncSession, parts: Harness, scope: Scope, agent: str) -> str:
+    """The number a simulated caller rings to reach the agent by phone; refused where no ring would be admitted."""
+    telephony.check_simulated_ring(parts.servers, parts.names, scope.env)
+    routes = await telephony.list_phone_routes(session_, scope, agent=agent)
+    number = routes[0].number if routes else await telephony.find_test_line(session_)
+    if number is None:
+        raise Conflict(
+            f"{agent} answers at no phone number in the {scope.env.value} and this box has no test line: a caller "
+            "that rings by phone rings one of the two (`pinecall numbers`)"
+        )
+    return number
+
+
 # A comparison briefs each of its callers once, before any call of it is placed, and hands every call
 # what was written: the same caller phones about the same thing under every configuration.
 async def write_scenario(parts: Harness, scope: Scope, wanted: Wanted) -> Scenario | None:
@@ -282,7 +319,7 @@ class ChatSimulations:
         self, session_: AsyncSession, scope: Scope, agent: str, persona: str, played_by: Mapping[str, str] | None
     ) -> live.Simulated:
         """Admit one simulation of the agent's persona, played as named; what it expects, and the model playing it."""
-        found = await _find_persona(session_, scope, agent, persona)
+        found = await find_persona(session_, scope, agent, persona)
         if played_by is not None:
             found = await play_on(session_, found, judging.Played(**played_by), named=frozenset(played_by))
         played = await admit_simulation(session_, self._parts, scope, agent, found)
@@ -361,7 +398,7 @@ async def open_written_call(parts: Harness, registration: live.Registration, sim
 
 
 async def _get_persona(session_: AsyncSession, scope: Scope, wanted: Wanted) -> judging.Persona:
-    persona = await _find_persona(session_, scope, wanted.agent, wanted.persona)
+    persona = await find_persona(session_, scope, wanted.agent, wanted.persona)
     played = wanted.played_by
     if played is None:
         return persona
@@ -369,7 +406,8 @@ async def _get_persona(session_: AsyncSession, scope: Scope, wanted: Wanted) -> 
     return await play_on(session_, persona, played, named=named)
 
 
-async def _find_persona(session_: AsyncSession, scope: Scope, agent: str, name: str) -> judging.Persona:
+async def find_persona(session_: AsyncSession, scope: Scope, agent: str, name: str) -> judging.Persona:
+    """The agent's persona of that name, its own or the library's; refused when it is neither."""
     declaration = await agents.declaration_of(session_, scope, agent)
     class_personas = None if declaration is None else declaration.personas
     return await judging.get_persona(session_, scope.org, agent, name, class_personas)
@@ -393,35 +431,7 @@ async def _brief(parts: Harness, scope: Scope, wanted: Wanted, persona: judging.
     )
 
 
-# ── asked by the CLI: a spoken call held to its end, a caller's line, the org's limits ──
-
-
-@dataclass(frozen=True, slots=True)
-class VoiceCall:
-    """A spoken call the CLI places and waits for: the room it minted, the agent, the caller, the line."""
-
-    call: str
-    agent: str
-    persona: judging.Persona
-    turns: int = 6
-    interferer_db: float | None = None
-    packet_loss: float = 0.0
-    ambience: str | None = None
-    pause_s: float | None = None
-    # The state the agent opens the call in: the persona's, as `pinecall simulate` reads it.
-    state: JsonObject = field(default_factory=dict[str, Json])
-
-
-@dataclass(frozen=True, slots=True)
-class VoicePlayed:
-    """A spoken call played to its end: how many lines the caller said, on what line, what it cost."""
-
-    call: str
-    turns: int
-    line: str
-    caller_cost_usd: float
-    # The caller hung up because its call had spent the providers row's `caller.ceiling_usd`.
-    stopped_at_ceiling: bool
+# ── asked by the CLI: a caller's line, the org's limits ──
 
 
 @dataclass(frozen=True, slots=True)
@@ -431,41 +441,6 @@ class Limits:
     at_once: int
     on_the_line: int
     comparison_calls: int
-
-
-# The same simulation as `place_simulation` places, on a room the client named, and answered when the
-# caller has hung up. A persona is the agent's own or Pinecall's library's: a name that is neither is
-# refused; one sent without a name is played as sent. The id is refused before it is given a place:
-# until 2026-11 it was admitted first, and an id sent twice took the place of the call playing under it.
-async def place_voice_call(parts: Harness, actor: Actor, asked: VoiceCall) -> VoicePlayed:
-    """Dispatch the agent into a room, play the persona as a spoken caller, and hang up."""
-    accounts.check_agent(actor, asked.agent)
-    scope, persona = actor.scope, asked.persona
-    async with parts.sessions.begin() as session_:
-        if persona.name:
-            await _find_persona(session_, scope, asked.agent, persona.name)
-        judging.check_persona_models(await providers.get_catalog(session_), persona.llm, persona.tts, persona.voice)
-        quotas = await billing.get_quotas(session_, scope.org, scope.env)
-        await refuse_an_opened_call(session_, asked.call)
-    # A ring with nobody to answer it would wait forty seconds for an agent that never joins.
-    parts.apps.get(scope, asked.agent)
-    acts = act_as_asked(persona.behavior, asked.interferer_db, asked.packet_loss, asked.ambience, asked.pause_s)
-    async with parts.simulations.hold_place(asked.call, scope, quotas.simulating_at_most):
-        async with parts.sessions.begin() as session_:
-            await admit_simulation(session_, parts, scope, asked.agent, persona, spoken=True)
-            await claim_new_call(session_, asked.call, asked.agent, scope)
-        simulation = Simulation(
-            call=asked.call,
-            agent=asked.agent,
-            scope=scope,
-            persona=persona,
-            turns=asked.turns,
-            spoken=True,
-            acts=acts,
-            state=dict(asked.state),
-        )
-        played = await play_spoken(parts, simulation)
-    return VoicePlayed(asked.call, played.turns, describe(acts), played.spending.usd, played.spending.is_over)
 
 
 # The gateway holds the vendors' keys: the org's own when it brought one, else the box's lent. A

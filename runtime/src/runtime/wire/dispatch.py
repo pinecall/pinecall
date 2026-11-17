@@ -49,6 +49,9 @@ class Dispatch(BaseModel):
     persona: str | None = None
     expects: list[str] = Field(default_factory=list[str])
     diverted_from: Env | None = None
+    # A simulated caller that rings by phone: the number it rang. Its leg dials the call's own room,
+    # so the leg cannot say it, and the job waits for that leg as it waits for any ring's.
+    dialled: str | None = None
     state: dict[str, Any] = Field(default_factory=dict[str, Any])
     # A dialled call's own opening: the words it opens with, and what the call is for.
     greeting: str | None = None

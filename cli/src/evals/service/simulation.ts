@@ -20,6 +20,12 @@ export const TURNS = 15;
 const A_TURNS = "--turns is how many turns the caller gets, 1 to 40";
 const A_LOSS = "--packet-loss is a share of the caller's packets: a number from 0 to 1, such as 0.05";
 const A_PAUSE = "--pause is seconds of silence before each of the caller's lines, 0 to 10";
+const A_DELAY = "--delay is the milliseconds the caller's network holds each packet, 0 to 2000";
+const A_JITTER = "--jitter is how far that hold moves from packet to packet, in milliseconds, 0 to 500";
+const A_RATE = "--rate is the kilobits a second the caller's network carries, 8 or more; a voice needs about 64";
+/** How a simulated caller reaches the agent on a spoken call: seated in its room, or ringing it by phone. */
+export const VIAS = ["webrtc", "sip"] as const;
+export const ONLY_SPOKEN = "--via, --delay, --jitter and --rate are about a spoken call: add --voice";
 const A_REPEAT = "--repeats is how many times the caller rings under each configuration, 1 to 10";
 
 // Background TV at 15 dB below the caller: measured to leak into `turn.user`.
@@ -41,6 +47,11 @@ export const SimulateInput = z.object({
   packetLoss: z.number().min(0, A_LOSS).max(1, A_LOSS).optional(),
   // Seconds of silence before each of the caller's lines, over the persona's own; 0 answers at once.
   pauseS: z.number().min(0, A_PAUSE).max(10, A_PAUSE).optional(),
+  // Spoken alone: the caller rings the agent by phone over SIP instead of sitting in its room, and the network its packets cross.
+  via: z.enum(VIAS, { error: `--via takes ${VIAS.join(" or ")}` }).optional(),
+  delayMs: z.number().min(0, A_DELAY).max(2000, A_DELAY).optional(),
+  jitterMs: z.number().min(0, A_JITTER).max(500, A_JITTER).optional(),
+  rateKbps: z.number().min(8, A_RATE).optional(),
   // What the caller phones about this run, in the first person, over the persona's goal: given, nobody is briefed.
   goal: z.string().min(1).optional(),
   // Who plays the caller this run, over the persona's own: vendor/model, a voice's vendor, a voice id.
@@ -60,6 +71,21 @@ export interface SimulationListeners {
   onOpened?: (call: string) => void;
   /** The caller knows what it phones about: the goal as it plays it, briefed or given. */
   onBriefed?: (goal: string) => void;
+}
+
+/** Whether a run names the line it rings on or the network it crosses, which only a spoken call has. */
+export function namesItsLine(input: Pick<SimulateInput, "via" | "delayMs" | "jitterMs" | "rateKbps">): boolean {
+  return input.via !== undefined || input.delayMs !== undefined || input.jitterMs !== undefined || input.rateKbps !== undefined;
+}
+
+/** The line a spoken run rings on and the network it crosses, as the gateway takes them; nothing for what was left unsaid. */
+export function lineOf(input: Pick<SimulateInput, "via" | "delayMs" | "jitterMs" | "rateKbps">): Pick<api.VoiceCallRequest, "via" | "delay_ms" | "jitter_ms" | "rate_kbps"> {
+  return {
+    ...(input.via === undefined ? {} : { via: input.via }),
+    ...(input.delayMs === undefined ? {} : { delay_ms: input.delayMs }),
+    ...(input.jitterMs === undefined ? {} : { jitter_ms: input.jitterMs }),
+    ...(input.rateKbps === undefined ? {} : { rate_kbps: input.rateKbps }),
+  };
 }
 
 /** A finished simulation: its call, the turns, the latency medians, and the score when judged. */
@@ -145,6 +171,7 @@ export async function simulate(ctx: Context, reached: Reached, written: Persona,
   const persona = playedBy(await phoningAbout(ctx, reached.slug, written, input), input);
   listeners.onBriefed?.(persona.goal);
   if (!input.voice && spoilsTheLine(input)) throw new UsageError(ONLY_ON_A_LINE);
+  if (!input.voice && namesItsLine(input)) throw new UsageError(ONLY_SPOKEN);
   const heard = new Heard(listeners);
   const placed = input.voice ? await outLoud(ctx, reached.slug, persona, input, heard, listeners) : await inWriting(ctx, reached, persona, input, heard);
   const entries = placed.call === "" ? [] : await allEntries(ctx, placed.call);
@@ -199,6 +226,7 @@ async function outLoud(ctx: Context, agent: string, persona: Persona, input: Sim
     turns: input.turns,
     ...degraded,
     ...(input.pauseS === undefined ? {} : { pause_s: input.pauseS }),
+    ...lineOf(input),
     ...(Object.keys(persona.state).length === 0 ? {} : { state: persona.state }),
   });
   // The id is said only after the first entry, so a refused call is never announced.

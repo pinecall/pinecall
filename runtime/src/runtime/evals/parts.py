@@ -15,6 +15,7 @@ from runtime.kit.crypto import Vault
 from runtime.live import service as live
 from runtime.livekit import Servers
 from runtime.platform import service as platform
+from runtime.telephony import service as telephony
 
 
 # A test call is placed as a real one is, by the gateway playing the caller: it reaches the logs, the
@@ -29,6 +30,8 @@ class Harness:
     settings: Settings
     vault: Vault
     servers: Servers
+    # What the box is to a carrier: a simulated caller that rings by phone dials the env's SIP name.
+    names: telephony.SipNames
     sessions: async_sessionmaker[AsyncSession]
     store: Store
     logs: Logs

@@ -13,7 +13,7 @@ from runtime.calls import service as calls
 from runtime.enums import KeyScope
 from runtime.evals import schemas
 from runtime.evals.auth import EvalsKey, TheHarness
-from runtime.evals.service import personas, simulated_calls, simulations
+from runtime.evals.service import personas, simulated_calls, simulations, voice_calls
 from runtime.evals.service.callers import Heard
 from runtime.exceptions import Forbidden
 from runtime.judging import service as judging
@@ -91,18 +91,8 @@ async def place_voice_call(
     body: schemas.PlaceVoiceCallRequest, actor: EvalsKey, parts: TheHarness
 ) -> schemas.PlaceVoiceCallResponse:
     """Dispatch the agent into a room, play the persona as a spoken caller, and hang up."""
-    asked = simulations.VoiceCall(
-        call=body.call,
-        agent=body.agent,
-        persona=persona_of(body.persona),
-        turns=body.turns,
-        interferer_db=body.interferer_db,
-        packet_loss=body.packet_loss,
-        ambience=body.ambience,
-        pause_s=body.pause_s,
-        state=body.state,
-    )
-    return schemas.PlaceVoiceCallResponse.of(await simulations.place_voice_call(parts, actor, asked))
+    played = await voice_calls.place_voice_call(parts, actor, voice_call_of(body))
+    return schemas.PlaceVoiceCallResponse.of(played)
 
 
 # A test room's rule: the sandbox's alone, only those values, and a key that edits the pipeline.
@@ -120,6 +110,25 @@ def check_values_named(actor: Actor, named: Mapping[str, Any]) -> JsonObject:
     return agents.check_test_values(named, env=actor.env)
 
 
+def voice_call_of(body: schemas.PlaceVoiceCallRequest) -> voice_calls.VoiceCall:
+    """A spoken call held to its end as its body asks for it."""
+    return voice_calls.VoiceCall(
+        call=body.call,
+        agent=body.agent,
+        persona=persona_of(body.persona),
+        turns=body.turns,
+        interferer_db=body.interferer_db,
+        packet_loss=body.packet_loss,
+        ambience=body.ambience,
+        pause_s=body.pause_s,
+        by_phone=body.via == "sip",
+        delay_ms=body.delay_ms,
+        jitter_ms=body.jitter_ms,
+        rate_kbps=body.rate_kbps,
+        state=body.state,
+    )
+
+
 def simulation_of(body: schemas.SimulationWants) -> simulations.Wanted:
     """A simulation as its body asks for it."""
     played, scenario = body.played_by, body.scenario
@@ -134,6 +143,10 @@ def simulation_of(body: schemas.SimulationWants) -> simulations.Wanted:
         pause_s=body.pause_s,
         played_by=None if played is None else judging.Played(**played.model_dump()),
         scenario=None if scenario is None else simulations.Scenario(scenario.goal, scenario.facts),
+        by_phone=body.via == "sip",
+        delay_ms=body.delay_ms,
+        jitter_ms=body.jitter_ms,
+        rate_kbps=body.rate_kbps,
     )
 
 

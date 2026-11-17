@@ -17,6 +17,14 @@ from runtime.wire.runs import Run
 LONGEST_LIST = 200
 A_SCREENFUL = 20
 
+# How a simulated caller reaches the agent on a spoken call.
+type Via = Literal["webrtc", "sip"]
+# Past two seconds each way nobody holds a conversation; past half a second of jitter no buffer follows.
+MOST_DELAY_MS = 2000
+MOST_JITTER_MS = 500
+# Under this not even the line's own signalling crosses.
+LEAST_RATE_KBPS = 8
+
 # ── a suite and its run ──
 
 
@@ -159,6 +167,14 @@ class PlaceVoiceCallRequest(Schema):
     ambience: Ambience | None = None
     # Seconds of silence before each of the caller's lines, over the persona's own; 0 answers at once.
     pause_s: float | None = Field(default=None, ge=0, le=judging.LONGEST_PAUSE_S)
+    # How the caller reaches the agent: seated in its room over WebRTC, or ringing it by phone over
+    # SIP, a leg in a carrier's codec dialled into the room. By phone runs in the sandbox alone.
+    via: Via = "webrtc"
+    # The network the caller's packets cross, beside `packet_loss`: the milliseconds each is held,
+    # how far that moves either way, and the kilobits a second it carries; a voice needs about 64.
+    delay_ms: float = Field(default=0.0, ge=0, le=MOST_DELAY_MS)
+    jitter_ms: float = Field(default=0.0, ge=0, le=MOST_JITTER_MS)
+    rate_kbps: float | None = Field(default=None, ge=LEAST_RATE_KBPS)
     # The state the agent opens the call in: the persona's, as `pinecall simulate` reads it.
     state: JsonObject = Field(default_factory=dict[str, Json])
 
@@ -211,6 +227,14 @@ class SimulationWants(Schema):
     # Spoken alone: seconds of silence before each of the caller's lines, over the persona's own; 0 for
     # a caller that answers at once, as a preview wants.
     pause_s: float | None = Field(default=None, ge=0, le=judging.LONGEST_PAUSE_S)
+    # Spoken alone. How the caller reaches the agent: seated in its room over WebRTC, or ringing it by phone over
+    # SIP, a leg in a carrier's codec dialled into the room. By phone runs in the sandbox alone.
+    via: Via = "webrtc"
+    # The network the caller's packets cross, beside `packet_loss`: the milliseconds each is held,
+    # how far that moves either way, and the kilobits a second it carries; a voice needs about 64.
+    delay_ms: float = Field(default=0.0, ge=0, le=MOST_DELAY_MS)
+    jitter_ms: float = Field(default=0.0, ge=0, le=MOST_JITTER_MS)
+    rate_kbps: float | None = Field(default=None, ge=LEAST_RATE_KBPS)
     # The model, the voice's vendor and the voice this run alone is played on.
     played_by: PlayedBy | None = None
     # What the caller phones about this run, over the persona's goal: what `/brief` wrote and a person

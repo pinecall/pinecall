@@ -6,6 +6,12 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **`simulate --via sip` rings the agent by phone**, and `--delay`, `--jitter` and `--rate` give the caller's
+  line a network. `--via sip` dials a SIP leg in a carrier's codec into the call's room, so the agent answers a
+  phone call at its number or at the box's test line (the sandbox's alone); `--delay`, `--jitter` and `--rate`
+  are done, with `--packet-loss`, to the call's real packets by a relay inside the gateway. The MCP's `simulate`
+  takes the same as `via`, `delay_ms`, `jitter_ms` and `rate_kbps`. Needs a runtime that has them.
+
 - **`pinecall pipeline` says when a transcriber does not hear the agent's language**, in the gateway's words
   and with what fixes it, under the stages.
 

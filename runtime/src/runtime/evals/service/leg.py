@@ -5,7 +5,7 @@ import math
 import random as randomness
 from collections import deque
 from collections.abc import AsyncIterable, AsyncIterator, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Never
 
 from livekit import rtc
@@ -15,6 +15,7 @@ from runtime.calls.log import Logs, Store
 from runtime.evals.service import turns
 from runtime.evals.service.hearing import Said
 from runtime.judging import service as judging
+from runtime.kit.link import LinkShape
 from runtime.kit.pcm import QUIET, in_frames, mix_under, rms_of
 from runtime.kit.tempo import Stretcher
 from runtime.providers.stage import primary_language
@@ -88,6 +89,8 @@ class Spoken:
     language: str | None = None
     # Whether the agent says the org's recording notice before its greeting.
     notice: bool = False
+    # The network between the caller and the room: what it loses, how long it holds, how much it carries.
+    network: LinkShape = field(default_factory=LinkShape)
 
 
 # The room behind a caller does not stop when the caller does: the track carries it from the moment
@@ -139,7 +142,9 @@ class CallerLeg:
         """Speak one line into the room, after the caller's pause (none when cutting in), through the line's noise."""
         cut_in = self.cutting_in
         if not cut_in:
-            await asyncio.sleep(self.spoken.acts.pause_s)
+            # The caller hears the answer's end the network's delay late, and its own voice then
+            # crosses the same network back: the first half is waited here, the second is the link's.
+            await asyncio.sleep(self.spoken.acts.pause_s + self.spoken.network.delay_ms / 1000)
         self.cutting_in = False
         self.said_at = self.store.clock()
         await self._speak(line)
@@ -168,7 +173,7 @@ class CallerLeg:
     # The interferer sits under how loud the caller speaks over the call, never under each piece of
     # its voice: a room does not get louder with the person in it.
     def next_frame(self) -> bytes:
-        """The next 10 ms of the line: the caller's voice or its silence, the room behind it, or a lost packet."""
+        """The next 10 ms of the line: the caller's voice or its silence, and the room behind it."""
         acts = self.spoken.acts
         frame = SILENCE
         if self.waiting:
@@ -180,8 +185,6 @@ class CallerLeg:
             gain = self.level.rms / self.loudness * 10 ** (-acts.interferer_db / 20)
             frame = mix_under(frame, self.interferer, self.carried, gain)
         self.carried += len(frame) // 2
-        if acts.packet_loss > 0 and self.dice.random() < acts.packet_loss:
-            return QUIET * (len(frame) // 2)
         return frame
 
     # Cut in some way into the answer, as a person does: never at its first word. A caller that cuts in
@@ -235,12 +238,23 @@ def pick_murmur(language: str | None, dice: randomness.Random) -> str:
     return dice.choice(words)
 
 
-def describe(acts: judging.Behavior) -> str:
+# Until 2026-11-17 a lost packet was ten milliseconds of the caller's track silenced before it was
+# encoded: the room never missed a packet, and nothing of what a network does to a call beside losing
+# it (a delay, its jitter, a rate too low) could be said. The line's network is a link the caller's
+# packets really cross now (`spoken.py`), and this is how a report words it.
+def describe(acts: judging.Behavior, network: LinkShape, *, by_phone: bool = False) -> str:
     """The line a caller acting so is on, in the words a report prints."""
-    if acts.interferer_db is None and acts.packet_loss <= 0:
-        return "a clean line"
-    noise = f"{acts.ambience} {acts.interferer_db or 0.0:.0f} dB under the caller"
-    return noise if acts.packet_loss <= 0 else f"{noise}, {acts.packet_loss * 100:.0f}% packet loss"
+    said = ["a phone line"] if by_phone else []
+    if acts.interferer_db is not None:
+        said.append(f"{acts.ambience} {acts.interferer_db:.0f} dB under the caller")
+    if network.loss > 0:
+        said.append(f"{network.loss * 100:.0f}% packet loss")
+    if network.delay_ms > 0 or network.jitter_ms > 0:
+        jitter = f" ± {network.jitter_ms:.0f} ms" if network.jitter_ms > 0 else ""
+        said.append(f"{network.delay_ms:.0f} ms delay{jitter}")
+    if network.rate_kbps is not None:
+        said.append(f"{network.rate_kbps:.0f} kbps")
+    return ", ".join(said) or "a clean line"
 
 
 async def synthesize(voice: tts.TTS[Never], text: str) -> bytes:

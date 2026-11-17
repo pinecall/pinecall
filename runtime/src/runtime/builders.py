@@ -188,6 +188,7 @@ async def build_harness(
         settings=handles.settings,
         vault=handles.vault,
         servers=handles.servers,
+        names=read_sip_names(handles.settings),
         sessions=handles.sessions,
         store=live.store,
         logs=live.logs,

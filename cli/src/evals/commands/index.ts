@@ -62,6 +62,10 @@ export function register(program: Command, ctx: Context): void {
     .option("--ambience <what>")
     .option("--packet-loss <share>")
     .option("--pause <seconds>", "silence before each of the caller's lines, over the persona's; 0 answers at once")
+    .option("--via <webrtc|sip>", "how the caller reaches the agent on a spoken call: in its room, or ringing it by phone over SIP (the sandbox's)")
+    .option("--delay <ms>", "the caller's network holds every packet this long, 0 to 2000")
+    .option("--jitter <ms>", "how far that hold moves from packet to packet, 0 to 500")
+    .option("--rate <kbps>", "the kilobits a second the caller's network carries; a voice needs about 64")
     .option("--goal <text>", "what the caller phones about this run, in the first person, over the persona's goal and the briefing")
     .option("--llm <vendor/model>", "the model that plays the caller this run; the persona's when unsaid")
     .option("--tts <vendor>", "the vendor the caller's voice is read by this run")
@@ -83,6 +87,10 @@ export function register(program: Command, ctx: Context): void {
         ambience: flags.ambience,
         packetLoss: numberOf("--packet-loss", flags.packetLoss),
         pauseS: numberOf("--pause", flags.pause),
+        via: flags.via,
+        delayMs: numberOf("--delay", flags.delay),
+        jitterMs: numberOf("--jitter", flags.jitter),
+        rateKbps: numberOf("--rate", flags.rate),
         goal: flags.goal,
         llm: flags.llm,
         tts: flags.tts,

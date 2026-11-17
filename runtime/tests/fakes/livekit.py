@@ -272,7 +272,10 @@ class Sip(SipService):
             shared = set(other.trunk_ids) & set(rule.trunk_ids)
             numbers = set(other.numbers) & set(rule.numbers)
             everything = not other.numbers or not rule.numbers
-            if shared and (numbers or everything):
+            # A rule that lists who calls collides only with one that lists the same caller, or, having
+            # listed none itself, with another that lists none (livekit's `DispatchRuleValidator`).
+            callers = (set(other.inbound_numbers) or {""}) & (set(rule.inbound_numbers) or {""})
+            if shared and callers and (numbers or everything):
                 raise api.TwirpError("invalid_argument", "dispatch rule already exists", status=400)
 
     @override

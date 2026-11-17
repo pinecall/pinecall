@@ -32,6 +32,7 @@ from runtime.exceptions import (
     ValidationError,
 )
 from runtime.judging import service as judging
+from runtime.kit.link import LinkShape
 from runtime.kit.time import today_in
 from runtime.live import service as live
 from runtime.providers import service as providers
@@ -362,7 +363,8 @@ async def _say_out_loud(parts: Harness, suite: Suite, golden: Golden, opened: Op
     acts = judging.Behavior(
         interferer_db=asked.interferer_db, packet_loss=asked.packet_loss, ambience=asked.ambience or "television"
     )
-    spoken = Spoken(opened.call, acts, language=voice.language, notice=notice)
+    # What a golden's line loses is lost on its network, as a simulation's is.
+    spoken = Spoken(opened.call, acts, voice.language, notice, LinkShape(loss=acts.packet_loss))
     line = SpokenLine(parts, dispatch, voice, spoken, waits_for_slot=False)
     spending = Spending(suite.catalog)
     try:
