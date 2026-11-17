@@ -12,8 +12,8 @@ export type { AgentValues, Comparison, ComparisonRow, Hearing, Persona, PersonaR
 /** What plays behind a caller on a noisy line. */
 export type Ambience = "television" | "cafe" | "office" | "street";
 
-/** How a caller reaches the agent: typed, spoken on a clear line, or spoken with a room behind it. */
-export type Line = "chat" | "call" | "noisy";
+/** How a caller reaches the agent: typed, spoken in its room as a browser calls, or spoken over SIP as a phone calls. */
+export type Way = "chat" | "web" | "phone";
 
 /** What a simulation is placed with (the runtime's SimulationRequest). */
 export interface Wanted {
@@ -27,6 +27,11 @@ export interface Wanted {
   packet_loss?: number;
   /** Spoken alone: what plays behind the caller; the persona's own when left out. */
   ambience?: Ambience;
+  /** Spoken alone: the caller rings the agent by phone over SIP (the sandbox's), where it would sit in its room. */
+  via?: "webrtc" | "sip";
+  /** Spoken alone: the network the caller's packets cross: the milliseconds each is held, and how far that moves. */
+  delay_ms?: number;
+  jitter_ms?: number;
   /** The sandbox's alone: what the agent runs on for this call over its settings (here, with or without its model of interruptions). */
   against?: AgentValues;
 }
