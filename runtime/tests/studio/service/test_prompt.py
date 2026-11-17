@@ -26,6 +26,19 @@ def test_the_identity_fills_the_calls_values_and_leaves_an_unknown_one_empty() -
     assert prompt.fill("a{{metadata.nothing}}b", {"metadata": {}}) == "ab"
 
 
+def test_an_agent_with_no_tool_is_told_it_has_none_and_never_to_call_one() -> None:
+    """Saved with no tool and no data collection, it is not told to act by calling a tool, nor to hand over."""
+    text = prompt.identity(clinic(tools=[], collect=None), {"call": {"channel": "phone", "medium": "voice"}})
+    assert f"<protocols>\n{prompt.WITHOUT_TOOLS}\n</protocols>" in text
+    assert "To act, call a tool" not in text and "hand over to a person" not in text
+
+
+def test_an_agent_with_a_tool_or_data_collection_is_told_to_act_by_calling_it() -> None:
+    """One HTTP tool, or data collection alone, is a tool the model acts with."""
+    for acting in (clinic(collect=None), clinic(tools=[])):
+        assert f"<protocols>\n{prompt.PROTOCOLS}\n</protocols>" in prompt.identity(acting, {})
+
+
 def test_a_written_chat_on_a_website_is_told_markdown_is_fine() -> None:
     """The channel's rules follow the call: a website's text chat is not a phone call."""
     text = prompt.identity(clinic(), {"call": {"channel": "web", "medium": "text"}})

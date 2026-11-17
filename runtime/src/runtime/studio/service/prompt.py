@@ -26,6 +26,18 @@ PROTOCOLS = (
     "- If you cannot solve it, say so and offer to hand over to a person."
 )
 
+# Studio's own words, which no SDK writes: an agent saved with no tool and no data collection. Told
+# to act by calling a tool and offered none, a model writes a call all the same: with the clock's
+# pair in its history Gemini ended that turn on MALFORMED_FUNCTION_CALL 19 times of 20, and on its
+# words 20 of 20 once told this (2026-11-17). It has nobody to hand over to either.
+WITHOUT_TOOLS = (
+    "- You have no tools on this call: you can talk, and nothing else. You cannot book, send or"
+    " change anything, and you never call a function. When the caller asks for something to be"
+    " done, take what they give you, read it back, and say plainly that you have taken it down"
+    " and cannot complete it yourself. Never say you have done something, or that you are about to.\n"
+    "- Never ask the caller to wait: once you stop talking, nothing happens until they speak again."
+)
+
 SPOKEN = (
     "You are on a phone call. Everything you write is read aloud by a voice: short spoken"
     " sentences, no lists, no bold, no symbols, no links. Say an email or a web address the way"
@@ -47,6 +59,11 @@ def channel_rules_for(channel: str | None, medium: str | None) -> str:
     if channel == "web" and medium == "text":
         return ON_A_WEBSITE
     return SPOKEN
+
+
+def protocols_for(definition: Definition) -> str:
+    """How the agent acts: by calling the tools it has, or, with none, by saying it cannot."""
+    return PROTOCOLS if definition.tools or definition.collect is not None else WITHOUT_TOOLS
 
 
 def tag(name: str, text: str) -> str:
@@ -75,7 +92,7 @@ def identity(definition: Definition, values: Mapping[str, Any]) -> str:
     said = [
         fill(definition.instructions, values),
         tag("rules", RULES),
-        tag("protocols", PROTOCOLS),
+        tag("protocols", protocols_for(definition)),
         tag("channel", channel_rules_for(call.get("channel"), call.get("medium"))),
     ]
     return "\n\n".join(part for part in said if part.strip())

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **A Studio agent with no tool answers the turn it used to lose.** Every Studio agent was told "To act, call a
+  tool in the same reply", one saved with no tool and no data collection too. On the turn a caller confirmed
+  something to be done ("Yes, that's right", after a booking read back), Gemini wrote a call to a function nobody
+  declared and Google ended the turn on `MALFORMED_FUNCTION_CALL`: the same request retried four times, and nothing
+  said. An agent with no tool is told it has none: it takes what the caller gives, reads it back and says it cannot
+  complete it itself, and is no longer told to offer a person it cannot hand over to.
+
 - **`setup` names every part a vendor plays.** The line before the keys it asks for said one part of each vendor
   (`google thinks`, where Google thought and spoke). It says them all, in a call's order (`google thinks and
   speaks`); the judge and the simulated caller are named only for a vendor that plays no part of the call itself.
