@@ -89,3 +89,8 @@ def test_a_person_who_came_with_no_key_reads_what_is_asked_of_them_and_why(tmp_p
     both_found = {**thinking_found, "ACME_API_KEY": "ak-x"}
     assert found_keys.say_asked(on_vendors, environ=both_found, home=tmp_path) is None
     assert found_keys.say_asked(models.ALL_LOCAL, environ={}, home=tmp_path) is None
+    # A vendor that plays two parts is said with both; the judge and the caller it also plays are not repeated.
+    one_for_two = models.Choices(stt=models.LOCAL, llm="acme", tts="acme")
+    assert found_keys.say_asked(one_for_two, environ={}, home=tmp_path) == (
+        "  asking    1 key found nowhere — acme thinks and speaks: typed below, nothing shown"
+    )

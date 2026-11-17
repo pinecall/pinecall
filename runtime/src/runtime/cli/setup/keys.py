@@ -84,11 +84,15 @@ def say_models(choices: Choices, *, card: bool = False, keyed: bool = True) -> s
 # and nothing said two more were coming.
 def say_asked(choices: Choices, *, environ: Mapping[str, str] = os.environ, home: Path | None = None) -> str | None:
     """The keys found nowhere, each with what its vendor does in a call; None when every one was found."""
-    doing: dict[str, str] = {}
-    stages = (("hears", choices.stt), ("thinks", choices.llm), ("speaks", choices.tts))
-    for does, choice in (*stages, ("judges", choices.judging), ("plays the caller", choices.calling)):
+    # Every part a vendor plays in a call, in its order: Google that thinks and speaks is said as both. The
+    # judge and the simulated caller are named only for a vendor that plays no part of the call itself.
+    doing: dict[str, list[str]] = {}
+    for does, choice in (("hears", choices.stt), ("thinks", choices.llm), ("speaks", choices.tts)):
         if not is_local(choice):
-            doing.setdefault(vendor_of(choice), does)
+            doing.setdefault(vendor_of(choice), []).append(does)
+    for does, choice in (("judges", choices.judging), ("plays the caller", choices.calling)):
+        if not is_local(choice) and vendor_of(choice) not in doing:
+            doing[vendor_of(choice)] = [does]
     missing = [
         vendor
         for vendor in sorted(choices.vendors)
@@ -96,7 +100,7 @@ def say_asked(choices: Choices, *, environ: Mapping[str, str] = os.environ, home
     ]
     if not missing:
         return None
-    wanted = " · ".join(f"{vendor} {doing[vendor]}" for vendor in missing)
+    wanted = " · ".join(f"{vendor} {_join_parts(doing[vendor])}" for vendor in missing)
     count = f"{len(missing)} key{'' if len(missing) == 1 else 's'}"
     said = f"  asking    {count} found nowhere — {wanted}: typed below, nothing shown"
     if len(missing) > 1 and vendor_of(choices.llm) in missing:
@@ -113,3 +117,7 @@ def _read_key(variable: str, environ: Mapping[str, str], home: Path | None) -> t
     if where is not None:
         return machine.key_from_shell(variable, home), where
     return None, None
+
+
+def _join_parts(parts: list[str]) -> str:
+    return " and ".join(parts)
