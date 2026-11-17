@@ -61,10 +61,12 @@ function liveOf(app: HostedApp): string {
 }
 
 // The newest release when it is not the live one: on its way, or failed with the first thing it said.
+// A failure is said first: the release that was live can fail too, started again under changed secrets or
+// after its process went away, and until 2026-11-17 such an app read "release 3 · —" with nothing running.
 function newestOf(app: HostedApp): string {
   if (app.release === null) return "no release yet";
-  if (app.live_release === app.release && !app.stopped) return "—";
   if (app.failed_why !== null) return `release ${app.release} failed: ${whyOf(app.failed_why)}`;
+  if (app.live_release === app.release && !app.stopped) return "—";
   return app.stopped ? `release ${app.release}` : `release ${app.release} on its way`;
 }
 

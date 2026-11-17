@@ -55,6 +55,12 @@ describe("pinecall deploy", () => {
     expect((await run(["deploy", "list"])).out).toBe("APP      LIVE  NEWEST\nclinica  —     release 4 failed: the process exited before its agents registered\n");
   });
 
+  it("list says the release that was live failed, when it was started again and did not come back", async () => {
+    const why = "the cluster could not start the release:\nthe cluster replace: 403 …";
+    answer("get", "/v1/hosted", { apps: [{ ...AN_APP, release: 3, live_release: 3, failed_why: why }] });
+    expect((await run(["deploy", "list"])).out).toBe("APP      LIVE       NEWEST\nclinica  release 3  release 3 failed: the cluster could not start the release\n");
+  });
+
   it("releases prints one line each, newest first, the note last", async () => {
     answer("get", "/v1/hosted/:name/releases", { releases: [A_RELEASE] });
     const ran = await run(["deploy", "releases", "--name", "clinica"]);

@@ -4,6 +4,13 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+- **`deploy list` says a live release failed.** A release that was serving and was started again (its secrets
+  changed, its process went away) can fail like a new one, and the gateway says why. The list put the reason under
+  "newest" only when the newest release was not the live one, so such an app read `release 3 · —` while nothing ran.
+  The failure is said first.
+
 ## [0.11.42] — a machine of your own sets up from nothing, a refused call says why, and the night's retention runs again (2026-11-17)
 
 - **`chat` reads the end of a call as its end.** When the gateway ended a written call (a vendor refused it for
