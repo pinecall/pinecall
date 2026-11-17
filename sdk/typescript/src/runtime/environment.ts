@@ -25,7 +25,6 @@ export const ENVIRONMENT = [
   "bases",
   "memory",
   "record",
-  "voiceIsolation",
   "smartInterruptions",
   "judges",
   "monitors",

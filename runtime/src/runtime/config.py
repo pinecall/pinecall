@@ -117,9 +117,6 @@ class Settings(BaseSettings):
     otlp_pii: bool = Field(False, alias="PINECALL_OTLP_PII")
     timezone: str = Field("UTC", alias="PINECALL_TIMEZONE")
 
-    # ── a call's two small models: the one that takes far voices down, as a library and its weights ──
-    far_voices_library: Path | None = Field(None, alias="PINECALL_FAR_VOICES_LIBRARY")
-    far_voices_model: Path | None = Field(None, alias="PINECALL_FAR_VOICES_MODEL")
     # The model that tells a caller taking the floor from one agreeing, as an ONNX file.
     floor_model: Path | None = Field(None, alias="PINECALL_FLOOR_MODEL")
 

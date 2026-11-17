@@ -21,7 +21,6 @@ from runtime.providers.stage import Running, Speaking, Thinking
 from runtime.session import echo, history, prompt, recording
 from runtime.session.agent import CallAgent, agent_of
 from runtime.session.call import Call
-from runtime.session.far_voices import FarVoicesModel
 from runtime.session.hearing import keyterms
 from runtime.session.hold import HoldMusic
 from runtime.session.line import Line
@@ -70,8 +69,6 @@ class Place:
     melody: HoldMusic | None = None
     # The one participant the session listens to: the caller's leg, or the visitor who talks.
     participant: str | None = None
-    # The model that takes down the voices far from the caller's microphone, where the process has one.
-    far_voices: FarVoicesModel | None = None
     # The model that tells a caller taking the floor from one agreeing, where the process has one.
     floor: FloorModel | None = None
 
@@ -113,7 +110,6 @@ class Session:
         self.line = line
         self.room = place.room
         self.participant = place.participant
-        self.far_voices = place.far_voices
         # Said on the call's first entry, and the model is told it. A written call has a room too when a
         # page's chat holds it; until 0.11.38 a room meant spoken, and a visitor typing in the widget's
         # chat was answered as on a phone call ("I'm on a phone call, so I can't see the page").
@@ -425,12 +421,6 @@ class Session:
     # `record` is said: left unset, livekit asks its cloud; the call's own recorder is ours. A
     # visitor who left may come back (docs/protocol/tokens.md): their call waits, not livekit. No
     # session host: it hands every participant the raw turns, the tools and the prompt (projections.md).
-    # The caller's audio is heard as it comes, through nothing of ours. The model that takes far voices
-    # down and the level that muted the room behind a caller (far_voices.py, nearest_voice.py) are on no
-    # call since 2026-11-17: on a phone call the level muted 2.85 s of a sentence of 4.5 s, the caller's
-    # own, said after a louder "Hi", and the ears closed the turn in the middle of it. Neither was ever
-    # heard on a phone's 8 kHz before production. `voice_isolation` is still declared and set, and read
-    # by nothing.
     def room_options(self) -> RoomOptions:
         """How livekit takes the room: the one participant heard, its audio, and who leaving ends it."""
         spoken = is_spoken(self.live, self.built)

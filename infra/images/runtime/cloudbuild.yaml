@@ -21,12 +21,8 @@ steps:
         from runtime.providers.service.plugins import list_vendors; list_vendors();
         from smart_turn_livekit.models import resolve_model;
         print(resolve_model('smart-turn-v3', local_only=True));
-        import os, pathlib; from livekit import rtc; from runtime.session.far_voices import load_far_voices;
-        model = load_far_voices(pathlib.Path(os.environ['PINECALL_FAR_VOICES_LIBRARY']), pathlib.Path(os.environ['PINECALL_FAR_VOICES_MODEL']));
-        assert model is not None, 'the far-voices model did not load';
+        import os, pathlib; from livekit import rtc;
         frame = rtc.AudioFrame(data=bytes(2400), sample_rate=24000, num_channels=1, samples_per_channel=1200);
-        stream = model.open_stream(); assert stream.clear(frame) is not frame and not stream.broken, 'the far-voices model took no frame';
-        print('far voices: a frame taken');
         from runtime.session.taking_the_floor import load_floor_model;
         floor = load_floor_model(pathlib.Path(os.environ['PINECALL_FLOOR_MODEL']));
         assert floor is not None, 'the floor model did not load';

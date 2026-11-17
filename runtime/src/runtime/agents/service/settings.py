@@ -298,7 +298,7 @@ def _check_test_kind(name: str, value: object) -> None:
     elif name == "end_of_turn":
         if value not in END_OF_TURNS:
             raise ValidationError(f"a test room's {name} is one of {', '.join(END_OF_TURNS)}")
-    elif name in ("voice_isolation", "smart_interruptions"):
+    elif name == "smart_interruptions":
         if not isinstance(value, bool):
             raise ValidationError(f"a test room's {name} is true or false")
     elif not isinstance(value, str):

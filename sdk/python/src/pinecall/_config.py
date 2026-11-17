@@ -29,7 +29,6 @@ ENVIRONMENT: tuple[str, ...] = (
     "bases",
     "memory",
     "record",
-    "voice_isolation",
     "smart_interruptions",
     "judges",
     "monitors",

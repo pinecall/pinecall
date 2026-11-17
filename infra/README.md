@@ -91,8 +91,7 @@ working tree, so an image holds what its commit holds whatever state the checkou
 image is built there in three stages (`images/runtime/Containerfile`): the console and the widget
 from `pnpm-lock.yaml`, the wheel with those pages inside, and the image itself, which installs
 `uv.lock`'s versions, each checked by its hash, and carries two models fetched at build, each from
-one commit of its repository and refused unless its hash matches: Smart Turn v3's weights, the
-library and weights of the model that takes down the voices far from a caller's microphone, and the
+one commit of its repository and refused unless its hash matches: Smart Turn v3's weights, and the
 model that tells a caller taking the floor from one agreeing. Every base image is named by its digest. A release
 names the image by its tag and by the digest the registry holds for it, which `make deploy` asks,
 so a pod pulls those bytes wherever the tag is moved to. Every push and pull request is also scanned (`check.yml`, `supply

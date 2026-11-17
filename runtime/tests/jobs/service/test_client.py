@@ -101,20 +101,19 @@ async def test_a_worker_asking_for_a_calls_config_with_a_test_rooms_values_gets_
 
 
 @needs_the_services
-async def test_a_test_room_that_turns_voice_isolation_off_reaches_the_worker_so(
+async def test_a_test_room_that_turns_smart_interruptions_off_reaches_the_worker_so(
     gateway: Gateway, tenant: Tenant, agent: str, fleet: GatewayClient
 ) -> None:
     """The call the worker builds is told: off for that call, on for the agent's others."""
     scope = Scope(tenant.org, Env.sandbox, "")
     async with holding(gateway, tenant, agent):
         plain = await fleet.get_agent(agent, scope, call="call_a")
-        without = await fleet.get_agent(agent, scope, call="call_b", test={"voice_isolation": False})
-    assert (plain.voice_isolation, without.voice_isolation) == (True, False)
+        without = await fleet.get_agent(agent, scope, call="call_b", test={"smart_interruptions": False})
+    assert (plain.smart_interruptions, without.smart_interruptions) == (True, False)
 
 
-# 2026-11-15: an agent set to run without voice isolation ran with it. The setting was in the
-# declaration, the settings and the class; the answer a worker reads the agent in did not carry it, so
-# every call was built on the default. A simulation placed "without the model" measured the model.
+# A setting in the declaration, the settings and the class that the answer a worker reads the agent in
+# does not carry is the default on every call, whatever the agent says.
 def test_a_worker_reads_every_field_a_call_is_declared_with() -> None:
     """What the gateway answers a worker holds every field of the declaration: none is the default by omission."""
     declared = {one.name for one in dataclasses.fields(Declaration)}

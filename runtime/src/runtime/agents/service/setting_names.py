@@ -65,7 +65,6 @@ SETTINGS: tuple[SettingNames, ...] = (
     SettingNames("hangup", "hangup", ("hangup",)),
     SettingNames("memory", "memory", ("memory",), words=True),
     SettingNames("record", "record", ("record",)),
-    SettingNames("voice_isolation", "voice_isolation", ("voice_isolation",), in_a_test=("voice_isolation",)),
     SettingNames(
         "smart_interruptions", "smart_interruptions", ("smart_interruptions",), in_a_test=("smart_interruptions",)
     ),

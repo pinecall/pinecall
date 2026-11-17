@@ -14,15 +14,9 @@
   line release` with nobody else running the agent still leaves the line with nobody, for a minute: then it is
   the releaser's again, while their process runs.
 
-- **A caller's audio is heard as it comes: the model and the level that muted the room behind a caller are on
-  no call.** Both sat on every spoken call since 0.11.40 (`session/far_voices.py`, `session/nearest_voice.py`).
-  On a phone call the caller's "Hi" came 12 to 20 dB over the sentence after it, the level took its bar from
-  the greeting, 2.85 s of that sentence's 4.5 s were muted, and the ears closed the turn in the middle of it:
-  "our company is interested in SOC 2 compliance" reached the agent as "…is interested in you." and, a turn
-  later, "compliance.". The same recording through Flux with nothing in the way is one turn. Neither step was
-  ever heard on a phone's 8 kHz before production, so a spoken call's audio goes to the ears through nothing of
-  ours, as before 0.11.40. A television behind a caller is heard again as the caller's. `voice_isolation` is
-  still declared and set, and read by nothing; the two modules stay in the tree, on no call.
+- **Voice isolation is removed.** A spoken call's audio reaches the ears as LiveKit hands it. `voice_isolation`
+  is no longer a setting of an agent, of a class (`voiceIsolation` in the SDKs) or of a test room, the console
+  has no switch for it, and the image carries no model for it.
 
 - **An `endpointing_ms` that ears which end the turn would refuse is refused where it is set.** Flux takes the
   agent's endpointing as its end-of-turn timeout, from 500 to 60000 ms. A class that set 250 was taken, Deepgram

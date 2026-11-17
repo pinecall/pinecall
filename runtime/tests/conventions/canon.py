@@ -178,10 +178,6 @@ ENGINE_MODULES: dict[str, frozenset[str]] = {
             "recording",
             # The caller's audio cleared of the agent's own voice.
             "echo",
-            # The caller's audio with the room far under their voice muted.
-            "nearest_voice",
-            # The voices far from the caller's microphone taken down by a model.
-            "far_voices",
             # Whether a caller speaking over the agent takes the floor or only agrees: a model's word.
             "taking_the_floor",
             # A call's time: its ceiling, a chat's quiet, the idle lines.

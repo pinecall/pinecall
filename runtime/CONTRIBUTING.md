@@ -114,9 +114,7 @@ A module of a domain that is none of its seven files is named here, and in
 | `session` | `widget.py` | `Widget`: the DataChannel to a browser widget |
 | `session` | `recording.py` | `Recorder`: the call's file and the other voices |
 | `session` | `echo.py` | the caller's audio cleared of the agent's own voice |
-| `session` | `nearest_voice.py` | the caller's audio with what sits far under their own voice muted: the room behind them |
 | `session` | `taking_the_floor.py` | whether a caller speaking over the agent is taking the floor or only agreeing, by a model's word on the audio: what the session is told of the voice detector while the agent speaks, and of what the ears write of the same speech |
-| `session` | `far_voices.py` | the voices far from the caller's microphone taken down by a model, where the box has it: loaded once a process, a stream a call |
 | `session` | `clock.py` | a call's time: its ceiling, a chat's quiet, the idle lines |
 | `session` | `started.py` | the `call.started` entry |
 | `live` | `served.py` | `Served`, a call this gateway serves, and `Calls`: each one's socket, pump and commands, every org's count |

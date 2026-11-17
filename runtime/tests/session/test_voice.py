@@ -265,13 +265,10 @@ async def test_a_release_gives_the_ears_back_first_and_then_the_voice(box: Box, 
     assert "supervisor.released" in await kinds(store, call)
 
 
-# 2026-11-17: the level that muted the room behind a caller muted a phone caller's own sentence, and the
-# model before it was never heard on a phone's audio: a call is heard through neither.
 @needs_the_database
-async def test_a_spoken_call_is_heard_as_it_comes_whatever_its_agent_says(box: Box) -> None:
-    """No processor of ours sits on the caller's audio, `voice_isolation` said or not."""
-    for declared in (NOBODY, Declaration(slug="clinica-norte", voice_isolation=False)):
-        assert spoken_call(box, declared).room_options().audio_input is NOT_GIVEN
+async def test_a_spoken_call_is_heard_as_livekit_hands_it(box: Box) -> None:
+    """No processor of ours sits on the caller's audio."""
+    assert spoken_call(box, NOBODY).room_options().audio_input is NOT_GIVEN
 
 
 @needs_the_database

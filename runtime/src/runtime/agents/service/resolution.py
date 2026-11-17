@@ -45,11 +45,6 @@ def resolve(
         turn=keep("turn", declaration.turn, settings.turn),
         memory=keep("memory", declaration.memory, settings.memory),
         record=keep("record", declaration.record, declaration.record if settings.record is None else settings.record),
-        voice_isolation=keep(
-            "voice_isolation",
-            declaration.voice_isolation,
-            declaration.voice_isolation if settings.voice_isolation is None else settings.voice_isolation,
-        ),
         smart_interruptions=keep(
             "smart_interruptions",
             declaration.smart_interruptions,

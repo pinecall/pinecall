@@ -84,7 +84,7 @@ function CallerMark({ run }: { run: PersonaRun }): ReactNode {
 
 function RunRow({ run }: { run: PersonaRun }): ReactNode {
   const standing = standingOf(run);
-  // What the call ran on over the agent's settings, when anything: "voice isolation off" tells two runs of one caller apart.
+  // What the call ran on over the agent's settings, when anything: "smart interruptions off" tells two runs of one caller apart.
   const ranOn = run.against == null || setupUnder(run.against) === "" ? null : setupUnder(run.against);
   const under = standing === "live" ? "on the line now" : [ago(run.started_at), lengthOf(run.started_at, run.ended_at), run.score !== null && run.score.judged > 0 ? `${run.score.held}/${run.score.judged} held` : null, ranOn].filter((part) => part !== null).join(" · ");
   return (

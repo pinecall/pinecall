@@ -27,12 +27,11 @@ const LENGTHS: readonly { turns: number; name: string }[] = [
   { turns: 30, name: "Long" },
 ];
 
-// Each of the agent's two small models for this call alone: the same caller with it and without.
-const MODELS: readonly { knob: "isolation" | "interruptions"; title: string; about: string }[] = [
-  { knob: "isolation", title: "Voice isolation", about: "the model that takes down a television or people near the caller" },
+// The agent's small model for this call alone: the same caller with it and without.
+const MODELS: readonly { knob: "interruptions"; title: string; about: string }[] = [
   { knob: "interruptions", title: "Smart interruptions", about: "the model that tells a real interruption from an “mm-hmm”" },
 ];
-const ISOLATIONS: readonly { value: Isolation; name: string }[] = [
+const CHOICES: readonly { value: Choice; name: string }[] = [
   { value: "own", name: "Agent's setting" },
   { value: "on", name: "On" },
   { value: "off", name: "Off" },
@@ -43,7 +42,7 @@ const FAINTEST_DB = 30;
 const LOUDEST_DB = 5;
 
 /** The agent's own setting, or the model on or off for this call whatever the setting says. */
-export type Isolation = "own" | "on" | "off";
+export type Choice = "own" | "on" | "off";
 
 export interface How {
   line: Line;
@@ -52,19 +51,17 @@ export interface How {
   /** Packets lost, percent. */
   loss: number;
   turns: number;
-  isolation: Isolation;
-  interruptions: Isolation;
+  interruptions: Choice;
 }
 
-export const USUAL_HOW: How = { line: "call", room: "cafe", db: 15, loss: 0, turns: 15, isolation: "own", interruptions: "own" };
+export const USUAL_HOW: How = { line: "call", room: "cafe", db: 15, loss: 0, turns: 15, interruptions: "own" };
 
 /** What a call placed this way carries besides who rings whom. */
 export function askedBy(how: How): Pick<Wanted, "voice" | "turns" | "interferer_db" | "packet_loss" | "ambience" | "against"> {
   const noise = how.line === "noisy" ? { interferer_db: how.db, packet_loss: how.loss / 100, ...(how.room === "" ? {} : { ambience: how.room }) } : {};
   // Only a spoken call has audio for a model to hear, and only a choice that is not the agent's own is said.
-  const said = { ...(how.isolation === "own" ? {} : { voice_isolation: how.isolation === "on" }), ...(how.interruptions === "own" ? {} : { smart_interruptions: how.interruptions === "on" }) };
-  const isolation = how.line === "chat" || Object.keys(said).length === 0 ? {} : { against: said };
-  return { voice: how.line !== "chat", turns: how.turns, ...noise, ...isolation };
+  const against = how.line === "chat" || how.interruptions === "own" ? {} : { against: { smart_interruptions: how.interruptions === "on" } };
+  return { voice: how.line !== "chat", turns: how.turns, ...noise, ...against };
 }
 
 function loudness(db: number): string {
@@ -73,7 +70,7 @@ function loudness(db: number): string {
   return "Faint";
 }
 
-/** `isolates` is whether this form may run a call with the voice isolation its agent is not set to: the sandbox's, one call at a time. */
+/** `isolates` is whether this form may run a call with a model its agent is not set to: the sandbox's, one call at a time. */
 export function HowTheyCall({ title, how, onChange, isolates = false }: { title: string; how: How; onChange: (how: How) => void; isolates?: boolean }): ReactNode {
   const { line, room, db, loss, turns } = how;
   return (
@@ -135,13 +132,13 @@ export function HowTheyCall({ title, how, onChange, isolates = false }: { title:
       {isolates &&
         line !== "chat" &&
         MODELS.map((model) => (
-          <div key={model.knob} className="sim-level sim-isolation">
+          <div key={model.knob} className="sim-level sim-model">
             <span className="sim-level-name">
               {model.title}
               <span className="dash-quiet">{model.about}</span>
             </span>
             <div className="dash-switch" role="group" aria-label={`${model.title} for this call`}>
-              {ISOLATIONS.map((one) => (
+              {CHOICES.map((one) => (
                 <button key={one.value} type="button" aria-pressed={how[model.knob] === one.value} className={how[model.knob] === one.value ? "dash-switch-on" : ""} onClick={() => onChange({ ...how, [model.knob]: one.value })}>
                   {one.name}
                 </button>

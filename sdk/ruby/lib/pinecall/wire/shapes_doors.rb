@@ -39,7 +39,6 @@ module Pinecall
           memory: { kind: :ref, ref: "MemoryConfig" },
           hangup: { kind: :ref, ref: "HangupConfig" },
           record: { kind: :bool, default: true },
-          voice_isolation: { kind: :bool },
           smart_interruptions: { kind: :bool },
           max_duration_s: { kind: :int },
           llm_timeout_s: { kind: :float },

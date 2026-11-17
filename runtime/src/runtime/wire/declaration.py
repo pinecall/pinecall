@@ -266,9 +266,6 @@ class AgentConfig(WireModel):
     hangup: HangupConfig | None = None
     # Sent as null, a setting is the org's settings' again; `uses_knowledge` null is false.
     record: bool | None = True
-    # Whether a spoken call's audio goes through the model that takes down the voices far from the
-    # caller's microphone (a television, a colleague), where the box has it. Unset, it does.
-    voice_isolation: bool | None = None
     # Whether a caller who speaks over the agent stops it by what a model hears in their voice (taking
     # the floor, or only agreeing), where the box has the model; false leaves it to the ears' words.
     # Unset, it does.

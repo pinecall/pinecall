@@ -92,9 +92,6 @@ class Warmed:
     told: JobSettings
     # What plays a call's melody while it is held: livekit's own player, a track in the call's room.
     player: Callable[[], BackgroundAudioPlayer] = BackgroundAudioPlayer
-    # The model that takes down the voices far from a caller's microphone, loaded with the process; None
-    # on a box that has none.
-    far_voices: session.FarVoicesModel | None = None
     # The model that tells a caller taking the floor from one agreeing; None on a box that has none.
     floor: session.FloorModel | None = None
     # The call this process runs now: what livekit's end of a session ends.
@@ -306,7 +303,7 @@ async def set_up_spoken(
     room = _room_of(ctx, call, link)
     clip = await find_hold_clip(warmed.gateway, route.agent, arrived.scope, held)
     melody = None if clip is None else session.HoldMusic(clip, ctx.room, warmed.player(), held.after_s)
-    place = session.Place(room, melody, await _seat_of(ctx.room, route.channel), warmed.far_voices, warmed.floor)
+    place = session.Place(room, melody, await _seat_of(ctx.room, route.channel), warmed.floor)
     running = session.open_spoken(
         call,
         stages.pipeline,

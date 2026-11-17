@@ -138,8 +138,6 @@ class AgentValues(Schema):
     language: str | None = None
     temperature: float | None = None
     end_of_turn: EndOfTurn | None = None
-    # Whether the call's audio goes through the model that takes down far voices: the same caller with it and without.
-    voice_isolation: bool | None = None
     # Whether a caller speaking over the agent stops it by the model's word or by the ears' words.
     smart_interruptions: bool | None = None
 

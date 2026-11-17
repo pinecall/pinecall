@@ -156,7 +156,7 @@ class AgentConfigResponse(WireModel):
     memory: MemoryConfig | None = None
     hangup: HangupConfig | None = None
     record: bool = True
-    # An older gateway says nothing of it, and the call goes through the model as every call did.
+    # Never read by a worker: carried until the release whose gateway still says it is gone.
     voice_isolation: bool = True
     smart_interruptions: bool = True
     max_duration_s: int

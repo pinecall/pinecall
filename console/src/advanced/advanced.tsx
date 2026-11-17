@@ -36,11 +36,10 @@ const END_OF_TURN = [
   { value: "livekit", label: "LiveKit's detector", detail: "LiveKit's own end-of-turn model" },
 ];
 
-type Part = "hear" | "start" | "stop" | "quiet" | "voicemail" | "fallbacks" | "call";
+type Part = "start" | "stop" | "quiet" | "voicemail" | "fallbacks" | "call";
 
 // Each card, and the fields a class may declare in it: a card with none left open has nothing to edit.
 const PARTS: readonly { part: Part; title: string; about: string; fields: readonly string[] }[] = [
-  { part: "hear", title: "What it hears", about: "What reaches the agent of the caller's line, before anything is decided.", fields: ["voice_isolation"] },
   { part: "start", title: "When it starts speaking", about: "How the agent decides the caller has finished.", fields: ["stt", "turn"] },
   { part: "stop", title: "When it stops speaking", about: "What makes it stop when the caller speaks over it. A noise lets it carry on from where it paused.", fields: ["smart_interruptions", "turn"] },
   { part: "quiet", title: "When nobody talks", about: "Only counts while the agent is waiting on the caller, never while it speaks, a tool runs or a person has the line.", fields: ["silence_timeout_s", "idle"] },
@@ -177,17 +176,6 @@ export function AdvancedTab({ agent, kind }: { agent: string; kind: "code" | "st
             <Setting icon="bolt" title="Early guess confidence" about="How sure it must be to guess early that the turn is over. Never above the one before. Deepgram Flux only." aside={mark("turn")}>
               <Slider value={draft.eager} label="Early guess confidence" min={0.3} max={0.9} step={0.05} rest={0.5} disabled={off("turn")} onChange={(eager) => put({ eager })} />
             </Setting>
-          </div>
-        );
-      case "hear":
-        return (
-          <div className="adv-grid">
-            <Setting
-              icon="ear"
-              title="Voice isolation"
-              about="A small model takes down the voices far from the caller's microphone, like a television or people nearby. Off, only what is clearly quieter than the caller is muted."
-              aside={mark("voice_isolation") ?? <Toggle on={draft.voiceIsolation} label="Voice isolation" disabled={readOnly} onChange={(voiceIsolation) => put({ voiceIsolation })} />}
-            />
           </div>
         );
       case "stop": {

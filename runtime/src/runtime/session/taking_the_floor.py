@@ -59,7 +59,7 @@ JUDGED_OVER = 10
 # Speech over the agent this long is the caller's whatever the model says: no murmur measured ran
 # past 0.9 s, and its own page uses the same backstop.
 NO_MURMUR_LASTS_S = 1.2
-# A line the room was muted on (nearest_voice.py) is digital silence, which nothing the model learnt
+# A line that carries nothing is digital silence (a carrier sends it between words), which nothing the model learnt
 # from has: under 8 of 32767 of noise it called 16 % of the murmurs a floor-take where it called
 # 26 % on silence itself.
 A_ROOMS_OWN_NOISE = 8.0
