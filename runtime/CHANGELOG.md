@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **`setup` names every part a vendor plays.** The line before the keys it asks for said one part of each vendor
+  (`google thinks`, where Google thought and spoke). It says them all, in a call's order (`google thinks and
+  speaks`); the judge and the simulated caller are named only for a vendor that plays no part of the call itself.
+
 - **A sign-up with the address of an account that has no password says so.** Somebody who had come in with Google
   and then filled the sign-up form with the same address was mailed "You have an invitation waiting", and nobody had
   invited them: a seat with no password was read as an invitation, whatever its status. An address with an active
