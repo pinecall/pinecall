@@ -1,8 +1,6 @@
 # Changelog
 
-## 0.11.43 — a Mac's own Ollama keeps its models, a Studio agent with no tool answers, and a failed release is said first (2026-11-17)
-
-- Released with the runtime: nothing of this package changed.
+## 0.11.43 — released with the runtime's setup on a Mac's own Ollama (2026-11-17)
 
 ## 0.11.42 — a machine of your own sets up from nothing, a refused call says why, and the night's retention runs again (2026-11-17)
 
