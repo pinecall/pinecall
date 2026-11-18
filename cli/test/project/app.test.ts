@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { pageIn, servedApp } from "../../src/project/app.js";
 
 describe("the page a release carries", () => {
-  const page = { dir: "site", agent: "riley" };
+  const page = { dir: "site", agent: "front-desk" };
 
   it("is the app's, in either environment, when the app keeps it to none", () => {
     expect(pageIn(page, "sandbox")).toEqual(page);

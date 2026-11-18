@@ -101,12 +101,12 @@ async def test_a_number_answers_the_phone_and_whatsapp_at_once_and_each_is_let_g
     number = a_number()
     await imported(line, NumberImport(line.scope(), "recepcion", number, hooked=True))
     trunk = list(line.trunk(line.org, Env.production).numbers)
-    await imported(line, NumberImport(line.scope(), "riley", number, channel=Channel.whatsapp, hooked=True))
+    await imported(line, NumberImport(line.scope(), "front-desk", number, channel=Channel.whatsapp, hooked=True))
     async with line.sessions.begin() as session:
         both = await RouteRepository(session).list_at(line.org, number)
         assert [(one.route.channel, one.route.agent) for one in both] == [
             (Channel.phone, "recepcion"),
-            (Channel.whatsapp, "riley"),
+            (Channel.whatsapp, "front-desk"),
         ]
         with pytest.raises(Conflict, match="answers on phone and whatsapp"):
             await numbers.get_number(session, line.org, number)

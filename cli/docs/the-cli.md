@@ -1945,12 +1945,12 @@ is. SMS is a number of a Twilio account: importing it has Twilio post the number
 Pinecall, and the agent's replies go out from the same number through that account.
 
 ```console
-$ pinecall numbers import +17184006729 --agent riley --channel sms --dry-run
-  twilio: +17184006729's messages posted to this box: to do
-  route: +17184006729 to riley in the sandbox: to do
+$ pinecall numbers import +14155550134 --agent front-desk --channel sms --dry-run
+  twilio: +14155550134's messages posted to this box: to do
+  route: +14155550134 to front-desk in the sandbox: to do
   nothing written: drop --dry-run to do it
-$ pinecall numbers import +17184006729 --agent riley --channel sms --prod
-$ pinecall numbers drop +17184006729 --channel sms --prod      # the phone goes on ringing
+$ pinecall numbers import +14155550134 --agent front-desk --channel sms --prod
+$ pinecall numbers drop +14155550134 --channel sms --prod      # the phone goes on ringing
 ```
 
 A number whose messages already go to another service is refused naming where (`409 …'s messages go

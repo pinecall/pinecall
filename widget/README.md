@@ -132,7 +132,7 @@ agent's name, so `token-url` cannot point at them. Give the tag its tickets with
 `@pinecall/room`, which speaks to them, on the deployed page and under `pinecall start` alike:
 
 ```html
-<pinecall-widget agent="riley" name="Riley"></pinecall-widget>
+<pinecall-widget agent="front-desk" name="Front desk"></pinecall-widget>
 <script type="module">
   import { hosted } from "https://cdn.jsdelivr.net/npm/@pinecall/room@0.11/+esm";
   const doors = hosted();

@@ -93,24 +93,24 @@ async def test_a_number_that_answers_the_phone_also_answers_sms_and_twilio_posts
     sid = line.twilio.owns(number)
     await imported(line, NumberImport(line.scope(), "recepcion", number))
     trunk = list(line.trunk(line.org).numbers)
-    plan = await imported(line, NumberImport(line.scope(), "riley", number, channel=Channel.sms))
+    plan = await imported(line, NumberImport(line.scope(), "front-desk", number, channel=Channel.sms))
     here = sms.sms_hook_url(line.vault, f"https://{line.names.get_domain()}", number)
     assert line.twilio.sms_urls[sid] == here
     assert plan.steps == [
         f"twilio: {number}'s messages posted to this box: done",
-        f"route: {number} to riley in the production: done",
+        f"route: {number} to front-desk in the production: done",
     ]
     async with line.sessions() as session:
         both = await RouteRepository(session).list_at(line.org, number)
         assert [(one.route.channel, one.route.agent, one.route.account) for one in both] == [
             (Channel.phone, "recepcion", line.twilio.account_sid),
-            (Channel.sms, "riley", line.twilio.account_sid),
+            (Channel.sms, "front-desk", line.twilio.account_sid),
         ]
         by_sms = await numbers.get_number(session, line.org, number, Env.production, Channel.sms)
         account = await sms.sms_account_of(session, line.vault, by_sms)
         assert account is not None and account.account_sid == line.twilio.account_sid
     assert list(line.trunk(line.org).numbers) == trunk == [number]
-    again = await imported(line, NumberImport(line.scope(), "riley", number, channel=Channel.sms))
+    again = await imported(line, NumberImport(line.scope(), "front-desk", number, channel=Channel.sms))
     assert again.steps[0] == f"twilio: {number}'s messages posted to this box: stands"
 
 
@@ -121,12 +121,12 @@ async def test_messages_that_go_to_another_service_are_taken_only_when_told_to_m
     await line.brought()
     sid = line.twilio.owns(number)
     line.twilio.sms_urls[sid] = "https://another.example/sms"
-    wanted = NumberImport(line.scope(), "riley", number, channel=Channel.sms)
+    wanted = NumberImport(line.scope(), "front-desk", number, channel=Channel.sms)
     with pytest.raises(Conflict, match="go to https://another\\.example/sms now"):
         await imported(line, wanted)
     assert line.twilio.sms_urls[sid] == "https://another.example/sms"
     async with line.sessions.begin() as session:
-        moving = NumberImport(line.scope(), "riley", number, channel=Channel.sms, move=True)
+        moving = NumberImport(line.scope(), "front-desk", number, channel=Channel.sms, move=True)
         await number_hook.import_number(session, line.vault, line.http, line.livekits, line.names, moving)
     assert line.twilio.sms_urls[sid].startswith(f"https://{line.names.get_domain()}/v1/sms/twilio/")
 
@@ -136,12 +136,12 @@ async def test_sms_comes_through_a_twilio_account_and_through_nothing_else(line:
     """A number hooked by the org, or one of a WhatsApp account, has no API to point its messages with."""
     number = a_number()
     with pytest.raises(ValidationError, match="it is not hooked"):
-        await imported(line, NumberImport(line.scope(), "riley", number, channel=Channel.sms, hooked=True))
+        await imported(line, NumberImport(line.scope(), "front-desk", number, channel=Channel.sms, hooked=True))
     async with line.sessions.begin() as session:
         at_meta = WhatsappNumber(org=line.org, phone_number_id="1055", access_token="a token")
         await accounts.put_carrier(session, line.vault, at_meta)
     with pytest.raises(Conflict, match="SMS comes through a Twilio account"):
-        await imported(line, NumberImport(line.scope(), "riley", number, channel=Channel.sms, account="1055"))
+        await imported(line, NumberImport(line.scope(), "front-desk", number, channel=Channel.sms, account="1055"))
 
 
 # ── the audio of an MMS ──

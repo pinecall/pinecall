@@ -39,10 +39,10 @@ describe("hosted()", () => {
   });
 
   it("asks for a dictation's socket in the language the field is written in", async () => {
-    const page = server({ "/pinecall/dictation": { status: 200, body: { url: "wss://gateway.example/v1/transcriptions/stream?token=t", hear: ["Riley"] } } });
+    const page = server({ "/pinecall/dictation": { status: 200, body: { url: "wss://gateway.example/v1/transcriptions/stream?token=t", hear: ["Brightside"] } } });
     const { dictation } = hosted({ fetch: page.fetch });
 
-    expect(await dictation("es")).toEqual({ url: "wss://gateway.example/v1/transcriptions/stream?token=t", hear: ["Riley"] });
+    expect(await dictation("es")).toEqual({ url: "wss://gateway.example/v1/transcriptions/stream?token=t", hear: ["Brightside"] });
     await dictation();
     expect(page.asked).toEqual([
       { path: "/pinecall/dictation", body: { language: "es" } },

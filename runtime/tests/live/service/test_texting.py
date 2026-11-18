@@ -27,9 +27,9 @@ def a_key(tenant: Tenant) -> Actor:
 
 @pytest.fixture
 async def number(sessions: async_sessionmaker[AsyncSession], tenant: Tenant) -> str:
-    """A number agent riley answers SMS at in the sandbox."""
+    """A number agent front-desk answers SMS at in the sandbox."""
     number = f"+1555{secrets.randbelow(10**7):07d}"
-    route = RouteToWrite(org=tenant.org, number=number, agent="riley", channel=Channel.sms, env=Env.sandbox)
+    route = RouteToWrite(org=tenant.org, number=number, agent="front-desk", channel=Channel.sms, env=Env.sandbox)
     async with sessions.begin() as session:
         await RouteRepository(session).put(route)
     return number
@@ -46,9 +46,9 @@ async def test_an_agent_that_answers_sms_at_no_number_writes_to_nobody(
             await texting.text_as_agent(
                 session, side.parts, side.threads, a_key(tenant), "nobody", Text(CONTACT, "hola"), NOON
             )
-        with pytest.raises(ValidationError, match="not a number agent riley answers SMS at"):
+        with pytest.raises(ValidationError, match="not a number agent front-desk answers SMS at"):
             asked = Text(CONTACT, "hola", shown="+15550000000")
-            await texting.text_as_agent(session, side.parts, side.threads, a_key(tenant), "riley", asked, NOON)
+            await texting.text_as_agent(session, side.parts, side.threads, a_key(tenant), "front-desk", asked, NOON)
 
 
 @needs_the_database
@@ -59,9 +59,9 @@ async def test_a_contact_who_stopped_the_messages_is_written_to_by_nobody_and_an
     """Their STOP stands against a key too, whatever consent it brings; and with no app, no text."""
     scope = Scope(tenant.org, Env.sandbox)
     async with sessions() as session:
-        with pytest.raises(Conflict, match="no app holds agent riley"):
+        with pytest.raises(Conflict, match="no app holds agent front-desk"):
             await texting.text_as_agent(
-                session, side.parts, side.threads, a_key(tenant), "riley", Text(CONTACT, "hola"), NOON
+                session, side.parts, side.threads, a_key(tenant), "front-desk", Text(CONTACT, "hola"), NOON
             )
     async with sessions.begin() as session:
         await keywords.stop_writing_to(
@@ -70,5 +70,5 @@ async def test_a_contact_who_stopped_the_messages_is_written_to_by_nobody_and_an
     async with sessions() as session:
         with pytest.raises(Forbidden, match="asked for no more messages"):
             await texting.text_as_agent(
-                session, side.parts, side.threads, a_key(tenant), "riley", Text(CONTACT, "hola"), NOON
+                session, side.parts, side.threads, a_key(tenant), "front-desk", Text(CONTACT, "hola"), NOON
             )

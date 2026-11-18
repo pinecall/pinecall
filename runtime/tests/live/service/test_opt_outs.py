@@ -52,7 +52,12 @@ async def routed(
     monkeypatch.setattr(side.parts.http, "_transport", twilio.transport())
     account = TwilioCarrier(org=tenant.org, account_sid=twilio.account_sid, user=twilio.user, secret=twilio.secret)
     route = RouteToWrite(
-        org=tenant.org, number=number, agent="riley", channel=Channel.sms, env=Env.sandbox, account=twilio.account_sid
+        org=tenant.org,
+        number=number,
+        agent="front-desk",
+        channel=Channel.sms,
+        env=Env.sandbox,
+        account=twilio.account_sid,
     )
     async with sessions.begin() as session:
         await accounts.put_carrier(session, side.parts.vault, account)

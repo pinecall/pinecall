@@ -98,7 +98,7 @@ async def test_a_number_is_a_row_a_channel_and_each_is_read_written_and_forgotte
 ) -> None:
     """One number answers the phone and WhatsApp: two rows, and what is done to one leaves the other."""
     number = a_number()
-    written = dataclasses.replace(routed(tenant, number, agent="riley"), channel=Channel.whatsapp)
+    written = dataclasses.replace(routed(tenant, number, agent="front-desk"), channel=Channel.whatsapp)
     async with sessions.begin() as session:
         routes = RouteRepository(session)
         await routes.put(routed(tenant, number))
@@ -108,12 +108,12 @@ async def test_a_number_is_a_row_a_channel_and_each_is_read_written_and_forgotte
             (one.route.channel, one.route.agent, one.route.env) for one in await routes.list_at(tenant.org, number)
         ] == [
             (Channel.phone, "agenda", Env.production),
-            (Channel.whatsapp, "riley", Env.sandbox),
+            (Channel.whatsapp, "front-desk", Env.sandbox),
         ]
         with box_wide():
             on_the_phone = await routes.find_at(Channel.phone, number)
             in_writing = await routes.find_at(Channel.whatsapp, number)
-        assert (on_the_phone and on_the_phone.agent, in_writing and in_writing.agent) == ("agenda", "riley")
+        assert (on_the_phone and on_the_phone.agent, in_writing and in_writing.agent) == ("agenda", "front-desk")
         assert await routes.delete_of(tenant.org, number, Channel.whatsapp)
         assert await routes.find(tenant.org, number, Channel.whatsapp) is None
         assert await routes.find(tenant.org, number, Channel.phone) is not None

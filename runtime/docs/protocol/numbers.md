@@ -156,8 +156,8 @@ peer, a WhatsApp account or a number the org hooked itself is `409`/`400`: only 
 number's messages. The steps, shown by `?dry_run=true` like any import:
 
 ```
-twilio: +17184006729's messages posted to this box: done
-route: +17184006729 to riley in the production: done
+twilio: +14155550134's messages posted to this box: done
+route: +14155550134 to front-desk in the production: done
 ```
 
 The first sets the number's `SmsUrl` at Twilio to
