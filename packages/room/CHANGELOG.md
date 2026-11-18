@@ -4,6 +4,10 @@ All notable changes to `@pinecall/room`. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## 0.11.45 — a number answers the phone, WhatsApp and SMS at once, and SMS comes through Twilio (2026-11-18)
+
+- **The wire knows the channel `sms`**: a call's `channel` may say it.
+
 ## 0.11.44 — a WhatsApp number of your own Meta app is heard and says where each reply stands, a simulated caller rings by phone, and a restarted process keeps its line (2026-11-18)
 
 - **The wire knows `message.status`**: where a WhatsApp reply stands (`sent`, `delivered`, `read`, `failed`), an

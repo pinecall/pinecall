@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.45 — a number answers the phone, WhatsApp and SMS at once, and SMS comes through Twilio (2026-11-18)
 
 - **A number answers SMS, through Twilio.** `sms` is a channel: `POST /v1/numbers {channel: "sms"}` on a
   number of a Twilio account (the org's, or the platform's for a number it bought) has Twilio post the

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.45 — a number answers the phone, WhatsApp and SMS at once, and SMS comes through Twilio (2026-11-18)
 
 - **`sms` is a channel.** A call by SMS is written (`medium: text`), and the built-in rule tells the model to write plain, short text.
 

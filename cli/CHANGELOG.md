@@ -4,7 +4,7 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## [0.11.45] — a number answers the phone, WhatsApp and SMS at once, and SMS comes through Twilio (2026-11-18)
 
 - **`numbers import --channel sms`: a number answers SMS.** A number of a Twilio account answers SMS beside
   the phone: importing it has Twilio post its messages to Pinecall (`--move` when they go to another service

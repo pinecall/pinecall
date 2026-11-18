@@ -4,6 +4,10 @@
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## 0.11.45 — a number answers the phone, WhatsApp and SMS at once, and SMS comes through Twilio (2026-11-18)
+
+- Released with the runtime: nothing of this package changed.
+
 ## 0.11.44 — a WhatsApp number of your own Meta app is heard and says where each reply stands, a simulated caller rings by phone, and a restarted process keeps its line (2026-11-18)
 
 - Released with the runtime: nothing of this package changed.
