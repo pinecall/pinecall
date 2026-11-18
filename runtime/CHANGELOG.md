@@ -7,6 +7,9 @@
   call, from}` or `{sent: false, refused, message}`, read by the flow as a refused call is. `docs/protocol/flows.md`.
 - A text the agent sends first is held to the hours and the daily pace of a call, on purpose: under the TCPA a text
   is a call. `docs/protocol/numbers.md`, "SMS".
+- **The console says an open written conversation is open.** A WhatsApp or SMS thread stays open for two hours
+  after its last message, and its row said "On a call now" with a clock running and the dot of a live call. It
+  says "Conversation open" and the hour it started, under "Open".
 
 ## 0.11.48 — an agent writes first by SMS, and a person's message on a thread reaches the contact (2026-11-18)
 

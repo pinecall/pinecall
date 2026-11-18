@@ -15,7 +15,7 @@ import { Face } from "./face";
 import { AgentPick, StatusChips } from "./filters";
 import { copyOf, goldenOf, hourOf, lettersFor, liveFirst, simulationOf, standingOf, webVisitor } from "./format";
 import { keeps } from "./status";
-import { dayName } from "./threads";
+import { dayName, isWritten } from "./threads";
 import type { CallsUrl } from "./url";
 import { useNow } from "./use-now";
 
@@ -44,10 +44,10 @@ function Row({ line, to, now, onErased }: { line: SessionLine; to: string; now: 
   const copy = copyOf(line, whose?.subject ?? null);
   return (
     <Link to={to} className="calls-tr dash-row" title={line.call} onContextMenu={(event) => menu(event, line, who)}>
-      <Face name={who} letters={isARun(line) ? "G" : isSimulated(line) ? "S" : lettersFor(line.caller?.name, line.direction === "outbound" ? line.to : line.from)} on={live ? (standing.mood === "warn" ? "asking" : "live") : null} />
+      <Face name={who} letters={isARun(line) ? "G" : isSimulated(line) ? "S" : lettersFor(line.caller?.name, line.direction === "outbound" ? line.to : line.from)} on={live && (!isWritten(line) || standing.mood === "warn") ? (standing.mood === "warn" ? "asking" : "live") : null} />
       <span className="calls-td-who">
         <span className="calls-td-name dash-clip">{who}</span>
-        <span className="dash-quiet dash-clip">{line.outcome ?? (live ? (isARun(line) ? "A golden, running now" : "On a call now") : "Nothing was said")}</span>
+        <span className="dash-quiet dash-clip">{line.outcome ?? (live ? (isARun(line) ? "A golden, running now" : isWritten(line) ? "Conversation open" : "On a call now") : "Nothing was said")}</span>
       </span>
       <span className="calls-td calls-td-agent calls-td-worn">
         <AvatarOf name={line.agent} size={20} />
@@ -70,7 +70,7 @@ function Row({ line, to, now, onErased }: { line: SessionLine; to: string; now: 
           (line.flags ?? []).includes("escalated") && <span className="calls-tag calls-tag-warn">Escalated</span>
         )}
       </span>
-      <span className="calls-td calls-td-length">{live ? elapsed(line.started_at, now) : lengthOf(line.started_at, line.ended_at)}</span>
+      <span className="calls-td calls-td-length">{live ? (isWritten(line) ? "open" : elapsed(line.started_at, now)) : lengthOf(line.started_at, line.ended_at)}</span>
       <span className="calls-td calls-td-at">{line.started_at === null ? "" : hourOf(line.started_at)}</span>
     </Link>
   );

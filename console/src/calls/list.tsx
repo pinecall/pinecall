@@ -11,7 +11,7 @@ import { Face } from "./face";
 import { AgentPick, StatusChips } from "./filters";
 import { lengthOf } from "../lib/format";
 import { copyOf, dayOf, hourOf } from "./format";
-import { dayName, lastOf, lettersOf, threadDays, titleOf, type Thread } from "./threads";
+import { dayName, isOnTheLine, lastOf, lettersOf, threadDays, titleOf, type Thread } from "./threads";
 import { useCallsBase, type CallsUrl } from "./url";
 import { useNow } from "./use-now";
 
@@ -53,7 +53,8 @@ function ThreadRow({ thread, to, on, now, held, onErased }: { thread: Thread; to
   const menu = useCallMenu(onErased);
   const { whose } = useOrg();
   const line = thread.latest;
-  const live = isLive(line);
+  // A written conversation is open, not on the line: it has no clock running and no dot.
+  const live = isOnTheLine(line);
   const asking = wantsAPerson(line);
   const name = titleOf(thread);
   const where = [line.agent, line.channel, copyOf(line, whose?.subject ?? null)].filter((one) => one !== undefined && one !== null).join(" · ");
@@ -90,7 +91,7 @@ function ThreadCalls({ thread, shown, search, now, onErased }: { thread: Thread;
       {thread.lines.map((line) => (
         <Link key={line.call} to={`${base}/${encodeURIComponent(line.call)}${search}`} className={line.call === shown ? "calls-their calls-their-on" : "calls-their"} aria-current={line.call === shown ? "true" : undefined} onContextMenu={(event) => menu(event, line, titleOf(thread))}>
           <span className="calls-their-when">{line.started_at === null ? "—" : `${dayOf(line.started_at)}, ${hourOf(line.started_at)}`}</span>
-          <span className={isLive(line) ? "calls-their-how dash-mood-good" : "calls-their-how"}>{isLive(line) ? elapsed(line.started_at, now) : lengthOf(line.started_at, line.ended_at)}</span>
+          <span className={isOnTheLine(line) ? "calls-their-how dash-mood-good" : "calls-their-how"}>{isOnTheLine(line) ? elapsed(line.started_at, now) : isLive(line) ? "open" : lengthOf(line.started_at, line.ended_at)}</span>
           <Mark line={line} />
         </Link>
       ))}
@@ -107,7 +108,7 @@ const THREAD_CHANNELS: readonly { value: string; name: string }[] = [
 export function ThreadList({ threads, lines, open, shown: shownCall, url, grouped, onGroup, onErased }: { threads: readonly Thread[]; /** The calls in view, before the status: what the chips count. */ lines: readonly SessionLine[]; open: Thread | undefined; /** The call on screen, one of the open thread's. */ shown: string | undefined; /** One row per person, their calls under it; else one row per call. */ grouped: boolean; onGroup: () => void; /** A call erased from a row's menu: out of the list. */ onErased: (call: string) => void; url: CallsUrl }): ReactNode {
   const navigate = useNavigate();
   const [more, setMore] = useState<ReadonlyMap<string, number>>(new Map());
-  const now = useNow(threads.some((thread) => isLive(thread.latest)));
+  const now = useNow(threads.some((thread) => isOnTheLine(thread.latest)));
   const openRow = useRef<HTMLAnchorElement>(null);
   const words = url.query.trim().toLowerCase();
   const shown = threads.filter((thread) => words === "" || `${titleOf(thread)} ${thread.handle} ${lastOf(thread)}`.toLowerCase().includes(words));
@@ -162,7 +163,7 @@ export function ThreadList({ threads, lines, open, shown: shownCall, url, groupe
           const left = day.lines.length - rows.length;
           return (
             <Fragment key={day.key}>
-              <div className="calls-day">{dayName(day)}</div>
+              <div className="calls-day">{dayName(day, url.written)}</div>
               {rows.map((thread) => (
                 <Fragment key={thread.key}>
                   <ThreadRow thread={thread} to={hrefOf(thread)} on={thread === open} now={now} held={thread === open ? openRow : undefined} onErased={onErased} />

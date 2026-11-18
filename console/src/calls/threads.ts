@@ -100,19 +100,32 @@ export function lettersOf(thread: Thread): string | undefined {
   return lettersFor(thread.name, thread.handle === "web visitor" ? "web" : thread.contact);
 }
 
+/** The channels a contact writes on message by message. */
+const WRITTEN = new Set(["whatsapp", "sms"]);
+
+/** Whether a conversation is one a contact writes on a number: a WhatsApp or an SMS thread. */
+export function isWritten(line: { channel: string | null }): boolean {
+  return line.channel !== null && WRITTEN.has(line.channel);
+}
+
+/** Whether somebody is on the line now: a written conversation stays open for hours with nobody on it. */
+export function isOnTheLine(line: SessionLine): boolean {
+  return isLive(line) && !isWritten(line);
+}
+
 /** What a thread's row says under its name: the newest call's outcome, or how it went. */
 export function lastOf(thread: Thread): string {
   const line = thread.latest;
   if (line.outcome !== null && line.outcome !== "") return line.outcome;
-  if (line.status !== "ended") return thread.handle === A_GOLDEN_RUN ? "A golden, running now" : "On a call now";
-  return `${line.channel ?? "A"} call, ${lengthOf(line.started_at, line.ended_at)}`;
+  if (line.status !== "ended") return thread.handle === A_GOLDEN_RUN ? "A golden, running now" : isWritten(line) ? "Conversation open" : "On a call now";
+  return `${line.channel ?? "A"} ${isWritten(line) ? "conversation" : "call"}, ${lengthOf(line.started_at, line.ended_at)}`;
 }
 
-/** A group's title: who is on the line now, then Today, Yesterday and every day before by its date. */
-export function dayName(day: Pick<CallDay<unknown>, "name"> & { at?: number }): string {
+/** A group's title: who is on the line now (the conversations still open, of written ones), then Today, Yesterday and every day before by its date. */
+export function dayName(day: Pick<CallDay<unknown>, "name"> & { at?: number }, written = false): string {
   switch (day.name) {
     case "live":
-      return "On the line";
+      return written ? "Open" : "On the line";
     case "unstarted":
       return "Not started";
     case "today":

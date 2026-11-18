@@ -4,17 +4,12 @@ import { useCallback } from "react";
 import { useLocation, useSearchParams } from "react-router";
 
 import { statusOf, type Status } from "./status";
+import { isWritten } from "./threads";
 
 /** Where each of the two pages lives: spoken calls and web chats, and the threads a contact writes on. */
 export const CALLS = "/calls";
 export const MESSAGES = "/messages";
-/** The channels a contact writes on message by message. */
-const WRITTEN = new Set(["whatsapp", "sms"]);
-
-/** Whether a conversation is one a contact writes on a number: a WhatsApp or an SMS thread. */
-export function isWritten(line: { channel: string | null }): boolean {
-  return line.channel !== null && WRITTEN.has(line.channel);
-}
+export { isWritten };
 
 /** The page this address is on: Messages under /messages, Calls anywhere else. */
 export function useCallsBase(): typeof CALLS | typeof MESSAGES {
