@@ -53,9 +53,6 @@ import {
   LogCaughtUpSchema,
   LogGapSchema,
   MemoryOpsSchema,
-  MessageStatusSchema,
-  MessageTakenSchema,
-  MessageWaitingSchema,
   PongSchema,
   PromptChangedSchema,
   SpendUnusualSchema,
@@ -107,6 +104,7 @@ import {
   ToolRanSchema,
   WorkerChangedSchema,
 } from "./events-feed.js";
+import { MessageStatusSchema, MessageTakenSchema, MessageWaitingSchema } from "./events-message.js";
 import {
   AvatarMetricsSchema,
   EOTInferenceMetricsSchema,

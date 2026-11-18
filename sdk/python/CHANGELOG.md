@@ -2,10 +2,7 @@
 
 ## Unreleased
 
-- **`message.status` says where a WhatsApp reply stands.** A reply the agent wrote is sent, then delivered to
-  the contact's phone, then read, or it failed with Meta's reason: each is an event on the conversation's call,
-  `{message_id, status, to, error}`, for ``@agent.on("message.status")``. An older package reports the event as one it
-  does not know and goes on.
+- `message.status`: where a WhatsApp reply stands (`sent`, `delivered`, `read`, `failed`), an event on its call.
 
 ## 0.11.43 — released with the runtime's setup on a Mac's own Ollama (2026-11-17)
 
@@ -326,9 +323,7 @@
 
 ## 0.1.9 — The release CI refused for a format (2026-10-09)
 
-- One example file was not as `ruff format` writes it, and CI refused 0.1.7 and 0.1.8 for it, so
-  neither reached PyPI. This release carries both: a call runs on the day a golden pinned, and a
-  tool announces itself.
+- CI refused 0.1.7 and 0.1.8 for one file's format, so neither reached PyPI: this release carries both.
 
 ## 0.1.8 — A tool announces itself (2026-10-09)
 
@@ -338,9 +333,8 @@
 
 ## 0.1.7 — A call runs on the day a golden pinned (2026-10-09)
 
-- `call.today` is the day `call.started` names when a golden pinned one (`today`), so an agent
-  resolves "on Monday" against the golden's day, as the model does; the clock's day otherwise, as
-  before. The field needs runtime 0.1.10.
+- `call.today` is the day `call.started` names when a golden pinned one (`today`), so an agent resolves
+  "on Monday" against the golden's day, as the model does; the clock's day otherwise. Needs runtime 0.1.10.
 
 ## 0.1.6 — The first release: an agent as a Python class (2026-10-09)
 

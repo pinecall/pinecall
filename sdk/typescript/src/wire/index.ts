@@ -7,6 +7,7 @@ export * from "./defs.js";
 export * from "./envelope.js";
 export * from "./events-call.js";
 export * from "./events-feed.js";
+export * from "./events-message.js";
 export * from "./events.js";
 export * from "./metrics.js";
 export * from "./reduce.js";
