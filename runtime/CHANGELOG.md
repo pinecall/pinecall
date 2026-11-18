@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.47 — an agent says the languages its callers speak, a channel takes the agent's own words, and a stop word ends the conversation on any gateway (2026-11-18)
 
 - **An agent says the languages its callers speak, and its calls run what takes them.** `language` is one
   tag or several with commas between (`es, en`), the main one first; with several, a caller may speak any of

@@ -4,6 +4,10 @@ All notable changes to `@pinecall/room`. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## 0.11.47 — an agent says the languages its callers speak, a channel takes the agent's own words, and a stop word ends the conversation on any gateway (2026-11-18)
+
+- Released with the runtime: nothing of this package changed.
+
 ## 0.11.46 — a contact who texts STOP is written to no more, a written conversation opens on the one before, and the audio of an MMS is heard (2026-11-18)
 
 - **`call.summary` says an SMS conversation's segments**: `sms_segments` and `sms_lent`.

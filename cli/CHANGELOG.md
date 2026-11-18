@@ -4,7 +4,7 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## 0.11.47 — an agent says the languages its callers speak, a channel takes the agent's own words, and a stop word ends the conversation on any gateway (2026-11-18)
 
 - **`pinecall agent set --language "es, en"`**: an agent says the languages its callers speak, one or several,
   the main one first. `pinecall pipeline` shows the ones each stage runs in, and warns of a voice that does

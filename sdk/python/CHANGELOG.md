@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.47 — an agent says the languages its callers speak, a channel takes the agent's own words, and a stop word ends the conversation on any gateway (2026-11-18)
 
 - **`channel_rules` takes the agent's own words for a channel.** `channel_rules = {"whatsapp": "…"}` says how the agent writes there in place of the framework's own way, and every channel it leaves out keeps the framework's (`voice`, `chat`, `whatsapp`, `sms`); `False` still leaves the block out on every channel.
 
