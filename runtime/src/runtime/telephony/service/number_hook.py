@@ -216,8 +216,8 @@ async def survey_import(
     # A number the box bought answers SMS on the box's own account, as it answers the phone.
     bought = wanted.channel is Channel.sms and wanted.account is None and await sms.is_bought_here(session, org, number)
     # A mailbox's account is named by its address: the address is the account, whatever else the org holds.
-    named = number if wanted.account is None and wanted.channel.is_by_email else wanted.account
-    account = None if wanted.hooked or bought else await accounts.get_carrier(session, vault, org, named)
+    holding = number if wanted.account is None and wanted.channel.is_by_email else wanted.account
+    account = None if wanted.hooked or bought else await accounts.get_carrier(session, vault, org, holding)
     if account is not None:
         await account.check_number(http, wanted.channel, number)
     if account is not None and wanted.networks:

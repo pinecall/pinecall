@@ -55,7 +55,8 @@ export function threadsOf(lines: readonly SessionLine[], grouped = true): Thread
     // Who the row is with is the same either way: ungrouped, only what tells the rows apart is the call.
     // A row keyed and NAMED by its call read "call-_+34607827824_…" where the caller's number goes.
     const contact = contactOf(line);
-    const key = grouped ? contact : line.call;
+    // An email thread is a row of its own, as a mailbox lists it: one person writes on several subjects.
+    const key = grouped && line.channel !== "email" ? contact : line.call;
     const standing = found.get(key);
     if (standing === undefined) {
       found.set(key, { key, contact, name: line.caller?.name ?? null, handle: handleOf(line), lines: [line], latest: line });

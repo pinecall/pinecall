@@ -11,6 +11,7 @@ import { Face } from "./face";
 import { AgentPick, StatusChips } from "./filters";
 import { lengthOf } from "../lib/format";
 import { copyOf, dayOf, hourOf } from "./format";
+import { useSubject } from "./subject";
 import { dayName, isOnTheLine, lastOf, lettersOf, threadDays, titleOf, type Thread } from "./threads";
 import { useCallsBase, type CallsUrl } from "./url";
 import { useNow } from "./use-now";
@@ -57,6 +58,8 @@ function ThreadRow({ thread, to, on, now, held, onErased }: { thread: Thread; to
   const live = isOnTheLine(line);
   const asking = wantsAPerson(line);
   const name = titleOf(thread);
+  // An email thread is listed by its subject, as a mailbox lists it; any other by how it went.
+  const subject = useSubject(line.call, line.channel === "email");
   const where = [line.agent, line.channel, copyOf(line, whose?.subject ?? null)].filter((one) => one !== undefined && one !== null).join(" · ");
   return (
     <Link ref={held} to={to} className={on ? "app-row app-row-on calls-row" : "app-row calls-row"} aria-current={on ? "true" : undefined} onContextMenu={(event) => menu(event, line, name)}>
@@ -67,7 +70,7 @@ function ThreadRow({ thread, to, on, now, held, onErased }: { thread: Thread; to
           {/* The day heads the group, so a row says its hour, or on the line how long it has been. */}
           <span className={asking ? "calls-row-time dash-mood-warn" : live ? "calls-row-time dash-mood-good" : "calls-row-time"}>{live ? elapsed(line.started_at, now) : line.started_at === null ? "" : hourOf(line.started_at)}</span>
         </span>
-        <span className="app-row-under dash-clip">{lastOf(thread)}</span>
+        <span className="app-row-under dash-clip">{subject ?? lastOf(thread)}</span>
         <span className="calls-row-foot">
           <span className="calls-row-where dash-clip">{where}</span>
           {thread.lines.length > 1 && <span className="calls-count">{thread.lines.length} calls</span>}
