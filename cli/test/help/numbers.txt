@@ -15,7 +15,7 @@ Commands:
                              an agent
   buy [options]              a number bought on the deployment's own account,
                              pointed at an agent
-  drop <number>              forget the route; the carrier account keeps the
+  drop [options] <number>    forget the route; the carrier account keeps the
                              number
   help [command]             display help for command
 

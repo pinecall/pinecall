@@ -144,7 +144,7 @@ Print the exact prompt the model reads when a call opens, or in a given state: o
 |---|---|---|---|
 | `agent` | text |  | the agent's name; the project's only agent when left out |
 | `state` | an object |  | fields of the class and their values, to see the prompt in that state |
-| `channel` | `phone` · `web` · `whatsapp` |  | the channel the prompt is written for |
+| `channel` | `phone` · `web` · `whatsapp` · `sms` |  | the channel the prompt is written for |
 | `prod` | true or false |  | true acts in production; left out or false, in the sandbox |
 
 ```json title="called with"
