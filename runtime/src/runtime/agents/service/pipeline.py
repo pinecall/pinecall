@@ -23,6 +23,7 @@ SPOKEN = {"hears": Stage.stt, "speaks": Stage.tts}
 STAGE_OF = {**SPOKEN, "decides": Stage.llm}
 # What each of them does with a language, for the sentence that says it does not.
 VERB_OF = {Stage.stt: "hear", Stage.tts: "speak"}
+MOST_LANGUAGES_SAID = 12
 
 
 # Which vendors are failing now is counted where the calls' errors are written, above this domain:
@@ -292,7 +293,9 @@ def _say_untaken(stage: Stage, vendor: str, model: str | None, languages: Sequen
     if not lacking:
         return f"{whose} {VERB_OF[stage]}s one language a call, and this agent's callers speak {', '.join(languages)}"
     listed = catalog.find_languages(stage, vendor, model) or ()
-    return f"{whose} does not {VERB_OF[stage]} {', '.join(lacking)} (it {VERB_OF[stage]}s {', '.join(listed)})"
+    # A model of a hundred languages is not read out: the ones it lacks are what the sentence is for.
+    knows = ", ".join(listed) if len(listed) <= MOST_LANGUAGES_SAID else f"{len(listed)} languages"
+    return f"{whose} does not {VERB_OF[stage]} {', '.join(lacking)} (it {VERB_OF[stage]}s {knows})"
 
 
 # The fix is one of the row's own that takes them all: run for the agent once it names nothing, or, where

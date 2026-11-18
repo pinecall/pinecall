@@ -109,3 +109,6 @@ def test_a_voice_whose_model_does_not_speak_the_language_is_warned_of() -> None:
         f"Pinecall runs {acme.ACME}/acme-voice-wide"
     )
     assert list_warnings(Declaration(slug="front-desk", language="ar"), catalog, ALL_OF_ACME) == {}
+    row["spoken"][f"tts/{acme.ACME}/{acme.VOICE}"] = [f"l{at:02}" for at in range(40)]
+    many = list_warnings(named, Catalog.model_validate(row), ALL_OF_ACME)
+    assert many["speaks"].startswith(f"{acme.ACME}/{acme.VOICE} does not speak ar (it speaks 40 languages): ")

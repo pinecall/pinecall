@@ -14,7 +14,7 @@
   `GET /v1/agents/{slug}/pipeline` answers `languages`, each stage's own, `warnings` for the voice as for the
   ears, and `suited`, the row's models that take them all with why this org cannot run one (not lent, no
   key); `?language=` asks what it would run in languages it is not set to. A setting that names no language
-  is `422`. `docs/protocol/pipeline-api.md`, `operator-api.md`, `settings-api.md`.
+  is `400`. `docs/protocol/pipeline-api.md`, `operator-api.md`, `settings-api.md`.
 - **The recording notice and the disclosure are said in the call's language, whatever it is.** They are
   written in the runtime for thirty-eight languages (eight until now, English for any other); for a language
   outside those the box's own model writes them once, the first time a call in it opens, and the box keeps
