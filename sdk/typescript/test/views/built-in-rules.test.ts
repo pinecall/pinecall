@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { Agent, CallWorld, promptOf, seal, setCall } from "../../src/index.js";
+import { Agent, CallWorld, CHANNEL_RULES, promptOf, seal, setCall } from "../../src/index.js";
 import { type Medium } from "../../src/wire/defs.js";
 
 /** Agenda de la Clínica Norte. */
@@ -11,6 +11,11 @@ class Clinica extends Agent {}
 /** Agenda que escribe sus propias normas de formato. */
 class SinCanal extends Agent {
   override channelRules = false;
+}
+
+/** Agenda que escribe cómo responde por WhatsApp, y deja lo demás como viene. */
+class PorWhatsapp extends Agent {
+  override channelRules = { whatsapp: "You are on WhatsApp. One short message, no formatting at all." };
 }
 
 function identityOf(agent: Agent): string {
@@ -96,6 +101,13 @@ describe("the channel block", () => {
       expect(identity).not.toContain("<channel>");
       expect(identity).toContain("<protocols>");
     }
+  });
+
+  it("is the class's own words on the channel it names, and the framework's on every other", () => {
+    expect(channelOf(identityOf(serving(seal(new PorWhatsapp()), "whatsapp")))).toBe("You are on WhatsApp. One short message, no formatting at all.");
+    expect(channelOf(identityOf(serving(seal(new PorWhatsapp()), "phone")))).toBe(CHANNEL_RULES.voice);
+    expect(channelOf(identityOf(serving(seal(new PorWhatsapp()), "web", "text")))).toBe(CHANNEL_RULES.chat);
+    expect(channelOf(identityOf(serving(seal(new PorWhatsapp()), "sms")))).toBe(CHANNEL_RULES.sms);
   });
 
   it("leaves the medium readable on the call when it is off", () => {

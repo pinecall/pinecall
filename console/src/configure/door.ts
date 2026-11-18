@@ -8,7 +8,10 @@ import { type LexiconAnswer, LexiconAnswerSchema, type LexiconBody, type TuningA
 
 export type { LexiconAnswer, LexiconBody, ListedVoice, TuningAnswer, TuningBody };
 
-const StageSchema = z.object({ vendor: z.string(), model: z.string().nullable(), voice_id: z.string().nullable(), language: z.string().nullable() });
+// `languages`: what the ears listen for and the voice is asked to speak; a runtime before it answers none.
+const StageSchema = z.object({ vendor: z.string(), model: z.string().nullable(), voice_id: z.string().nullable(), language: z.string().nullable(), languages: z.array(z.string()).default([]) });
+const SuitedSchema = z.object({ vendor: z.string(), model: z.string().nullable(), refused: z.string().nullish() });
+export type Suited = z.infer<typeof SuitedSchema>;
 const ProviderSchema = z.looseObject({ name: z.string(), does: z.array(z.string()), ready: z.boolean(), voices_listed: z.boolean(), availability: z.string().optional(), broken: z.string().nullish() });
 
 const PluginOptionSchema = z.object({
@@ -43,8 +46,11 @@ const ReportSchema = z.looseObject({
   voice_defaults: z.record(z.string(), z.string()).default({}),
   calls: z.number(),
   medians: z.array(z.object({ name: z.string(), seconds: z.number(), turns: z.number() })),
-  // By stage, why it runs but not well: ears that do not hear the agent's language; a runtime before it answers none.
+  // By stage, why it runs but not well: ears that do not hear the agent's languages, a voice that does not speak them; a runtime before it answers none.
   warnings: z.record(z.string(), z.string()).default({}),
+  // The languages its callers speak, the main one first, and by stage the runtime's own models that take them all.
+  languages: z.array(z.string()).default([]),
+  suited: z.record(z.string(), z.array(SuitedSchema)).default({}),
 });
 
 export type Report = z.infer<typeof ReportSchema>;
@@ -80,12 +86,21 @@ export type FixedField = z.infer<typeof FixedFieldSchema>;
 const TriedSchema = z.object({ status: z.number().int().nullable(), body: z.unknown(), error: z.string().nullable(), duration_ms: z.number() });
 export type Tried = z.infer<typeof TriedSchema>;
 
+// An agent's own words for a channel; one it leaves out is told Pinecall's.
+const ChannelRulesSchema = z.object({ voice: z.string().nullish(), chat: z.string().nullish(), whatsapp: z.string().nullish(), sms: z.string().nullish() });
+export type ChannelRules = z.infer<typeof ChannelRulesSchema>;
+
 // The definition goes back whole on a save, so what this page does not draw is kept as it was read.
 const StudioAgentSchema = z.looseObject({
   release: z.number().int(),
-  definition: z.looseObject({ instructions: z.string(), greeting: z.looseObject({ say: z.string().nullish(), reply: z.string().nullish() }).nullish(), tools: z.array(HttpToolSchema).default([]) }),
+  definition: z.looseObject({ instructions: z.string(), greeting: z.looseObject({ say: z.string().nullish(), reply: z.string().nullish() }).nullish(), tools: z.array(HttpToolSchema).default([]), channel_rules: ChannelRulesSchema.nullish() }),
 });
 export type StudioAgent = z.infer<typeof StudioAgentSchema>;
+
+/** How Pinecall tells an agent to write on each channel: what one that writes its own replaces. */
+export async function readChannelRules(credentials: Credentials): Promise<ChannelRules> {
+  return ChannelRulesSchema.parse(await read(credentials, "/v1/studio/channel-rules"));
+}
 
 const studioOf = (agent: string): string => `/v1/studio/agents/${encodeURIComponent(agent)}`;
 
@@ -125,8 +140,10 @@ export function onSettingsSaved(heard: (agent: string) => void): () => void {
   return () => window.removeEventListener(SETTINGS_SAVED, listener);
 }
 
-export async function readReport(credentials: Credentials, agent: string): Promise<Report> {
-  return ReportSchema.parse(await read(credentials, `/v1/agents/${encodeURIComponent(agent)}/pipeline`));
+/** What the agent's next call runs; with `languages`, what it would run if its callers spoke those, nothing kept. */
+export async function readReport(credentials: Credentials, agent: string, languages?: readonly string[]): Promise<Report> {
+  const asked = languages === undefined || languages.length === 0 ? undefined : { language: languages.join(", ") };
+  return ReportSchema.parse(await read(credentials, `/v1/agents/${encodeURIComponent(agent)}/pipeline`, asked));
 }
 
 /** The org's own key for a vendor, kept once the vendor took it on one small job; its calls run on it from the next one. */

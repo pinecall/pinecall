@@ -10,7 +10,8 @@ from runtime.live.auth import AppKey
 from runtime.postgres import Session
 from runtime.studio import schemas
 from runtime.studio.auth import TheHolder, TheHolders
-from runtime.studio.service import agents, export
+from runtime.studio.service import agents, export, prompt
+from runtime.wire.studio import ChannelRules
 
 router = APIRouter()
 
@@ -38,6 +39,13 @@ async def create_studio_agent(
     """Make an agent in Studio: a hosted app the gateway holds, its first release the definition."""
     made = await agents.create_agent(session, signal, owners, holders, actor, body.name, body.definition, body.note)
     return schemas.StudioAgent.of(made)
+
+
+# Read by the console to show, under each channel, what an agent is told where it writes nothing of its own.
+@router.get("/v1/studio/channel-rules")
+async def read_channel_rules(_actor: AppKey) -> ChannelRules:
+    """How the framework tells an agent to write on each channel: what one that writes its own replaces."""
+    return ChannelRules(**prompt.list_channel_rules())
 
 
 @router.get("/v1/studio/agents/{name}")

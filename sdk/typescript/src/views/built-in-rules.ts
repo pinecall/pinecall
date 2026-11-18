@@ -34,9 +34,22 @@ const ON_SMS =
   "You are answering by SMS. Plain text only: no markdown, no lists, no emoji unless the person uses them. " +
   "One short message, a few sentences at most.";
 
-/** How to write on this channel and medium: WhatsApp's formatting, a website's Markdown, or speech. */
-export function channelRulesFor(channel: string | undefined, medium: Medium): string {
-  if (channel === "whatsapp") return ON_WHATSAPP;
-  if (channel === "sms") return ON_SMS;
-  return channel === "web" && medium === "text" ? ON_A_WEBSITE : SPOKEN;
+/** The channels an agent may write its own rules for: a spoken call, a website's written chat, WhatsApp, SMS. */
+export type ChannelName = "voice" | "chat" | "whatsapp" | "sms";
+
+/** An agent's own words for the channels it names, in place of the framework's; a channel left out keeps the framework's. */
+export type ChannelRules = Partial<Record<ChannelName, string>>;
+
+/** The framework's own rules, by the name an agent writes its own under. */
+export const CHANNEL_RULES: Readonly<Record<ChannelName, string>> = { voice: SPOKEN, chat: ON_A_WEBSITE, whatsapp: ON_WHATSAPP, sms: ON_SMS };
+
+function channelNameOf(channel: string | undefined, medium: Medium): ChannelName {
+  if (channel === "whatsapp" || channel === "sms") return channel;
+  return channel === "web" && medium === "text" ? "chat" : "voice";
+}
+
+/** How to write on this channel and medium: the agent's own words for it, else WhatsApp's formatting, a website's Markdown, or speech. */
+export function channelRulesFor(channel: string | undefined, medium: Medium, own: ChannelRules = {}): string {
+  const name = channelNameOf(channel, medium);
+  return own[name] ?? CHANNEL_RULES[name];
 }

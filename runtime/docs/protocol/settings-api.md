@@ -81,8 +81,7 @@ one that cannot keeps the `tts` for those lines alone), `judge`,
 `judge_builds`, `judge_options` (the model the agent's calls are judged on, named as `llm` is, over
 the org's choice at `PUT /v1/org/judging` and the platform's; on a key of the org's own, a local
 model's server among them through `judge_options` `{"base_url": …}`, its evals are never billed —
-[evals.md](evals.md)), `language` (a tag, `en` or
-`pt-BR`, given to the ears and the voice; unset, each vendor's own default), `timezone` (an IANA zone, `America/Montevideo`: every call opens told the day, the weekday and the hour there, and its `call.started` carries `today` in it; unset, the day is the gateway's and the model is told no hour), `greeting` (`{say}` or
+[evals.md](evals.md)), `language` (the languages the agent's callers speak: one tag or name, `en`, `pt-BR`, `portuguese`, or several with commas between, `es, en`, the main one first. The ears listen for them and the voice speaks them, each chosen for them where the agent names none ([pipeline-api.md](pipeline-api.md)); the recording notice and an outbound call's disclosure are said in the main one; with several, a caller may speak any of them and change in the middle of the call. What names no language is `422`. Unset, the ears listen for the runtime's own and each vendor speaks its default), `timezone` (an IANA zone, `America/Montevideo`: every call opens told the day, the weekday and the hour there, and its `call.started` carries `today` in it; unset, the day is the gateway's and the model is told no hour), `greeting` (`{say}` or
 `{reply}`, an empty reply the model opening on its prompt alone, and `allow_interruptions`, false
 unless set), `hangup {when}`, `turn {min_interruption_words, endpointing_ms, eot_threshold,
 eager_eot_threshold, min_interruption_ms}` (the last is how long the caller must speak over the

@@ -24,6 +24,7 @@ MOST_FIELDS = 24
 MOST_VALUES = 50
 LONGEST_INSTRUCTIONS = 20_000
 LONGEST_LINE = 300
+LONGEST_CHANNEL_RULES = 2000
 
 
 # Unknown keys are refused, as every wire shape refuses them: a misspelt field is said, never dropped.
@@ -101,10 +102,25 @@ class Greeting(WireModel):
         return self
 
 
+# The framework tells an agent how to write on the channel a call is on: speech on a call, WhatsApp's
+# formatting, plain text by SMS, Markdown in a website's chat. An agent that writes its own for a
+# channel is told that instead, and the framework's own on every channel it leaves out.
+class ChannelRules(WireModel):
+    """How the agent writes on a channel, where it is not the framework's own way: one text a channel."""
+
+    # A spoken call, by phone or from a page.
+    voice: str | None = Field(default=None, min_length=1, max_length=LONGEST_CHANNEL_RULES)
+    # A written chat on a website.
+    chat: str | None = Field(default=None, min_length=1, max_length=LONGEST_CHANNEL_RULES)
+    whatsapp: str | None = Field(default=None, min_length=1, max_length=LONGEST_CHANNEL_RULES)
+    sms: str | None = Field(default=None, min_length=1, max_length=LONGEST_CHANNEL_RULES)
+
+
 class Definition(WireModel):
-    """A Studio agent: its instructions, how it opens, its tools, and what it collects."""
+    """A Studio agent: its instructions, how it opens, its tools, what it collects, how it writes on a channel."""
 
     instructions: str = Field(min_length=1, max_length=LONGEST_INSTRUCTIONS)
     greeting: Greeting | None = None
     tools: list[HttpTool] = Field(default_factory=list[HttpTool], max_length=MOST_TOOLS)
     collect: Collect | None = None
+    channel_rules: ChannelRules | None = None

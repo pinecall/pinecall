@@ -62,12 +62,20 @@ const GreetingInput = z.strictObject({
   reply: z.string().nullable().optional().describe("what the model reads first and answers, for an opening of its own"),
 });
 
+const ChannelRulesInput = z.strictObject({
+  voice: z.string().nullable().optional().describe("a spoken call, by phone or from a page"),
+  chat: z.string().nullable().optional().describe("a written chat on a website"),
+  whatsapp: z.string().nullable().optional().describe("a WhatsApp thread"),
+  sms: z.string().nullable().optional().describe("an SMS thread"),
+});
+
 /** A whole definition, as `pinecall studio push` and the MCP's `save` send it; the gateway checks the rest and fills what is left out. */
 export const DefinitionInput = z.strictObject({
   instructions: z.string().min(1).describe("the agent's instructions: who it is, what it does, how it speaks"),
   greeting: GreetingInput.nullable().optional().describe("how it opens a call: `say` or `reply`, one of the two; the caller speaks first when null"),
   tools: z.array(HttpToolInput).optional().describe("the HTTP requests the model may make, each answer what it reads"),
   collect: CollectInput.nullable().optional().describe("data collection: the fields gathered, and where they go when the call ends"),
+  channel_rules: ChannelRulesInput.nullable().optional().describe("how it writes on a channel, in its own words, where not the framework's way; a channel left out keeps the framework's"),
 });
 export type DefinitionInput = z.infer<typeof DefinitionInput>;
 

@@ -262,12 +262,12 @@ async def open_call(session: AsyncSession, live: LiveParts, actor: Actor, arriva
     policy = await compliance.policy_of(session, scope.org)
     org = await accounts.find_org(session, scope.org)
     name = scope.org if org is None else org.name
-    language = resolved.declaration.language
+    said = await agents.sentences_in(session, live.vault, resolved.declaration.language)
     return Opened(
         ceiling=ceiling,
         # The worker says the disclosure before the greeting, and the notice only where it records.
-        disclosure=policy.disclosure_for(name, language) if context.direction is Direction.outbound else None,
-        recording_notice=policy.notice_in(language),
+        disclosure=policy.disclosure_for(name, said.calling_for) if context.direction is Direction.outbound else None,
+        recording_notice=policy.notice_in(said.may_be_recorded),
         history=await _list_carried(session, live.vault, scope, arrival),
     )
 

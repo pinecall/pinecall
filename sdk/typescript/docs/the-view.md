@@ -102,9 +102,24 @@ the view adds is the sentence *you* want said when the answer is yes. In a test,
 ## The channel's words
 
 The `identity` block ends in `<channel>`, how to write for this call: a voice reads everything
-aloud, a website's chat can take Markdown, WhatsApp has its own formatting. A class that writes its
-own formatting rules turns it off with `channelRules = false`; `this.call.medium` is still there for
-a view that branches on voice or text.
+aloud, a website's chat can take Markdown, WhatsApp has its own formatting, an SMS is plain and short.
+A class changes the words for one channel and keeps the rest:
+
+```tsx
+import { Agent, CHANNEL_RULES } from "@pinecall/agents";
+
+export default class FrontDesk extends Agent {
+  channelRules = {
+    whatsapp: "You are on WhatsApp. One short message, no formatting at all.",
+    sms: `${CHANNEL_RULES.sms} Sign every message as Clínica Norte.`,
+  };
+}
+```
+
+The names are `voice` (a spoken call, by phone or from a page), `chat` (a website's written chat),
+`whatsapp` and `sms`; `CHANNEL_RULES` holds the framework's own text under each. A class that writes
+all of its formatting itself turns the block off with `channelRules = false`; `this.call.medium` is
+still there for a view that branches on voice or text.
 
 ## Reading the prompt
 

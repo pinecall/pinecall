@@ -268,6 +268,17 @@ class PipelineStage(Row):
     model: str | None = None
     voice_id: str | None = None
     language: str | None = None
+    # The languages the ears listen for, and the ones the voice is asked to speak.
+    languages: list[str] = Field(default_factory=list[str])
+
+
+class SuitedModel(Row):
+    """One of the runtime's own models that takes every language of the agent, and whether this org may run it."""
+
+    vendor: str
+    model: str | None = None
+    # Why this org cannot run it, in the sentence a call would close with; null where it can.
+    refused: str | None = None
 
 
 class Measured(Row):
@@ -305,8 +316,13 @@ class PipelineReport(Row):
     calls: int
     medians: list[Measured]
     unavailable_reasons: dict[str, str]
-    # By stage (`hears`), why it runs but not well: ears that do not hear the agent's language.
+    # By stage (`hears`, `speaks`), why it runs but not well: ears that do not hear the agent's languages,
+    # a voice that does not speak them.
     warnings: dict[str, str] = Field(default_factory=dict[str, str])
+    # The languages the agent's callers speak, the main one first; empty where it says none.
+    languages: list[str] = Field(default_factory=list[str])
+    # By stage (`hears`, `speaks`), the runtime's own models that take every one of them, in its order.
+    suited: dict[str, list[SuitedModel]] = Field(default_factory=dict[str, list[SuitedModel]])
 
 
 class WidgetSettings(WireModel):

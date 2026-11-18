@@ -290,7 +290,11 @@ greeting, spoken by the agent's voice and logged as its first `turn.agent`: an o
 with `disclosure` — `null` is the platform's sentence in the agent's language (*"This is an
 automated assistant calling on behalf of {org name}."*), `""` is none, anything else is said as
 written — and every recorded spoken call, either direction, then says *"This call may be recorded."*
-unless `recording_notice` is `false`. A call nobody records says no notice; a written call says
+unless `recording_notice` is `false`. The platform's two sentences are said in the agent's main language:
+written in the runtime for thirty-eight of them, and for any other written once by the box's own model
+(the judge's, on the box's key) the first time a call in it opens, checked for its shape and kept in
+the box's settings (`sentences/<code>`) for every call after; a model that does not answer within six
+seconds leaves that call the English ones, and the next call asks again. A call nobody records says no notice; a written call says
 neither. Both play in the sandbox too, so a test hears what a caller will. `sms_stop_reply`,
 `sms_help_reply` and `sms_stop_words` say what a contact who texts STOP or HELP is told, and which
 more words stop the messages ([numbers.md](numbers.md), "A contact who stops"). A client that changes

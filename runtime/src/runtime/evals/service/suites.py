@@ -344,7 +344,7 @@ async def _say_out_loud(parts: Harness, suite: Suite, golden: Golden, opened: Op
         # Refused, the run stops where it is, as for any quota (`_judge_suite`).
         await simulations.admit_simulation(session_, parts, scope, registration.slug, spoken=True)
         voice = await caller_voice(session_, parts.vault, scope, suite.setup.declaration, None)
-        notice = await opens_with_a_notice(session_, scope, voice.language)
+        notice = await opens_with_a_notice(session_, scope)
     script = [turn.say for turn in golden.turns if turn.say is not None]
     dispatch = Dispatch(
         agent=registration.slug,

@@ -1,5 +1,7 @@
 """The framework's own words in the identity block: the rules, the protocols, and the channel's."""
 
+from collections.abc import Mapping
+
 from pinecall.wire._names import Channel, Medium
 
 # English for every agent: a model follows English instructions and answers in any language.
@@ -49,12 +51,26 @@ def medium_of(channel: Channel, medium: Medium | None) -> Medium:
     return "text" if channel in ("whatsapp", "sms") else "voice"
 
 
-def channel_rules_for(channel: Channel, medium: Medium | None) -> str:
-    """How to write on this channel and medium: WhatsApp's formatting, a website's, or speech."""
-    if channel == "whatsapp":
-        return ON_WHATSAPP
-    if channel == "sms":
-        return ON_SMS
-    if channel == "web" and medium_of(channel, medium) == "text":
-        return ON_A_WEBSITE
-    return SPOKEN
+# The framework's own rules, by the name an agent writes its own under: a spoken call, a website's
+# written chat, WhatsApp, SMS.
+CHANNEL_RULES: Mapping[str, str] = {
+    "voice": SPOKEN,
+    "chat": ON_A_WEBSITE,
+    "whatsapp": ON_WHATSAPP,
+    "sms": ON_SMS,
+}
+
+
+def channel_name_of(channel: Channel, medium: Medium | None) -> str:
+    """The name a channel's rules are written under: `whatsapp`, `sms`, `chat`, else `voice`."""
+    if channel in ("whatsapp", "sms"):
+        return channel
+    return "chat" if channel == "web" and medium_of(channel, medium) == "text" else "voice"
+
+
+def channel_rules_for(
+    channel: Channel, medium: Medium | None, own: Mapping[str, str] | None = None
+) -> str:
+    """How to write on this channel and medium: the agent's own words, else the framework's."""
+    name = channel_name_of(channel, medium)
+    return (own or {}).get(name, CHANNEL_RULES[name])

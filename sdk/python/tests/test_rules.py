@@ -1,11 +1,20 @@
 """The framework's words in identity: English rules for every agent, and the channel's block."""
 
 import re
+from collections.abc import Mapping
+from typing import ClassVar
 
 import pytest
 
 from pinecall import Agent, Line, render
-from pinecall._rules import ON_A_WEBSITE, ON_SMS, ON_WHATSAPP, SPOKEN, medium_of
+from pinecall._rules import (
+    CHANNEL_RULES,
+    ON_A_WEBSITE,
+    ON_SMS,
+    ON_WHATSAPP,
+    SPOKEN,
+    medium_of,
+)
 from pinecall.wire._names import Channel, Medium
 
 
@@ -17,6 +26,14 @@ class SinCanal(Agent):
     """Agenda que escribe sus propias normas de formato."""
 
     channel_rules = False
+
+
+class PorWhatsapp(Agent):
+    """Agenda que escribe cómo responde por WhatsApp, y deja lo demás como viene."""
+
+    channel_rules: ClassVar[bool | Mapping[str, str]] = {
+        "whatsapp": "You are on WhatsApp. One short message, no formatting at all."
+    }
 
 
 def identity_of(agent: Agent, line: Line | None = None) -> str:
@@ -101,3 +118,11 @@ def test_a_class_with_channel_rules_false_leaves_the_block_out_on_every_channel(
     identity = identity_of(SinCanal(), Line(channel))
     assert "<channel>" not in identity
     assert "<protocols>" in identity
+
+
+def test_a_class_says_its_own_words_for_a_channel_and_the_frameworks_elsewhere() -> None:
+    own = tag_of("channel", identity_of(PorWhatsapp(), Line("whatsapp")))
+    assert own == "You are on WhatsApp. One short message, no formatting at all."
+    assert tag_of("channel", identity_of(PorWhatsapp(), Line("phone"))) == SPOKEN
+    assert tag_of("channel", identity_of(PorWhatsapp(), Line("web", "text"))) == ON_A_WEBSITE
+    assert tag_of("channel", identity_of(PorWhatsapp(), Line("sms"))) == CHANNEL_RULES["sms"]

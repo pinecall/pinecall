@@ -74,6 +74,12 @@ def write_class(name: str, release: int, definition: Definition) -> str:
         *(["@agent({", *(f"  {field}," for field in above), "})"] if above else []),
         f"export default class {title} extends Agent {{",
     ]
+    own = {} if definition.channel_rules is None else definition.channel_rules.model_dump(exclude_none=True)
+    if own:
+        lines += [
+            "  /** How it writes on these channels, in place of the framework's own way. */",
+            f"  channelRules = {json.dumps(own, ensure_ascii=False)};",
+        ]
     if collect is not None:
         lines += ["  /** What the caller gave, field by field. */", "  collected: Record<string, unknown> = {};"]
     for http_tool in definition.tools:

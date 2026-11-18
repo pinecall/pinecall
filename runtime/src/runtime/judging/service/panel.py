@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from runtime.accounts import service as accounts
 from runtime.actor import Scope
+from runtime.agents import service as agents
 from runtime.agents.declaration import Declaration
 from runtime.compliance import service as compliance
 from runtime.enums import Direction, JudgeRunsWhen
@@ -200,11 +201,11 @@ async def surroundings_of(session: AsyncSession, org: str, call: str, declaratio
     found = await accounts.find_org(session, org)
     name = org if found is None else found.name
     policy = await compliance.policy_of(session, org)
-    language = None if declaration is None else declaration.language
+    said = await agents.read_sentences(session, None if declaration is None else declaration.language)
     return Surroundings(
         org=name,
-        disclosure=policy.disclosure_for(name, language),
-        notice=policy.notice_in(language),
+        disclosure=policy.disclosure_for(name, said.calling_for),
+        notice=policy.notice_in(said.may_be_recorded),
         opted_out=await compliance.has_opt_out_on(session, call),
     )
 

@@ -5,6 +5,7 @@ from runtime.providers.service.credentials import box_credentials, put_box_crede
 from runtime.providers.service.dictation import mint_for_a_page
 from runtime.providers.service.health import VendorHealth
 from runtime.providers.service.keyring import Keyring, keys_of, parse_lending, running_on
+from runtime.providers.service.languages import Suited, choose_for, list_suited
 from runtime.providers.service.pipeline import build_pipeline, refuse_what_cannot_run, stage_on_its_key, thinking_of
 from runtime.providers.service.plugins import (
     hears_and_speaks,
@@ -44,6 +45,7 @@ __all__ = [
     "Line",
     "Patience",
     "Runnable",
+    "Suited",
     "Telemetry",
     "TimedWord",
     "VendorHealth",
@@ -55,6 +57,7 @@ __all__ = [
     "build_thinking",
     "build_voice",
     "check_public",
+    "choose_for",
     "completion_usage",
     "cost_of",
     "default_voice",
@@ -67,6 +70,7 @@ __all__ = [
     "keys_of",
     "list_by_vendor",
     "list_in_catalog",
+    "list_suited",
     "list_vendors",
     "mint_for_a_page",
     "name_stage",

@@ -44,6 +44,15 @@ export interface PipelineStage {
   model: string | null;
   voice_id: string | null;
   language: string | null;
+  /** The languages the ears listen for, and the ones the voice is asked to speak; a runtime before it says none. */
+  languages?: string[];
+}
+
+/** One of the runtime's own models that takes every language of the agent: `refused` says why this org cannot run it. */
+export interface SuitedModel {
+  vendor: string;
+  model: string | null;
+  refused?: string | null;
 }
 
 /** A median over the agent's recent calls, named as LiveKit names the metric. */
@@ -64,8 +73,12 @@ export interface PipelineReport {
   calls: number;
   medians: PipelineMedian[];
   unavailable_reasons: Record<string, string>;
-  /** By stage, why it runs but not well: ears that do not hear the agent's language; a runtime before it says none. */
+  /** By stage, why it runs but not well: ears that do not hear the agent's languages, a voice that does not speak them; a runtime before it says none. */
   warnings?: Record<string, string>;
+  /** The languages its callers speak, the main one first. */
+  languages?: string[];
+  /** By stage (`hears`, `speaks`), the runtime's own models that take them all. */
+  suited?: Record<string, SuitedModel[]>;
 }
 
 /** The catalogue as the voices read it: which vendor lists its voices, and the gateway's own vendor per stage. */

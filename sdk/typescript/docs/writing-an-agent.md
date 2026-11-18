@@ -43,8 +43,11 @@ export default class FrontDesk extends Agent {}
 There is one way to say it. A class that writes one of these as a `static` field, or as an instance
 field, is refused when it loads, by a sentence that names the field and `@agent`. A class that
 extends another keeps what its parent declared, and its own `@agent` declares over it field by field.
-`channelRules = false`, on the instance, is the one setting written in the class: it leaves out the
-`<channel>` part of the prompt (how to write for a voice, a website's chat, WhatsApp).
+`channelRules`, on the instance, is the one setting written in the class: how the agent writes on a
+channel. `channelRules = { whatsapp: "…", sms: "…" }` says its own words for those in place of the
+framework's, and a channel it leaves out keeps the framework's (`voice`, a spoken call; `chat`, a
+website's written chat; `whatsapp`; `sms`). `channelRules = false` leaves the `<channel>` part out of
+the prompt on every channel.
 
 ### The environment: the settings', or the class's
 

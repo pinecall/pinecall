@@ -10,7 +10,8 @@ from runtime.exceptions import Conflict, Forbidden, ServiceUnavailable, Validati
 from runtime.providers.catalog import Catalog
 from runtime.providers.service.catalog import stage_options_of
 from runtime.providers.service.keyring import Keyring, running_on
-from runtime.providers.stage import TURN_MODEL_OF, Credentials, Model, Pipeline, Running, Voice, primary_language
+from runtime.providers.service.languages import choose_for, tell_languages
+from runtime.providers.stage import TURN_MODEL_OF, Credentials, Model, Pipeline, Running, Voice, languages_of
 from runtime.wire.parts import EndOfTurn
 
 logger = logging.getLogger(__name__)
@@ -23,7 +24,7 @@ class AgentStages(Protocol):
 
     @property
     def language(self) -> str | None:
-        """The language its calls are in."""
+        """The languages its calls are in, as it says them: one, or several with commas between."""
         ...
 
     @property
@@ -64,37 +65,35 @@ class AgentStages(Protocol):
 
 def build_pipeline(declaration: AgentStages, catalog: Catalog, keys: Keyring) -> Pipeline:
     """The stages an agent runs: its vendors or the defaults, each with its key and options."""
-    language = primary_language(declaration.language)
+    languages = languages_of(declaration.language)
+    main = languages[0] if languages else None
     llm = thinking_of(declaration, catalog, keys)
     stt = _back_by(
-        stage_on_its_key(Stage.stt, declaration.stt, catalog, keys, language),
+        stage_on_its_key(Stage.stt, declaration.stt, catalog, keys, languages),
         Stage.stt,
         declaration.stt_fallbacks,
         catalog,
         keys,
     )
     tts = _back_by(
-        stage_on_its_key(Stage.tts, declaration.voice, catalog, keys),
+        stage_on_its_key(Stage.tts, declaration.voice, catalog, keys, languages),
         Stage.tts,
         declaration.tts_fallbacks,
         catalog,
         keys,
     )
-    heard = dict.fromkeys(item for item in (language, *catalog.hints) if item)
     voice = declaration.voice.voice_id if declaration.voice else None
-    # Ears are told to listen for the languages they hear alone: Flux refuses a hint it does not know.
-    ears = [
-        dataclasses.replace(
-            item, language=language, hints=tuple(one for one in heard if catalog.hears(item.vendor, item.model, one))
-        )
-        for item in (stt, *stt.fallbacks)
-    ]
-    # The agent's voice is its vendor's; a vendor that takes over speaks the row's for the language.
+    ears = [tell_languages(Stage.stt, item, languages, catalog) for item in (stt, *stt.fallbacks)]
+    # The agent's voice is its vendor's; a vendor that takes over speaks the row's for the language, and
+    # one the row gives no voice for it, on a model that does not speak it, does not take over: the
+    # default's stand-in is an English voice, and it read a call in Arabic as English letters.
     voices = [
         dataclasses.replace(
-            item, language=language, voice=(voice if item is tts else None) or catalog.voice_for(item.vendor, language)
+            tell_languages(Stage.tts, item, languages, catalog),
+            voice=(voice if item is tts else None) or catalog.voice_for(item.vendor, main),
         )
         for item in (tts, *tts.fallbacks)
+        if item is tts or main is None or _speaks(item, main, catalog)
     ]
     realtime = None if declaration.realtime is None else talking_of(declaration.realtime, keys)
     return Pipeline(llm=llm, stt=ears[0].over(*ears[1:]), tts=voices[0].over(*voices[1:]), realtime=realtime)
@@ -126,13 +125,13 @@ def thinking_of(declaration: AgentStages, catalog: Catalog, keys: Keyring) -> Ru
 # fallbacks behind it, each on its own key, in the row's order. A fallback this org cannot key is
 # left out.
 def stage_on_its_key(
-    stage: Stage, named: Model | Voice | None, catalog: Catalog, keys: Keyring, language: str | None = None
+    stage: Stage, named: Model | Voice | None, catalog: Catalog, keys: Keyring, languages: Sequence[str] = ()
 ) -> Running:
-    """One stage on its key, as the operator tuned it: the vendor named, else the default, or ears for the language."""
+    """One stage on its key, as the operator tuned it: the vendor named, else the row's for the call's languages."""
     if named is not None:
         chosen = _run_on_its_key(stage, named.vendor, named.model or None, catalog, keys)
         return _run_as_named(stage, chosen, named)
-    default = catalog.ears_for(language) if stage is Stage.stt else catalog.defaults[stage]
+    default = choose_for(stage, languages, catalog, keys)
     chosen = _run_on_its_key(stage, default.vendor, default.model, catalog, keys)
     return chosen.over(*_list_with_a_key(stage, ((one.vendor, one.model) for one in default.fallbacks), catalog, keys))
 
@@ -161,6 +160,11 @@ def refuse_what_cannot_run(declaration: AgentStages, catalog: Catalog, keys: Key
 
 
 # ── private ──
+
+
+def _speaks(voice: Running, language: str, catalog: Catalog) -> bool:
+    kept = catalog.voice_for(voice.vendor, language) is not None
+    return kept or not catalog.lacks(Stage.tts, voice.vendor, voice.model, (language,))
 
 
 # What an agent names of the plugin wins over the operator's options for the vendor: its class,

@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased
+
+- **An agent says the languages its callers speak, and its calls run what takes them.** `language` is one
+  tag or several with commas between (`es, en`), the main one first; with several, a caller may speak any of
+  them and change in the middle of the call. Ears and a voice nobody named are chosen for them from the
+  providers row, on a key the call's org may run them on: the row says what each transcriber hears (`heard`),
+  what each voice's model speaks (`spoken`), which of them take several languages in one call (`multilingual`)
+  and what runs in the default's place (`ears`, `speakers`). Until now the first ears that heard the language
+  were chosen whoever could run them, and an org lent nothing of that vendor had its call refused. A voice
+  that takes over (a default's `fallbacks`) is left out of a call whose language it does not speak. An agent
+  that says its languages is listened to in those alone; the row's `hints` are for one that says none.
+  `GET /v1/agents/{slug}/pipeline` answers `languages`, each stage's own, `warnings` for the voice as for the
+  ears, and `suited`, the row's models that take them all with why this org cannot run one (not lent, no
+  key); `?language=` asks what it would run in languages it is not set to. A setting that names no language
+  is `422`. `docs/protocol/pipeline-api.md`, `operator-api.md`, `settings-api.md`.
+- **The recording notice and the disclosure are said in the call's language, whatever it is.** They are
+  written in the runtime for thirty-eight languages (eight until now, English for any other); for a language
+  outside those the box's own model writes them once, the first time a call in it opens, and the box keeps
+  them (`sentences/<code>` of its settings). `docs/protocol/gateway-api.md`.
+- **A Studio agent is told to answer in its languages, and writes on each channel in its own words.** On a
+  spoken call of an agent that says its languages the framework's "Answer in the language the caller speaks"
+  names them, so no reply comes in a language the voice does not speak. A definition's `channel_rules`
+  (`voice`, `chat`, `whatsapp`, `sms`) is the agent's own text for a channel in place of the framework's;
+  `GET /v1/studio/channel-rules` answers the framework's. A definition that carries `channel_rules` is not
+  read by a runtime before this one. `docs/protocol/studio.md`.
+- **A persona that changes language in the middle of the call**, `switches-language`, in the library.
+
 ## 0.11.46 — a contact who texts STOP is written to no more, a written conversation opens on the one before, and the audio of an MMS is heard (2026-11-18)
 
 - **A contact who texts STOP is written to no more.** A text that is, whole, a word that stops (`STOP`,

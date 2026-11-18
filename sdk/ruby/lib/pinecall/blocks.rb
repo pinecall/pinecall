@@ -92,10 +92,11 @@ module Pinecall
     # Static because a call never changes its channel or medium. With no call (an offline prompt), a
     # phone call's.
     def channel(agent)
-      return nil if agent.class.channel_rules == false
+      own = agent.class.channel_rules
+      return nil if own == false
 
       call = agent.call? ? agent.call : nil
-      tagged("channel", Rules.channel_rules_for(call&.channel || "phone", call&.medium || "voice"))
+      tagged("channel", Rules.channel_rules_for(call&.channel || "phone", call&.medium || "voice", own.is_a?(Hash) ? own : {}))
     end
 
     # Every declared tool's docstring, visible or not; schemas travel separately on the wire.

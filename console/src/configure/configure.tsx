@@ -110,7 +110,7 @@ export function Configure({ agent, kind, onSaved }: { agent: string; kind: "code
         />
       )}
       <Melody key={agent} agent={agent} readOnly={readOnly} />
-      <SettingsList {...stagesProps} answer={answer} lexicon={lexiconCorner?.lexicon ?? (lexicon === null ? null : NO_WORDS)} lexiconFrom={lexicon === null ? "pinecall" : wholeFrom(lexicon)} lexiconFixed={new Set(lexicon?.fixed ?? [])} judging={judging} onSaveLexicon={saveLexicon} />
+      <SettingsList {...stagesProps} agent={agent} answer={answer} lexicon={lexiconCorner?.lexicon ?? (lexicon === null ? null : NO_WORDS)} lexiconFrom={lexicon === null ? "pinecall" : wholeFrom(lexicon)} lexiconFixed={new Set(lexicon?.fixed ?? [])} judging={judging} onSaveLexicon={saveLexicon} />
     </div>
   );
 }

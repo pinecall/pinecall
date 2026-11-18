@@ -54,7 +54,8 @@ function channelBlock(agent: Agent): string {
   // What this call is for, said by whoever placed it: it holds for the whole call, like the channel.
   const purpose = tagged("this_call", call?.instruction ?? "");
   if (agent.channelRules === false) return purpose;
-  return paragraphs([tagged("channel", channelRulesFor(call?.channel, call?.medium ?? "voice")), purpose]);
+  const own = typeof agent.channelRules === "object" ? agent.channelRules : {};
+  return paragraphs([tagged("channel", channelRulesFor(call?.channel, call?.medium ?? "voice", own)), purpose]);
 }
 
 // Lists every declared tool, visible or not, so this block stays static. Schemas go on the wire.

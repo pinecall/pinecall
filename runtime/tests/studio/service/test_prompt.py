@@ -1,6 +1,7 @@
 """A Studio agent's identity: its instructions filled with the call's values, and the framework's words by channel."""
 
 from runtime.studio.service import prompt
+from runtime.wire.studio import ChannelRules
 from tests.studio.factories import clinic
 
 
@@ -44,3 +45,38 @@ def test_a_written_chat_on_a_website_is_told_markdown_is_fine() -> None:
     """The channel's rules follow the call: a website's text chat is not a phone call."""
     text = prompt.identity(clinic(), {"call": {"channel": "web", "medium": "text"}})
     assert "written chat on a website" in text and "phone call" not in text.split("<channel>")[1]
+
+
+def test_a_spoken_call_of_an_agent_that_says_its_languages_is_told_to_answer_in_them() -> None:
+    """One language is the one it answers in; several, the one the caller last spoke, and no other."""
+    spoken = {"call": {"channel": "phone", "medium": "voice"}}
+    assert "- The caller speaks Arabic: answer in Arabic." in prompt.identity(clinic(), spoken, ("ar",))
+    several = prompt.identity(clinic(), spoken, ("hi", "en", "ta"))
+    assert "- The caller speaks Hindi, English or Tamil: answer in the one they last spoke" in several
+    assert "- Answer in the language the caller speaks." not in several
+    unnamed = prompt.identity(clinic(), spoken, ("sw",))
+    assert "- The caller speaks the language whose tag is sw: answer in the language whose tag is sw." in unnamed
+
+
+def test_a_written_call_and_an_agent_that_says_no_language_keep_the_frameworks_rule() -> None:
+    """A text has no ears or voice to keep to a language: it is answered in whatever it was written in."""
+    written = {"call": {"channel": "whatsapp", "medium": "text"}}
+    assert f"<rules>\n{prompt.RULES}\n</rules>" in prompt.identity(clinic(), written, ("ar", "en"))
+    assert f"<rules>\n{prompt.RULES}\n</rules>" in prompt.identity(clinic(), {"call": {"medium": "voice"}})
+
+
+def test_an_agent_that_writes_its_own_rules_for_a_channel_is_told_those_and_the_frameworks_on_the_others() -> None:
+    """Its own WhatsApp words on WhatsApp; SMS, a website's chat and a call as the framework says them."""
+    own = ChannelRules(whatsapp="You are on WhatsApp. One short message, no formatting at all.")
+    agent = clinic(channel_rules=own)
+    said = prompt.identity(agent, {"call": {"channel": "whatsapp", "medium": "text"}})
+    assert "<channel>\nYou are on WhatsApp. One short message, no formatting at all.\n</channel>" in said
+    assert prompt.ON_WHATSAPP not in said
+    assert prompt.ON_SMS in prompt.identity(agent, {"call": {"channel": "sms", "medium": "text"}})
+    assert prompt.SPOKEN in prompt.identity(agent, {"call": {"channel": "phone", "medium": "voice"}})
+    assert prompt.list_channel_rules() == {
+        "voice": prompt.SPOKEN,
+        "chat": prompt.ON_A_WEBSITE,
+        "whatsapp": prompt.ON_WHATSAPP,
+        "sms": prompt.ON_SMS,
+    }

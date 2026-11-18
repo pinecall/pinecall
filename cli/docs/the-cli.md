@@ -938,7 +938,7 @@ stay until `rm` drops them, which is done before the class declares `personas`, 
 
 **Pinecall's library comes first**, each one `off` until `pinecall personas on <name>` switches it
 on for the agent (the nightly plays what is on): realism — `in-a-hurry`, `wrong-number`,
-`non-native`, `interrupts`, `changes-mind`, `elderly-slow`, `angry-repeat-caller`,
+`non-native`, `switches-language`, `interrupts`, `changes-mind`, `elderly-slow`, `angry-repeat-caller`,
 `asks-for-a-person` — and a red team — `prompt-leak`, `data-leak`, `off-task`, `harmful`,
 `unauthorized-action`. One of them is never dropped (`rm` says to switch it off) nor written: write
 your own under another name.
@@ -1644,9 +1644,11 @@ for is left out, and one that takes over the voice speaks the voice Pinecall has
 second unless set. **`--llm-timeout` is how long a turn waits for the model's first word**, 12 s unless
 set, before the caller is asked to say it again.
 
-**`--language <tag>` is the language the agent's calls are in** — `en`, `es`, `pt-BR` — and what
-the voice, the ears and the turn-taking are set to; unset anywhere, each vendor keeps its own
-default. It is not a field of the class, and a class that still declares `language` is refused at
+**`--language <tags>` is the languages the agent's callers speak** — `en`, `es`, `pt-BR`, or several
+with commas between, `--language "es, en"`, the main one first — and what the voice, the ears and the
+turn-taking are set to: with several, a caller may speak any of them and change in the middle of the
+call, and the ears and the voice nobody named are ones that take them all (`pinecall pipeline` says
+which, and warns when a stage does not); unset anywhere, each vendor keeps its own default. It is not a field of the class, and a class that still declares `language` is refused at
 load with this verb. The prompt does not follow it: the framework's own rules are English for
 every agent, one of them is to answer in the language the caller speaks, and the class's docstring
 and `render()` are in whatever language the tenant wrote them. A blank tag is refused with exit 2

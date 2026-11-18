@@ -5,8 +5,8 @@ import { setSettings } from "../configure/door";
 
 export interface FirstDefinition {
   instructions: string;
-  /** How it opens the call; null, the caller speaks first. */
-  greeting: { say: string } | null;
+  /** How it opens the call: the words, or an instruction it opens on in its own; null, the caller speaks first. */
+  greeting: { say: string } | { reply: string } | null;
   tools: never[];
   collect: null;
 }
@@ -18,7 +18,7 @@ export async function makeStudioAgent(credentials: Credentials, name: string, de
   await post(credentials, "/v1/studio/agents", definition === undefined ? { name } : { name, definition });
 }
 
-/** The language the agent hears and speaks, the voice it speaks in and the zone its clock is read in, kept as the team's settings; each left out stays unset. */
+/** The languages the agent's callers speak (`es, en`), the voice it speaks in and the zone its clock is read in, kept as the team's settings; each left out stays unset. */
 export async function setSound(credentials: Credentials, agent: string, sound: { language: string; voice: string; timezone: string }): Promise<void> {
   const config = { ...(sound.language === "" ? {} : { language: sound.language }), ...(sound.voice === "" ? {} : { voice: sound.voice }), ...(sound.timezone === "" ? {} : { timezone: sound.timezone }) };
   await setSettings(credentials, agent, { config, if_version: null, note: "Chosen when the agent was made", team: true });

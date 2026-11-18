@@ -25,7 +25,7 @@ remembers. It never changes during a call and no view renders it.
 
 | written | what it does |
 |---|---|
-| `channel_rules = False` | leaves out the `<channel>` part of the prompt: how to write for a voice, a website's chat, WhatsApp |
+| `channel_rules = {"whatsapp": "…"}` | the agent's own words for how it writes on a channel, in place of the framework's: `voice` (a spoken call), `chat` (a website's written chat), `whatsapp`, `sms`. A channel left out keeps the framework's. `channel_rules = False` leaves the `<channel>` part out of the prompt on every channel |
 | `slug = "front-desk"` | the name the agent registers as; left out, the folder's name under `pinecall start`, or the class's name in kebab-case (`ClinicaNorte` → `clinica-norte`) in your own process. A class served under another slug is refused |
 | `accepts = {"slot.released": ["app"]}` | the outside events the agent takes, and from whom: `app` is your backend, `participant` a browser in the call |
 

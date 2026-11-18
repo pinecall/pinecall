@@ -5,17 +5,22 @@ import re
 from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
+from runtime.kit.languages import name_language
 from runtime.studio.service.definition import A_PLACEHOLDER
 from runtime.wire.parts import ToolSpec
-from runtime.wire.studio import Definition
+from runtime.wire.studio import ChannelRules, Definition
 
 # The same text the TypeScript package's `built-in-rules.ts`, the Python SDK's `_rules.py` and the gem's
 # `Rules` write: a Studio agent's prompt reads as a class's does.
-RULES = (
-    "- Invent nothing: if it did not come from a tool or from the knowledge, do not say it.\n"
-    "- One question per turn, and wait for the answer.\n"
-    "- Answer in the language the caller speaks."
-)
+INVENT_NOTHING = "- Invent nothing: if it did not come from a tool or from the knowledge, do not say it."
+ONE_QUESTION = "- One question per turn, and wait for the answer."
+IN_THEIR_LANGUAGE = "- Answer in the language the caller speaks."
+# A spoken call of an agent that says its languages is heard and spoken in those alone: a reply in any
+# other is read by a voice that does not speak it. A class says this in its own words; Studio's prompt
+# is the framework's, so it says it here.
+IN_THE_ONE = "- The caller speaks {language}: answer in {language}."
+IN_ONE_OF_THEM = "- The caller speaks {languages}: answer in the one they last spoke, and never in any other language."
+RULES = "\n".join((INVENT_NOTHING, ONE_QUESTION, IN_THEIR_LANGUAGE))
 
 PROTOCOLS = (
     "- To act, call a tool in the same reply; saying you have done something, or that you are"
@@ -49,15 +54,32 @@ ON_SMS = (
 )
 
 
-def channel_rules_for(channel: str | None, medium: str | None) -> str:
-    """How to write on this channel and medium: WhatsApp's formatting, a website's, or speech."""
+def rules_for(languages: Sequence[str], medium: str | None) -> str:
+    """The framework's rules, the last one naming the languages of a spoken call whose agent says them."""
+    named = [name_language(one) for one in languages]
+    if medium == "text" or not named:
+        return RULES
+    if len(named) == 1:
+        return "\n".join((INVENT_NOTHING, ONE_QUESTION, IN_THE_ONE.format(language=named[0])))
+    several = f"{', '.join(named[:-1])} or {named[-1]}"
+    return "\n".join((INVENT_NOTHING, ONE_QUESTION, IN_ONE_OF_THEM.format(languages=several)))
+
+
+def channel_rules_for(channel: str | None, medium: str | None, own: ChannelRules | None = None) -> str:
+    """How to write on this channel and medium: the agent's own words for it, else the framework's."""
     if channel == "whatsapp":
-        return ON_WHATSAPP
+        return (own and own.whatsapp) or ON_WHATSAPP
     if channel == "sms":
-        return ON_SMS
+        return (own and own.sms) or ON_SMS
     if channel == "web" and medium == "text":
-        return ON_A_WEBSITE
-    return SPOKEN
+        return (own and own.chat) or ON_A_WEBSITE
+    return (own and own.voice) or SPOKEN
+
+
+# What the console shows under each channel before an agent writes its own.
+def list_channel_rules() -> dict[str, str]:
+    """The framework's own rules, by the name a definition writes its own under."""
+    return {"voice": SPOKEN, "chat": ON_A_WEBSITE, "whatsapp": ON_WHATSAPP, "sms": ON_SMS}
 
 
 def protocols_for(definition: Definition) -> str:
@@ -84,15 +106,17 @@ def fill(text: str, values: Mapping[str, Any]) -> str:
     return A_PLACEHOLDER.sub(read, text)
 
 
-# The call's values are known when it starts and never change, so the block stays in the cached prefix.
-def identity(definition: Definition, values: Mapping[str, Any]) -> str:
+# The call's values and its languages are known when it starts and never change, so the block stays in
+# the cached prefix.
+def identity(definition: Definition, values: Mapping[str, Any], languages: Sequence[str] = ()) -> str:
     """The instructions, the call's values in their placeholders, then the framework's rules and the channel's."""
     call: Mapping[str, Any] = values.get("call") or {}
+    medium = call.get("medium")
     said = [
         fill(definition.instructions, values),
-        tag("rules", RULES),
+        tag("rules", rules_for(languages, medium)),
         tag("protocols", protocols_for(definition)),
-        tag("channel", channel_rules_for(call.get("channel"), call.get("medium"))),
+        tag("channel", channel_rules_for(call.get("channel"), medium, definition.channel_rules)),
     ]
     return "\n\n".join(part for part in said if part.strip())
 

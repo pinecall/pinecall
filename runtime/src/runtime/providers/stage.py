@@ -1,6 +1,7 @@
 """A stage of a call as values: the model or voice an agent asks for, and the stage resolved onto its key."""
 
 import dataclasses
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, Literal, Never
@@ -8,7 +9,11 @@ from typing import Any, Literal, Never
 from livekit.agents import llm, stt, tts
 from livekit.agents.language import LanguageCode
 
+from runtime.exceptions import ValidationError
 from runtime.wire.parts import EndOfTurn
+
+# A language's base code, as every vendor takes it: two letters, or three where it has no two.
+A_LANGUAGE = re.compile(r"[a-z]{2,3}")
 
 # A key alone, or the object a plugin's constructor takes (`speech_key` and `speech_region`).
 type Credentials = str | Mapping[str, Any]
@@ -143,7 +148,25 @@ class Pipeline:
 
 # What a plugin or a row hands back is typed as nothing; this says what it is, once.
 def primary_language(language: str | None) -> str | None:
-    """The base code of a language (`es` for `es-ES` or `spanish`); vendors refuse full tags."""
-    if language is None or not language.strip():
-        return None
-    return LanguageCode(language.strip()).language
+    """The base code of a language (`es` for `es-ES` or `spanish`), of the first where several are named."""
+    named = languages_of(language)
+    return named[0] if named else None
+
+
+# An agent says the languages its callers speak as one setting, the way a browser says the ones it
+# reads: `es`, or `es, en` for a caller who may speak either and change between them.
+def languages_of(language: str | None) -> tuple[str, ...]:
+    """The base codes of the languages named, each once, the first the main one; vendors refuse full tags."""
+    parts = (part.strip() for part in (language or "").split(","))
+    return tuple(dict.fromkeys(LanguageCode(part).language for part in parts if part))
+
+
+# Asked where a language is set, never where a call reads it: a row kept before this was asked still runs.
+def check_languages(language: str) -> None:
+    """Refuse what names no language: each is a tag or a name (`pt`, `pt-BR`, `portuguese`), commas between several."""
+    wrong = next((one for one in languages_of(language) if not A_LANGUAGE.fullmatch(one)), None)
+    if wrong is not None:
+        raise ValidationError(
+            f"{wrong!r} is no language: say each by its tag or its English name (`pt`, `pt-BR`, `portuguese`), "
+            "and several with commas between them (`es, en`), the main one first"
+        )

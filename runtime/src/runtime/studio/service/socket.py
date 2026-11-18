@@ -17,6 +17,7 @@ from runtime.hosting import service as hosting
 from runtime.kit.crypto import Vault
 from runtime.kit.text import JsonObject
 from runtime.live import service as live
+from runtime.providers.stage import languages_of
 from runtime.scoping import box_task
 from runtime.session import service as session
 from runtime.studio.service import collect as collecting
@@ -179,7 +180,11 @@ class StudioSocket:
         definition = self.agents.get(agent)
         if definition is None:
             return
-        run = Run(agent=agent, call=call, definition=definition, values=values.read_values(started))
+        # The languages are the call's own, as its opening kept them: a test room's, a person's copy's.
+        async with self._sessions() as own:
+            opening = await calls.opening_of(own, call)
+        languages = () if opening is None else languages_of(opening.declaration.language)
+        run = Run(agent, call, definition, values.read_values(started), languages)
         self._runs[call] = run
         for command in run.open(handed if handed is not None else started.state):
             await self._send(command)

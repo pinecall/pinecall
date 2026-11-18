@@ -95,10 +95,14 @@ def viewed(agent: Agent, line: Line, *, resumed: bool, remembered: Sequence[str]
 
 def identity(agent: Agent, line: Line, rules: Sequence[str] = ()) -> str:
     """The class's docstring, the framework's and the app's rules, the protocols, the channel's."""
+    own = type(agent).channel_rules
     channel = (
-        tagged("channel", _rules.channel_rules_for(line.channel, line.medium))
-        if type(agent).channel_rules
-        else ""
+        ""
+        if own is False
+        else tagged(
+            "channel",
+            _rules.channel_rules_for(line.channel, line.medium, None if own is True else own),
+        )
     )
     said = [
         _doc.one_line(vars(type(agent)).get("__doc__")) or "",

@@ -22,6 +22,7 @@ from runtime.agents.declaration import (
 from runtime.exceptions import ValidationError
 from runtime.kit.text import a_mapping
 from runtime.kit.time import parse_zone
+from runtime.providers.stage import check_languages
 from runtime.wire.declaration import IDLE_AFTER_S, IDLE_TIMES
 from runtime.wire.parts import EndOfTurn
 
@@ -110,6 +111,8 @@ def check_settings(settings: AgentSettings) -> AgentSettings:
             )
     if settings.timezone is not None:
         parse_zone(settings.timezone)
+    if settings.language is not None:
+        check_languages(settings.language)
     if settings.max_duration_s is not None:
         check_call_limit(settings.max_duration_s)
     if settings.silence_timeout_s is not None:

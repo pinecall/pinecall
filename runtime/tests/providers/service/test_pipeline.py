@@ -124,12 +124,21 @@ def test_an_agents_own_fallbacks_take_the_place_of_the_stages_and_one_with_no_ke
 
 
 WIDE_EARS = "acme-ears-wide"
+MIXED_EARS = "acme-ears-mixed"
+ANOTHER = acme.install("another")
 
 
+# The default's ears hear English and Spanish in the one call; the row's others are ears told one
+# language of many, and ears of another vendor that hear Arabic and English in the one call.
 def _by_language() -> Catalog:
     row = configured().model_dump(mode="json")
-    row["heard"] = {f"stt/{acme.ACME}/{acme.EARS}": ["en", "es"]}
-    row["ears"] = [{"vendor": acme.ACME, "model": WIDE_EARS}]
+    row["heard"] = {
+        f"stt/{acme.ACME}/{acme.EARS}": ["en", "es"],
+        f"stt/{acme.ACME}/{WIDE_EARS}": ["ar", "en", "es", "hi"],
+        f"stt/{ANOTHER}/{MIXED_EARS}": ["ar", "en"],
+    }
+    row["multilingual"] = [f"stt/{acme.ACME}/{acme.EARS}", f"stt/{ANOTHER}/{MIXED_EARS}"]
+    row["ears"] = [{"vendor": acme.ACME, "model": WIDE_EARS}, {"vendor": ANOTHER, "model": MIXED_EARS}]
     row["hints"] = ["es", "en"]
     return Catalog.model_validate(row)
 
@@ -139,23 +148,86 @@ def _by_language() -> Catalog:
 def test_a_call_in_a_language_the_defaults_ears_do_not_hear_runs_the_ears_that_do() -> None:
     """Spanish and no language stay on the default's ears; Arabic, by any tag, runs the row's ears for the rest."""
     keys = Keyring(box={acme.ACME: "box-key"})
-    assert pipeline.build_pipeline(Stages(language="es"), _by_language(), keys).stt.model == acme.EARS
-    assert pipeline.build_pipeline(Stages(), _by_language(), keys).stt.model == acme.EARS
+    spanish = pipeline.build_pipeline(Stages(language="es"), _by_language(), keys).stt
+    assert (spanish.model, spanish.language, spanish.hints) == (acme.EARS, "es", ("es",))
+    unsaid = pipeline.build_pipeline(Stages(), _by_language(), keys).stt
+    assert (unsaid.model, unsaid.language, unsaid.hints) == (acme.EARS, None, ("es", "en"))
     arabic = pipeline.build_pipeline(Stages(language="ar-EG"), _by_language(), keys).stt
-    assert (arabic.model, arabic.language, arabic.hints) == (WIDE_EARS, "ar", ("ar", "es", "en"))
+    assert (arabic.model, arabic.language, arabic.hints) == (WIDE_EARS, "ar", ("ar",))
+
+
+def test_a_call_in_several_languages_runs_ears_that_hear_them_in_the_one_call() -> None:
+    """Spanish and English are the default's, told no one language; Arabic and English, the ears that mix them."""
+    keys = Keyring(box={acme.ACME: "box-key", ANOTHER: "box-key"})
+    both = pipeline.build_pipeline(Stages(language="es, en"), _by_language(), keys).stt
+    assert (both.model, both.language, both.hints) == (acme.EARS, None, ("es", "en"))
+    mixed = pipeline.build_pipeline(Stages(language="arabic, english"), _by_language(), keys).stt
+    assert (mixed.vendor, mixed.model, mixed.language, mixed.hints) == (ANOTHER, MIXED_EARS, None, ("ar", "en"))
+
+
+# Until 2026-11-18 the first of the row's ears that heard the language was chosen whoever could run it,
+# and an org lent nothing of that vendor had its call refused.
+def test_ears_the_org_has_no_key_for_are_never_chosen_and_the_call_runs_on_its_main_language() -> None:
+    """Without the vendor that mixes them, Arabic and English run the ears that hear Arabic, told Arabic."""
+    keys = Keyring(box={acme.ACME: "box-key"})
+    ears = pipeline.build_pipeline(Stages(language="ar, en"), _by_language(), keys).stt
+    assert (ears.vendor, ears.model, ears.language, ears.hints) == (acme.ACME, WIDE_EARS, "ar", ("ar", "en"))
+    the_defaults = frozenset(f"{acme.ACME}/{model}" for model in (acme.MODEL, acme.EARS, acme.VOICE))
+    unlent = Keyring(box={acme.ACME: "box-key"}, lends=the_defaults)
+    assert pipeline.build_pipeline(Stages(language="ar"), _by_language(), unlent).stt.model == acme.EARS
 
 
 def test_ears_an_agent_names_stay_its_own_and_are_told_the_languages_they_hear_alone() -> None:
-    """Named ears are never swapped; a hint they do not hear is not sent, since the vendor refuses it."""
+    """Named ears are never swapped; a language they do not hear is not sent, since the vendor refuses it."""
     keys = Keyring(box={acme.ACME: "box-key"})
-    named = Stages(language="ar", stt=Model(vendor=acme.ACME, model=acme.EARS))
+    named = Stages(language="ar, es", stt=Model(vendor=acme.ACME, model=acme.EARS))
     ears = pipeline.build_pipeline(named, _by_language(), keys).stt
-    assert (ears.model, ears.hints) == (acme.EARS, ("es", "en"))
+    assert (ears.model, ears.hints) == (acme.EARS, ("es",))
 
 
 def test_a_language_no_listed_ears_hear_stays_on_the_defaults() -> None:
     """With nothing else to run, the default's ears take the call: the report warns, the call is not refused."""
-    row = _by_language().model_dump(mode="json")
-    row["heard"][f"stt/{acme.ACME}/{WIDE_EARS}"] = ["ar"]
     keys = Keyring(box={acme.ACME: "box-key"})
-    assert pipeline.build_pipeline(Stages(language="hi"), Catalog.model_validate(row), keys).stt.model == acme.EARS
+    assert pipeline.build_pipeline(Stages(language="ja"), _by_language(), keys).stt.model == acme.EARS
+
+
+WIDE_VOICE = "acme-voice-wide"
+
+
+# The default's voice speaks English and Spanish; its stand-in is another vendor's English voice.
+def _speaking() -> Catalog:
+    row = configured().model_dump(mode="json")
+    row["defaults"]["tts"]["fallbacks"] = [{"vendor": ANOTHER, "model": "another-voice-en"}]
+    row["spoken"] = {
+        f"tts/{acme.ACME}/{acme.VOICE}": ["en", "es"],
+        f"tts/{acme.ACME}/{WIDE_VOICE}": ["ar", "en", "es"],
+        f"tts/{ANOTHER}/another-voice-en": ["en"],
+    }
+    row["multilingual"] = [f"tts/{acme.ACME}/{acme.VOICE}", f"tts/{acme.ACME}/{WIDE_VOICE}"]
+    row["speakers"] = [{"vendor": acme.ACME, "model": WIDE_VOICE}]
+    row["voices"] = {f"{ANOTHER}/es": "another-voice-es"}
+    return Catalog.model_validate(row)
+
+
+def test_a_voice_nobody_named_is_one_whose_model_speaks_the_calls_languages() -> None:
+    """Spanish is the default's; Arabic, and Arabic with English, the row's other, told no one language for two."""
+    keys = Keyring(box={acme.ACME: "box-key", ANOTHER: "box-key"})
+    spanish = pipeline.build_pipeline(Stages(language="es"), _speaking(), keys).tts
+    assert (spanish.model, spanish.language) == (acme.VOICE, "es")
+    arabic = pipeline.build_pipeline(Stages(language="ar"), _speaking(), keys).tts
+    assert (arabic.model, arabic.language) == (WIDE_VOICE, "ar")
+    both = pipeline.build_pipeline(Stages(language="ar, en"), _speaking(), keys).tts
+    assert (both.model, both.language) == (WIDE_VOICE, None)
+
+
+# Production's stand-in for its voice is an English one, and the row keeps it a voice in seven languages:
+# a call in Arabic that fell to it would have been read as English letters.
+def test_a_voice_that_takes_over_and_does_not_speak_the_language_is_left_out() -> None:
+    """The stand-in takes over in English and, on the row's voice for it, in Spanish; never in Arabic."""
+    keys = Keyring(box={acme.ACME: "box-key", ANOTHER: "box-key"})
+    english = pipeline.build_pipeline(Stages(language="en"), _speaking(), keys).tts
+    assert [one.model for one in english.fallbacks] == ["another-voice-en"]
+    spanish = pipeline.build_pipeline(Stages(language="es"), _speaking(), keys).tts
+    assert [one.voice for one in spanish.fallbacks] == ["another-voice-es"]
+    assert pipeline.build_pipeline(Stages(language="ar"), _speaking(), keys).tts.fallbacks == ()
+    assert len(pipeline.build_pipeline(Stages(), _speaking(), keys).tts.fallbacks) == 1

@@ -332,8 +332,9 @@ function measured(one: { name: string; seconds: number }): string {
   return one.name === "talk_share" ? `${Math.round(one.seconds * 100)}%` : `${one.seconds.toFixed(2)}s`;
 }
 
-function stageLine(stage: { vendor: string; model: string | null; voice_id: string | null; language: string | null }): string {
-  const said = [stage.vendor, stage.model, stage.voice_id, stage.language];
+function stageLine(stage: PipelineReport["hears"]): string {
+  const several = (stage.languages ?? []).length > 1 ? (stage.languages ?? []).join(", ") : stage.language;
+  const said = [stage.vendor, stage.model, stage.voice_id, several];
   return said.filter((word): word is string => typeof word === "string" && word !== "").join(" · ");
 }
 

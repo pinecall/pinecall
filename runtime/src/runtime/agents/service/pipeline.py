@@ -16,7 +16,13 @@ from runtime.exceptions import PinecallError
 from runtime.kit.crypto import Vault
 from runtime.providers import service as providers
 from runtime.providers.catalog import Catalog
-from runtime.providers.stage import Running, primary_language
+from runtime.providers.stage import Running, check_languages, languages_of
+
+# The two stages a call's languages reach, under the names the report gives them.
+SPOKEN = {"hears": Stage.stt, "speaks": Stage.tts}
+STAGE_OF = {**SPOKEN, "decides": Stage.llm}
+# What each of them does with a language, for the sentence that says it does not.
+VERB_OF = {Stage.stt: "hear", Stage.tts: "speak"}
 
 
 # Which vendors are failing now is counted where the calls' errors are written, above this domain:
@@ -82,6 +88,8 @@ class StagePlan:
     model: str | None = None
     voice_id: str | None = None
     language: str | None = None
+    # The languages the ears listen for, and the ones the voice is asked to speak.
+    languages: tuple[str, ...] = ()
 
 
 # The answer is flat, as GET /v1/providers is: what the org can run is read off `runnable`, and how fast
@@ -103,8 +111,14 @@ class Report:
     measured: Measured
     # Which stage has no key to run on, and why, before a call fails for want of it.
     unavailable_reasons: Mapping[str, str] = field(default_factory=dict[str, str])
-    # Which stage runs but not well, and why: ears that do not hear the agent's language.
+    # Which stage runs but not well, and why: ears that do not hear the agent's languages, a voice that
+    # does not speak them.
     warnings: Mapping[str, str] = field(default_factory=dict[str, str])
+    # The languages the agent's callers speak, the main one first; none where it says none.
+    languages: tuple[str, ...] = ()
+    # By stage (`hears`, `speaks`), the row's own that take every one of those languages, in its order,
+    # each with why this org cannot run it.
+    suited: Mapping[str, Sequence[providers.Suited]] = field(default_factory=dict[str, Sequence[providers.Suited]])
     # The picker reads GET /v1/voices; no names are curated in code.
     voices: tuple[str, ...] = ()
 
@@ -175,54 +189,67 @@ async def stages_for_worker(
 
 
 # Nothing is built: a vendor without a key is a reason, not a failure.
-async def report_on(session: AsyncSession, vault: Vault, scope: Scope, agent: Agent, measured: Measured) -> Report:
+async def report_on(
+    session: AsyncSession, vault: Vault, scope: Scope, agent: Agent, measured: Measured, *, language: str | None = None
+) -> Report:
     """The agent's three stages as its next call in the scope would run them, the catalogue, and its latencies."""
     catalog = await providers.get_catalog(session)
     resolved = (await resolve_for_call(session, agent.whole, scope, catalog)).declaration
+    # Asked in languages it is not set to: answered as if it were, nothing kept.
+    if language is not None:
+        check_languages(language)
+        resolved = dataclasses.replace(resolved, language=language)
     keys = await providers.keys_of(session, vault, scope)
-    language = primary_language(resolved.language)
-    stages = {
-        "hears": _plan_stage(Stage.stt, resolved, catalog, language=language),
-        "decides": _plan_stage(Stage.llm, resolved, catalog, language=None),
-        "speaks": _plan_stage(Stage.tts, resolved, catalog, language=language),
-    }
+    languages = languages_of(resolved.language)
     talks = resolved.realtime
     return Report(
         agent=agent.slug,
-        hears=stages["hears"],
-        decides=stages["decides"],
-        speaks=stages["speaks"],
+        hears=_plan_stage(Stage.stt, resolved, catalog, keys),
+        decides=_plan_stage(Stage.llm, resolved, catalog, keys),
+        speaks=_plan_stage(Stage.tts, resolved, catalog, keys),
         talks=None if talks is None else StagePlan(vendor=talks.vendor, model=talks.model or None),
         greeting=resolved.greeting,
         runnable=providers.runnable_on(catalog, keys, providers.list_vendors()),
         voice_defaults=dict(catalog.voices),
         measured=measured,
         unavailable_reasons=list_unavailable(resolved, catalog, keys),
-        warnings=list_warnings(resolved, catalog),
+        warnings=list_warnings(resolved, catalog, keys),
+        languages=languages,
+        suited={where: providers.list_suited(stage, languages, catalog, keys) for where, stage in SPOKEN.items()}
+        if languages
+        else {},
     )
 
 
-def _plan_stage(stage: Stage, declaration: Declaration, catalog: Catalog, *, language: str | None) -> StagePlan:
-    default = catalog.defaults[stage]
-    if stage is Stage.tts:
-        voice = declaration.voice
-        return StagePlan(
-            vendor=default.vendor if voice is None else voice.vendor,
-            model=None if voice is None else voice.model,
-            voice_id=None if voice is None else voice.voice_id,
-            language=language,
-        )
+def _plan_stage(stage: Stage, declaration: Declaration, catalog: Catalog, keys: providers.Keyring) -> StagePlan:
+    languages = languages_of(declaration.language)
+    main = languages[0] if languages else None
     if stage is Stage.llm:
         named = declaration.llm
+        default = catalog.defaults[stage]
         return StagePlan(
             vendor=default.vendor if named is None else named.vendor,
             model=None if named is None else named.model or None,
         )
-    if declaration.stt is not None:
-        return StagePlan(vendor=declaration.stt.vendor, model=declaration.stt.model or None, language=language)
-    # Ears nobody named are the default's, said with no model, or the ones that hear the language, said whole.
-    ears = catalog.ears_for(language)
-    return StagePlan(vendor=ears.vendor, model=None if ears is default else ears.model, language=language)
+    vendor, model, said = _find_running(stage, declaration, catalog, keys)
+    if stage is Stage.tts:
+        voice = declaration.voice
+        return StagePlan(vendor, said, None if voice is None else voice.voice_id, main, languages)
+    listened = tuple(one for one in languages or catalog.hints if not catalog.lacks(stage, vendor, model, (one,)))
+    return StagePlan(vendor, said, None, main, listened)
+
+
+# A stage nobody named is the default's, said with no model, or the row's for the call's languages,
+# said whole.
+def _find_running(
+    stage: Stage, declaration: Declaration, catalog: Catalog, keys: providers.Keyring
+) -> tuple[str, str | None, str | None]:
+    """The vendor and the model a stage of the agent runs, and the model as the report says it."""
+    named = declaration.stt if stage is Stage.stt else declaration.voice
+    if named is not None:
+        return named.vendor, named.model or None, named.model or None
+    chosen = providers.choose_for(stage, languages_of(declaration.language), catalog, keys)
+    return chosen.vendor, chosen.model, None if chosen is catalog.defaults[stage] else chosen.model
 
 
 # Checked as the call builds it (`providers.stage_on_its_key`): the vendor the agent names or the row's, on
@@ -231,13 +258,12 @@ def _plan_stage(stage: Stage, declaration: Declaration, catalog: Catalog, *, lan
 # this org" for an agent whose calls ran on those very models.
 def list_unavailable(declaration: Declaration, catalog: Catalog, keys: providers.Keyring) -> dict[str, str]:
     """Each stage the next call could not run, with the reason; empty when all three run."""
+    languages = languages_of(declaration.language)
     named = {"hears": declaration.stt, "decides": declaration.llm, "speaks": declaration.voice}
-    stage_of = {"hears": Stage.stt, "decides": Stage.llm, "speaks": Stage.tts}
-    ears = catalog.ears_for(primary_language(declaration.language))
     missing: dict[str, str] = {}
     for where, own in named.items():
-        stage = stage_of[where]
-        default = ears if stage is Stage.stt else catalog.defaults[stage]
+        stage = STAGE_OF[where]
+        default = providers.choose_for(stage, languages, catalog, keys)
         vendor, model = (default.vendor, default.model) if own is None else (own.vendor, own.model or None)
         try:
             providers.running_on(keys, vendor, model or catalog.model_for(stage, vendor))
@@ -248,21 +274,39 @@ def list_unavailable(declaration: Declaration, catalog: Catalog, keys: providers
 
 # A call that is not heard is not refused: it runs, and its agent answers what nobody said. Said here,
 # where the agent is set, in the words that fix it.
-def list_warnings(declaration: Declaration, catalog: Catalog) -> dict[str, str]:
-    """Each stage that runs but not well, with the reason: ears that do not hear the agent's language."""
-    language = primary_language(declaration.language)
-    if language is None:
-        return {}
-    named = declaration.stt
-    ears = catalog.ears_for(language)
-    vendor, model = (ears.vendor, ears.model) if named is None else (named.vendor, named.model or None)
-    listed = catalog.find_heard(vendor, model)
-    if listed is None or language in listed:
-        return {}
-    whose = f"{vendor}/{model or catalog.model_for(Stage.stt, vendor)}"
-    fix = (
-        "no transcriber this runtime lists hears it: name one that does"
-        if named is None
-        else "take the transcriber out of its settings and Pinecall picks one that does"
-    )
-    return {"hears": f"{whose} does not hear {language} (it hears {', '.join(listed)}): {fix}"}
+def list_warnings(declaration: Declaration, catalog: Catalog, keys: providers.Keyring) -> dict[str, str]:
+    """Each stage that runs but not well, with the reason: ears or a voice that do not take the agent's languages."""
+    languages = languages_of(declaration.language)
+    warned: dict[str, str] = {}
+    for where, stage in SPOKEN.items():
+        vendor, model, _ = _find_running(stage, declaration, catalog, keys)
+        if languages and not catalog.takes(stage, vendor, model, languages):
+            wrong = _say_untaken(stage, vendor, model, languages, catalog)
+            warned[where] = f"{wrong}: {_say_fix(stage, languages, catalog, keys)}"
+    return warned
+
+
+def _say_untaken(stage: Stage, vendor: str, model: str | None, languages: Sequence[str], catalog: Catalog) -> str:
+    whose = f"{vendor}/{model or catalog.model_for(stage, vendor)}"
+    lacking = catalog.lacks(stage, vendor, model, languages)
+    if not lacking:
+        return f"{whose} {VERB_OF[stage]}s one language a call, and this agent's callers speak {', '.join(languages)}"
+    listed = catalog.find_languages(stage, vendor, model) or ()
+    return f"{whose} does not {VERB_OF[stage]} {', '.join(lacking)} (it {VERB_OF[stage]}s {', '.join(listed)})"
+
+
+# The fix is one of the row's own that takes them all: run for the agent once it names nothing, or, where
+# its org has no key for it, said with the reason and the command that brings one.
+def _say_fix(stage: Stage, languages: Sequence[str], catalog: Catalog, keys: providers.Keyring) -> str:
+    what = "transcriber" if stage is Stage.stt else "voice"
+    suited = providers.list_suited(stage, languages, catalog, keys)
+    runs = next((one for one in suited if one.refused is None), None)
+    if runs is not None:
+        return f"take the {what} out of its settings and Pinecall runs {runs.vendor}/{runs.model}"
+    if suited:
+        first = suited[0]
+        return (
+            f"{first.vendor}/{first.model} does, and this org cannot run it ({first.refused}): "
+            f"pinecall providers add {first.vendor}"
+        )
+    return f"no {what} this runtime lists does: name one that does"

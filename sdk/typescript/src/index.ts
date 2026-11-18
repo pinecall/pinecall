@@ -23,6 +23,7 @@ export * from "./agent/lifecycle.js";
 export * from "./views/jsx-runtime.js";
 export * from "./views/components.js";
 // `layout` is exposed as `promptOf`.
+export { CHANNEL_RULES, type ChannelName, type ChannelRules } from "./views/built-in-rules.js";
 export { PROMPT_BLOCKS, type Block, type Blocks } from "./views/layout.js";
 export * from "./views/render.js";
 // The panel tags themselves are exported from `@pinecall/agents/panels`.

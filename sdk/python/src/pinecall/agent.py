@@ -71,8 +71,8 @@ class Agent:
     slug: ClassVar[str | None] = None
     """The name the agent registers as; the CLI passes the folder's, and refuses another."""
 
-    channel_rules: ClassVar[bool] = True
-    """`False` leaves the `<channel>` part out of the prompt."""
+    channel_rules: ClassVar[bool | Mapping[str, str]] = True
+    """Its own words for a channel, `{"whatsapp": "…"}`, over the framework's; `False` says none."""
 
     view_template: ClassVar[str | None] = None
     """The view's Jinja, written here; left out, `views/<slug>.jinja` beside the class's file."""

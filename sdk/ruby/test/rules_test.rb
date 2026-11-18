@@ -12,6 +12,11 @@ class RulesTest < Minitest::Test
     channel_rules false
   end
 
+  # Agenda que escribe cómo responde por WhatsApp, y deja lo demás como viene.
+  class PorWhatsapp < Pinecall::Agent
+    channel_rules whatsapp: "You are on WhatsApp. One short message, no formatting at all."
+  end
+
   SPOKEN = "You are on a phone call."
   WEBSITE = "You are in a written chat on a website."
   WHATSAPP = "You are on WhatsApp."
@@ -78,6 +83,14 @@ class RulesTest < Minitest::Test
       refute_includes identity, "<channel>"
       assert_includes identity, "<protocols>"
     end
+  end
+
+  def test_a_class_says_its_own_words_for_the_channel_it_names_and_the_frameworks_on_every_other
+    assert_equal "You are on WhatsApp. One short message, no formatting at all.",
+                 channel_of(identity_of(serving(PorWhatsapp, "whatsapp")))
+    assert_equal Pinecall::Rules::CHANNEL_RULES[:voice], channel_of(identity_of(serving(PorWhatsapp, "phone")))
+    assert_equal Pinecall::Rules::CHANNEL_RULES[:chat], channel_of(identity_of(serving(PorWhatsapp, "web", "text")))
+    assert_equal Pinecall::Rules::CHANNEL_RULES[:sms], channel_of(identity_of(serving(PorWhatsapp, "sms")))
   end
 
   def test_the_medium_stays_readable_on_the_call_when_the_block_is_off

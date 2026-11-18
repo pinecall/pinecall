@@ -95,7 +95,7 @@ async def play_spoken(parts: Harness, simulation: Simulation) -> Played:
         voice = await caller_voice(
             session_, parts.vault, scope, await agent_as_it_runs(session_, parts, scope, simulation.agent), persona
         )
-        notice = await opens_with_a_notice(session_, scope, voice.language)
+        notice = await opens_with_a_notice(session_, scope)
     await keep_against(parts, simulation)
     # The caller murmurs in the language it speaks: the line learns it here, with the voice.
     spoken = Spoken(simulation.call, simulation.acts, voice.language, notice, simulation.network)
@@ -159,9 +159,9 @@ async def agent_as_it_runs(session_: AsyncSession, parts: Harness, scope: Scope,
 
 # The agent says the org's recording notice before its greeting: a caller that did not expect it would
 # take it for the opening and talk over the greeting.
-async def opens_with_a_notice(session_: AsyncSession, scope: Scope, language: str | None) -> bool:
+async def opens_with_a_notice(session_: AsyncSession, scope: Scope) -> bool:
     """Whether a spoken call of this org opens with a recording notice."""
-    return (await compliance.policy_of(session_, scope.org)).notice_in(language) is not None
+    return (await compliance.policy_of(session_, scope.org)).recording_notice
 
 
 # Kept as the call starts, so the call's page names who plays the caller while it plays.

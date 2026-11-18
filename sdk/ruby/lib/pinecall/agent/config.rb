@@ -9,7 +9,8 @@ module Pinecall
     # agent's settings for that field.
     module Config
       # `phone`, `whatsapp` and `web` are accepted for compatibility but ignored. `channel_rules
-      # false` leaves the `<channel>` block out of the prompt.
+      # whatsapp: "…"` says the agent's own words for that channel, and `channel_rules false` leaves the
+      # `<channel>` block out of the prompt.
       AS_WRITTEN = %i[phone whatsapp web channel_rules].freeze
 
       # The settings a class may declare. Must match the TypeScript package's `ENVIRONMENT`.

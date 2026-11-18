@@ -1,6 +1,6 @@
 """The providers row as a value: the operator's choices as the box keeps them, and how its keys are read."""
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Sequence
 from typing import Any, Literal
 
 from pydantic import ConfigDict, Field
@@ -165,9 +165,17 @@ class Catalog(Schema):
     # `stt/deepgram/flux-general-multi`: the languages those ears hear, by base code; ears the row lists
     # nothing for hear whatever language a call is in.
     heard: dict[str, tuple[str, ...]] = Field(default_factory=dict[str, tuple[str, ...]])
-    # The ears a call runs where the default's do not hear its language and its agent names none: the
-    # first of these that hear it.
+    # `tts/elevenlabs/eleven_flash_v2`: the languages that voice's model speaks, as `heard` says of ears.
+    spoken: dict[str, tuple[str, ...]] = Field(default_factory=dict[str, tuple[str, ...]])
+    # `stt/deepgram/flux-general-multi`, `tts/elevenlabs/eleven_multilingual_v2`: of the models `heard` and
+    # `spoken` list, the ones that take more than one of their languages in a call. Any other of them is
+    # told one language and keeps to it.
+    multilingual: tuple[str, ...] = ()
+    # The ears a call runs where the default's do not take its languages and its agent names none: the
+    # first of these that do, on a key its org may run them on.
     ears: tuple[StageChoice, ...] = ()
+    # The voices' models a call speaks with where the default's does not take its languages, as `ears`.
+    speakers: tuple[StageChoice, ...] = ()
     # A model's price, by the longest prefix of its id: dated snapshots price by family.
     rates: dict[str, Rate] = Field(default_factory=dict[str, Rate])
     # `cartesia/sonic-3.6`: the name the vendor gives a model where it is not the id; the models file's.
@@ -201,24 +209,39 @@ class Catalog(Schema):
         named = None if model is None else longest_prefix(prefixes, model)
         return self.tuning.get(own if named is None else f"{under}{named}")
 
-    def find_heard(self, vendor: str, model: str | None) -> tuple[str, ...] | None:
-        """The languages a vendor's ears hear, on the model named or the one the row runs; None where it lists none."""
-        named = model or self.model_for(Stage.stt, vendor)
-        return None if named is None else self.heard.get(f"{stage_key(Stage.stt, vendor)}{_SEPARATOR}{named}")
+    def find_languages(self, stage: Stage, vendor: str, model: str | None) -> tuple[str, ...] | None:
+        """The languages a model hears or speaks, the one named or the row's for its vendor; None where none listed."""
+        named = model or self.model_for(stage, vendor)
+        table = self.heard if stage is Stage.stt else self.spoken
+        return None if named is None else table.get(f"{stage_key(stage, vendor)}{_SEPARATOR}{named}")
 
-    def hears(self, vendor: str, model: str | None, language: str) -> bool:
-        """Whether a vendor's ears hear the language: they do unless the row lists what they hear without it."""
-        listed = self.find_heard(vendor, model)
-        return listed is None or language in listed
+    def lacks(self, stage: Stage, vendor: str, model: str | None, languages: Iterable[str]) -> tuple[str, ...]:
+        """The languages among these a model does not hear or speak; none where the row lists nothing for it."""
+        listed = self.find_languages(stage, vendor, model)
+        return () if listed is None else tuple(one for one in languages if one not in listed)
+
+    def is_multilingual(self, stage: Stage, vendor: str, model: str | None) -> bool:
+        """Whether the row says a model takes more than one of its languages in a call."""
+        named = model or self.model_for(stage, vendor)
+        return f"{stage_key(stage, vendor)}{_SEPARATOR}{named}" in self.multilingual
+
+    def keeps_to_one(self, stage: Stage, vendor: str, model: str | None) -> bool:
+        """Whether a model takes one language a call: the row lists its languages, and not as multilingual."""
+        listed = self.find_languages(stage, vendor, model) is not None
+        return listed and not self.is_multilingual(stage, vendor, model)
 
     # Flux hears ten languages and writes any other as English that sounds alike: a call in Arabic ran on
     # it and its agent read "Detail it Morattossel" (2026-11-17).
-    def ears_for(self, language: str | None) -> StageChoice:
-        """The ears a call in the language runs where its agent names none: the default's, or the first that hear it."""
-        default = self.defaults[Stage.stt]
-        if language is None or self.hears(default.vendor, default.model, language):
-            return default
-        return next((one for one in self.ears if self.hears(one.vendor, one.model, language)), default)
+    def takes(self, stage: Stage, vendor: str, model: str | None, languages: Sequence[str]) -> bool:
+        """Whether a model takes a call in these languages: each heard or spoken, and several in the one call."""
+        if self.lacks(stage, vendor, model, languages):
+            return False
+        return len(languages) < 2 or not self.keeps_to_one(stage, vendor, model)
+
+    def choices_for(self, stage: Stage) -> tuple[StageChoice, ...]:
+        """What a call may run for a stage its agent names nothing for: the default, then the row's others."""
+        others = {Stage.stt: self.ears, Stage.tts: self.speakers}.get(stage, ())
+        return (self.defaults[stage], *others)
 
     def leads_for(self, stage: Stage, vendor: str) -> tuple[str, ...]:
         """The models a picker leads with for a vendor and stage, in order."""

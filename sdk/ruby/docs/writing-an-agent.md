@@ -25,7 +25,8 @@ Declared on the class, because it is not something the agent remembers. It never
 call and no view renders it.
 
 ```ruby
-channel_rules false       # leave out the <channel> block: how to write for a voice, a website, WhatsApp
+channel_rules whatsapp: "One short message, no formatting."   # its own words for a channel: voice, chat, whatsapp, sms
+channel_rules false       # or leave out the <channel> block on every channel
 slug "front-desk"         # the name it registers as; left out, the folder's name under `pinecall start`
 accepts "slot.released", from: %i[app]   # the outside events it takes, and from whom
 ```

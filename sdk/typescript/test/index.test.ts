@@ -10,6 +10,7 @@ import * as api from "../src/index.js";
 // Sorted.
 const PUBLIC = [
     "Agent",
+    "CHANNEL_RULES",
     "CONFIG_FIELDS",
     "CallWorld",
     "DeclarationRefused",

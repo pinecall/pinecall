@@ -29,6 +29,8 @@ class Run:
     call: str
     definition: Definition
     values: dict[str, Any]
+    # The languages the call's agent says its callers speak, the main one first; none where it says none.
+    languages: tuple[str, ...] = ()
     collected: dict[str, Any] = field(default_factory=dict[str, Any])
     # Each block of the prompt as it was last sent: one that did not change is not sent again.
     sent: dict[str, str] = field(default_factory=dict[str, str])
@@ -49,7 +51,7 @@ class Run:
         specs = declaring.list_tool_specs(definition)
         view = "" if definition.collect is None else collecting.view(definition.collect, self.collected)
         blocks = {
-            "identity": prompt.identity(definition, self.values),
+            "identity": prompt.identity(definition, self.values, self.languages),
             "tools": prompt.tools_block(specs),
             "view": view,
         }

@@ -6,7 +6,8 @@ import type { JudgingSettings } from "../judges/door";
 import { knobOf, Origin, type From } from "./corner";
 import type { LexiconBody, Report, TuningAnswer, TuningBody } from "./door";
 import { HangupEditor, hangupSaid } from "./hangup-editor";
-import { LanguageEditor, languageName } from "./language-editor";
+import { LanguageEditor } from "./language-editor";
+import { languagesIn, languagesSaid } from "./languages";
 import { LexiconEditor } from "./lexicon-editor";
 import { splitWord } from "./stage-editor";
 import { brandOf, JudgeEditor, Pencil, voiceOf } from "./stages";
@@ -68,6 +69,7 @@ function lexiconSaid(lexicon: LexiconBody): Said {
 }
 
 interface Props {
+  agent: string;
   readOnly: boolean;
   report: Report;
   answer: TuningAnswer;
@@ -87,7 +89,7 @@ interface Props {
   onKept: () => Promise<void>;
 }
 
-export function SettingsList({ readOnly, report, answer, config, fixed, lexicon, lexiconFrom, lexiconFixed, judging, saving, refused, onSave, onSaveLexicon, onOpened, onKept }: Props): ReactNode {
+export function SettingsList({ agent, readOnly, report, answer, config, fixed, lexicon, lexiconFrom, lexiconFixed, judging, saving, refused, onSave, onSaveLexicon, onOpened, onKept }: Props): ReactNode {
   const [editing, setEditing] = useState<Editing | null>(null);
   const open = (what: Editing): void => {
     onOpened();
@@ -105,8 +107,11 @@ export function SettingsList({ readOnly, report, answer, config, fixed, lexicon,
   const voice = brandOf(report.speaks.vendor);
 
   const language = knobOf(answer, "language");
-  const tag = language.value ?? report.speaks.language ?? report.hears.language ?? null;
-  const languageSaid: Said = tag === null ? { main: "Not set", note: `${ears} guesses, ${voice} speaks its default`, unset: true } : { main: languageName(tag) ?? tag, note: `${tag}, heard by ${ears} and spoken by ${voice}`, warn: report.warnings["hears"] };
+  // What the class or a corner says, else what the report read: several are one setting, commas between.
+  const tags = language.value === null ? report.languages : languagesIn(language.value);
+  const wrong = [report.warnings["hears"], report.warnings["speaks"]].filter((one) => one !== undefined).join(" ");
+  const listened = report.hears.languages.length === 0 ? `${ears} guesses` : `${ears} listens for ${languagesSaid(report.hears.languages)}`;
+  const languageSaid: Said = tags.length === 0 ? { main: "Not set", note: `${listened}, ${voice} speaks its default`, unset: true } : { main: languagesSaid(tags), note: `${tags.join(", ")}: heard by ${ears} and spoken by ${voice}`, warn: wrong === "" ? undefined : wrong };
 
   const zone = knobOf(answer, "timezone");
   const zoneSaid: Said = fixed.has("timezone") ? { main: IN_THE_CLASS } : zone.value === null ? { main: "Not set", note: "The agent is told the day, and no hour", unset: true } : { main: zone.value };
@@ -132,13 +137,13 @@ export function SettingsList({ readOnly, report, answer, config, fixed, lexicon,
         <span className="dash-eyebrow">Behaviour</span>
       </div>
       <div className="cfg-sets">
-        <Row name="Language" about="What the transcriber expects and the voice speaks." said={languageSaid} from={fromOf("language", language.from)} readOnly={readOnly} onEdit={() => open("language")} />
+        <Row name="Language" about="The languages its callers speak: heard, spoken and greeted in them." said={languageSaid} from={fromOf("language", language.from)} readOnly={readOnly} onEdit={() => open("language")} />
         <Row name="Time zone" about="The clock every call opens on." said={zoneSaid} from={fromOf("timezone", zone.from)} readOnly={readOnly} onEdit={() => open("timezone")} />
         <Row name="Judge model" about="The model that grades this agent's calls." said={{ ...judgeSaid, note: judgeOff ?? judgeSaid.note }} from={judgeFrom} readOnly={readOnly} onEdit={() => open("judge")} />
         <Row name="Hang up" about="Whether the agent may end the call itself." said={hangupRow} from={fromOf("hangup", hangup.from)} readOnly={readOnly} onEdit={() => open("hangup")} />
         {lexicon !== null && <Row name="Lexicon" about="Words it must say right, and hear right." said={wordsLocked ? { main: IN_THE_CLASS } : lexiconSaid(lexicon)} from={wordsLocked ? "class" : lexiconFrom} readOnly={readOnly} onEdit={() => open("lexicon")} />}
       </div>
-      {editing === "language" && <LanguageEditor initial={language.value ?? ""} ears={ears} voice={voice} saving={saving} refused={refused} onClose={close} onSave={(text) => (text === "" ? save({}, ["language"]) : save({ language: text }))} />}
+      {editing === "language" && <LanguageEditor agent={agent} initial={language.value ?? ""} saving={saving} refused={refused} onClose={close} onSave={(text) => (text === "" ? save({}, ["language"]) : save({ language: text }))} />}
       {editing === "timezone" && <ZoneEditor initial={zone.value ?? ""} saving={saving} refused={refused} onClose={close} onSave={(next) => (next === "" ? save({}, ["timezone"]) : save({ timezone: next }))} />}
       {editing === "judge" && <JudgeEditor report={report} config={{ ...config, judge: judge.value }} unset={theirs} saving={saving} refused={refused} onClose={close} onSave={(changed, drop) => void save(changed, drop)} onKept={onKept} />}
       {editing === "hangup" && <HangupEditor initial={hangup.value} saving={saving} refused={refused} onClose={close} onSave={(next) => (next === null ? save({}, ["hangup"]) : save({ hangup: next }))} />}

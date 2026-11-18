@@ -9,29 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from runtime.compliance.models import OrgPolicy
 from runtime.compliance.repository.policy import PolicyRepository
 
-# The platform's sentences, by the first part of the agent's language; English for any other.
-CALLING_FOR = {
-    "en": "This is an automated assistant calling on behalf of {org}.",
-    "es": "Le habla un asistente automático en nombre de {org}.",
-    "pt": "Aqui fala um assistente automático em nome de {org}.",
-    "fr": "Ici un assistant automatique qui appelle au nom de {org}.",
-    "de": "Hier spricht ein automatischer Assistent im Auftrag von {org}.",
-    "it": "Sono un assistente automatico che chiama per conto di {org}.",
-    "ar": "هذا مساعد آلي يتصل بالنيابة عن {org}.",
-    "hi": "यह {org} की ओर से कॉल करने वाला एक स्वचालित सहायक है।",
-}
-MAY_BE_RECORDED = {
-    "en": "This call may be recorded.",
-    "es": "Esta llamada puede ser grabada.",
-    "pt": "Esta chamada pode ser gravada.",
-    "fr": "Cet appel peut être enregistré.",
-    "de": "Dieser Anruf kann aufgezeichnet werden.",
-    "it": "Questa chiamata può essere registrata.",
-    "ar": "قد يتم تسجيل هذه المكالمة.",
-    "hi": "यह कॉल रिकॉर्ड की जा सकती है।",
-}
-FALLBACK_LANGUAGE = "en"
-
 
 @dataclass(frozen=True, slots=True)
 class Hours:
@@ -67,15 +44,17 @@ class Policy:
     set_by: str | None = None
     set_at: datetime | None = None
 
-    def disclosure_for(self, org_name: str, language: str | None) -> str | None:
-        """An outbound call's first sentence: the org's own, else the platform's, or None."""
+    # The platform's own sentences are written above this domain, in the call's language
+    # (`agents.sentences_in`), and handed in: the org's word on each is all that is read here.
+    def disclosure_for(self, org_name: str, calling_for: str) -> str | None:
+        """An outbound call's first sentence: the org's own, else the platform's with its name in it, or None."""
         if self.disclosure is not None:
             return self.disclosure.strip() or None
-        return CALLING_FOR[_language_of(language)].format(org=org_name)
+        return calling_for.format(org=org_name)
 
-    def notice_in(self, language: str | None) -> str | None:
+    def notice_in(self, may_be_recorded: str) -> str | None:
         """The sentence a recorded call says, or None when the org turned the notice off."""
-        return MAY_BE_RECORDED[_language_of(language)] if self.recording_notice else None
+        return may_be_recorded if self.recording_notice else None
 
 
 async def policy_of(session: AsyncSession, org: str) -> Policy:
@@ -123,8 +102,3 @@ def _columns_of(policy: Policy) -> dict[str, Any]:
         "sms_help_reply": policy.sms_help_reply,
         "sms_stop_words": list(policy.sms_stop_words),
     }
-
-
-def _language_of(language: str | None) -> str:
-    first = (language or FALLBACK_LANGUAGE).replace("_", "-").split("-")[0].lower()
-    return first if first in CALLING_FOR else FALLBACK_LANGUAGE

@@ -1,11 +1,11 @@
-/** New agent, in the side panel, in three steps: who it is and what it does, how it sounds, and a way to reach it — here, from a mobile, or at a number of its own. */
+/** New agent, in the side panel, in three steps: who it is, what it does and the languages its callers speak, how it sounds, and a way to reach it — here, from a mobile, or at a number of its own. */
 
 import { useState, type FormEvent, type ReactNode } from "react";
 
 import { saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { readReport, type Report } from "../configure/door";
-import { languageItems } from "../configure/language-editor";
+import { LanguageFit, LanguagesPicker, languageName } from "../configure/languages";
 import { VoicePicker } from "../configure/stage-editor";
 import { AddNumberPanel } from "../numbers/add-number";
 import { TestLine } from "../numbers/test-line";
@@ -25,21 +25,19 @@ const LONGEST = 40;
 
 const SPOKEN = "Everything you say is read aloud: keep it short, one question at a time, no lists and no symbols.";
 
-/** What an agent starts as: its instructions and how it opens the call, both rewritten later in Configure. */
-const STARTS: readonly { value: string; label: string; detail: string; instructions: string; greeting: string }[] = [
-  { value: "front-desk", label: "Front desk", detail: "Answers, helps, takes a message", instructions: `You answer the phone for the business. Find out what the caller needs and help with what you know. When you cannot help, take their name, their number and a short message, and say somebody will call back. ${SPOKEN}`, greeting: "Hello, thanks for calling. How can I help?" },
-  { value: "appointments", label: "Appointments", detail: "Books, moves and cancels", instructions: `You book appointments for the business. Ask what the appointment is for, then the day and time they prefer, then their name and number. Read the appointment back before you confirm it. For a change or a cancellation, ask for the name it is under first. ${SPOKEN}`, greeting: "Hello, thanks for calling. Would you like to book an appointment?" },
-  { value: "support", label: "Support", detail: "Solves a problem, or hands it on", instructions: `You are the first line of support. Ask what is wrong, and for the account or order it is about. Solve it when you know how. When you do not, say so plainly, take their contact, and say the team will follow up. Never guess a fix. ${SPOKEN}`, greeting: "Hi, this is support. What can I help you with?" },
-  { value: "leads", label: "Sales", detail: "Qualifies a caller and takes their details", instructions: `You talk to people interested in the business. Find out what they are looking for, how soon, and for how many people. Answer what you know, never invent a price, and take their name, company and the best way to reach them. ${SPOKEN}`, greeting: "Hi, thanks for your interest. What are you looking for?" },
-  { value: "blank", label: "Start from nothing", detail: "You write every word", instructions: "", greeting: "" },
+/** What an agent starts as: its instructions and how it opens the call, both rewritten later in Configure. `opens` is the opening as an instruction, for callers who do not speak the words written here. */
+const STARTS: readonly { value: string; label: string; detail: string; instructions: string; greeting: string; opens: string }[] = [
+  { value: "front-desk", label: "Front desk", detail: "Answers, helps, takes a message", instructions: `You answer the phone for the business. Find out what the caller needs and help with what you know. When you cannot help, take their name, their number and a short message, and say somebody will call back. ${SPOKEN}`, greeting: "Hello, thanks for calling. How can I help?", opens: "Greet the caller, thank them for calling and ask how you can help. One short sentence." },
+  { value: "appointments", label: "Appointments", detail: "Books, moves and cancels", instructions: `You book appointments for the business. Ask what the appointment is for, then the day and time they prefer, then their name and number. Read the appointment back before you confirm it. For a change or a cancellation, ask for the name it is under first. ${SPOKEN}`, greeting: "Hello, thanks for calling. Would you like to book an appointment?", opens: "Greet the caller, thank them for calling and ask whether they would like to book an appointment. One short sentence." },
+  { value: "support", label: "Support", detail: "Solves a problem, or hands it on", instructions: `You are the first line of support. Ask what is wrong, and for the account or order it is about. Solve it when you know how. When you do not, say so plainly, take their contact, and say the team will follow up. Never guess a fix. ${SPOKEN}`, greeting: "Hi, this is support. What can I help you with?", opens: "Say this is support and ask what you can help with. One short sentence." },
+  { value: "leads", label: "Sales", detail: "Qualifies a caller and takes their details", instructions: `You talk to people interested in the business. Find out what they are looking for, how soon, and for how many people. Answer what you know, never invent a price, and take their name, company and the best way to reach them. ${SPOKEN}`, greeting: "Hi, thanks for your interest. What are you looking for?", opens: "Thank the caller for their interest and ask what they are looking for. One short sentence." },
+  { value: "blank", label: "Start from nothing", detail: "You write every word", instructions: "", greeting: "", opens: "" },
 ];
+const WRITTEN_IN = "en";
 
 // The zone proposed for a new agent is this browser's: whoever makes it is most often where its callers are.
 const HERE = Intl.DateTimeFormat().resolvedOptions().timeZone;
 const ZONES = [{ value: "", label: "None", detail: "The agent is told the day only, and no hour" }, ...Intl.supportedValuesOf("timeZone").map((zone) => ({ value: zone, label: zone }))];
-
-// Nothing pinned is a guess: a transcriber left to itself hears a few languages well and writes the rest as one of those.
-const LANGUAGES = [{ value: "", label: "Not pinned", detail: "The transcriber guesses. Pick the language your callers speak and it is heard right" }, ...languageItems()];
 
 function nameRefused(name: string, taken: ReadonlySet<string>): string | null {
   if (!A_NAME.test(name)) return "A name is lowercase letters, digits and dashes, starting with a letter: front-desk.";
@@ -69,7 +67,7 @@ export function NewAgentPanel({ taken, onMade, onOpen, onClose }: { taken: Reado
   const [start, setStart] = useState(STARTS[0]?.value ?? "blank");
   const [instructions, setInstructions] = useState(STARTS[0]?.instructions ?? "");
   const [greeting, setGreeting] = useState(STARTS[0]?.greeting ?? "");
-  const [language, setLanguage] = useState("");
+  const [languages, setLanguages] = useState<string[]>([]);
   const [voice, setVoice] = useState("");
   const [timezone, setTimezone] = useState(HERE);
   // What the new agent speaks with, read once it is made: the voices offered are that vendor's.
@@ -100,25 +98,36 @@ export function NewAgentPanel({ taken, onMade, onOpen, onClose }: { taken: Reado
     return null;
   };
 
+  // The opening written here is English: for callers who speak another language it is an instruction the agent opens on, in theirs, unless the person wrote words of their own.
+  const template = STARTS.find((one) => one.value === start);
+  const main = languages[0] ?? "";
+  const improvised = main !== "" && main !== WRITTEN_IN && greeting.trim() !== "" && greeting.trim() === template?.greeting;
+  const openingOf = (): { say: string } | { reply: string } | null => {
+    if (greeting.trim() === "") return null;
+    return improvised && template !== undefined ? { reply: template.opens } : { say: greeting.trim() };
+  };
+
   const make = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
     const called = name.trim();
-    const wrong = nameRefused(called, taken) ?? (instructions.trim() === "" ? "Write what it does: its instructions are what it is." : null);
+    const wrong = nameRefused(called, taken) ?? (instructions.trim() === "" ? "Write what it does: its instructions are what it is." : null) ?? (languages.length === 0 ? "Pick the language its callers speak: it is how they are heard right." : null);
     if (wrong !== null) return setRefused(wrong);
     setBusy(true);
     setRefused(null);
     try {
-      await makeStudioAgent(credentials, called, { instructions: instructions.trim(), greeting: greeting.trim() === "" ? null : { say: greeting.trim() }, tools: [], collect: null });
+      await makeStudioAgent(credentials, called, { instructions: instructions.trim(), greeting: openingOf(), tools: [], collect: null });
       // Made is not answering: the gateway keeps an agent it cannot start, as it does one whose name another organization already uses, so the wizard waits to see it up before going on.
-      const report = await answering(called);
-      if (report === null) {
+      if ((await answering(called)) === null) {
         const removed = await removeApp(credentials, called).then(() => true, () => false);
         onMade(called);
         return setRefused(`${called} was made but the gateway could not start it. The usual reason is its name: a name belongs to one organization across all of Pinecall, and another already uses this one. ${removed ? "It was removed: choose another name." : "Remove it from the list, then choose another name."}`);
       }
-      setSpeaks({ vendor: report.speaks.vendor, model: report.speaks.model ?? "" });
       setMade(called);
       onMade(called);
+      // Its languages are kept before its voice is picked: the voices offered are the ones that speak them.
+      await setSound(credentials, called, { language: languages.join(", "), voice: "", timezone: "" }).catch((failed: unknown) => setRefused(saidBy(failed)));
+      const report = await readReport(credentials, called);
+      setSpeaks({ vendor: report.speaks.vendor, model: report.speaks.model ?? "" });
     } catch (failed) {
       setRefused(saidBy(failed));
     } finally {
@@ -126,14 +135,14 @@ export function NewAgentPanel({ taken, onMade, onOpen, onClose }: { taken: Reado
     }
   };
 
-  // Nothing chosen is nothing to keep: the agent runs on each vendor's own.
+  // The languages go again with the voice and the zone: one changed on this step is kept here.
   const keepSound = async (): Promise<void> => {
     if (made === null) return;
-    if (language === "" && voice === "" && timezone === "") return setSounded(true);
+    if (languages.length === 0) return setRefused("Pick the language its callers speak: it is how they are heard right.");
     setBusy(true);
     setRefused(null);
     try {
-      await setSound(credentials, made, { language, voice, timezone });
+      await setSound(credentials, made, { language: languages.join(", "), voice, timezone });
       setSounded(true);
     } catch (failed) {
       setRefused(saidBy(failed));
@@ -147,7 +156,7 @@ export function NewAgentPanel({ taken, onMade, onOpen, onClose }: { taken: Reado
       <SidePanel
         title="How it sounds"
         icon="speaker"
-        about={`${made} is made. Pick the language its callers speak, so a transcriber that hears it listens, then the voice it speaks in and the time zone its clock is read in. Each can be changed in Configure.`}
+        about={`${made} is made. This is what hears and speaks its callers' languages; pick the voice it speaks in and the time zone its clock is read in. Each can be changed in Configure.`}
         onClose={() => onOpen(made, false)}
         footer={
           <>
@@ -167,10 +176,11 @@ export function NewAgentPanel({ taken, onMade, onOpen, onClose }: { taken: Reado
           </>
         }
       >
-        <Field label="Language">
-          <Select label="Language" searchable searchPlaceholder="Search languages" items={LANGUAGES} value={language} onChange={(picked) => (setLanguage(picked), setVoice(""))} />
+        <Field label="Callers speak">
+          <LanguagesPicker value={languages} onChange={(picked) => (setLanguages(picked), setVoice(""))} />
         </Field>
-        <Field label="Voice">{speaks === null ? <p className="dash-quiet">Reading its voices…</p> : <VoicePicker key={language} vendor={speaks.vendor} model={speaks.model} language={language === "" ? null : language} voice={voice} onVoice={setVoice} />}</Field>
+        <LanguageFit agent={made} languages={languages} />
+        <Field label="Voice">{speaks === null ? <p className="dash-quiet">Reading its voices…</p> : <VoicePicker key={main} vendor={speaks.vendor} model={speaks.model} language={main === "" ? null : main} voice={voice} onVoice={setVoice} />}</Field>
         <Field label="Time zone">
           <Select label="Time zone" items={ZONES} value={timezone} onChange={setTimezone} />
         </Field>
@@ -222,7 +232,7 @@ export function NewAgentPanel({ taken, onMade, onOpen, onClose }: { taken: Reado
             <button type="button" className="app-button" disabled={busy} onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" form="new-agent" className="cfg-save" disabled={busy || name.trim() === ""}>
+            <button type="submit" form="new-agent" className="cfg-save" disabled={busy || name.trim() === "" || languages.length === 0}>
               {busy ? "Making it, and waiting for it to answer…" : "Create agent"}
             </button>
           </div>
@@ -237,11 +247,15 @@ export function NewAgentPanel({ taken, onMade, onOpen, onClose }: { taken: Reado
         <Field label="What it does">
           <Select label="What it does" searchable={false} items={STARTS.map((one) => ({ value: one.value, label: one.label, detail: one.detail }))} value={start} onChange={pick} />
         </Field>
+        <Field label="Callers speak">
+          <LanguagesPicker value={languages} onChange={(picked) => (setLanguages(picked), setRefused(null))} />
+        </Field>
         <Field label="Instructions">
           <textarea className="cfg-input cfg-area new-agent-area" aria-label="Instructions" rows={8} placeholder="Who it is, what it helps with, and what it must never do." value={instructions} onChange={(event) => setInstructions(event.target.value)} />
         </Field>
         <Field label="How it opens the call">
           <input className="cfg-input" aria-label="How it opens the call" placeholder="Left empty, the caller speaks first" value={greeting} onChange={(event) => setGreeting(event.target.value)} />
+          {improvised && <span className="num-hint">Its callers speak {languageName(main) ?? main}: it opens with this in {languageName(main) ?? main}, in its own words. Write the words yourself and they are said as written.</span>}
         </Field>
       </form>
     </SidePanel>

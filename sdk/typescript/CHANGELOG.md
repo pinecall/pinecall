@@ -5,6 +5,13 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
+## Unreleased
+
+- **`channelRules` takes the agent's own words for a channel.** `channelRules = { whatsapp: "…", sms: "…" }`
+  says how the agent writes on those channels in place of the framework's own way, and every channel it leaves
+  out keeps the framework's (`voice`, `chat`, `whatsapp`, `sms`); `false` still leaves the block out on every
+  channel. `CHANNEL_RULES` is the framework's own text by those names, to write one from.
+
 ## 0.11.46 — a contact who texts STOP is written to no more, a written conversation opens on the one before, and the audio of an MMS is heard (2026-11-18)
 
 - **`optOut` on a WhatsApp or SMS conversation**, and `call.summary` says an SMS conversation's `sms_segments`.

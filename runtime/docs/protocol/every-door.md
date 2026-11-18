@@ -189,6 +189,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `GET` | `/v1/studio/agents/{name}/code` | app | The agent as a TypeScript project of the framework's, zipped: the class `pinecall deploy` runs. |
 | `POST` | `/v1/studio/agents/{name}/deploy` | app | The sandbox's release kept as production's next, the deployer's settings with it: the agent answers there from the next call. |
 | `POST` | `/v1/studio/agents/{name}/try` | app | One tool's request sent once, as a call would send it; what came back. |
+| `GET` | `/v1/studio/channel-rules` | app | How the framework tells an agent to write on each channel: what one that writes its own replaces. |
 | `GET` | `/v1/insights` | calls | Whole UTC days of the key's environment and scope at a glance, and the month's spend. |
 | `GET` | `/v1/monitors` | evals | The world's monitors — a number of the series watched over a window — each with the last day it fired. |
 | `POST` | `/v1/monitors` | evals | Watch a number: it fires, once a day on the agent's log, when it crosses the line over its window. |

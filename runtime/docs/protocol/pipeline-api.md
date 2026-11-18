@@ -9,9 +9,9 @@ What one agent would hear, decide and speak with on its next call, and how fast 
 
 ```json
 { "agent": "clinica-norte",
-  "hears":   { "vendor": "soniox", "model": null, "voice_id": null, "language": "es" },
-  "decides": { "vendor": "anthropic", "model": "claude-haiku-5-5", "voice_id": null, "language": null },
-  "speaks":  { "vendor": "elevenlabs", "model": null, "voice_id": "a-voice", "language": "es" },
+  "hears":   { "vendor": "soniox", "model": null, "voice_id": null, "language": "es", "languages": ["es", "en"] },
+  "decides": { "vendor": "anthropic", "model": "claude-haiku-5-5", "voice_id": null, "language": null, "languages": [] },
+  "speaks":  { "vendor": "elevenlabs", "model": null, "voice_id": "a-voice", "language": "es", "languages": ["es", "en"] },
   "talks":   null,
   "greeting": { "say": "Clínica Norte, buenas.", "reply": null, "allow_interruptions": null },
   "providers": [ … ],
@@ -22,15 +22,26 @@ What one agent would hear, decide and speak with on its next call, and how fast 
   "calls": 12,
   "medians": [ { "name": "transcription_delay", "seconds": 0.13, "turns": 41 } ],
   "unavailable_reasons": { "speaks": "elevenlabs has no key: the org brought none and the box holds none" },
-  "warnings": { "hears": "deepgram/flux-general-multi does not hear ar (it hears en, es, fr, …): take the transcriber out of its settings and Pinecall picks one that does" } }
+  "warnings": { "hears": "deepgram/flux-general-multi does not hear ar (it hears en, es, fr, …): take the transcriber out of its settings and Pinecall runs deepgram/nova-3" },
+  "languages": ["es", "en"],
+  "suited": { "hears":  [ { "vendor": "soniox", "model": "stt-rt-v6", "refused": null } ],
+              "speaks": [ { "vendor": "elevenlabs", "model": "eleven_flash_v2_5", "refused": "elevenlabs has no key: the org brought none and the box holds none" } ] } }
 ```
 
 Each stage is the vendor a call **would** be built with: the agent's settings, else the providers
-row's default for that modality. Ears nobody named follow the agent's language: where the row lists what the
-default's ears hear and the language is not among them, `hears` is the first of the row's `ears` that hear
-it, said with its model ([operator-api.md](operator-api.md)). Ears the agent names are never swapped, and
-`warnings` says so under `hears` when they do not hear its language, with what fixes it: such a call is not
-refused, it runs and is heard wrong. `talks` is the realtime model a voice call runs on alone, where the
+row's default for that modality. **An agent says the languages its callers speak** as its one `language`
+setting, one tag or several with commas between (`es, en`), the main one first; `languages` is that list by
+base code. Ears and a voice nobody named follow it: where the row's default for the stage does not take those
+languages (it does not hear or speak one of them, or it takes one language a call and the agent says several),
+the stage is the first of the row's others that does, on a key this org may run it on, said with its model
+([operator-api.md](operator-api.md)); where none takes them all, the first that takes the main one. Each
+stage's `languages` are the ones its ears listen for, and the ones its voice is asked to speak. A stage the
+agent names is never swapped, and `warnings` says so under `hears` or `speaks` when what runs does not take
+its languages, with what fixes it: such a call is not refused, it runs and is heard or spoken wrong.
+`suited` lists, for `hears` and `speaks`, the row's own models that take every one of the languages, in the
+row's order, each with `refused`: null where this org may run it, else the sentence a call would close with
+(not lent, no key). `?language=es,en` answers all of it as if the agent were set to those languages, with
+nothing kept: the console asks as a person picks them. `talks` is the realtime model a voice call runs on alone, where the
 agent names one (`{ "vendor": "xai", "model": "grok-voice-3.0", … }`): then its voice calls use
 no `hears`, and `speaks` only where the realtime model cannot say given words itself (the recording
 notice, a greeting given as words, a read-back) — xAI's can, so its calls use no `speaks` at all — and

@@ -4,6 +4,14 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+- **`pinecall agent set --language "es, en"`**: an agent says the languages its callers speak, one or several,
+  the main one first. `pinecall pipeline` shows the ones each stage runs in, and warns of a voice that does
+  not speak them as it does of ears that do not hear them, with what fixes it.
+- **`pinecall studio pull` and `push` carry `channel_rules`**, a Studio agent's own words for how it writes
+  on a channel (`voice`, `chat`, `whatsapp`, `sms`); the MCP's `studio` tool takes it in a definition.
+
 ## 0.11.46 — a contact who texts STOP is written to no more, a written conversation opens on the one before, and the audio of an MMS is heard (2026-11-18)
 
 - **`data policy` sets what a contact who texts STOP or HELP is told.** `--sms-stop-reply`, `--sms-help-reply`

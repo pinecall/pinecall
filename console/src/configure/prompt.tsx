@@ -1,11 +1,11 @@
-/** A Studio agent's greeting and system prompt: edited in the sandbox, each save a new release; read in production. An app's greeting: in its settings, unless its class sets it. */
+/** A Studio agent's greeting, system prompt and how it writes on each channel: edited in the sandbox, each save a new release; read in production. An app's greeting: in its settings, unless its class sets it. */
 
 import { useEffect, useState, type ReactNode } from "react";
 
 import { saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { WORLD } from "../lib/world";
-import { readStudioAgent, saveStudioAgent, type StudioAgent } from "./door";
+import { readChannelRules, readStudioAgent, saveStudioAgent, type ChannelRules, type StudioAgent } from "./door";
 import { Locked } from "./stages";
 
 type Definition = StudioAgent["definition"];
@@ -143,6 +143,83 @@ function PromptCard({ read, saving, onSave }: { read: StudioAgent; saving: boole
   );
 }
 
+type Channel = keyof ChannelRules;
+
+const CHANNELS: readonly { name: Channel; label: string; about: string }[] = [
+  { name: "voice", label: "A call", about: "By phone or from a page: every word it writes is read aloud." },
+  { name: "chat", label: "Website chat", about: "A written chat on a page of yours." },
+  { name: "whatsapp", label: "WhatsApp", about: "Messages on a WhatsApp number." },
+  { name: "sms", label: "SMS", about: "Text messages on a phone number." },
+];
+const LONGEST_RULES = 2000;
+
+/** Its own words for the channels it wrote any for: a blank, or Pinecall's own word for word, is not its own. */
+function ownOf(written: ChannelRules, pinecalls: ChannelRules): ChannelRules {
+  const own: ChannelRules = {};
+  for (const { name } of CHANNELS) {
+    const text = written[name]?.trim() ?? "";
+    if (text !== "" && text !== pinecalls[name]) own[name] = text;
+  }
+  return own;
+}
+
+/** How the agent writes on each channel: Pinecall's own way until it writes its own, a channel at a time. */
+function ChannelsCard({ read, saving, onSave }: { read: StudioAgent; saving: boolean; onSave: Save }): ReactNode {
+  const credentials = useCredentials();
+  const kept = read.definition.channel_rules ?? {};
+  const [written, setWritten] = useState<ChannelRules>(kept);
+  const [pinecalls, setPinecalls] = useState<ChannelRules | null>(null);
+  const [said, setSaid] = useState<string | null>(null);
+  const editable = WORLD === "sandbox";
+
+  useEffect(() => {
+    let gone = false;
+    readChannelRules(credentials).then((rules) => !gone && setPinecalls(rules), () => undefined);
+    return () => {
+      gone = true;
+    };
+  }, [credentials]);
+
+  if (pinecalls === null) return null;
+  const own = ownOf(written, pinecalls);
+  const dirty = JSON.stringify(own) !== JSON.stringify(ownOf(kept, pinecalls));
+
+  const save = async (): Promise<void> => {
+    setSaid(null);
+    const release = await onSave({ channel_rules: Object.keys(own).length === 0 ? null : own });
+    if (release !== null) setSaid(`Saved as release ${release}`);
+  };
+
+  return (
+    <section className="dash-card" aria-label="How it writes on each channel">
+      <div className="dash-card-top">
+        <h3 className="cfg-title">How it writes on each channel</h3>
+        <span className="cfg-prompt-end">
+          <Saving editable={editable} dirty={dirty} saving={saving} said={said} onSave={() => void save()} />
+        </span>
+      </div>
+      <p className="dash-quiet cfg-talks">The agent is told this on every call, after its prompt, for the channel the call is on. Each starts as Pinecall's own; change the words and they are yours.</p>
+      <div className="cfg-channels">
+        {CHANNELS.map(({ name, label, about }) => (
+          <label key={name} className="cfg-channel">
+            <span className="cfg-channel-top">
+              <b>{label}</b>
+              <span className="cfg-tag">{own[name] === undefined ? "Pinecall's" : "Yours"}</span>
+              <span className="dash-quiet">{about}</span>
+              {editable && own[name] !== undefined && (
+                <button type="button" className="app-button cfg-channel-back" onClick={() => setWritten({ ...written, [name]: undefined })}>
+                  Back to Pinecall's
+                </button>
+              )}
+            </span>
+            <textarea className="cfg-input cfg-area" rows={3} maxLength={LONGEST_RULES} aria-label={`How it writes on ${label}`} value={written[name] ?? pinecalls[name] ?? ""} readOnly={!editable} spellCheck={false} onChange={(event) => setWritten({ ...written, [name]: event.target.value })} />
+          </label>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function StudioBrief({ agent, onSaved }: { agent: string; onSaved: () => void }): ReactNode {
   const credentials = useCredentials();
   const [read, setRead] = useState<StudioAgent | null>(null);
@@ -181,6 +258,7 @@ export function StudioBrief({ agent, onSaved }: { agent: string; onSaved: () => 
       {read === null && refused === null && <p className="dash-quiet">Reading the prompt…</p>}
       {read !== null && <GreetingCard read={read} saving={saving} onSave={save} />}
       {read !== null && <PromptCard read={read} saving={saving} onSave={save} />}
+      {read !== null && <ChannelsCard key={read.release} read={read} saving={saving} onSave={save} />}
     </>
   );
 }

@@ -4,6 +4,7 @@
 import { currentAuthor, UnauthoredWrite } from "./authors.js";
 import { docOf, toolsOf, visibleToolsOf, type ToolSpec } from "./tools.js";
 import type { Task } from "./tasks.js";
+import type { ChannelRules } from "../views/built-in-rules.js";
 import type { Child } from "../views/jsx-runtime.js";
 import type { AgentConfig } from "../wire/agent-config.js";
 import type { Camel } from "../wire/codec.js";
@@ -123,8 +124,12 @@ export class Agent {
     return proxy;
   }
 
-  /** `false` leaves the `<channel>` block out of the prompt: how to write for a voice, a website's chat or WhatsApp. A config field, never state. */
-  declare channelRules?: boolean;
+  /**
+   * How the agent writes on a channel, where it is not the framework's own way: `{ whatsapp: "…", sms: "…" }` says its
+   * own words for those, and a channel left out keeps the framework's (`voice`, `chat`, `whatsapp`, `sms`). `false`
+   * leaves the `<channel>` block out of the prompt on every channel. A config field, never state.
+   */
+  declare channelRules?: boolean | ChannelRules;
 
   /**
    * Knowledge bases attached to this agent (`pinecall docs attach`), searched from a tool:

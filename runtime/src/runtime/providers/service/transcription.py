@@ -98,7 +98,7 @@ def read_asked(stt: str | None, model: str | None, language: str | None, hear: S
 def ears_for(asked: Asked, catalog: Catalog, keys: Keyring) -> Running:
     """The ears asked for, on a key this org may run them on, hearing the language asked."""
     named = None if not asked.stt else Model(vendor=plugins.vendor_doing(asked.stt, Stage.stt), model=asked.model or "")
-    running = stage_on_its_key(Stage.stt, named, catalog, keys)
+    running = stage_on_its_key(Stage.stt, named, catalog, keys, (asked.language,) if asked.language else ())
     return dataclasses.replace(running, language=asked.language)
 
 

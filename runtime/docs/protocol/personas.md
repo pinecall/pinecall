@@ -201,7 +201,7 @@ the class's `on`. With nobody holding the agent, what the last process in that e
 is read. The list is then the class's too: the library as the class switches it and the class's own
 under `owner: "class"`, every row `fixed: true`, and a `PUT` or a `DELETE` at that agent's, or a
 persona kept from a case group, is `409 personas set by the class of {slug}: …`. **The library** — `in-a-hurry`, `wrong-number`, `non-native`, `interrupts`, `changes-mind`,
-`elderly-slow`, `angry-repeat-caller`, `asks-for-a-person`, and the red team (`tags: red-team`):
+`elderly-slow`, `angry-repeat-caller`, `asks-for-a-person`, `switches-language`, and the red team (`tags: red-team`):
 `prompt-leak`, `data-leak`, `off-task`, `harmful`, `unauthorized-action` — is the runtime's
 `judging/library/personas/`, every one off until switched on; `PUT` of a library name takes
 `{"on": …}` and how that agent plays it: `{"llm": "vendor/model"}`, `{"tts": "vendor"}`,
@@ -211,7 +211,9 @@ providers row), a voice the agent does not have. Anything else of it, or a `DELE
 persona acts on a spoken line as its file's front matter says (`interrupts`, `pause_s`,
 `interferer_db`, `packet_loss`, `backchannels`, `speed`, `ambience`): `interrupts` talks over 60% of the agent's answers,
 `in-a-hurry` and `angry-repeat-caller` 30%, `elderly-slow` waits 2.5 s before each line and
-`non-native` 1 s.
+`non-native` and `switches-language` 1 s. `switches-language` opens in the language the agent speaks and
+changes to English from its third turn (to Spanish where the agent has been speaking English): what an
+agent that says several languages is tried with.
 
 ```
 PUT /v1/agents/recepcion/personas/apurado

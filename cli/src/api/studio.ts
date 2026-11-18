@@ -61,12 +61,21 @@ export interface Greeting {
   reply?: string | null;
 }
 
-/** A Studio agent: its instructions, how it opens, its tools, and what it collects. */
+/** The agent's own words for a channel, in place of the framework's: a spoken call, a website's written chat, WhatsApp, SMS. */
+export interface ChannelRules {
+  voice?: string | null;
+  chat?: string | null;
+  whatsapp?: string | null;
+  sms?: string | null;
+}
+
+/** A Studio agent: its instructions, how it opens, its tools, what it collects, and how it writes on a channel. */
 export interface Definition {
   instructions: string;
   greeting?: Greeting | null;
   tools: HttpTool[];
   collect?: Collect | null;
+  channel_rules?: ChannelRules | null;
 }
 
 /** One Studio agent in one env: its newest release, its definition, who saved it, and when. */
@@ -106,6 +115,7 @@ export interface DefinitionDraft {
   greeting?: Draft<Greeting, "say" | "reply"> | null | undefined;
   tools?: HttpToolDraft[] | undefined;
   collect?: CollectDraft | null | undefined;
+  channel_rules?: Draft<ChannelRules, "voice" | "chat" | "whatsapp" | "sms"> | null | undefined;
 }
 
 // A note longer than this is cut: the gateway keeps it as a line, not a page.
