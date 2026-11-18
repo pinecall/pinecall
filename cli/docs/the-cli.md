@@ -1916,7 +1916,7 @@ pinecall numbers list
 pinecall numbers available [--account <id>]
 pinecall numbers import <+34…> --agent <slug> [--account <id>] [--channel phone|whatsapp] [--dry-run]
 pinecall numbers buy --country <XX> [--area <digits>] --agent <slug> [--channel phone|whatsapp] [--dry-run]
-pinecall numbers drop <+34…>
+pinecall numbers drop <+34…> [--channel phone|whatsapp]
 ```
 
 **Adding a number to the org from a terminal is `numbers import`**: the number is one an account of

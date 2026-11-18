@@ -9,6 +9,7 @@ from typing import Any
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from runtime.enums import Channel
 from runtime.exceptions import Conflict, NotFound, ServiceUnavailable, ValidationError
 from runtime.kit.crypto import Vault
 from runtime.kit.text import a_mapping
@@ -149,7 +150,7 @@ async def seal_carrier(session: AsyncSession, vault: Vault, carrier: Carrier) ->
 # from; a hooked or typed one, or one whose account was let go, in no account anyone knows.
 async def twilio_account_of(session: AsyncSession, vault: Vault, org: str, number: str) -> str | None:
     """The Twilio account a call to the org's number must come from; None where none is known."""
-    numbered = await RouteRepository(session).find(org, number)
+    numbered = await RouteRepository(session).find(org, number, Channel.phone)
     if numbered is None:
         return None
     route = numbered.route

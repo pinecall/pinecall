@@ -7,7 +7,7 @@ import { useCredentials } from "@pinecall/core/credentials";
 import { Icon } from "../shell/icons";
 import { Select } from "../ui/select";
 import { Field } from "../ui/setting";
-import { readPath, type NumberPath, type Wired } from "./door";
+import { readPath, type NumberPath, type RouteChannel, type Wired } from "./door";
 
 export interface Mover {
   busy: boolean;
@@ -109,17 +109,17 @@ export function Copy({ text, bare = false }: { text: string; bare?: boolean }): 
 const STEP_NAMES: Record<NumberPath["steps"][number]["step"], string> = { carrier: "Carrier", fence: "Admission", world: "Environment", agent: "Agent" };
 
 /** What a call to the number goes through now, step by step, each with what would fix it. */
-export function Path({ number, round = 0 }: { number: string; round?: number }): ReactNode {
+export function Path({ number, channel, round = 0 }: { number: string; channel?: RouteChannel | undefined; round?: number }): ReactNode {
   const credentials = useCredentials();
   const [path, setPath] = useState<NumberPath | null>(null);
   const [refused, setRefused] = useState<string | null>(null);
   useEffect(() => {
     let gone = false;
-    readPath(credentials, number).then((read) => !gone && setPath(read), (failed: unknown) => !gone && setRefused(saidBy(failed)));
+    readPath(credentials, number, channel).then((read) => !gone && setPath(read), (failed: unknown) => !gone && setRefused(saidBy(failed)));
     return () => {
       gone = true;
     };
-  }, [credentials, number, round]);
+  }, [credentials, number, channel, round]);
   if (refused !== null) return <p className="cfg-refused">{refused}</p>;
   if (path === null) return <p className="dash-quiet">Reading its path…</p>;
   return (

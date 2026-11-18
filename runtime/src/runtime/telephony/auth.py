@@ -9,7 +9,7 @@ from runtime.accounts.models import Org
 from runtime.accounts.service import orgs
 from runtime.actor import Actor
 from runtime.auth import Authenticator, TheOperator
-from runtime.enums import KeyScope
+from runtime.enums import Channel, KeyScope
 from runtime.exceptions import NotFound
 from runtime.kit.text import parse_e164
 from runtime.postgres import Session, TheBoxSession
@@ -33,14 +33,20 @@ WorkerKey = Annotated[Actor, Depends(Authenticator(KeyScope.app, KeyScope.fleet)
 
 
 # A person or a server acts in the org's own scope of its env: numbers are the org's.
-async def load_number(number: str, actor: NumbersKey, session: Session) -> Route:
-    """The org's number a path names, in the key's env; 404 otherwise."""
-    return await numbers.get_number(session, actor.org, parse_e164(number), actor.env)
+# The channel meant, for a number that answers on more than one.
+ChannelAsked = Annotated[Channel | None, Query()]
 
 
-async def load_number_in_either_env(number: str, actor: NumbersKey, session: Session) -> Route:
-    """The org's number a path names, whichever env it answers in; 404 otherwise."""
-    return await numbers.get_number(session, actor.org, parse_e164(number))
+async def load_number(number: str, actor: NumbersKey, session: Session, channel: ChannelAsked = None) -> Route:
+    """The org's number a path names, in the key's env; 404 otherwise, 409 for one on two channels and none named."""
+    return await numbers.get_number(session, actor.org, parse_e164(number), actor.env, channel)
+
+
+async def load_number_in_either_env(
+    number: str, actor: NumbersKey, session: Session, channel: ChannelAsked = None
+) -> Route:
+    """The org's number a path names, whichever env it answers in; 404 otherwise, 409 as above."""
+    return await numbers.get_number(session, actor.org, parse_e164(number), channel=channel)
 
 
 TheNumber = Annotated[Route, Depends(load_number)]

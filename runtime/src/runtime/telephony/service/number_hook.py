@@ -222,7 +222,7 @@ async def survey_import(
     elif wanted.channel is Channel.phone:
         fenced = fences.fence_unaccounted(org, number, wanted.via, named, asked)
     came = origin or (RouteOrigin.hooked if account is None else RouteOrigin.imported)
-    existing = await repository.find(org, number)
+    existing = await repository.find(org, number, wanted.channel)
     # A hooked number waits for the operator only where the box asks (PINECALL_APPROVE_HOOKED); one
     # approved once stays approved however it comes again.
     waits = came is RouteOrigin.hooked and names.approve_hooked
@@ -269,7 +269,7 @@ async def survey_purchase(
     fenced = Fenced(None)
     if wanted.channel is Channel.phone:
         fenced = fences.fence_unaccounted(org, for_sale, None, (), NOTHING_ASKED)
-    existing = await repository.find(org, for_sale)
+    existing = await repository.find(org, for_sale, wanted.channel)
     route = RouteToWrite(
         org=org,
         number=for_sale,

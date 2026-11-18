@@ -4,6 +4,12 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+- **`numbers drop --channel phone|whatsapp`.** A number answers the phone and WhatsApp at once, each its own
+  route, and `numbers import … --channel whatsapp` no longer replaces the phone's. `drop` lets one go and
+  says the other stays; without `--channel`, a number on both is refused naming the flag.
+
 ## [0.11.44] — a WhatsApp number of your own Meta app is heard and says where each reply stands, a simulated caller rings by phone, and a restarted process keeps its line (2026-11-18)
 
 - **`carriers add whatsapp` asks for the Meta app's secret and says what goes in Meta's webhook.** A WhatsApp

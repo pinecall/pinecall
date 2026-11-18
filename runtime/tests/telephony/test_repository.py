@@ -1,5 +1,6 @@
 """The routes table: one org per number on the box, an org's numbers its own in each env, a number moved whole."""
 
+import dataclasses
 import secrets
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -88,5 +89,31 @@ async def test_a_number_written_into_the_sandbox_answers_there_and_a_removal_say
         assert await numbers_of(session, tenant.org, Env.production) == []
     async with sessions.begin() as session:
         routes = RouteRepository(session)
-        assert await routes.delete_of(tenant.org, number)
-        assert not await routes.delete_of(tenant.org, number)
+        assert await routes.delete_of(tenant.org, number, Channel.phone)
+        assert not await routes.delete_of(tenant.org, number, Channel.phone)
+
+
+async def test_a_number_is_a_row_a_channel_and_each_is_read_written_and_forgotten_alone(
+    sessions: async_sessionmaker[AsyncSession], tenant: Tenant
+) -> None:
+    """One number answers the phone and WhatsApp: two rows, and what is done to one leaves the other."""
+    number = a_number()
+    written = dataclasses.replace(routed(tenant, number, agent="riley"), channel=Channel.whatsapp)
+    async with sessions.begin() as session:
+        routes = RouteRepository(session)
+        await routes.put(routed(tenant, number))
+        await routes.put(written)
+        await routes.put(dataclasses.replace(written, env=Env.sandbox))
+        assert [
+            (one.route.channel, one.route.agent, one.route.env) for one in await routes.list_at(tenant.org, number)
+        ] == [
+            (Channel.phone, "agenda", Env.production),
+            (Channel.whatsapp, "riley", Env.sandbox),
+        ]
+        with box_wide():
+            on_the_phone = await routes.find_at(Channel.phone, number)
+            in_writing = await routes.find_at(Channel.whatsapp, number)
+        assert (on_the_phone and on_the_phone.agent, in_writing and in_writing.agent) == ("agenda", "riley")
+        assert await routes.delete_of(tenant.org, number, Channel.whatsapp)
+        assert await routes.find(tenant.org, number, Channel.whatsapp) is None
+        assert await routes.find(tenant.org, number, Channel.phone) is not None

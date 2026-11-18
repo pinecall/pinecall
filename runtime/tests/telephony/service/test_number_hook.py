@@ -40,7 +40,7 @@ async def planned(line: Line, wanted: NumberImport) -> Plan:
 async def origin_of(line: Line, number: str) -> RouteOrigin | None:
     """How the org's row at the number was written; None with no row."""
     async with line.sessions() as session:
-        found = await RouteRepository(session).find(line.org, number)
+        found = await RouteRepository(session).find(line.org, number, Channel.phone)
     return None if found is None else found.route.origin
 
 
@@ -64,7 +64,7 @@ async def test_an_import_makes_the_trunk_attaches_admits_rules_and_routes_once(l
     assert list(rule.numbers) == [number]
     assert [agent.agent_name for agent in rule.room_config.agents] == ["pinecall-sandbox"]
     async with line.sessions() as session:
-        routed = await RouteRepository(session).find(line.org, number)
+        routed = await RouteRepository(session).find(line.org, number, Channel.phone)
     assert routed is not None
     assert (routed.route.agent, routed.route.env, routed.route.managed, routed.route.origin) == (
         "recepcion",

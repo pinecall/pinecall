@@ -74,6 +74,12 @@ Two ways to hook a number, both through this endpoint:
 One org holds a number: importing a number another org holds is `409`, and the sentence names
 neither the org nor its trunk.
 
+**A number is a route a channel.** The same number answers the phone and WhatsApp at once, each its
+own row: its own agent, its own environment, its own account (the Twilio account the number rings
+through, the WhatsApp account at Meta it is written to). Importing a number on one channel adds or
+replaces that channel's row and leaves the other as it is, trunk and rule included. Until 0.11.45 a
+number was one row, and importing a phone number as WhatsApp replaced its phone route.
+
 `GET /v1/carriers/catalog` is `{carriers: [{kind, name, how, networks}], sells, sip_domain}`: the carriers this
 operator admits, `automatic` for one the platform drives through its API (Twilio), `guided` for one
 whose portal the org types the address above into; `sells` says whether `POST /v1/numbers/buy`
@@ -104,7 +110,7 @@ production: … off trunk …`). A trunk or a rule left listing no number is del
 lists none takes every number.
 
 Refusals: `404` no account, or a number the account does not own; `400` a channel with no number
-or a number that is not E.164, a `channel: whatsapp` for a number that is not the one the org's WhatsApp Business account is (Meta names it; a phone number is never a WhatsApp route), `422` a body missing `number` or `agent`; `409` several accounts and none named, a number another org's trunk
+or a number that is not E.164, a `channel: whatsapp` for a number that is not the one the org's WhatsApp Business account is (Meta names it), `422` a body missing `number` or `agent`; `409` several accounts and none named, a number another org's trunk
 on this deployment already lists (livekit-sip refuses an INVITE two trunks list, so nothing is written),
 or a number attached to another trunk of the same Twilio account — its name and where it points
 are in the sentence, and `move: true` takes it off there first; `503` no `PINECALL_DOMAIN`; `502`
@@ -144,7 +150,11 @@ of them as `rings` and `last_call_at`; `404` for a number the org has not in the
 ## Letting one go, moving one — `DELETE /v1/numbers/{number}`, `PUT /v1/numbers/{number}/env`
 
 `DELETE` removes the route and takes the number off its trunk and its org's rules on its environment's
-LiveKit; the account keeps it, so nobody is un-bought by a typo. `PUT …/env {env}` moves a number
+LiveKit; the account keeps it, so nobody is un-bought by a typo. A number that answers on two
+channels is named with the one meant, `?channel=phone|whatsapp`, on these two endpoints and on
+`…/path`: without it they answer `409 <number> answers on phone and whatsapp: name the one meant
+with ?channel=`, and nothing is let go or moved by a guess. Letting the WhatsApp route go leaves the
+phone's trunk alone. `PUT …/env {env}` moves a number
 into the other environment: its row, and off the old environment's LiveKit onto the new one's, trunk and rule;
 the carrier is not touched. Where both environments share one LiveKit it moves between the two rules,
 its trunk untouched. It is how a number tested in the sandbox goes live.

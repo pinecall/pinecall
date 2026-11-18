@@ -85,8 +85,9 @@ class Route(Model):
     __tablename__ = "routes"
     __table_args__ = (
         ForeignKeyConstraint(["org", "account"], ["carriers.org", "carriers.account"], ondelete="SET NULL (account)"),
-        # One org holds a number.
-        Index("routes_number_held_once", "number", unique=True),
+        # A number answers once a channel, across the box. That one org holds a number, whatever its
+        # channels, is said where a number is imported.
+        Index("routes_number_held_once_a_channel", "number", "channel", unique=True),
     )
     __kept__ = Kept(
         agent="agent",
@@ -97,7 +98,7 @@ class Route(Model):
     org: Mapped[str] = mapped_column(Text, primary_key=True)
     number: Mapped[str] = mapped_column(Text, primary_key=True)
     agent: Mapped[str] = mapped_column(Text, nullable=False)
-    channel: Mapped[Channel] = mapped_column(StringEnum(Channel), nullable=False)
+    channel: Mapped[Channel] = mapped_column(StringEnum(Channel), primary_key=True)
     added_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, default=utc_now)
     env: Mapped[Env] = mapped_column(StringEnum(Env), nullable=False)
     # Bought on the box's carrier account: counts against the `numbers` quota.

@@ -5,7 +5,7 @@ import dataclasses
 import pytest
 
 from runtime.enums import Channel, Env, RouteOrigin
-from runtime.exceptions import NotFound
+from runtime.exceptions import Conflict, NotFound
 from runtime.telephony.repository import RouteRepository, RouteToWrite
 from runtime.telephony.service import accounts, number_hook, numbers
 from runtime.telephony.service.number_hook import NumberImport, Plan
@@ -45,7 +45,7 @@ async def test_letting_a_number_go_removes_the_route_and_the_admission_but_not_t
         route = await numbers.get_number(session, line.org, number, Env.production)
         await numbers.release_number(session, line.livekits, route)
     async with line.sessions() as session:
-        assert await RouteRepository(session).find(line.org, number) is None
+        assert await RouteRepository(session).list_at(line.org, number) == []
     assert line.servers[Env.production].dialled.trunks == {}
     assert line.rules() == []
     assert line.twilio.numbers[number][1] is not None
@@ -91,6 +91,32 @@ async def test_a_whatsapp_number_moves_env_by_its_row_and_nothing_lands_on_the_s
     assert there is not None and (there.channel, there.env) == (Channel.whatsapp, Env.sandbox)
     assert all(server.dialled.trunks == {} for server in line.servers.values())
     assert line.rules(Env.production) == line.rules(Env.sandbox) == []
+
+
+# ── one number, more than one channel ──
+
+
+async def test_a_number_answers_the_phone_and_whatsapp_at_once_and_each_is_let_go_alone(line: Line) -> None:
+    """Importing a phone number as WhatsApp adds a route and leaves the phone's as it was, trunk and all."""
+    number = a_number()
+    await imported(line, NumberImport(line.scope(), "recepcion", number, hooked=True))
+    trunk = list(line.trunk(line.org, Env.production).numbers)
+    await imported(line, NumberImport(line.scope(), "riley", number, channel=Channel.whatsapp, hooked=True))
+    async with line.sessions.begin() as session:
+        both = await RouteRepository(session).list_at(line.org, number)
+        assert [(one.route.channel, one.route.agent) for one in both] == [
+            (Channel.phone, "recepcion"),
+            (Channel.whatsapp, "riley"),
+        ]
+        with pytest.raises(Conflict, match="answers on phone and whatsapp"):
+            await numbers.get_number(session, line.org, number)
+        written = await numbers.get_number(session, line.org, number, channel=Channel.whatsapp)
+        await numbers.release_number(session, line.livekits, written)
+    assert list(line.trunk(line.org, Env.production).numbers) == trunk == [number]
+    async with line.sessions() as session:
+        (left,) = await RouteRepository(session).list_at(line.org, number)
+        assert (left.route.channel, left.route.agent) == (Channel.phone, "recepcion")
+        assert (await numbers.get_number(session, line.org, number)).channel is Channel.phone
 
 
 # ── what the accounts own ──

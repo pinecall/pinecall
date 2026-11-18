@@ -62,6 +62,14 @@ describe("numbers", () => {
     await service.dropNumber(ctx, "+34910000000");
     expect(sent[0]!.path).toBe("/v1/numbers/%2B34910000000");
   });
+
+  it("drops one channel of a number that answers on two, and says the other stays", async () => {
+    const sent = answer("delete", "/v1/numbers/:number");
+    const { ctx } = testContext();
+    const gone = await service.dropNumber(ctx, "+34910000000", "whatsapp");
+    expect(sent[0]!.query).toEqual({ channel: "whatsapp" });
+    expect(gone).toEqual({ number: "+34910000000", channel: "whatsapp" });
+  });
 });
 
 describe("carriers", () => {

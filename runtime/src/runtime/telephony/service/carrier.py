@@ -115,6 +115,8 @@ class Carrier(Protocol):
     name: ClassVar[str]
     # The box drives its API: it lists, points and provisions numbers through it.
     has_api: ClassVar[bool]
+    # The channel a number of the account answers on.
+    channel: ClassVar[Channel] = Channel.phone
 
     # The org whose account it is, and what the org calls it.
     org: str

@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from runtime.accounts import service as org_accounts
 from runtime.actor import Scope
 from runtime.enums import Channel, Env, RouteOrigin
-from runtime.exceptions import NotFound
+from runtime.exceptions import Conflict, NotFound
 from runtime.fleet import service as fleet
 from runtime.kit.crypto import Vault
 from runtime.kit.text import parse_e164
@@ -39,6 +39,7 @@ IMPORTED_FROM: dict[CarrierKind, CameIn] = {
 }
 NOT_IN_THE_ENV = "the org answers at no {number} in the {env}"
 NOT_IN_EITHER_ENV = "the org answers no {number} in either env"
+ON_SEVERAL = "{number} answers on {channels}: name the one meant with ?channel="
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,13 +151,23 @@ async def list_numbers(session: AsyncSession, vault: Vault, held: AgentsHeld, sc
     return [Listed(route, ringing) for route, ringing in zip(routes, rings, strict=True)]
 
 
-async def get_number(session: AsyncSession, org: str, number: str, env: Env | None = None) -> Route:
-    """The org's number, in the env when one is named; NotFound otherwise."""
-    numbered = await RouteRepository(session).find(org, number)
-    if numbered is None or (env is not None and numbered.route.env is not env):
+# A number is a route a channel. Asked for by the number alone it is the one route there is, and
+# with two the channel is named: nothing is let go or moved by a guess.
+async def get_number(
+    session: AsyncSession, org: str, number: str, env: Env | None = None, channel: Channel | None = None
+) -> Route:
+    """The org's number on a channel, in the env when one is named; NotFound for none, Conflict for several."""
+    found = [numbered.route for numbered in await RouteRepository(session).list_at(org, number)]
+    routes = [
+        route for route in found if (env is None or route.env is env) and (channel is None or route.channel is channel)
+    ]
+    if not routes:
         sentence = NOT_IN_EITHER_ENV if env is None else NOT_IN_THE_ENV
         raise NotFound(sentence.format(number=number, env=env))
-    return numbered.route
+    if len(routes) > 1:
+        channels = " and ".join(route.channel.value for route in routes)
+        raise Conflict(ON_SEVERAL.format(number=number, channels=channels))
+    return routes[0]
 
 
 async def get_path(
@@ -179,14 +190,15 @@ async def list_owned(
     if not carriers:
         raise NotFound("the org has no carrier account: PUT /v1/carrier brings a Twilio account or a SIP peer")
     repository = RouteRepository(session)
-    imported = {numbered.route.number for numbered in await repository.list_of_org(scope.org, scope.env)}
+    routed = await repository.list_of_org(scope.org, scope.env)
+    imported = {(numbered.route.number, numbered.route.channel) for numbered in routed}
     with box_wide():
         elsewhere = await repository.list_numbers_of_others(scope.org)
     owned = [
         OwnedNumber(
             number=found.number,
             name=found.name,
-            imported=found.number in imported,
+            imported=(found.number, carrier.channel) in imported,
             held_elsewhere=found.number in elsewhere,
             account=carrier.id,
         )
@@ -201,18 +213,21 @@ async def list_owned(
 
 
 async def release_number(session: AsyncSession, servers: Servers, route: Route) -> None:
-    """Let the number go: the route, its env's LiveKit's trunks and rule; the account keeps it."""
-    await RouteRepository(session).delete_of(route.org, route.number)
-    await sfu.let_go(servers[route.env], route.org, route.number)
+    """Let the number go on the route's channel: the row, and a phone's trunks and rule; the account keeps it."""
+    await RouteRepository(session).delete_of(route.org, route.number, route.channel)
+    # A written channel is on no trunk, and the number may still ring as a phone.
+    if route.channel is Channel.phone:
+        await sfu.let_go(servers[route.env], route.org, route.number)
 
 
 async def release_named(session: AsyncSession, servers: Servers, org: str, named: str, number: str) -> None:
     """Let go the number of an org the operator names, whichever env it answers in; NotFound for one nobody routed."""
     with box_wide():
-        numbered = await RouteRepository(session).find(org, parse_e164(number))
-        if numbered is None:
+        found = await RouteRepository(session).list_at(org, parse_e164(number))
+        if not found:
             raise NotFound(f"no route for {number} in org {named}")
-        await release_number(session, servers, numbered.route)
+        for numbered in found:
+            await release_number(session, servers, numbered.route)
 
 
 # Until 2026-11 an agent erased, or an org, took its rows with one statement and left the SFU as it

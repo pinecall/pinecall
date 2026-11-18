@@ -156,22 +156,28 @@ class RouteRepository(Repository[Route]):
         """Every number of every org and env, by number. Read box-wide by the caller."""
         return await self._read_with_carrier(_with_carrier().order_by(Route.number, Route.channel, Route.added_at))
 
-    async def find(self, org: str, number: str) -> Numbered | None:
-        """The org's row at this number, whatever env it is in."""
-        found = await self._read_with_carrier(_with_carrier().where(Route.org == org, Route.number == number))
+    async def list_at(self, org: str, number: str) -> list[Numbered]:
+        """The org's rows at this number, one a channel, whatever env each is in, by channel."""
+        statement = _with_carrier().where(Route.org == org, Route.number == number)
+        return await self._read_with_carrier(statement.order_by(Route.channel))
+
+    async def find(self, org: str, number: str, channel: Channel) -> Numbered | None:
+        """The org's row at this number on this channel, whatever env it is in."""
+        mine = _with_carrier().where(Route.org == org, Route.number == number, Route.channel == channel)
+        found = await self._read_with_carrier(mine)
         return found[0] if found else None
 
-    # One org holds a number (routes_number_held_once), so a number reads one row at most.
+    # A number is held once a channel (routes_number_held_once_a_channel), so this reads one row at most.
     async def find_at(self, channel: Channel, number: str) -> Route | None:
         """The row a call dialled to this number takes, whatever org holds it. Read box-wide by the caller."""
         return await self.one_or_none(self.statement().where(Route.channel == channel, Route.number == number))
 
-    # A number added again moves: its agent, channel, env and how it came are the newest said.
+    # A number added again on a channel moves: its agent, env and how it came are the newest said.
+    # What it answers on another channel is another row, and stays as it is.
     async def put(self, written: RouteToWrite) -> Route:
-        """Keep the row, replacing the one the org had at the number."""
+        """Keep the row, replacing the one the org had at the number on that channel."""
         values = {
             "agent": written.agent,
-            "channel": written.channel,
             "env": written.env,
             "managed": written.managed,
             "account": written.account,
@@ -180,9 +186,10 @@ class RouteRepository(Repository[Route]):
             "via": written.via,
             "approved_at": written.approved_at,
         }
-        row = await self.one_or_none(self.statement().where(Route.org == written.org, Route.number == written.number))
+        mine = (Route.org == written.org, Route.number == written.number, Route.channel == written.channel)
+        row = await self.one_or_none(self.statement().where(*mine))
         if row is None:
-            return await self.add(Route(org=written.org, number=written.number, **values))
+            return await self.add(Route(org=written.org, number=written.number, channel=written.channel, **values))
         return await self.update(row, **values)
 
     async def note_call(self, org: str, number: str, *, at: datetime, unless_since: datetime) -> None:
@@ -192,6 +199,7 @@ class RouteRepository(Repository[Route]):
             .where(
                 Route.org == org,
                 Route.number == number,
+                Route.channel == Channel.phone,
                 (Route.last_call_at.is_(None)) | (Route.last_call_at < unless_since),
             )
             .values(last_call_at=at)
@@ -216,25 +224,28 @@ class RouteRepository(Repository[Route]):
         statement = select(Route.number).where(Route.org != org)
         return {str(number) for number in (await self.session.execute(statement)).scalars()}
 
-    async def delete_of(self, org: str, number: str) -> bool:
-        """Forget the org's row at the number; whether there was one."""
-        return await self.change(delete(Route).where(Route.org == org, Route.number == number)) > 0
+    async def delete_of(self, org: str, number: str, channel: Channel) -> bool:
+        """Forget the org's row at the number on the channel; whether there was one."""
+        mine = (Route.org == org, Route.number == number, Route.channel == channel)
+        return await self.change(delete(Route).where(*mine)) > 0
 
     async def list_of_agent_outside(self, agent: str, org: str) -> Sequence[Route]:
         """The numbers the agent answers in any org but this one, by number. Read box-wide by the caller."""
         return await self.all(self.statement().where(Route.agent == agent, Route.org != org).order_by(Route.number))
 
-    # A number the target org already typed stays where it was: one row per number per org.
+    # A number the target org already typed stays where it was, and so does one another agent
+    # answers on another channel: a number is one org's, whole.
     async def move_with_agent(self, agent: str, org: str) -> list[str]:
         """Move the agent's numbers into the org; the numbers moved. Run box-wide by the caller."""
         theirs = select(Route.number).where(Route.org == org)
+        shared = select(Route.number).where(Route.org != org, Route.agent != agent)
         moved = await self.session.execute(
             update(Route)
-            .where(Route.agent == agent, Route.org != org, Route.number.not_in(theirs))
+            .where(Route.agent == agent, Route.org != org, Route.number.not_in(theirs), Route.number.not_in(shared))
             .values(org=org)
             .returning(Route.number)
         )
-        return sorted(str(number) for number in moved.scalars())
+        return sorted({str(number) for number in moved.scalars()})
 
     async def count_managed(self, org: str, env: Env) -> int:
         """How many of the org's numbers in the env the box bought."""

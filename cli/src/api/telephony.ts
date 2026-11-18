@@ -143,8 +143,9 @@ export function buyNumber(gw: GatewayClient, body: NumberPurchase, dryRun: boole
   return gw.post<NumberPlan>("/v1/numbers/buy", body, dryRunQuery(dryRun));
 }
 
-export async function deleteNumber(gw: GatewayClient, number: string): Promise<void> {
-  await gw.delete(`/v1/numbers/${seg(number)}`);
+/** A number that answers on two channels is let go on the one named. */
+export async function deleteNumber(gw: GatewayClient, number: string, channel?: "phone" | "whatsapp"): Promise<void> {
+  await gw.delete(`/v1/numbers/${seg(number)}`, { channel });
 }
 
 /** Every route of every agent in this env: org data, which the `app` scope lets a server token read too. */

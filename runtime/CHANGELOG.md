@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- **A number answers on more than one channel.** A number was one row with one channel, so a number that
+  answers the phone could not also answer WhatsApp: importing it as WhatsApp replaced its phone route. A
+  route is a number on a channel now (migration 000030: the key of `routes` gains `channel`, and a number
+  is held once a channel across the box). Importing a number on one channel leaves what it answers on the
+  other, trunk and rule included; `DELETE /v1/numbers/{number}`, `PUT …/env` and `GET …/path` take
+  `?channel=` and answer `409` for a number on two when none is named; letting the WhatsApp route go no
+  longer touches the phone's trunk; `GET /v1/numbers/available` says a number is imported for the channel
+  its account answers. The console opens each route of a number, and `pinecall numbers drop` takes
+  `--channel`. `docs/protocol/numbers.md`.
+
 ## 0.11.44 — a WhatsApp number of your own Meta app is heard and says where each reply stands, a simulated caller rings by phone, and a restarted process keeps its line (2026-11-18)
 
 - **A WhatsApp number of an org's own Meta app is heard.** Meta delivers a number's messages to the webhook of

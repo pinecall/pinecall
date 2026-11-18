@@ -37,6 +37,7 @@ class WhatsappNumber(Carrier):
     kind: ClassVar[CarrierKind] = CarrierKind.whatsapp
     name: ClassVar[str] = "Meta"
     has_api: ClassVar[bool] = False
+    channel: ClassVar[Channel] = Channel.whatsapp
 
     org: str
     phone_number_id: str

@@ -99,8 +99,14 @@ export async function readNumbers(credentials: Credentials): Promise<NumberRow[]
   return z.array(NumberSchema).parse(await read(credentials, "/v1/numbers"));
 }
 
-export async function readPath(credentials: Credentials, number: string): Promise<NumberPath> {
-  return PathSchema.parse(await read(credentials, `/v1/numbers/${named(number)}/path`));
+/** A number answers once a channel: its route is named by both. */
+export type RouteChannel = NumberRow["route"]["channel"];
+
+// The channel in the query, so a number that answers on two is never let go or moved by a guess.
+const on = (channel: RouteChannel | undefined): string => (channel === undefined ? "" : `?channel=${channel}`);
+
+export async function readPath(credentials: Credentials, number: string, channel?: RouteChannel): Promise<NumberPath> {
+  return PathSchema.parse(await read(credentials, `/v1/numbers/${named(number)}/path${on(channel)}`));
 }
 
 export async function readCatalog(credentials: Credentials): Promise<Catalog> {
@@ -141,12 +147,12 @@ export async function buyNumber(credentials: Credentials, wanted: WantedPurchase
 }
 
 /** Let the number go: its route and its admission; the account that owns it keeps it. */
-export async function releaseNumber(credentials: Credentials, number: string): Promise<void> {
-  await drop(credentials, `/v1/numbers/${named(number)}`);
+export async function releaseNumber(credentials: Credentials, number: string, channel?: RouteChannel): Promise<void> {
+  await drop(credentials, `/v1/numbers/${named(number)}${on(channel)}`);
 }
 
-export async function moveNumber(credentials: Credentials, number: string, env: "production" | "sandbox"): Promise<void> {
-  await put(credentials, `/v1/numbers/${named(number)}/env`, { env });
+export async function moveNumber(credentials: Credentials, number: string, env: "production" | "sandbox", channel?: RouteChannel): Promise<void> {
+  await put(credentials, `/v1/numbers/${named(number)}/env${on(channel)}`, { env });
 }
 
 // ── the phone a person tests from ──

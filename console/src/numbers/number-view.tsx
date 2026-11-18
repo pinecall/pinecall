@@ -70,7 +70,7 @@ export function NumberView({ row, carriers, catalog, agents, onChanged, onGone }
 
       <section className="dash-card num-card">
         <span className="dash-eyebrow dash-eyebrow-head">What a call to it goes through</span>
-        <Path number={number} round={round} />
+        <Path number={number} channel={row.route.channel} round={round} />
       </section>
 
       <section className="dash-card num-card">
@@ -96,14 +96,14 @@ export function NumberView({ row, carriers, catalog, agents, onChanged, onGone }
                 <span className="num-change-title">Move it to {OTHER}</span>
                 <span className="dash-quiet">{OTHER === "production" ? "Calls to it reach the agent as it is deployed, and count as real calls." : "Calls to it reach the agent as you are building it."}</span>
               </span>
-              <ConfirmButton label={`Move to ${OTHER}`} asks={`Move it to ${OTHER}?`} onConfirm={() => void mover.move(() => moveNumber(credentials, number, OTHER)).then(onGone, () => undefined)} />
+              <ConfirmButton label={`Move to ${OTHER}`} asks={`Move it to ${OTHER}?`} onConfirm={() => void mover.move(() => moveNumber(credentials, number, OTHER, row.route.channel)).then(onGone, () => undefined)} />
             </div>
             <div className="num-change">
               <span className="num-change-words">
                 <span className="num-change-title">Let it go</span>
                 <span className="dash-quiet">It stops reaching Pinecall. The account that owns it keeps it.</span>
               </span>
-              <ConfirmButton label="Let it go" asks="Stop answering it?" danger onConfirm={() => void mover.move(() => releaseNumber(credentials, number)).then(onGone, () => undefined)} />
+              <ConfirmButton label="Let it go" asks="Stop answering it?" danger onConfirm={() => void mover.move(() => releaseNumber(credentials, number, row.route.channel)).then(onGone, () => undefined)} />
             </div>
           </div>
         )}

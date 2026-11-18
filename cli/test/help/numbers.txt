@@ -92,4 +92,6 @@ Usage: pinecall numbers drop [options] <number>
 forget the route; the carrier account keeps the number
 
 Options:
-  -h, --help  display help for command
+  --channel <channel>  phone | whatsapp: the one to let go, for a number that
+                       answers on both
+  -h, --help           display help for command

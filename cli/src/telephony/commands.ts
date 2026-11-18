@@ -139,7 +139,16 @@ export function register(program: Command, ctx: Context): void {
     .command("drop")
     .description("forget the route; the carrier account keeps the number")
     .argument("<number>")
-    .action(async (number) => ctx.io.result(await service.dropNumber(ctx, number), render.dropped));
+    .option("--channel <channel>", "phone | whatsapp: the one to let go, for a number that answers on both")
+    .action(async (number, flags) => {
+      try {
+        ctx.io.result(await service.dropNumber(ctx, number, service.DropChannel.parse(flags.channel)), render.dropped);
+      } catch (failed) {
+        // The gateway's 409 for a number that answers on two channels: the hint names the flag.
+        if (failed instanceof GatewayError && failed.status === 409 && failed.message.includes(service.ON_SEVERAL_CHANNELS)) ctx.io.info(service.NAME_THE_CHANNEL);
+        throw failed;
+      }
+    });
 
   const carriers = program.command("carriers").description("list | show | add | drop the org's carrier accounts: Twilio, a SIP peer, WhatsApp").addHelpText("after", CARRIERS);
   carriers

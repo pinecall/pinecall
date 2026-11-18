@@ -77,7 +77,8 @@ export function boughtSoFar(stock: Limit): string {
   return stock.limit === null ? `bought numbers in this env: ${used}, no limit` : `bought numbers in this env: ${used} of ${stock.limit}`;
 }
 
-export function dropped({ number }: { number: string }): string {
+export function dropped({ number, channel }: { number: string; channel?: "phone" | "whatsapp" }): string {
+  if (channel !== undefined) return `${number} no longer answers ${channel === "phone" ? "the phone" : "WhatsApp"} here. What it answers on another channel stays, and its account still owns it.`;
   return `${number} answers nothing here now. Your carrier still owns it.`;
 }
 

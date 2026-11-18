@@ -48,7 +48,7 @@ export function NumbersPage(): ReactNode {
   // A phone opens on the list, a tap away from each one; a desk opens the first beside it.
   const phone = usePhone();
   const navigate = useNavigate();
-  const { number: asked } = useParams();
+  const { number: asked, channel: on = "phone" } = useParams();
   const { agents } = useOrg();
   const slugs = useMemo(() => agents.map((one) => one.slug), [agents]);
   const { rows, carriers, catalog, refused, reread } = useNumbers();
@@ -56,7 +56,8 @@ export function NumbersPage(): ReactNode {
   const [filter, setFilter] = useState("");
   const stopAdding = useCallback(() => setAdding(false), []);
 
-  const open = rows?.find((one) => one.route.number === asked);
+  // A number answers once a channel: the address names both, and the phone's is the number alone.
+  const open = rows?.find((one) => one.route.number === asked && one.route.channel === on) ?? rows?.find((one) => one.route.number === asked);
   const wanted = filter.trim().toLowerCase();
   const shownRows = (rows ?? []).filter((one) => wanted === "" || `${one.route.number ?? ""} ${shown(one.route.number)} ${one.route.agent}`.toLowerCase().includes(wanted));
 
@@ -84,7 +85,7 @@ export function NumbersPage(): ReactNode {
           <input className="app-input app-search" aria-label="Search numbers" placeholder="Search numbers" value={filter} onChange={(event) => setFilter(event.target.value)} />
           <div className="app-rows">
             {shownRows.map((one) => (
-              <NavLink key={one.route.number} to={`${HOME}/${encodeURIComponent(one.route.number ?? "")}`} className={({ isActive }) => (isActive ? "app-row app-row-on" : "app-row")}>
+              <NavLink key={`${one.route.number}:${one.route.channel}`} end to={`${HOME}/${encodeURIComponent(one.route.number ?? "")}${one.route.channel === "phone" ? "" : `/${one.route.channel}`}`} className={({ isActive }) => (isActive ? "app-row app-row-on" : "app-row")}>
                 <span className="app-row-top">
                   <span className="dash-clip">{shown(one.route.number)}</span>
                   <span className={`app-dot app-dot-${RINGS[one.rings].mood}`} title={RINGS[one.rings].said} aria-hidden="true" />
@@ -113,7 +114,7 @@ export function NumbersPage(): ReactNode {
                 </div>
               </div>
             )}
-            {open !== undefined && <NumberView key={open.route.number} row={open} carriers={carriers} catalog={catalog} agents={slugs} onChanged={reread} onGone={() => (reread(), void navigate(HOME, { replace: true }))} />}
+            {open !== undefined && <NumberView key={`${open.route.number}:${open.route.channel}`} row={open} carriers={carriers} catalog={catalog} agents={slugs} onChanged={reread} onGone={() => (reread(), void navigate(HOME, { replace: true }))} />}
             {WORLD === "sandbox" && <TestLine agents={slugs} />}
             {rows !== null && rows.length > 0 && <OutboundCard />}
           </div>
