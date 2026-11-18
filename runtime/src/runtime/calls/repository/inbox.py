@@ -108,10 +108,18 @@ class InboxRepository(Repository[ThreadRead]):
         return InboxPage(rows=found[:limit], next=None if last is None else f"{last.moved_at!r}:{last.contact}")
 
     async def list_calls_with(
-        self, scope: Scope, agent: str, contact: str, *, limit: int, channel: Channel | None = None
+        self,
+        scope: Scope,
+        agent: str,
+        contact: str,
+        *,
+        limit: int,
+        channel: Channel | None = None,
+        ended: bool = False,
     ) -> list[str]:
-        """The contact's newest calls with the agent in the scope; on one channel when it is named."""
+        """The contact's newest calls with the agent in the scope; on one channel when it is named, over when asked."""
         on_channel = () if channel is None else (CallFact.channel == channel.value,)
+        over = (CallLogHead.sealed.is_(True),) if ended else ()
         statement = (
             select(CallLogHead.log)
             .join(CallFact, CallFact.call == CallLogHead.log)
@@ -123,6 +131,7 @@ class InboxRepository(Repository[ThreadRead]):
                 CallLogHead.call.is_not(None),
                 CallFact.contact == contact,
                 *on_channel,
+                *over,
             )
             .order_by(CallLogHead.started_at.desc().nulls_last(), CallLogHead.log.desc())
             .limit(limit)

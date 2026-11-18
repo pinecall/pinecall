@@ -333,9 +333,10 @@ class Threads:
                 return None
             try:
                 taken = await self._take_up(session_, registration, inbound)
-                # A new conversation carries on what this contact and the agent last said, on any channel.
+                # A new conversation carries on what this contact and the agent last said, on any channel,
+                # once it is over: a thread that runs beside it (an email on another subject) is its own.
                 earlier = await calls.find_newest_call_with(
-                    session_, registration.scope, registration.slug, inbound.caller
+                    session_, registration.scope, registration.slug, inbound.caller, ended=True
                 )
                 context = self._context(registration, route, inbound, earlier)
                 if first is not None:
