@@ -151,6 +151,20 @@ Have an agent call a phone number, with the state its call opens in. The org's d
 }
 ```
 
+## `text`
+
+Have an agent send a contact one SMS first, from a number it answers SMS at. The org's dial guards decide: who may be reached, when, and how often.
+
+`text` sends a contact one SMS as the agent and answers with the conversation it was said on: the call's id, the number it left from and the environment. What the contact answers reaches the agent on that conversation, with these words before it. Somebody must be holding the agent, and the agent must answer SMS at a number (`numbers` imports one with `channel: sms`). A contact whose conversation is still open is written on it; any other passes the org's guards as a dial does (a stranger, no consent, quiet hours, too many today), and a refusal says which guard and sends nothing. A contact who texted STOP is refused whatever else is true: `compliance consent` says who did.
+
+| parameter | takes | | what it is |
+|---|---|---|---|
+| `agent` | text | required | the agent that writes: its slug |
+| `to` | text | required | the contact's number, in +E.164 |
+| `text` | text | required | what the contact reads |
+| `from` | text |  | which of the agent's SMS numbers it leaves from; the first when left out |
+| `prod` | true or false |  | true acts in production; left out or false, in the sandbox |
+
 ## `callbacks`
 
 The callers waiting to be called back, oldest first: who, on which channel, through what (the overflow, the agent's own tool, the widget).

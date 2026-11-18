@@ -2293,6 +2293,24 @@ it for the whole call and, with no greeting given, opens on it. Every dial passe
 first (who may be called, when, how often); one that is refused rings nobody, and the refusal names
 the guard.
 
+## `text`
+
+```
+pinecall text <agent> <number> <words> [--from <number>]
+```
+
+```console
+$ pinecall text reminder +14155550142 "Ana, your cleaning is tomorrow at 9:30. Reply here to change it."
+reminder wrote to +14155550142 from +14155550134 · production
+  → pinecall sessions call_8c1d4e7a2b5f4c0e9a3d6b1f7e2c5a90 reads the conversation
+```
+
+The agent sends the contact one SMS, from a number it answers SMS at (`--from` picks one of several),
+and what they answer reaches it on that conversation, with these words before it. Somebody must be
+holding the agent. A contact whose conversation is still open is written on it; any other passes the
+org's guards first, as a dial does, and one that is refused is sent nothing. A contact who texted
+STOP is written to by nobody (`pinecall data consent <number>` says who did).
+
 ## `callbacks`
 
 ```

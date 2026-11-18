@@ -1,0 +1,22 @@
+$ pinecall text --help
+Usage: pinecall text [options] <agent> <number> <words>
+
+have an agent send a contact one SMS first
+
+Arguments:
+  agent            the agent's slug
+  number           the contact's number, in +E.164
+  words            what the contact reads
+
+Options:
+  --from <number>  which of the agent's SMS numbers it leaves from
+  -h, --help       display help for command
+
+The agent sends the contact one SMS, from a number it answers SMS at, and what they answer reaches it:
+
+  $ pinecall text reminder +14155550142 "Ana, your cleaning is tomorrow at 9:30. Reply here to change it."
+
+Somebody must be holding the agent. A contact whose conversation is still open is written on it.
+Any other passes the org's guards first, as a dial does (who may be reached, when, how often), and
+one that is refused is sent nothing. A contact who texted STOP is written to by nobody.
+

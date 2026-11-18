@@ -22,6 +22,7 @@ from runtime.live.holders import Registration
 from runtime.live.parts import LiveParts
 from runtime.live.peers import THREADS, ThreadKey
 from runtime.live.service import written
+from runtime.live.service.handed import hand, hand_receipt, message_of, receipt_of
 from runtime.live.service.opt_outs import Stop, refuses_messages, take_off, take_word
 from runtime.live.service.replies import Reaches, way_to
 from runtime.live.service.waiting import Waiting, keep_waiting, list_waiting, mark_taken
@@ -160,6 +161,29 @@ class Threads:
 
         return await whatsapp.read_once(self._live.sessions, route.org, inbound.message_id, read, at=self._live.now)
 
+    # The agent writes first (`texting`). The conversation its contact has going is found before the
+    # guards are asked, so their ledger names it; a new one is opened as `first`, the call they named.
+    async def find_going(self, scope: Scope, agent: str, contact: whatsapp.Inbound) -> str | None:
+        """The call of the contact's conversation that has idle time left, wherever it is held; None when none has."""
+        here = self._open.get(_thread_key(scope, contact))
+        if here is not None:
+            return here.session.call.context.call
+        async with self._live.sessions.begin() as session_:
+            return await self._find_resumable(session_, scope, agent, contact)
+
+    async def open_to(self, registration: Registration, route: RouteRow, contact: whatsapp.Inbound, first: str) -> str:
+        """The call the agent writes on: the conversation going, here or on another gateway, or a new one, `first`."""
+        key = _thread_key(registration.scope, contact)
+        here = self._open.get(key)
+        if here is not None:
+            return here.session.call.context.call
+        if self._live.owners.find_thread_holder(key) is not None:
+            return first
+        thread = await self._open_thread(registration, route, contact, first)
+        if thread is None:
+            raise UpstreamError(f"agent {route.agent} cannot write from {route.number}: the gateway's log says why")
+        return thread.session.call.context.call
+
     # A word that stops, starts again or asks who writes is answered before the model is asked, and by
     # the gateway holding the contact's thread: it alone can end the conversation, and knows its call.
     async def _read(self, route: RouteRow, inbound: whatsapp.Inbound, *, handed: bool = False) -> None:
@@ -168,7 +192,7 @@ class Threads:
         key = _thread_key(taker.scope if taker else scope, inbound)
         open_here = self._open.get(key)
         holder = None if open_here is not None or handed else self._live.owners.find_thread_holder(key)
-        if holder is not None and await THREADS.reach(self._live.signal, _hand(inbound), gateway=holder):
+        if holder is not None and await THREADS.reach(self._live.signal, hand(inbound), gateway=holder):
             logger.info("whatsapp: a message for %s was handed to the gateway holding its thread", inbound.number)
             return
         call = None if open_here is None else open_here.session.call.context.call
@@ -199,7 +223,7 @@ class Threads:
         # Handed on once: a receipt another gateway sent here is not sent on again.
         holder = None if handed else self._live.owners.find_thread_holder(key)
         if holder is not None:
-            await THREADS.reach(self._live.signal, _hand_receipt(receipt), gateway=holder)
+            await THREADS.reach(self._live.signal, hand_receipt(receipt), gateway=holder)
 
     # The app's own command took the contact off the list: the conversation is told, and ends.
     def stop(self, call: str) -> bool:
@@ -234,7 +258,7 @@ class Threads:
         if (
             thread is None
             and holder is not None
-            and await THREADS.reach(self._live.signal, _hand(inbound), gateway=holder)
+            and await THREADS.reach(self._live.signal, hand(inbound), gateway=holder)
         ):
             logger.info("whatsapp: a message for %s was handed to the gateway holding its thread", inbound.number)
             return True
@@ -290,7 +314,7 @@ class Threads:
     # The token and the call are read and written in a transaction of this conversation's own, over
     # before the session starts: its greeting may wait on the model.
     async def _open_thread(
-        self, registration: Registration, route: RouteRow, inbound: whatsapp.Inbound
+        self, registration: Registration, route: RouteRow, inbound: whatsapp.Inbound, first: str | None = None
     ) -> OpenThread | None:
         live = self._live
         async with live.sessions.begin() as session_:
@@ -309,9 +333,10 @@ class Threads:
                 earlier = await calls.find_newest_call_with(
                     session_, registration.scope, registration.slug, inbound.caller
                 )
-                running = taken or await written.open_written(
-                    session_, live, registration, self._context(registration, route, inbound, earlier)
-                )
+                context = self._context(registration, route, inbound, earlier)
+                if first is not None:
+                    context = dataclasses.replace(context, call=first, direction=Direction.outbound)
+                running = taken or await written.open_written(session_, live, registration, context)
             except PinecallError as refused:
                 logger.warning("whatsapp: agent %s cannot answer at %s: %s", route.agent, inbound.number, refused)
                 return None
@@ -332,20 +357,9 @@ class Threads:
     # Claimed and read by the gateway it landed on: here it is only heard.
     async def _take_on(self, handed: HandedMessage) -> None:
         if handed.status is not None:
-            await self.note(_receipt_of(handed, handed.status), handed=True)
+            await self.note(receipt_of(handed, handed.status), handed=True)
             return
-        inbound = whatsapp.Inbound(
-            number=handed.number,
-            phone_number_id=handed.phone_number_id,
-            wa_id=handed.wa_id,
-            name=handed.name,
-            message_id=handed.message_id,
-            kind=handed.kind,
-            text=handed.text,
-            media_id=handed.media_id,
-            channel=handed.channel,
-            carrier_replied=handed.carrier_replied,
-        )
+        inbound = message_of(handed)
         async with self._live.sessions.begin() as session_:
             route = await _find_route(session_, inbound)
         if route is not None:
@@ -355,14 +369,16 @@ class Threads:
     async def _take_up(
         self, session_: AsyncSession, registration: Registration, inbound: whatsapp.Inbound
     ) -> session.Session | None:
-        contact = (registration.scope, registration.slug, inbound.caller)
-        newest = await calls.find_newest_call_with(session_, *contact, inbound.channel)
-        if newest is None:
-            return None
-        entries = await calls.list_entries(session_, newest)
-        if not entries or self._live.store.clock() - entries[-1].ts > self.idle_s:
-            return None
-        return await written.resume_written(session_, self._live, registration, newest)
+        going = await self._find_resumable(session_, registration.scope, registration.slug, inbound)
+        return None if going is None else await written.resume_written(session_, self._live, registration, going)
+
+    async def _find_resumable(
+        self, session_: AsyncSession, scope: Scope, agent: str, inbound: whatsapp.Inbound
+    ) -> str | None:
+        newest = await calls.find_newest_call_with(session_, scope, agent, inbound.caller, inbound.channel)
+        entries = [] if newest is None else await calls.list_entries(session_, newest)
+        over = any(entry.type in OVER for entry in entries)
+        return None if not entries or over or self._live.store.clock() - entries[-1].ts > self.idle_s else newest
 
     def _context(
         self, registration: Registration, route: RouteRow, inbound: whatsapp.Inbound, earlier: str | None
@@ -428,49 +444,6 @@ async def take_up(live: LiveParts, thread: OpenThread, heard: whatsapp.Inbound) 
 
 def _thread_key(scope: Scope, inbound: whatsapp.Inbound | whatsapp.Receipt) -> ThreadKey:
     return ThreadKey(scope.org, scope.env, inbound.number, inbound.wa_id, inbound.channel)
-
-
-def _hand_receipt(receipt: whatsapp.Receipt) -> HandedMessage:
-    return HandedMessage(
-        number=receipt.number,
-        phone_number_id=receipt.phone_number_id,
-        wa_id=receipt.wa_id,
-        name=None,
-        message_id=receipt.message_id,
-        kind="status",
-        text=None,
-        status=receipt.status,
-        error=receipt.error,
-        channel=receipt.channel,
-    )
-
-
-# Vouched for by the gateway that took it off the webhook: handed on, it names no signer.
-def _receipt_of(handed: HandedMessage, status: str) -> whatsapp.Receipt:
-    return whatsapp.Receipt(
-        number=handed.number,
-        phone_number_id=handed.phone_number_id,
-        wa_id=handed.wa_id,
-        message_id=handed.message_id,
-        status=status,
-        error=handed.error,
-        channel=handed.channel,
-    )
-
-
-def _hand(inbound: whatsapp.Inbound) -> HandedMessage:
-    return HandedMessage(
-        number=inbound.number,
-        phone_number_id=inbound.phone_number_id,
-        wa_id=inbound.wa_id,
-        name=inbound.name,
-        message_id=inbound.message_id,
-        kind=inbound.kind,
-        text=inbound.text,
-        media_id=inbound.media_id,
-        channel=inbound.channel,
-        carrier_replied=inbound.carrier_replied,
-    )
 
 
 # Text, the words of a button or a list row, and a voice note are read; an image, a sticker, a

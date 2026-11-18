@@ -3,7 +3,7 @@
 import type { Limit } from "../billing/service.js";
 import { count, date, formatHint, formatNotice } from "../kit/format.js";
 import { table } from "../kit/table.js";
-import type { AvailableNumbers, Callback, CallbackPage, Carrier, CarrierListed, CarrierShown, Dialed, NumberBought, NumberPlan, NumberRow, OwnedNumber, TheLine } from "./service.js";
+import type { AvailableNumbers, Callback, CallbackPage, Carrier, CarrierListed, CarrierShown, Dialed, NumberBought, NumberPlan, NumberRow, OwnedNumber, Texted, TheLine } from "./service.js";
 
 export const NO_NUMBERS = "no number answers in this env: `pinecall numbers import <+34…> --agent <slug>`";
 export const NO_CARRIERS = "the org holds no carrier account: `pinecall carriers add twilio --account-sid AC… --user SK…`";
@@ -171,6 +171,10 @@ export function callerForgotten({ forgot }: { forgot: string[] }): string {
 /** A call placed: who is calling whom, from which number, and the call to follow. */
 export function dialed(placed: Dialed): string[] {
   return [`${placed.agent} is calling ${placed.to} from ${placed.from} · ${placed.env}`, formatHint(`pinecall calls show ${placed.call} follows it`)];
+}
+
+export function texted(sent: Texted): string[] {
+  return [`${sent.agent} wrote to ${sent.to} from ${sent.from} · ${sent.env}`, formatHint(`pinecall sessions ${sent.call} reads the conversation`)];
 }
 
 export function callbacks(page: CallbackPage): string[] {

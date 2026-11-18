@@ -1,4 +1,4 @@
-"""The bodies of a dial: the far end, the consent the call runs on, what it opens with, and the call it became."""
+"""The bodies of a dial and of a text the agent sends first: the far end, the consent, and the call it became."""
 
 import json
 from typing import Literal
@@ -57,3 +57,22 @@ class DialResponse(Row):
     from_: str = Field(alias="from")
     env: Env
     log_token: str
+
+
+class TextRequest(Schema):
+    """POST /v1/agents/{slug}/text: the contact, the words, the org's number they leave from, the consent."""
+
+    to: str
+    text: str = Field(min_length=1, max_length=1600)
+    from_: str | None = Field(None, alias="from")
+    consent: Consent | None = None
+
+
+class TextResponse(Row):
+    """POST /v1/agents/{slug}/text, the answer: the conversation the text was said on."""
+
+    call: str
+    agent: str
+    to: str
+    from_: str = Field(alias="from")
+    env: Env

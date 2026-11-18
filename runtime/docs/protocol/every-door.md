@@ -28,6 +28,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `POST` | `/v1/agents/{slug}/dev/memory/{verb}` | memory | A memory verb, answered by the process that answers the console for the agent. |
 | `POST` | `/v1/agents/{slug}/dev/view/{verb}` | calls | The side panel beside a conversation, rendered by the app serving the call. |
 | `POST` | `/v1/agents/{slug}/dial` | talk | Place a call as the agent, after its guards: the call it became, before anything rings. |
+| `POST` | `/v1/agents/{slug}/text` | talk | Send a contact one SMS as the agent, after its guards: the conversation it was said on. |
 | `GET` | `/v1/agents/{slug}/hold-audio` | app · fleet | What a caller of the agent hears while a tool runs, and after how long. |
 | `GET` | `/v1/agents/{slug}/hold-audio/audio` | app · fleet | The org's own clip, Ogg Opus. |
 | `GET` | `/v1/agents/{slug}/lexicon` | pipeline · words | The agent's words as this key sees them: yours, the team's and production's. |

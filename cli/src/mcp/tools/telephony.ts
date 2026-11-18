@@ -1,4 +1,4 @@
-/** The `line`, `numbers`, `carriers`, `dial`, `callbacks` and `compliance` tools: the telephony domain and who may be reached, over their services. */
+/** The `line`, `numbers`, `carriers`, `dial`, `text`, `callbacks` and `compliance` tools: the telephony domain and who may be reached, over their services. */
 
 import { z } from "zod";
 
@@ -95,6 +95,22 @@ export const dial = tool({
   manual:
     "`dial` places a call as the agent and answers before anything rings: the call's id, the number shown and the environment. Somebody must be holding the agent, or the dial is refused. A dial the org's guards refuse (a stranger, quiet hours, no consent, too many) says which guard refused it. `call` reads the call's log afterwards.",
   handler: async (args, ctx) => await service.dialOut(ctx, service.DialInput.parse(args)),
+});
+
+export const text = tool({
+  name: "text",
+  title: "Send an SMS",
+  destroys: true,
+  description: "Have an agent send a contact one SMS first, from a number it answers SMS at. The org's dial guards decide: who may be reached, when, and how often.",
+  schema: {
+    agent: z.string().min(1).describe("the agent that writes: its slug"),
+    to: z.string().min(1).describe("the contact's number, in +E.164"),
+    text: z.string().min(1).max(1600).describe("what the contact reads"),
+    from: z.string().optional().describe("which of the agent's SMS numbers it leaves from; the first when left out"),
+  },
+  manual:
+    "`text` sends a contact one SMS as the agent and answers with the conversation it was said on: the call's id, the number it left from and the environment. What the contact answers reaches the agent on that conversation, with these words before it. Somebody must be holding the agent, and the agent must answer SMS at a number (`numbers` imports one with `channel: sms`). A contact whose conversation is still open is written on it; any other passes the org's guards as a dial does (a stranger, no consent, quiet hours, too many today), and a refusal says which guard and sends nothing. A contact who texted STOP is refused whatever else is true: `compliance consent` says who did.",
+  handler: async (args, ctx) => await service.textOut(ctx, service.TextInput.parse(args)),
 });
 
 export const callbacks = tool({

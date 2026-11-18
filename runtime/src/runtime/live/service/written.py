@@ -145,6 +145,9 @@ async def open_written_as(
     opening = Opening(context, setup.declaration, scope, Opener.gateway, registration.owner)
     served = await openings.open_served(live, opening, setup.versions)
     carried = await _history_of(session_, live, context)
+    # The agent writes first: the words it was given open the conversation, and nothing greets before them.
+    if carried is None and context.direction is Direction.outbound:
+        carried = llm.ChatContext.empty()
     return start_session(live, served, setup.model, setup.recalled, test=setup.test, carried=carried)
 
 

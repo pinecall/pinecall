@@ -78,6 +78,16 @@ Somebody must be holding the agent. Every dial passes the org's guards first (wh
 when, how often); one that is refused rings nobody and says which guard refused it.
 `;
 
+const TEXT = `
+The agent sends the contact one SMS, from a number it answers SMS at, and what they answer reaches it:
+
+  $ pinecall text reminder +14155550142 "Ana, your cleaning is tomorrow at 9:30. Reply here to change it."
+
+Somebody must be holding the agent. A contact whose conversation is still open is written on it.
+Any other passes the org's guards first, as a dial does (who may be reached, when, how often), and
+one that is refused is sent nothing. A contact who texted STOP is written to by nobody.
+`;
+
 // A flag that takes JSON takes an object: the state a call opens in, what its call.started carries.
 function jsonOf(flag: string, given: string | undefined): Record<string, unknown> | undefined {
   if (given === undefined) return undefined;
@@ -244,6 +254,19 @@ export function register(program: Command, ctx: Context): void {
     .action(async (agent, number, flags) => {
       const input = service.DialInput.parse({ agent, to: number, from: flags.from, state: jsonOf("--state", flags.state), metadata: jsonOf("--metadata", flags.metadata), greeting: flags.greeting, instruction: flags.instruction });
       ctx.io.result(await service.dialOut(ctx, input), render.dialed);
+    });
+
+  program
+    .command("text")
+    .description("have an agent send a contact one SMS first")
+    .argument("<agent>", "the agent's slug")
+    .argument("<number>", "the contact's number, in +E.164")
+    .argument("<words>", "what the contact reads")
+    .option("--from <number>", "which of the agent's SMS numbers it leaves from")
+    .addHelpText("after", TEXT)
+    .action(async (agent, number, words, flags) => {
+      const input = service.TextInput.parse({ agent, to: number, text: words, from: flags.from });
+      ctx.io.result(await service.textOut(ctx, input), render.texted);
     });
 
   program

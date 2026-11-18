@@ -241,3 +241,24 @@ export async function dial(gw: GatewayClient, slug: string, body: DialBody): Pro
   const placed = await gw.post<Dialed & { log_token?: string }>(`/v1/agents/${seg(slug)}/dial`, body);
   return { call: placed.call, agent: placed.agent, to: placed.to, from: placed.from, env: placed.env };
 }
+
+/** What a text the agent sends first takes: the contact, the words, the number they leave from. */
+export interface TextBody {
+  to: string;
+  text: string;
+  from?: string | undefined;
+}
+
+/** A text said on its conversation: the call it is, and the number it left from. */
+export interface Texted {
+  call: string;
+  agent: string;
+  to: string;
+  from: string;
+  env: Env;
+}
+
+/** `POST /v1/agents/{slug}/text`: the agent sends a contact one SMS first, past the org's dial guards. */
+export async function text(gw: GatewayClient, slug: string, body: TextBody): Promise<Texted> {
+  return gw.post<Texted>(`/v1/agents/${seg(slug)}/text`, body);
+}

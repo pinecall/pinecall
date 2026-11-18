@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- **An agent writes first.** `POST /v1/agents/{slug}/text {to, text, from?, consent?}` sends a contact one SMS
+  as the agent, from a number it answers SMS at: on the conversation the contact has going, or on a new one
+  that passes every guard a dial does (a stranger, the consent, the hours, the pace) on the same ledger. The
+  call is `outbound`, carries on what the two last said, and greets nobody: the words given are its opening.
+  A contact who stopped the messages in writing is refused in either environment. `docs/protocol/numbers.md`,
+  "SMS".
+
 ## 0.11.47 — an agent says the languages its callers speak, a channel takes the agent's own words, and a stop word ends the conversation on any gateway (2026-11-18)
 
 - **An agent says the languages its callers speak, and its calls run what takes them.** `language` is one

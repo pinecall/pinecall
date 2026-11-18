@@ -8,7 +8,7 @@ import * as billing from "../billing/service.js";
 import type { Context } from "../context.js";
 import { UsageError } from "../errors.js";
 
-export type { AvailableNumbers, Callback, CallbackPage, Carrier, CarrierBody, Dialed, NumberPlan, NumberRoute, NumberRow, OwnedNumber, TheLine } from "../api/telephony.js";
+export type { AvailableNumbers, Callback, CallbackPage, Carrier, CarrierBody, Dialed, NumberPlan, NumberRoute, NumberRow, OwnedNumber, Texted, TheLine } from "../api/telephony.js";
 
 // The gateway's sentence when the org holds several accounts and the import named none.
 export const SEVERAL_ACCOUNTS = "name one of them";
@@ -212,6 +212,22 @@ export const DialInput = z.object({
   instruction: z.string().min(1).optional(),
 });
 export type DialInput = z.infer<typeof DialInput>;
+
+const WORDS = { error: "a text is 1 to 1600 characters: the words the contact reads" };
+
+/** What `text` takes: the agent, the contact, the words, and the number they leave from. */
+export const TextInput = z.object({
+  agent: z.string().min(1),
+  to: z.string().min(1),
+  text: z.string(WORDS).min(1, WORDS).max(1600, WORDS),
+  from: z.string().min(1).optional(),
+});
+export type TextInput = z.infer<typeof TextInput>;
+
+/** Have the agent send a contact one SMS first: the conversation it was said on. */
+export async function textOut(ctx: Context, input: TextInput): Promise<api.Texted> {
+  return api.text(ctx.gateway(), input.agent, { to: input.to, text: input.text, from: input.from });
+}
 
 /** Have the agent call a number: the call it became, before anything rings. */
 export async function dialOut(ctx: Context, input: DialInput): Promise<api.Dialed> {

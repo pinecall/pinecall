@@ -187,6 +187,20 @@ media is dropped. Letting the SMS route go
 (`DELETE /v1/numbers/{number}?channel=sms`) empties the number's `SmsUrl` at Twilio when it is
 this deployment's; a post for a number nobody routed is answered `200` and dropped.
 
+**The agent writes first.** `POST /v1/agents/{slug}/text {to, text, from?, consent?}` (`talk`) sends the
+contact one SMS as the agent: `202 {call, agent, to, from, env}`, the conversation it was said on. `from`
+is one of the numbers the agent answers SMS at in the key's environment, the first unsaid; `text` is
+1600 characters at most, sent as several messages when it is long. A contact whose conversation has
+idle time left is written on it, as one more message. Any other is cold, and passes every guard a dial
+does on one row of the same ledger ("Dialling out"): the number's shape, a stranger unless the org
+dials anywhere, the consent on file or given with the request, the hours, the pace. A contact who
+stopped the messages in writing is `403` in either environment, whatever consent the request
+carries. Nobody holding the agent is `409`: what they answer would reach no app. The words are a `say`
+on the call (`supervisor.verb`, by whoever holds the key), logged as the agent's turn and sent by the
+conversation's own tap, so a refusal of Twilio's is the `error` a refused reply is. The new call is
+`outbound`, carries on the contact's newest call with the agent as an inbound one does, and greets
+nobody: the words given are its opening.
+
 **A contact who stops.** A text that is, whole, one of `STOP`, `STOPALL`, `UNSUBSCRIBE`, `CANCEL`,
 `END`, `QUIT`, `REVOKE`, `OPTOUT` (case, accents and punctuation aside), or a word the org added
 (`sms_stop_words` of `PUT /v1/org/policy`), is honoured on the gateway it lands on, before any

@@ -126,6 +126,7 @@ only the process in the agent's directory can do: [dev-verbs.md](dev-verbs.md).
 | WhatsApp | [whatsapp.md](whatsapp.md) |
 | SMS | a route to the agent on the channel `sms`: [numbers.md](numbers.md), "SMS" |
 | `POST /v1/agents/{slug}/dial` | a call the agent places, past the org's dial guards: [numbers.md](numbers.md) |
+| `POST /v1/agents/{slug}/text` | an SMS the agent sends first, past the same guards: [numbers.md](numbers.md), "SMS" |
 
 When every worker is full the token endpoint answers `503` and a page offers a call back:
 `POST /v1/callbacks {agent, channel, number, call?}` writes `callback.requested` on the

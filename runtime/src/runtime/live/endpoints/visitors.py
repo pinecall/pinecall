@@ -1,4 +1,4 @@
-"""The talk key's endpoints and a visitor's own: a room token, a code keyed and asked after, a dial, the hang-up."""
+"""The talk key's endpoints and a visitor's own: a room token, a code keyed, a dial, a text, the hang-up."""
 
 from typing import Annotated
 
@@ -8,11 +8,12 @@ from runtime.agents.auth import KnownAgent
 from runtime.compliance import service as compliance
 from runtime.enums import ConsentKind
 from runtime.fleet.auth import TheRoster
+from runtime.kit.time import now
 from runtime.live import schemas
-from runtime.live.auth import TalkKey, TheCallersCall, TheCodes, TheCodeVisit, TheLive, TheSigner
-from runtime.live.service import commands, dialing, visitors
+from runtime.live.auth import TalkKey, TheCallersCall, TheCodes, TheCodeVisit, TheLive, TheSigner, TheWhatsappThreads
+from runtime.live.service import commands, dialing, texting, visitors
 from runtime.postgres import Session
-from runtime.telephony.schemas.dial import DialRequest, DialResponse
+from runtime.telephony.schemas.dial import Consent, DialRequest, DialResponse, TextRequest, TextResponse
 
 router = APIRouter()
 
@@ -61,6 +62,18 @@ async def dial_out(
     return DialResponse.model_validate({**answer, "log_token": dialled.log_token})
 
 
+# The agent writes first, where a dial rings first: the same key, the same guards.
+@router.post("/v1/agents/{slug}/text", status_code=202)
+async def text_out(
+    slug: KnownAgent, body: TextRequest, actor: TalkKey, live: TheLive, threads: TheWhatsappThreads, session: Session
+) -> TextResponse:
+    """Send a contact one SMS as the agent, after its guards: the conversation it was said on."""
+    asked = texting.Text(to=body.to, text=body.text, shown=body.from_, consent=_consent_of(body.consent))
+    texted = await texting.text_as_agent(session, live, threads, actor, slug, asked, now())
+    answer = {"call": texted.call, "agent": slug, "to": texted.to, "from": texted.shown, "env": actor.env}
+    return TextResponse.model_validate(answer)
+
+
 # The page says it before it leaves the room, over HTTP, which a closing tab still completes
 # (`keepalive`): said on the room's data channel alone, the hang-up is lost with the seat and the
 # call waits five minutes for a caller who is not coming back (tokens.md).
@@ -71,15 +84,17 @@ async def hang_up(call: TheCallersCall, live: TheLive) -> schemas.HangupResponse
     return schemas.HangupResponse(call=call)
 
 
+def _consent_of(given: Consent | None) -> compliance.Consent | None:
+    if given is None:
+        return None
+    return compliance.Consent(ConsentKind(given.kind), given.source, given.text, given.evidence)
+
+
 def _dial_of(body: DialRequest) -> dialing.Dial:
-    given = body.consent
-    consent = None
-    if given is not None:
-        consent = compliance.Consent(ConsentKind(given.kind), given.source, given.text, given.evidence)
     return dialing.Dial(
         to=body.to,
         shown=body.from_,
-        consent=consent,
+        consent=_consent_of(body.consent),
         state=body.state,
         metadata=body.metadata,
         greeting=body.greeting,
