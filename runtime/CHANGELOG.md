@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.49 — a flow writes to somebody by SMS, and an open written conversation reads as open (2026-11-18)
 
 - **A flow writes to somebody.** A step of kind `text` asks `{agent, to, text, from?}` and sends the contact one
   SMS as `POST /v1/agents/{agent}/text` does, past the same guards. It is over as it is written, with `{sent: true,

@@ -4,6 +4,10 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.11.49 — a flow writes to somebody by SMS, and an open written conversation reads as open (2026-11-18)
+
+- Released with the runtime: nothing of this package changed.
+
 ## 0.11.48 — an agent writes first by SMS, and a person's message on a thread reaches the contact (2026-11-18)
 
 - **`pinecall text <agent> <number> "<words>"`**: the agent sends a contact one SMS first, past the guards a

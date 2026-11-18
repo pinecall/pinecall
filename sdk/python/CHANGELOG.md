@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.49 — a flow writes to somebody by SMS, and an open written conversation reads as open (2026-11-18)
 
 - **`step.text(to, agent, words)`**: a flow has an agent send a contact one SMS first, from a number it answers SMS at (`from_`), and reads what it came to as a `Texted`: `sent`, the `call` it was said on, or what `refused` it.
 
