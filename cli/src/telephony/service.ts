@@ -21,7 +21,7 @@ export const ImportNumberInput = z.object({
   number: z.string().regex(E164, "a number is +E.164: +34910000000"),
   agent: z.string().min(1),
   account: z.string().min(1).optional(),
-  channel: z.enum(["phone", "whatsapp"]).optional(),
+  channel: z.enum(["phone", "whatsapp", "sms"]).optional(),
   move: z.boolean().default(false),
   dryRun: z.boolean().default(false),
 });
@@ -29,17 +29,17 @@ export type ImportNumberInput = z.infer<typeof ImportNumberInput>;
 
 /** What the gateway's 409 says of a number that answers on two channels, and what to add. */
 export const ON_SEVERAL_CHANNELS = "name the one meant";
-export const NAME_THE_CHANNEL = "  name the channel to let go: --channel phone or --channel whatsapp (the other stays)";
+export const NAME_THE_CHANNEL = "  name the channel to let go: --channel phone, whatsapp or sms (the others stay)";
 
 /** The channel `numbers drop` lets go; left out, the number's only route. */
-export const DropChannel = z.enum(["phone", "whatsapp"]).optional();
+export const DropChannel = z.enum(["phone", "whatsapp", "sms"]).optional();
 
 /** What `numbers buy` takes: a country (and area code) on the deployment's own account, pointed at an agent. */
 export const BuyNumberInput = z.object({
   country: z.string().length(2).transform((code) => code.toUpperCase()),
   agent: z.string().min(1),
   areaCode: z.string().regex(/^\d+$/).optional(),
-  channel: z.enum(["phone", "whatsapp"]).optional(),
+  channel: z.enum(["phone", "whatsapp", "sms"]).optional(),
   dryRun: z.boolean().default(false),
 });
 export type BuyNumberInput = z.infer<typeof BuyNumberInput>;
@@ -122,7 +122,7 @@ export async function buyNumber(ctx: Context, input: BuyNumberInput): Promise<Nu
 }
 
 /** The route forgotten and the number off the SFU trunk; the carrier account keeps it. */
-export async function dropNumber(ctx: Context, number: string, channel?: "phone" | "whatsapp"): Promise<{ number: string; channel?: "phone" | "whatsapp" }> {
+export async function dropNumber(ctx: Context, number: string, channel?: api.RouteChannel): Promise<{ number: string; channel?: api.RouteChannel }> {
   await api.deleteNumber(ctx.gateway(), number, channel);
   return { number, ...(channel === undefined ? {} : { channel }) };
 }

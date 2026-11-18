@@ -31,6 +31,7 @@ function channelOf(identity: string): string | undefined {
 const SPOKEN = "You are on a phone call.";
 const WEBSITE = "You are in a written chat on a website.";
 const WHATSAPP = "You are on WhatsApp.";
+const SMS = "You are answering by SMS.";
 
 describe("the rules and protocols", () => {
   it("are English for every agent, and tell it to answer in the caller's language", () => {
@@ -57,6 +58,7 @@ describe("the channel block", () => {
     ["web", "text", WEBSITE],
     ["whatsapp", "text", WHATSAPP],
     ["whatsapp", "voice", WHATSAPP],
+    ["sms", "text", SMS],
   ] as const)("on %s by %s says how to write there", (channel, medium, opening) => {
     expect(channelOf(identityOf(serving(seal(new Clinica()), channel, medium)))).toMatch(new RegExp(`^${opening}`));
   });
@@ -65,6 +67,7 @@ describe("the channel block", () => {
     ["phone", SPOKEN],
     ["web", SPOKEN],
     ["whatsapp", WHATSAPP],
+    ["sms", SMS],
   ] as const)("takes the medium a %s call implies when the gateway does not say", (channel, opening) => {
     expect(channelOf(identityOf(serving(seal(new Clinica()), channel)))).toMatch(new RegExp(`^${opening}`));
   });

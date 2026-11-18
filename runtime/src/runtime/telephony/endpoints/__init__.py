@@ -2,8 +2,8 @@
 
 from fastapi import APIRouter
 
-from runtime.telephony.endpoints import carriers, numbers, ops, worker
+from runtime.telephony.endpoints import carriers, numbers, ops, sms, worker
 
 router = APIRouter()
-for family in (carriers, numbers, worker, ops):
+for family in (carriers, numbers, sms, worker, ops):
     router.include_router(family.router)

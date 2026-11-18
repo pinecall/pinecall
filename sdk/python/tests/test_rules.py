@@ -5,7 +5,7 @@ import re
 import pytest
 
 from pinecall import Agent, Line, render
-from pinecall._rules import ON_A_WEBSITE, ON_WHATSAPP, SPOKEN, medium_of
+from pinecall._rules import ON_A_WEBSITE, ON_SMS, ON_WHATSAPP, SPOKEN, medium_of
 from pinecall.wire._names import Channel, Medium
 
 
@@ -55,6 +55,8 @@ def test_how_to_write_is_the_channels_block_not_a_rule() -> None:
         ("phone", None, SPOKEN),
         ("web", None, SPOKEN),
         ("whatsapp", None, ON_WHATSAPP),
+        ("sms", "text", ON_SMS),
+        ("sms", None, ON_SMS),
     ],
 )
 def test_each_channel_and_medium_says_how_to_write_there(

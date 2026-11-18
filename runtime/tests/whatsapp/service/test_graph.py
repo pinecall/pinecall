@@ -49,16 +49,6 @@ async def test_the_number_an_account_answers_at_is_asked_of_meta_in_e164() -> No
 # ── a long reply ──
 
 
-def test_a_reply_longer_than_meta_takes_is_cut_where_the_writing_breathes() -> None:
-    """Each part is within Meta's limit, nothing is lost, and a paragraph is never cut in two when it fits."""
-    first, second = "a" * 3000, "b " * 1500
-    parts = graph.parts_of(f"{first}\n\n{second}")
-    assert parts == [first, second.strip()]
-    assert all(len(part) <= graph.LONGEST_TEXT for part in graph.parts_of("palabra " * 3000))
-    assert "".join(graph.parts_of("x" * 9000)) == "x" * 9000
-    assert graph.parts_of("hola") == ["hola"]
-
-
 async def test_a_long_reply_goes_out_as_several_messages_in_order() -> None:
     meta = Graph()
     async with httpx.AsyncClient(transport=outside(Twilio(), meta, Receiver())) as http:

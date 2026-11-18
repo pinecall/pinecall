@@ -31,7 +31,7 @@ def read_values(started: CallStarted) -> dict[str, Any]:
             "to": started.to,
             "channel": started.channel.value,
             "direction": started.direction.value,
-            "medium": started.medium or ("text" if started.channel.value == "whatsapp" else "voice"),
+            "medium": started.medium or ("text" if started.channel.is_a_thread else "voice"),
             "today": started.today,
         },
         "caller": caller,

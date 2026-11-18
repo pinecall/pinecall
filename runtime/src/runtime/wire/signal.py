@@ -4,7 +4,7 @@ from typing import Any
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, RootModel
 
-from runtime.enums import Env
+from runtime.enums import Channel, Env
 from runtime.wire.base import Command, Entry
 
 
@@ -249,6 +249,8 @@ class HandedMessage(BaseModel):
     text: str | None
     # A voice note's audio at Meta, heard by the gateway that holds the thread.
     media_id: str | None = None
+    # The channel it was written on; a gateway of the release before said none, and meant WhatsApp.
+    channel: Channel = Channel.whatsapp
     # Set, this is no message of the contact's but a receipt of the agent's: where it stands, and why it failed.
     status: str | None = None
     error: str | None = None

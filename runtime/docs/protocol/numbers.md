@@ -74,7 +74,7 @@ Two ways to hook a number, both through this endpoint:
 One org holds a number: importing a number another org holds is `409`, and the sentence names
 neither the org nor its trunk.
 
-**A number is a route a channel.** The same number answers the phone and WhatsApp at once, each its
+**A number is a route a channel.** The same number answers the phone, WhatsApp and SMS at once, each its
 own row: its own agent, its own environment, its own account (the Twilio account the number rings
 through, the WhatsApp account at Meta it is written to). Importing a number on one channel adds or
 replaces that channel's row and leaves the other as it is, trunk and rule included. Until 0.11.45 a
@@ -146,6 +146,42 @@ read off the tables without asking any carrier. `GET /v1/numbers/{number}/path` 
 steps, each `{step, state, says, fix}` — the carrier (a Twilio number asks Twilio whether it is
 still attached to the trunk pointed here), the fence, the environment's rule, the agent — with the worst
 of them as `rings` and `last_call_at`; `404` for a number the org has not in the key's environment.
+
+## SMS — `POST /v1/numbers {channel: "sms"}`, `POST /v1/sms/twilio/{mark}`
+
+A number of a Twilio account answers SMS as one more route, beside its phone's and its WhatsApp's:
+`POST /v1/numbers {number, agent, channel: "sms", account?}`. The account is the org's Twilio
+account, or the platform's own for a number it bought (the number's phone route says so); a SIP
+peer, a WhatsApp account or a number the org hooked itself is `409`/`400`: only Twilio's API points a
+number's messages. The steps, shown by `?dry_run=true` like any import:
+
+```
+twilio: +17184006729's messages posted to this box: done
+route: +17184006729 to riley in the production: done
+```
+
+The first sets the number's `SmsUrl` at Twilio to
+`https://<the deployment>/v1/sms/twilio/<mark>`, whatever trunk its calls are on. A number whose
+messages go to another service now (an address that is neither empty, Twilio's own placeholder nor
+this one) is `409 <number>'s messages go to <url> now: … say move`, and `move: true` takes them.
+
+**The address is the proof.** Twilio signs a webhook with the account's auth token, and an org
+brings an API key, which signs nothing. So the `mark` is the vault's own on the number: Twilio is
+given it by this deployment, through the account's API, and a post at any other address, or one
+that names another number as written to, is `403`. A message is `POST`ed as Twilio's form (`To`,
+`From`, `Body`, `MessageSid`) and answered `200` with an empty TwiML `<Response/>`, so Twilio says
+nothing itself: the reply is the agent's.
+
+From there an SMS is a conversation like WhatsApp's ([whatsapp.md](whatsapp.md), "A conversation"):
+one thread a contact and number, a written call on the app that holds the agent, on the channel
+`sms`; messages answered in order; quiet for two hours and it is over; a message for an agent nobody
+holds waits (`message.waiting`). What differs: an SMS is neither marked read nor answered with a
+typing sign; there is no 24-hour window; a reply longer than 1,600 characters goes out as several; a
+reply Twilio refuses is an `error` entry `sms_not_sent`. Each reply is sent with a `StatusCallback`
+(`…/{mark}/status`), and what Twilio says of it (`queued`, `sent`, `delivered`, `undelivered`,
+`failed`) is a `message.status` entry on the open conversation, a failure with `Twilio error
+<code>`. Only text is read: an MMS's media is dropped. Letting the SMS route go leaves the number's
+`SmsUrl` as it is at Twilio: a post for a number nobody routed is answered `200` and dropped.
 
 ## Letting one go, moving one — `DELETE /v1/numbers/{number}`, `PUT /v1/numbers/{number}/env`
 

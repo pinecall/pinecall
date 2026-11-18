@@ -6,7 +6,7 @@ import { z } from "zod";
  * The door the public came through: a phone call over SIP, the browser widget over WebRTC, or
  * WhatsApp text.
  */
-export const ChannelSchema = z.enum(["phone", "web", "whatsapp"]);
+export const ChannelSchema = z.enum(["phone", "web", "whatsapp", "sms"]);
 
 /** Whether a call is spoken or written: the widget's voice call and its chat share the `web` channel. */
 export const MediumSchema = z.enum(["voice", "text"]);

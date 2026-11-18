@@ -15,6 +15,7 @@ class RulesTest < Minitest::Test
   SPOKEN = "You are on a phone call."
   WEBSITE = "You are in a written chat on a website."
   WHATSAPP = "You are on WhatsApp."
+  SMS = "You are answering by SMS."
 
   # An agent serving a call on `channel`, with `medium` when the gateway said one.
   def serving(klass, channel, medium = nil)
@@ -43,13 +44,14 @@ class RulesTest < Minitest::Test
 
   def test_each_channel_and_medium_says_how_to_write_there
     [["phone", "voice", SPOKEN], ["web", "voice", SPOKEN], ["web", "text", WEBSITE],
-     ["whatsapp", "text", WHATSAPP], ["whatsapp", "voice", WHATSAPP]].each do |channel, medium, opening|
+     ["whatsapp", "text", WHATSAPP], ["whatsapp", "voice", WHATSAPP],
+     ["sms", "text", SMS]].each do |channel, medium, opening|
       assert channel_of(identity_of(serving(Clinica, channel, medium))).start_with?(opening), "#{channel} by #{medium}"
     end
   end
 
   def test_a_call_whose_gateway_does_not_say_takes_the_medium_its_channel_implies
-    [["phone", SPOKEN], ["web", SPOKEN], ["whatsapp", WHATSAPP]].each do |channel, opening|
+    [["phone", SPOKEN], ["web", SPOKEN], ["whatsapp", WHATSAPP], ["sms", SMS]].each do |channel, opening|
       assert channel_of(identity_of(serving(Clinica, channel))).start_with?(opening), channel
     end
   end

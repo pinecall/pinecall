@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from runtime.enums import Channel
 from runtime.exceptions import Forbidden, ServiceUnavailable
 from runtime.kit.crypto import Vault
 from runtime.kit.loops import survive
@@ -68,10 +69,12 @@ class Subscription:
 
 @dataclass(frozen=True, slots=True)
 class Inbound:
-    """One message to one of the box's WhatsApp numbers."""
+    """One message a contact wrote to one of the box's numbers, on WhatsApp or by SMS."""
 
     number: str
+    # The provider's id for that number: Meta's phone number id, or the Twilio account an SMS came through.
     phone_number_id: str
+    # The provider's id for who wrote: the contact's number, digits alone.
     wa_id: str
     name: str | None
     message_id: str
@@ -82,6 +85,8 @@ class Inbound:
     media_id: str | None = None
     # The orgs whose own app signed the body for this number; None when the box's app did.
     signed_for: frozenset[str] | None = None
+    # The channel it was written on: a thread of a number is a channel's, and so is how it is answered.
+    channel: Channel = Channel.whatsapp
 
     @property
     def caller(self) -> str:
@@ -105,6 +110,7 @@ class Receipt:
     # Meta's words for a message that failed.
     error: str | None = None
     signed_for: frozenset[str] | None = None
+    channel: Channel = Channel.whatsapp
 
     @property
     def caller(self) -> str:

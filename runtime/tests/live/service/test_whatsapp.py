@@ -16,17 +16,20 @@ from runtime.enums import Channel, Env
 from runtime.live.parts import LiveParts
 from runtime.live.peers import THREADS, ThreadKey
 from runtime.live.service import whatsapp, written
+from runtime.live.service.replies import BySms, ByWhatsapp
 from runtime.live.service.whatsapp import OpenThread
 from runtime.providers import service as providers
 from runtime.providers.service import transcription
 from runtime.telephony.repository import RouteRepository, RouteToWrite
-from runtime.telephony.service import accounts
+from runtime.telephony.service import accounts, sms
+from runtime.telephony.service.twilio import TwilioAccount
 from runtime.telephony.service.whatsapp_number import WhatsappNumber
 from runtime.whatsapp.service import webhook
 from runtime.whatsapp.service.webhook import Inbound, Receipt
 from runtime.wire.events import MessageStatus
 from tests.conftest import Tenant, needs_the_database, until
 from tests.fakes.meta import Graph, a_body, a_text
+from tests.fakes.twilio import Twilio
 from tests.live.conftest import Side
 
 if TYPE_CHECKING:
@@ -61,10 +64,11 @@ async def test_a_message_another_gateway_handed_on_that_cannot_be_read_is_said_a
 # ── a message of an open conversation ──
 
 
-def a_thread(http: httpx.AsyncClient, message: Inbound, *, agents_line: bool) -> OpenThread:
+def a_thread(side: Side, http: httpx.AsyncClient, message: Inbound, *, agents_line: bool) -> OpenThread:
     """A contact's open conversation, on a call the agent may speak on or one a person took."""
     running = cast("Session", SimpleNamespace(line=SimpleNamespace(agent_may_speak=agents_line)))
-    return OpenThread(session=running, inbound=message, http=http, token="the number's token")
+    by_meta = ByWhatsapp(http, "the number's token", side.parts, SCOPE)
+    return OpenThread(session=running, inbound=message, reaches=by_meta)
 
 
 @pytest.fixture
@@ -88,8 +92,8 @@ async def test_a_message_taken_up_is_marked_read_and_typing_is_shown_only_while_
     meta = Graph()
     (message,) = webhook.messages_in(a_body(a_text("quiero un turno")))
     async with httpx.AsyncClient(transport=httpx.MockTransport(meta.answer)) as http:
-        thread = a_thread(http, message, agents_line=agents_line)
-        assert await whatsapp.take_up(side.parts, SCOPE, thread, message) is None
+        thread = a_thread(side, http, message, agents_line=agents_line)
+        assert await whatsapp.take_up(side.parts, thread, message) is None
     assert meta.read == [("wamid.1", agents_line)]
     assert asked == ["quiero un turno"]
 
@@ -99,7 +103,7 @@ async def test_a_message_is_answered_even_when_meta_refuses_to_mark_it_read(side
     meta = Graph(refusal=(400, "message is too old to be marked read"))
     (message,) = webhook.messages_in(a_body(a_text("hola")))
     async with httpx.AsyncClient(transport=httpx.MockTransport(meta.answer)) as http:
-        assert await whatsapp.take_up(side.parts, SCOPE, a_thread(http, message, agents_line=True), message) is None
+        assert await whatsapp.take_up(side.parts, a_thread(side, http, message, agents_line=True), message) is None
     assert asked == ["hola"]
 
 
@@ -123,7 +127,7 @@ async def test_a_voice_note_is_read_as_what_it_says(
     note: dict[str, object] = {"from": "59899000001", "id": "wamid.5", "type": "audio", "audio": {"id": "media.7"}}
     (message,) = webhook.messages_in(a_body(note))
     async with httpx.AsyncClient(transport=httpx.MockTransport(meta.answer)) as http:
-        assert await whatsapp.take_up(side.parts, SCOPE, a_thread(http, message, agents_line=True), message) is None
+        assert await whatsapp.take_up(side.parts, a_thread(side, http, message, agents_line=True), message) is None
     assert heard == [(b"OggS", False)]
     assert asked == ["quiero cancelar mi turno"]
     assert meta.read == [("wamid.5", True)]
@@ -136,7 +140,7 @@ async def test_a_voice_note_that_cannot_be_fetched_is_read_and_nothing_is_asked(
     note: dict[str, object] = {"from": "59899000001", "id": "wamid.6", "type": "audio", "audio": {"id": "media.9"}}
     (message,) = webhook.messages_in(a_body(note))
     async with httpx.AsyncClient(transport=httpx.MockTransport(meta.answer)) as http:
-        assert await whatsapp.take_up(side.parts, SCOPE, a_thread(http, message, agents_line=True), message) is None
+        assert await whatsapp.take_up(side.parts, a_thread(side, http, message, agents_line=True), message) is None
     assert asked == []
 
 
@@ -198,7 +202,7 @@ async def test_a_receipt_is_said_on_the_contacts_open_conversation_and_on_no_oth
     running = cast("Session", SimpleNamespace(call=SimpleNamespace(writing=writing)))
     (message,) = webhook.messages_in(a_body(a_text("hola")))
     async with httpx.AsyncClient(transport=httpx.MockTransport(Graph().answer)) as http:
-        thread = OpenThread(session=running, inbound=message, http=http, token="t")
+        thread = OpenThread(session=running, inbound=message, reaches=ByWhatsapp(http, "t", side.parts, SCOPE))
         side.threads._open[ThreadKey(tenant.org, Env.sandbox, number, "59899000001")] = thread
         read = Receipt(number, "1055", "59899000001", "wamid.out.1", "read", signed_for=frozenset({tenant.org}))
         await side.threads.note(read)
@@ -207,3 +211,37 @@ async def test_a_receipt_is_said_on_the_contacts_open_conversation_and_on_no_oth
     assert writing.written == [
         ("message.status", MessageStatus(message_id="wamid.out.1", status="read", to="+59899000001", error=None))
     ]
+
+
+# ── a conversation by SMS ──
+
+
+@needs_the_database
+async def test_a_message_by_sms_is_answered_from_the_number_written_to_and_marks_nothing_read(
+    side: Side, asked: list[str]
+) -> None:
+    """An SMS has no read mark and no typing sign: the message is taken up, and the reply goes out through Twilio."""
+    twilio = Twilio()
+    message = sms.read_message(
+        {"To": "+15550100000", "From": "+59899000001", "Body": "hola", "MessageSid": "SM1", "AccountSid": "AC1"}
+    )
+    assert (message.channel, message.caller, message.text) == (Channel.sms, "+59899000001", "hola")
+    async with httpx.AsyncClient(transport=twilio.transport()) as http:
+        account = TwilioAccount(twilio.account_sid, twilio.user, twilio.secret)
+        by_sms = BySms(http, account, "https://box.example/v1/sms/twilio/a-mark/status")
+        running = cast("Session", SimpleNamespace(line=SimpleNamespace(agent_may_speak=True)))
+        thread = OpenThread(session=running, inbound=message, reaches=by_sms)
+        assert await whatsapp.take_up(side.parts, thread, message) is None
+        await by_sms.send(message, "¡Hola! " + "palabra " * 300)
+    assert asked == ["hola"]
+    assert [(sent["From"], sent["To"]) for sent in twilio.messages] == [("+15550100000", "+59899000001")] * 2
+    assert all(len(sent["Body"]) <= sms.LONGEST_TEXT for sent in twilio.messages)
+    assert twilio.messages[0]["StatusCallback"].endswith("/status")
+
+
+def test_a_whatsapp_threads_name_is_as_it_was_and_an_sms_threads_says_its_channel() -> None:
+    """Two gateways of two releases agree on a WhatsApp thread; the same contact by SMS is another thread."""
+    on_whatsapp = ThreadKey("org_1", Env.sandbox, "+15550100000", "59899000001")
+    by_sms = ThreadKey("org_1", Env.sandbox, "+15550100000", "59899000001", Channel.sms)
+    assert str(on_whatsapp) == "org_1|sandbox|+15550100000|59899000001"
+    assert str(by_sms) == "org_1|sandbox|+15550100000|59899000001|sms"

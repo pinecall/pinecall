@@ -1,8 +1,9 @@
 """Telephony's dependencies: the keys that open its endpoints, a number loaded, and what its use cases are handed."""
 
 from typing import Annotated
+from urllib.parse import parse_qsl
 
-from fastapi import Depends, Query
+from fastapi import Depends, Query, Request
 from starlette.requests import HTTPConnection
 
 from runtime.accounts.models import Org
@@ -11,12 +12,15 @@ from runtime.actor import Actor
 from runtime.auth import Authenticator, TheOperator
 from runtime.enums import Channel, KeyScope
 from runtime.exceptions import NotFound
+from runtime.handles import TheVault
+from runtime.kit.http import read_capped_body
 from runtime.kit.text import parse_e164
 from runtime.postgres import Session, TheBoxSession
 from runtime.telephony.models import Route
-from runtime.telephony.service import numbers
+from runtime.telephony.service import numbers, sms
 from runtime.telephony.service.carrier import SipNames
 from runtime.telephony.service.hand_over import AgentsHeld
+from runtime.whatsapp import service as whatsapp
 
 NumbersKey = Annotated[Actor, Depends(Authenticator(KeyScope.numbers))]
 TalkKey = Annotated[Actor, Depends(Authenticator(KeyScope.talk))]
@@ -82,3 +86,28 @@ def agents_held_of(connection: HTTPConnection) -> AgentsHeld:
 
 TheSipNames = Annotated[SipNames, Depends(sip_names_of)]
 TheAgentsHeld = Annotated[AgentsHeld, Depends(agents_held_of)]
+
+
+# Twilio posts a form. The address carries the mark of the number the post names as the box's: the
+# one written to for a message, the one written from for a receipt.
+async def _form_of(request: Request) -> dict[str, str]:
+    body = await read_capped_body(request, sms.LONGEST_POST, "a message Twilio posts")
+    return dict(parse_qsl(body.decode(errors="replace"), keep_blank_values=True))
+
+
+async def read_sms(mark: str, request: Request, vault: TheVault) -> whatsapp.Inbound:
+    """The message Twilio posted to the address this box gave it for that number; 403 at any other."""
+    message = sms.read_message(await _form_of(request))
+    sms.refuse_another_mark(vault, message.number, mark)
+    return message
+
+
+async def read_sms_receipt(mark: str, request: Request, vault: TheVault) -> whatsapp.Receipt:
+    """Where a reply stands, as Twilio posted it to the number's own address; 403 at any other."""
+    receipt = sms.read_receipt(await _form_of(request))
+    sms.refuse_another_mark(vault, receipt.number, mark)
+    return receipt
+
+
+TheSms = Annotated[whatsapp.Inbound, Depends(read_sms)]
+TheSmsReceipt = Annotated[whatsapp.Receipt, Depends(read_sms_receipt)]

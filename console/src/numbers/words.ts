@@ -20,6 +20,9 @@ export function e164(typed: string): string {
   return typed.replace(/[\s().-]/g, "");
 }
 
+/** A channel as a person reads it. */
+export const CHANNEL_NAMES: Record<NumberRow["route"]["channel"], string> = { phone: "Phone", web: "Web", whatsapp: "WhatsApp", sms: "SMS" };
+
 const KINDS: Record<Carrier["kind"], string> = { twilio: "Twilio", sip: "Your PBX", whatsapp: "WhatsApp" };
 
 /** A carrier account in a line: what it is, and the name it was given. */

@@ -15,7 +15,7 @@ import { readCarriers, readCatalog, readNumbers, type Carrier, type Catalog, typ
 import { NumberView } from "./number-view";
 import { OutboundCard } from "./outbound";
 import { TestLine } from "./test-line";
-import { RINGS, shown } from "./words";
+import { CHANNEL_NAMES, RINGS, shown } from "./words";
 import "../dashboard/dashboard.css";
 import "../apps/apps.css";
 import "../configure/configure.css";
@@ -92,7 +92,7 @@ export function NumbersPage(): ReactNode {
                 </span>
                 <span className="app-row-under dash-clip">
                   {one.route.agent}
-                  {one.route.channel === "whatsapp" ? " · WhatsApp" : ""}
+                  {one.route.channel === "phone" ? "" : ` · ${CHANNEL_NAMES[one.route.channel]}`}
                 </span>
               </NavLink>
             ))}

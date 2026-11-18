@@ -5,6 +5,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import override
 
+from runtime import enums
 from runtime.enums import Env
 from runtime.exceptions import ServiceUnavailable
 from runtime.kit.loops import survive
@@ -136,16 +137,19 @@ class CallsAtOnce:
 
 @dataclass(frozen=True, slots=True)
 class ThreadKey:
-    """One WhatsApp conversation: whose, in which env, the number written to, and who wrote."""
+    """One written conversation: whose, in which env, the number written to, who wrote, and on which channel."""
 
     org: str
     env: Env
     number: str
     wa_id: str
+    channel: enums.Channel = enums.Channel.whatsapp
 
+    # A WhatsApp thread's name is as it always was, so a gateway of the release before reads it.
     @override
     def __str__(self) -> str:
-        return "|".join((self.org, self.env.value, self.number, self.wa_id))
+        named = (self.org, self.env.value, self.number, self.wa_id)
+        return "|".join(named if self.channel is enums.Channel.whatsapp else (*named, self.channel.value))
 
 
 # A session and a thread live where they were opened: another gateway takes one up only once its

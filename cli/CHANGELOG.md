@@ -6,9 +6,13 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
-- **`numbers drop --channel phone|whatsapp`.** A number answers the phone and WhatsApp at once, each its own
+- **`numbers import --channel sms`: a number answers SMS.** A number of a Twilio account answers SMS beside
+  the phone: importing it has Twilio post its messages to Pinecall (`--move` when they go to another service
+  now) and the agent replies from the same number. The MCP's `numbers` tool takes the channel too, and
+  `prompt --channel sms` prints how the agent writes there.
+- **`numbers drop --channel phone|whatsapp|sms`.** A number answers on several channels at once, each its own
   route, and `numbers import … --channel whatsapp` no longer replaces the phone's. `drop` lets one go and
-  says the other stays; without `--channel`, a number on both is refused naming the flag.
+  says the others stay; without `--channel`, a number on several is refused naming the flag.
 
 ## [0.11.44] — a WhatsApp number of your own Meta app is heard and says where each reply stands, a simulated caller rings by phone, and a restarted process keeps its line (2026-11-18)
 

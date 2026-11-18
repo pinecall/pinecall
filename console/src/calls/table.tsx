@@ -27,6 +27,7 @@ const CHANNELS = [
   { value: "web", label: "Web" },
   { value: "phone", label: "Phone" },
   { value: "whatsapp", label: "WhatsApp" },
+  { value: "sms", label: "SMS" },
 ];
 
 /** A row opens the call beside its thread; the status picked goes with it. */

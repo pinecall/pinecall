@@ -20,7 +20,7 @@ JsonObject: TypeAlias = dict[str, Json]
 Env: TypeAlias = Literal["production", "sandbox"]
 
 # phone: SIP into a LiveKit room; web: the widget over WebRTC; whatsapp: text.
-Channel: TypeAlias = Literal["phone", "web", "whatsapp"]
+Channel: TypeAlias = Literal["phone", "web", "whatsapp", "sms"]
 
 # How the call is had: spoken (a room, a voice) or written (a text session); `web` is either.
 Medium: TypeAlias = Literal["voice", "text"]

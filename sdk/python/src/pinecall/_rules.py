@@ -36,18 +36,25 @@ ON_WHATSAPP = (
     " short messages."
 )
 
+ON_SMS = (
+    "You are answering by SMS. Plain text only: no markdown, no lists, no emoji unless the person"
+    " uses them. One short message, a few sentences at most."
+)
+
 
 def medium_of(channel: Channel, medium: Medium | None) -> Medium:
     """The medium a call is had in: the one the gateway said, else the one its channel implies."""
     if medium is not None:
         return medium
-    return "text" if channel == "whatsapp" else "voice"
+    return "text" if channel in ("whatsapp", "sms") else "voice"
 
 
 def channel_rules_for(channel: Channel, medium: Medium | None) -> str:
     """How to write on this channel and medium: WhatsApp's formatting, a website's, or speech."""
     if channel == "whatsapp":
         return ON_WHATSAPP
+    if channel == "sms":
+        return ON_SMS
     if channel == "web" and medium_of(channel, medium) == "text":
         return ON_A_WEBSITE
     return SPOKEN

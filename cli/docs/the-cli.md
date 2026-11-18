@@ -1914,9 +1914,9 @@ no prompt drawn, and the desk leaves when the lines run out.
 ```
 pinecall numbers list
 pinecall numbers available [--account <id>]
-pinecall numbers import <+34…> --agent <slug> [--account <id>] [--channel phone|whatsapp] [--dry-run]
-pinecall numbers buy --country <XX> [--area <digits>] --agent <slug> [--channel phone|whatsapp] [--dry-run]
-pinecall numbers drop <+34…> [--channel phone|whatsapp]
+pinecall numbers import <+34…> --agent <slug> [--account <id>] [--channel phone|whatsapp|sms] [--move] [--dry-run]
+pinecall numbers buy --country <XX> [--area <digits>] --agent <slug> [--channel phone|whatsapp|sms] [--dry-run]
+pinecall numbers drop <+34…> [--channel phone|whatsapp|sms]
 ```
 
 **Adding a number to the org from a terminal is `numbers import`**: the number is one an account of
@@ -1936,6 +1936,25 @@ $ pinecall numbers import +34910000000 --agent clinica-norte --move   # off the 
 ```console
 $ pinecall numbers import +34910000001 --agent clinica-norte --account AC9876…
 ```
+
+**One number answers on several channels**, each its own route with its own agent: the phone, WhatsApp
+and SMS. `--channel` says which is being added, and what the number answers on the others stays as it
+is. SMS is a number of a Twilio account: importing it has Twilio post the number's messages to
+Pinecall, and the agent's replies go out from the same number through that account.
+
+```console
+$ pinecall numbers import +17184006729 --agent riley --channel sms --dry-run
+  twilio: +17184006729's messages posted to this box: to do
+  route: +17184006729 to riley in the sandbox: to do
+  nothing written: drop --dry-run to do it
+$ pinecall numbers import +17184006729 --agent riley --channel sms --prod
+$ pinecall numbers drop +17184006729 --channel sms --prod      # the phone goes on ringing
+```
+
+A number whose messages already go to another service is refused naming where (`409 …'s messages go
+to https://… now`): `--move` takes them. In the United States a number sends SMS only once its Twilio
+account registered it for A2P 10DLC; until then Twilio accepts the reply and reports it `undelivered`
+(error 30034), which the call's log shows as `message.status`.
 
 **Which numbers there are to import is `numbers available`** (`GET /v1/numbers/available`): every
 number the org's Twilio accounts own, every page of Twilio's, as a table: the number, its name at the

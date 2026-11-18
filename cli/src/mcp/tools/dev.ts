@@ -67,7 +67,7 @@ export const prompt = tool({
   schema: {
     agent: z.string().optional().describe("the agent's name; the project's only agent when left out"),
     state: z.record(z.string(), z.unknown()).optional().describe("fields of the class and their values, to see the prompt in that state"),
-    channel: z.enum(["phone", "web", "whatsapp"]).optional().describe("the channel the prompt is written for"),
+    channel: z.enum(["phone", "web", "whatsapp", "sms"]).optional().describe("the channel the prompt is written for"),
   },
   manual:
     "`prompt` prints what the model reads — the class's docstring, the rules, the tools, the view — exactly as a call would send it, offline. `state` sets fields first, so you can read the prompt at any stage. A Ruby or a Python agent's prompt is `pinecall prompt` in a terminal.",

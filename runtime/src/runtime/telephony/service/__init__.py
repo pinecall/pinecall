@@ -40,7 +40,9 @@ from runtime.telephony.service.simulated_rings import (
     hang_up_simulated_caller,
     ring_simulated_caller,
 )
+from runtime.telephony.service.sms import send_sms, sms_account_of, sms_status_url
 from runtime.telephony.service.test_line import find_test_line
+from runtime.telephony.service.twilio import TwilioAccount
 
 __all__ = [
     "CALLER_NUMBER",
@@ -52,6 +54,7 @@ __all__ = [
     "Legs",
     "SipNames",
     "Trunk",
+    "TwilioAccount",
     "arrival_of",
     "caller_leg",
     "callers_room",
@@ -79,8 +82,11 @@ __all__ = [
     "release_numbers_of",
     "ring_simulated_caller",
     "send_on",
+    "send_sms",
     "send_tones",
     "sip_config",
+    "sms_account_of",
+    "sms_status_url",
     "twilio_account_of",
     "unbridge",
 ]

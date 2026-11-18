@@ -3,7 +3,7 @@
 import pytest
 
 from runtime.exceptions import ValidationError
-from runtime.kit.text import estimate_tokens, parse_slug, slug_of
+from runtime.kit.text import cut_in_parts, estimate_tokens, parse_slug, slug_of
 
 
 @pytest.mark.parametrize(
@@ -37,3 +37,13 @@ def test_a_name_with_no_letters_or_digits_makes_no_slug() -> None:
 def test_a_text_is_estimated_at_its_words_times_one_point_three() -> None:
     assert estimate_tokens("una dos tres cuatro cinco seis siete ocho nueve diez") == 13
     assert estimate_tokens("") == 0
+
+
+def test_a_text_longer_than_a_channel_takes_is_cut_where_the_writing_breathes() -> None:
+    """Each part is within the limit, nothing is lost, and a paragraph is never cut in two when it fits."""
+    first, second = "a" * 3000, "b " * 1500
+    assert cut_in_parts(f"{first}\n\n{second}", 4096) == [first, second.strip()]
+    assert all(len(part) <= 4096 for part in cut_in_parts("palabra " * 3000, 4096))
+    assert "".join(cut_in_parts("x" * 9000, 4096)) == "x" * 9000
+    assert cut_in_parts("hola", 4096) == ["hola"]
+    assert cut_in_parts("uno dos tres", 8) == ["uno dos", "tres"]

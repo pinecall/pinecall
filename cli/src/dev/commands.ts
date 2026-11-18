@@ -11,7 +11,7 @@ import * as render from "./render.js";
 import { consoleLink, start, StartInput } from "./start.js";
 
 // What `prompt` renders the prompt for: a door, and how the call is held on it.
-const CHANNELS: readonly string[] = ["phone", "web", "whatsapp"];
+const CHANNELS: readonly string[] = ["phone", "web", "whatsapp", "sms"];
 const MEDIA: readonly string[] = ["voice", "text"];
 
 const START = `
@@ -96,7 +96,7 @@ export function register(program: Command, ctx: Context): void {
     .option("--agent <name>")
     .option("--state <file>", "a goldens file: the state of one of its cases")
     .option("--case <n>", "which case of that file", "0")
-    .option("--channel <channel>", "phone | web | whatsapp", "phone")
+    .option("--channel <channel>", "phone | web | whatsapp | sms", "phone")
     .option("--medium <how>", "voice | text; the channel's when left out")
     .addHelpText("after", PROMPT)
     .action(async (file, flags) => {

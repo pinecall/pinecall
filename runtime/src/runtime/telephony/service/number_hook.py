@@ -19,7 +19,7 @@ from runtime.kit.time import now
 from runtime.livekit import Servers
 from runtime.scoping import box_wide
 from runtime.telephony.repository import Numbered, RouteRepository, RouteToWrite
-from runtime.telephony.service import accounts, catalog, networks, sfu, twilio_carrier
+from runtime.telephony.service import accounts, catalog, networks, sfu, sms, twilio_carrier
 from runtime.telephony.service import fence as fences
 from runtime.telephony.service.carrier import SipNames, Step
 from runtime.telephony.service.fence import Fenced
@@ -192,8 +192,13 @@ async def survey_import(
 ) -> Survey:
     """Everything importing a number needs, read before anything is written."""
     number = parse_e164(wanted.number)
-    if wanted.channel not in {Channel.phone, Channel.whatsapp}:
-        raise ValidationError(f"a number is imported to answer phone or whatsapp, not {wanted.channel}")
+    if not wanted.channel.has_a_number:
+        raise ValidationError(f"a number is imported to answer phone, whatsapp or sms, not {wanted.channel}")
+    if wanted.channel is Channel.sms and wanted.hooked:
+        raise ValidationError(
+            "an SMS number is pointed here by this box, through the Twilio account it lives in: import it, "
+            "it is not hooked"
+        )
     org, env = wanted.scope.org, wanted.scope.env
     # A box with no name cannot be pointed at.
     names.get_domain()
@@ -208,7 +213,9 @@ async def survey_import(
             )
     fleets = await fleet.get_fleets(session)
     await _check_via(session, wanted)
-    account = None if wanted.hooked else await accounts.get_carrier(session, vault, org, wanted.account)
+    # A number the box bought answers SMS on the box's own account, as it answers the phone.
+    bought = wanted.channel is Channel.sms and wanted.account is None and await sms.is_bought_here(session, org, number)
+    account = None if wanted.hooked or bought else await accounts.get_carrier(session, vault, org, wanted.account)
     if account is not None:
         await account.check_number(http, wanted.channel, number)
     if account is not None and wanted.networks:
@@ -221,7 +228,7 @@ async def survey_import(
         fenced = account.fence(number, standings.get(account.id, NOTHING_ASKED))
     elif wanted.channel is Channel.phone:
         fenced = fences.fence_unaccounted(org, number, wanted.via, named, asked)
-    came = origin or (RouteOrigin.hooked if account is None else RouteOrigin.imported)
+    came = origin or (RouteOrigin.bought if bought else RouteOrigin.hooked if account is None else RouteOrigin.imported)
     existing = await repository.find(org, number, wanted.channel)
     # A hooked number waits for the operator only where the box asks (PINECALL_APPROVE_HOOKED); one
     # approved once stays approved however it comes again.
@@ -242,6 +249,10 @@ async def survey_import(
     at_carrier: Sequence[Step] = ()
     if account is not None and wanted.channel is Channel.phone:
         at_carrier = await account.survey_hook(http, names, number, env, move=wanted.move)
+    if wanted.channel is Channel.sms:
+        through = await accounts.box_twilio(session, vault) if bought else sms.refuse_what_sends_no_sms(account).account
+        here = sms.sms_hook_url(vault, f"https://{names.get_domain()}", number)
+        at_carrier = await sms.survey_messages(http, through, here, number, move=wanted.move)
     on_sfu = await _survey_sfu(servers, route, fenced)
     return Survey(route, fenced, fleet.fleet_of(fleets, env), tuple(at_carrier), on_sfu, asked, existing)
 

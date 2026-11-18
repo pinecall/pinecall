@@ -6,7 +6,7 @@ import { z } from "zod";
  * The door the public came through: a phone call over SIP, the browser widget over WebRTC, or
  * WhatsApp text.
  */
-export const ChannelSchema = z.enum(["phone", "web", "whatsapp"]);
+export const ChannelSchema = z.enum(["phone", "web", "whatsapp", "sms"]);
 
 /** Inbound: the public reached the agent. Outbound: the agent reached out (a dial). */
 export const DirectionSchema = z.enum(["inbound", "outbound"]);

@@ -4,6 +4,10 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## Unreleased
+
+- **`sms` is a channel.** A call by SMS is written (`medium: text`), and the built-in rule tells the model to write plain, short text.
+
 ## [0.11.44] — a WhatsApp number of your own Meta app is heard and says where each reply stands, a simulated caller rings by phone, and a restarted process keeps its line (2026-11-18)
 
 - **`message.status` says where a WhatsApp reply stands.** A reply the agent wrote is sent, then delivered to

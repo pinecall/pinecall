@@ -37,7 +37,7 @@ export function AppOverview({ app, kind, base, served, names, onChanged }: { app
   const { hosted, held } = app;
 
   const series = counted?.series ?? [];
-  const calls: Point[] = series.map((day) => ({ label: dayLabel(day.day), value: callsOf(day), detail: `${day.phone} phone, ${day.web} web, ${day.whatsapp} WhatsApp` }));
+  const calls: Point[] = series.map((day) => ({ label: dayLabel(day.day), value: callsOf(day), detail: `${day.phone} phone, ${day.web} web, ${day.whatsapp} WhatsApp${day.sms > 0 ? `, ${day.sms} SMS` : ""}` }));
   const total = counted?.conversations.now ?? 0;
   const judged = counted?.judged ?? 0;
   const passed = counted?.passed ?? 0;
@@ -99,6 +99,7 @@ export function AppOverview({ app, kind, base, served, names, onChanged }: { app
             { name: "Phone", value: channels?.phone ?? 0, tone: "accent", shown: count(channels?.phone ?? 0) },
             { name: "Web", value: channels?.web ?? 0, tone: "blue", shown: count(channels?.web ?? 0) },
             { name: "WhatsApp", value: channels?.whatsapp ?? 0, tone: "good", shown: count(channels?.whatsapp ?? 0) },
+            ...((channels?.sms ?? 0) > 0 ? [{ name: "SMS", value: channels?.sms ?? 0, tone: "pink" as const, shown: count(channels?.sms ?? 0) }] : []),
           ]}
         />
         <Ring

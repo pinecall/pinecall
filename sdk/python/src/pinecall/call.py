@@ -110,7 +110,9 @@ class CallWorld:
         """Who is on the line as far as the platform knows: `name`, `phone`, `email`; or None."""
         self.metadata = line.metadata
         """What the call was opened with and sealed, as a token's `metadata`; empty when none."""
-        self.medium: Medium = line.medium or ("text" if line.channel == "whatsapp" else "voice")
+        self.medium: Medium = line.medium or (
+            "text" if line.channel in ("whatsapp", "sms") else "voice"
+        )
         self.today = line.today
         """The day the call opened, `YYYY-MM-DD`."""
         self.claimed = line.claimed

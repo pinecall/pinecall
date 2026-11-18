@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **`sms` is a channel.** A call by SMS is written (`medium: text`), and the built-in rule tells the model to write plain, short text.
+
 ## 0.11.44 — a WhatsApp number of your own Meta app is heard and says where each reply stands, a simulated caller rings by phone, and a restarted process keeps its line (2026-11-18)
 
 - `message.status`: where a WhatsApp reply stands (`sent`, `delivered`, `read`, `failed`), an event on its call.
@@ -338,63 +342,56 @@
 
 ## 0.1.6 — The first release: an agent as a Python class (2026-10-09)
 
-- A frame sent from the loop could leave before frames a tool's thread had sent just before it.
-  Every frame now leaves in the order it was sent, from any thread.
-- `docs/tutorial.md`: forty minutes from an empty directory to an agent that answers from your
-  documents and remembers who called. The README says what the package is and how to install it
-  from git until its first release.
-- `python -m pinecall.serve`: `PINECALL_LOG=debug` writes the package's log to stderr, timed; a
-  gateway that refuses the registration is one sentence and exit 2, not a traceback.
-- A call opens with its prompt before its state, and what memory recalled reaches the view as the
-  recall lands, not behind the job running: the caller's first turn no longer waits on either.
-- `pinecall.testing.load(file)`: an agent's class loaded as `pinecall start` loads it, its folder a
-  package, for a test whose agent lives in a folder named by its slug.
+- A frame sent from the loop could leave before frames a tool's thread had sent just before it. Every frame now leaves
+  in the order it was sent, from any thread.
+- `docs/tutorial.md`: forty minutes from an empty directory to an agent that answers from your documents and remembers
+  who called. The README says what the package is and how to install it from git until its first release.
+- `python -m pinecall.serve`: `PINECALL_LOG=debug` writes the package's log to stderr, timed; a gateway that refuses
+  the registration is one sentence and exit 2, not a traceback.
+- A call opens with its prompt before its state, and what memory recalled reaches the view as the recall lands, not
+  behind the job running: the caller's first turn no longer waits on either.
+- `pinecall.testing.load(file)`: an agent's class loaded as `pinecall start` loads it, its folder a package, for a
+  test whose agent lives in a folder named by its slug.
 - `examples/clinica_norte`: the TypeScript and Ruby example, in Python.
-- `python -m pinecall.serve start|prompt`: the entry the one `pinecall` CLI starts a Python agent
-  with. `pinecall.hold(Class, url=, api_key=)` holds one from a process of your own.
-- `pinecall.testing.Gateway`: ring 0 — a class held as a call holds it, from a plain test, with no
-  network and no key. `docs/testing-an-agent.md`, `docs/production.md`.
-- `pinecall.bridge.mount(Class, client)`: a class held on a client, an instance of its own per
-  call, opened with `on_call` and the state its opener asked for in one prompt, and from then on
-  only the fields and blocks that changed. `on_memory` is called when memory is read or written.
-- `self.call`, a `CallWorld`: the call's line, room and turns, and a verb per command — `say`,
-  `reply`, `send`, `participant(…).mute()`, `invite`, `transfer`, `attention`, `hold`, `unhold`,
-  `dtmf`, `claim`, `callback`, `opt_out`, `hangup`, `search`. A verb that waits answers with an
-  `Answer`, awaited in an `async def` or `.result()` on a `def` tool's thread. The four hooks,
-  `on_call`, `on_end`, `on_event`, `on_memory`, each a `def` or an `async def`.
-- `Client.history(call=…)` and `Client.observe(call=…)`: a call's log, or an agent's own, as one
-  page or as a stream, each entry with the state it folds to — the runtime's own reducer.
-- `pinecall.Client(url, api_key, env)`: one socket to the gateway and the agents held on it —
-  registered and declared again on every reconnect, each tool call answered with exactly one
-  result, `drain()` to leave without cutting a call, `search(call, query, k)` for a call this
-  process serves. It reads nothing from the environment.
-- `@pinecall.panel("Ficha")`: the panel the console draws beside a conversation, a method
-  `(self, who, draw)` that draws the closed catalogue (`panel`, `rows`, `row`, `stat`, `table`,
-  `badge`, `text`) for a `Who`.
-- `pinecall.render(agent, line)` and `show_prompt`: the prompt as four named blocks in two
-  regions — `identity` (the class's docstring, the framework's rules, the channel's words),
-  `knowledge`, `tools`, then the `view`. The view is a Jinja template, `views/<slug>.jinja` beside
-  the class's file (or `view_template` on the class), with every state field in scope, `call`,
-  `resumed` and `remembers("…")`. `docs/the-view.md`.
-- `Agent.accepts = {"slot.released": ["app"]}`: the outside events an agent takes, and from whom
-  (`app`, your backend; `participant`, a browser in the call). A sender that is neither is refused
-  when the class is created.
-- `docs/writing-an-agent.md`: the class, its config, the world's settings, state, the stage,
-  tools, the events it accepts, and every refusal with its sentence.
-- `@pinecall.tool`: a method the model may call, its docstring the description and its `Args:`
-  section each parameter's. The parameters' types are the method's annotations (a `Literal` is
-  an enum, a pydantic model a nested object), and what the model sends is checked and converted
-  before the method runs. `stage=`, `when=`, `confirm=`, `preview=`, `pii=` and `timeout=`; a
-  tool may be a `def` or an `async def`. A tool with no docstring, a parameter a model cannot
-  fill by name, `pii=` naming no parameter, or a stage the class does not declare is refused when
-  the class is created. `Agent.tools()`, `visible_tools()` and `run_tool(name, arguments)`.
-- `pinecall.Agent`: a class's annotated fields are its state, opened per call at the value written
-  (each call gets its own copy of a list); `state(pii=True)` or `state(visibility=…)` says who may
-  see one; a public `@property` is a derived field; `stage: Literal[...]` is the stage. Once
-  sealed, only a tool or a hook may write a field (`UnauthoredWrite`), and every write is recorded
-  with its author. A class that sets one of the world's settings (`voice`, `llm`, `language`…) is
-  refused when it is created, with the `pinecall` verb that sets it.
-- `pinecall.wire`: every frame, event and command the gateway speaks, the runtime's own pydantic
-  models; a frame that does not fit raises `pinecall.WireError`, which says what did not fit.
-- The package's frame: `import pinecall` gives `PinecallError`, the root of every error it will
-  raise, and `__version__`. Typed (`py.typed`), Python 3.11 and up. Nothing to write an agent with yet.
+- `python -m pinecall.serve start|prompt`: the entry the one `pinecall` CLI starts a Python agent with.
+  `pinecall.hold(Class, url=, api_key=)` holds one from a process of your own.
+- `pinecall.testing.Gateway`: ring 0 — a class held as a call holds it, from a plain test, with no network and no key.
+  `docs/testing-an-agent.md`, `docs/production.md`.
+- `pinecall.bridge.mount(Class, client)`: a class held on a client, an instance of its own per call, opened with
+  `on_call` and the state its opener asked for in one prompt, and from then on only the fields and blocks that
+  changed. `on_memory` is called when memory is read or written.
+- `self.call`, a `CallWorld`: the call's line, room and turns, and a verb per command — `say`, `reply`, `send`,
+  `participant(…).mute()`, `invite`, `transfer`, `attention`, `hold`, `unhold`, `dtmf`, `claim`, `callback`,
+  `opt_out`, `hangup`, `search`. A verb that waits answers with an `Answer`, awaited in an `async def` or `.result()`
+  on a `def` tool's thread. The four hooks, `on_call`, `on_end`, `on_event`, `on_memory`, each a `def` or an `async
+  def`.
+- `Client.history(call=…)` and `Client.observe(call=…)`: a call's log, or an agent's own, as one page or as a stream,
+  each entry with the state it folds to — the runtime's own reducer.
+- `pinecall.Client(url, api_key, env)`: one socket to the gateway and the agents held on it — registered and declared
+  again on every reconnect, each tool call answered with exactly one result, `drain()` to leave without cutting a
+  call, `search(call, query, k)` for a call this process serves. It reads nothing from the environment.
+- `@pinecall.panel("Ficha")`: the panel the console draws beside a conversation, a method `(self, who, draw)` that
+  draws the closed catalogue (`panel`, `rows`, `row`, `stat`, `table`, `badge`, `text`) for a `Who`.
+- `pinecall.render(agent, line)` and `show_prompt`: the prompt as four named blocks in two regions — `identity` (the
+  class's docstring, the framework's rules, the channel's words), `knowledge`, `tools`, then the `view`. The view is a
+  Jinja template, `views/<slug>.jinja` beside the class's file (or `view_template` on the class), with every state
+  field in scope, `call`, `resumed` and `remembers("…")`. `docs/the-view.md`.
+- `Agent.accepts = {"slot.released": ["app"]}`: the outside events an agent takes, and from whom (`app`, your backend;
+  `participant`, a browser in the call). A sender that is neither is refused when the class is created.
+- `docs/writing-an-agent.md`: the class, its config, the world's settings, state, the stage, tools, the events it
+  accepts, and every refusal with its sentence.
+- `@pinecall.tool`: a method the model may call, its docstring the description and its `Args:` section each
+  parameter's. The parameters' types are the method's annotations (a `Literal` is an enum, a pydantic model a nested
+  object), and what the model sends is checked and converted before the method runs. `stage=`, `when=`, `confirm=`,
+  `preview=`, `pii=` and `timeout=`; a tool may be a `def` or an `async def`. A tool with no docstring, a parameter a
+  model cannot fill by name, `pii=` naming no parameter, or a stage the class does not declare is refused when the
+  class is created. `Agent.tools()`, `visible_tools()` and `run_tool(name, arguments)`.
+- `pinecall.Agent`: a class's annotated fields are its state, opened per call at the value written (each call gets its
+  own copy of a list); `state(pii=True)` or `state(visibility=…)` says who may see one; a public `@property` is a
+  derived field; `stage: Literal[...]` is the stage. Once sealed, only a tool or a hook may write a field
+  (`UnauthoredWrite`), and every write is recorded with its author. A class that sets one of the world's settings
+  (`voice`, `llm`, `language`…) is refused when it is created, with the `pinecall` verb that sets it.
+- `pinecall.wire`: every frame, event and command the gateway speaks, the runtime's own pydantic models; a frame that
+  does not fit raises `pinecall.WireError`, which says what did not fit.
+- The package's frame: `import pinecall` gives `PinecallError`, the root of every error it will raise, and
+  `__version__`. Typed (`py.typed`), Python 3.11 and up. Nothing to write an agent with yet.

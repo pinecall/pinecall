@@ -42,6 +42,8 @@ class TwilioNumber(BaseModel):
     phone_number: str
     friendly_name: str = ""
     trunk_sid: str | None = None
+    # Where Twilio posts a message written to the number; empty when nowhere.
+    sms_url: str = ""
 
 
 class TwilioTrunk(BaseModel):
@@ -185,6 +187,18 @@ class Twilio:
         answer = await self._get(f"{self.home}/AvailablePhoneNumbers/{country.upper()}/Local.json", params)
         found = _FOR_SALE.validate_python(answer.get("available_phone_numbers", []))
         return found[0].phone_number if found else None
+
+    # A number's messages go where its own `SmsUrl` says, whatever trunk its calls are on.
+    async def point_messages(self, number_sid: str, url: str) -> None:
+        """Have Twilio post what is written to the number to this address."""
+        await self._post(f"{self.home}/IncomingPhoneNumbers/{number_sid}.json", {"SmsUrl": url, "SmsMethod": "POST"})
+
+    async def send_message(self, sender: str, to: str, body: str, *, status_to: str | None = None) -> str:
+        """Send a text from the account's number; Twilio's id for it. This costs money."""
+        form = {"From": sender, "To": to, "Body": body}
+        if status_to is not None:
+            form["StatusCallback"] = status_to
+        return str((await self._post(f"{self.home}/Messages.json", form)).get("sid") or "")
 
     async def buy(self, number: str) -> TwilioNumber:
         """Buy the number onto the account: this costs money."""

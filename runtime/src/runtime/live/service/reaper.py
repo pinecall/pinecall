@@ -28,6 +28,8 @@ QUIET_S = 5 * 60.0
 AT_MOST = 100
 # How long a WhatsApp thread waits for its contact before it is closed.
 A_THREAD_WAITS_S = 2 * 60 * 60.0
+# The channels a contact writes on message by message, as a call's facts name them.
+THREADS_CHANNELS = frozenset(channel.value for channel in Channel if channel.is_a_thread)
 # How long a written call parked by a process that left waits for the next one: a reload of
 # `pinecall start` is seconds, a release registers within two minutes (hosting), and a caller left
 # talking to nobody for longer than that has been let down already.
@@ -75,7 +77,7 @@ async def reap(
             ended.append(orphan.call)
     for orphan in quiet_written:
         # A written call waits for its caller as long as its channel would.
-        patience = A_THREAD_WAITS_S if orphan.channel == Channel.whatsapp else QUIET_S
+        patience = A_THREAD_WAITS_S if orphan.channel in THREADS_CHANNELS else QUIET_S
         # Its session may run on another gateway, which says so: it is that gateway's to end. One
         # that closed here and left the call unsealed (its seal broke) is nobody's to end any more.
         served = live.calls.find(orphan.call)

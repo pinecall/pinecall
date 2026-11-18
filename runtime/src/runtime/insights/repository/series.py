@@ -56,6 +56,7 @@ select
     count(*) filter (where {WINDOWED} and f.channel = 'phone') as phone,
     count(*) filter (where {WINDOWED} and f.channel = 'web') as web,
     count(*) filter (where {WINDOWED} and f.channel = 'whatsapp') as whatsapp,
+    count(*) filter (where {WINDOWED} and f.channel = 'sms') as sms,
     count(*) as total,
     count(*) filter (where not head.sealed) as live
 {CALLS}
@@ -84,6 +85,7 @@ WINDOW_BY_DAY = _count(
     """count(*) filter (where f.channel = 'phone') as phone,
        count(*) filter (where f.channel = 'web') as web,
        count(*) filter (where f.channel = 'whatsapp') as whatsapp,
+       count(*) filter (where f.channel = 'sms') as sms,
        coalesce(sum(f.cost_usd), 0) as spent,
        count(*) filter (where f.judged > 0) as judged,
        count(*) filter (where f.judged > 0 and f.passed is not false) as passed""",
@@ -131,6 +133,7 @@ class WindowCounts:
     phone: int
     web: int
     whatsapp: int
+    sms: int
     # Every call of the scope, whenever it started, and those of them still open.
     total: int
     live: int
@@ -168,6 +171,7 @@ class WindowDay:
     phone: int = 0
     web: int = 0
     whatsapp: int = 0
+    sms: int = 0
     spend_usd: float = 0.0
     judged: int = 0
     passed: int = 0
@@ -216,6 +220,7 @@ class SeriesRepository:
             phone=int(row.phone),
             web=int(row.web),
             whatsapp=int(row.whatsapp),
+            sms=int(row.sms),
             total=int(row.total),
             live=int(row.live),
         )
@@ -254,6 +259,7 @@ class SeriesRepository:
                 phone=int(row.phone),
                 web=int(row.web),
                 whatsapp=int(row.whatsapp),
+                sms=int(row.sms),
                 spend_usd=float(row.spent),
                 judged=int(row.judged),
                 passed=int(row.passed),

@@ -98,3 +98,23 @@ TOKENS_PER_WORD = 1.3
 def estimate_tokens(text: str) -> int:
     """The tokens a text costs, estimated as its words times 1.3; no tokenizer is loaded."""
     return round(len(text.split()) * TOKENS_PER_WORD)
+
+
+# A text longer than a channel takes goes out as several, cut where the writing breathes: at a
+# paragraph when one ends in the second half of what fits, else at a line, else at a word, and
+# mid-word only for a word with no space in it.
+def cut_in_parts(text: str, longest: int) -> list[str]:
+    """The text as the parts it goes out in, each within the longest a channel takes, in order."""
+    parts: list[str] = []
+    rest = text.strip()
+    while len(rest) > longest:
+        cut = _breath_in(rest[:longest])
+        parts.append(rest[:cut].rstrip())
+        rest = rest[cut:].lstrip()
+    return [*parts, rest] if rest else parts
+
+
+def _breath_in(head: str) -> int:
+    breaths = [head.rfind(breath) for breath in ("\n\n", "\n", " ")]
+    late = next((cut for cut in breaths if cut >= len(head) // 2), max(breaths))
+    return late if late > 0 else len(head)

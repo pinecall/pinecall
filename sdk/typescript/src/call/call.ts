@@ -141,7 +141,7 @@ export class CallWorld implements HookCall {
     this.metadata = line.metadata ?? {};
     const instruction = this.metadata["instruction"];
     if (typeof instruction === "string" && instruction.trim() !== "") this.instruction = instruction;
-    this.medium = line.medium ?? (line.channel === "whatsapp" ? "text" : "voice");
+    this.medium = line.medium ?? (line.channel === "whatsapp" || line.channel === "sms" ? "text" : "voice");
     if (line.today !== undefined) this.today = line.today;
     if (line.claimed !== undefined) this.claimed = line.claimed;
     this.room = new Room(out);

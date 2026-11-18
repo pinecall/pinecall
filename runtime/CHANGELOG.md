@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **A number answers SMS, through Twilio.** `sms` is a channel: `POST /v1/numbers {channel: "sms"}` on a
+  number of a Twilio account (the org's, or the platform's for a number it bought) has Twilio post the
+  number's messages to `POST /v1/sms/twilio/{mark}`, an address that carries the vault's mark on that number
+  and is the proof of the post, since an API key signs no webhook. A contact's messages are one written
+  conversation on the channel `sms`, answered from the same number through the account, a long reply in
+  parts of 1,600 characters, each reply's standing (`sent`, `delivered`, `undelivered`…) a `message.status`
+  entry. A number whose messages go to another service is refused until `move`. The agent is told how to
+  write by SMS (plain text, short). The threads, the waiting messages and the hand-over between gateways
+  carry the channel; a WhatsApp thread's name is as it was. `docs/protocol/numbers.md`, "SMS".
 - **A number answers on more than one channel.** A number was one row with one channel, so a number that
   answers the phone could not also answer WhatsApp: importing it as WhatsApp replaced its phone route. A
   route is a number on a channel now (migration 000030: the key of `routes` gains `channel`, and a number

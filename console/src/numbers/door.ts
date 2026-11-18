@@ -8,7 +8,7 @@ const named = encodeURIComponent;
 
 const RouteSchema = z.looseObject({
   agent: z.string(),
-  channel: z.enum(["phone", "web", "whatsapp"]),
+  channel: z.enum(["phone", "web", "whatsapp", "sms"]),
   number: z.string().nullable(),
   env: z.enum(["production", "sandbox"]),
   /** Bought on the platform's own account. */
@@ -77,7 +77,7 @@ export type Subscription = z.infer<typeof SubscriptionSchema>;
 export interface WantedNumber {
   number: string;
   agent: string;
-  channel: "phone" | "whatsapp";
+  channel: "phone" | "whatsapp" | "sms";
   /** The account the number lives in. */
   account?: string;
   /** The org points the number here itself: nothing outside is touched. */

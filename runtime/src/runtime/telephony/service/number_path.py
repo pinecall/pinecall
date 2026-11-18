@@ -91,7 +91,7 @@ def _worst(states: Iterable[StepState]) -> StepState:
 def _carrier_step(route: Route, *, pointed_by_the_box: bool) -> PathStep:
     if route.last_call_at is not None:
         return PathStep("carrier", "ok", "Calls to it reach this box")
-    if route.channel is Channel.whatsapp:
+    if route.channel.is_a_thread:
         return PathStep("carrier", "waiting", "Waiting for the first message")
     if pointed_by_the_box:
         return PathStep("carrier", "ok", "Pointed at this box when it was added")
@@ -129,6 +129,8 @@ async def _ask_carrier_step(http: httpx.AsyncClient, names: SipNames, route: Rou
 def _fence_step(route: Route, fencing: Fencing) -> PathStep:
     if route.channel is Channel.whatsapp:
         return PathStep("fence", "ok", "Signed by Meta, checked on every message")
+    if route.channel is Channel.sms:
+        return PathStep("fence", "ok", "Posted by Twilio to an address only this number's account knows")
     if not route.approved:
         return PathStep(
             "fence",

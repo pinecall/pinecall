@@ -30,8 +30,13 @@ const ON_A_WEBSITE =
 
 const ON_WHATSAPP = "You are on WhatsApp. Use its formatting: *bold*, _italic_, no headings, no tables, short messages.";
 
+const ON_SMS =
+  "You are answering by SMS. Plain text only: no markdown, no lists, no emoji unless the person uses them. " +
+  "One short message, a few sentences at most.";
+
 /** How to write on this channel and medium: WhatsApp's formatting, a website's Markdown, or speech. */
 export function channelRulesFor(channel: string | undefined, medium: Medium): string {
   if (channel === "whatsapp") return ON_WHATSAPP;
+  if (channel === "sms") return ON_SMS;
   return channel === "web" && medium === "text" ? ON_A_WEBSITE : SPOKEN;
 }

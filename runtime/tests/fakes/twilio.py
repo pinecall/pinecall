@@ -38,6 +38,10 @@ class Twilio:
         default_factory=dict[str, tuple[str, list[tuple[str, str]]]]
     )
     for_sale: list[str] = field(default_factory=list[str])
+    # Number SID -> where the account posts what is written to it.
+    sms_urls: dict[str, str] = field(default_factory=dict[str, str])
+    # Every text sent, as its form.
+    messages: list[dict[str, str]] = field(default_factory=list[dict[str, str]])
     # A listing longer than this comes in pages.
     page_size: int = 50
     requests: list[tuple[str, str]] = field(default_factory=list[tuple[str, str]])
@@ -81,6 +85,12 @@ class Twilio:
             return httpx.Response(200, json={"sid": self.account_sid, "friendly_name": "Clinica"})
         if path == "/IncomingPhoneNumbers.json":
             return self._numbers(request, form)
+        if path.startswith("/IncomingPhoneNumbers/") and request.method == "POST":
+            self.sms_urls[path.removeprefix("/IncomingPhoneNumbers/").removesuffix(".json")] = form["SmsUrl"]
+            return httpx.Response(200, json={})
+        if path == "/Messages.json" and request.method == "POST":
+            self.messages.append(form)
+            return httpx.Response(201, json={"sid": a_sid("SM", len(self.messages)), "status": "queued"})
         if path.startswith("/AvailablePhoneNumbers/"):
             shown = [{"phone_number": item} for item in self.for_sale[:1]]
             return httpx.Response(200, json={"available_phone_numbers": shown})
@@ -94,7 +104,10 @@ class Twilio:
             self.for_sale.remove(bought)
             return httpx.Response(201, json=_number_row(bought, self.owns(bought), None))
         found = request.url.params.get("PhoneNumber")
-        rows = [_number_row(number, sid, trunk) for number, (sid, trunk) in self.numbers.items()]
+        rows = [
+            {**_number_row(number, sid, trunk), "sms_url": self.sms_urls.get(sid, "")}
+            for number, (sid, trunk) in self.numbers.items()
+        ]
         kept = [row for row in rows if found is None or row["phone_number"] == found]
         return self._paged(request, "incoming_phone_numbers", kept, by_uri=True)
 

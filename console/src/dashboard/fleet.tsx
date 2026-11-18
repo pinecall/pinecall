@@ -83,7 +83,7 @@ export function FleetCards({ live, alerts }: { live: readonly SessionLine[]; ale
   const agents = standing(studio, "Built in Studio, none yet");
   const apps = standing(code, "Written as code, none yet");
   const by = (channel: string): number => live.filter((line) => line.channel === channel).length;
-  const onLine = [by("phone") > 0 && `${by("phone")} phone`, by("web") > 0 && `${by("web")} web`, by("whatsapp") > 0 && `${by("whatsapp")} WhatsApp`].filter((part) => part !== false);
+  const onLine = [by("phone") > 0 && `${by("phone")} phone`, by("web") > 0 && `${by("web")} web`, by("whatsapp") > 0 && `${by("whatsapp")} WhatsApp`, by("sms") > 0 && `${by("sms")} SMS`].filter((part) => part !== false);
   const week = (alerts ?? []).filter((one) => leftAt(one) > Date.now() / 1000 - WEEK_S);
   const newest = alerts?.[0];
   return (

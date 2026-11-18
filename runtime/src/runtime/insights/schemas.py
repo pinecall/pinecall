@@ -23,6 +23,7 @@ class InsightsChannels(Row):
     phone: int
     web: int
     whatsapp: int
+    sms: int = 0
 
 
 class InsightsSpend(Row):
@@ -79,6 +80,7 @@ class InsightsDay(Row):
     phone: int
     web: int
     whatsapp: int
+    sms: int = 0
     spend_usd: float
     judged: int
     passed: int

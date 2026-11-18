@@ -43,7 +43,7 @@ One instruction from an app to the gateway over its WebSocket. The gateway answe
 
 The endpoint the public came through: a phone call over SIP, the browser widget over WebRTC, or WhatsApp text.
 
-One of: `phone`, `web`, `whatsapp`.
+One of: `phone`, `web`, `whatsapp`, `sms`.
 
 ### `Medium`
 

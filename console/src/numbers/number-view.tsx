@@ -9,9 +9,9 @@ import { ago } from "../lib/format";
 import { useOrg } from "../lib/org";
 import { WORLD } from "../lib/world";
 import { Select } from "../ui/select";
-import { addNumber, moveNumber, releaseNumber, type Carrier, type Catalog, type NumberRow, type Wired } from "./door";
+import { addNumber, moveNumber, releaseNumber, type Carrier, type Catalog, type NumberRow, type WantedNumber, type Wired } from "./door";
 import { Path, Plan, useMove } from "./parts";
-import { comesThrough, RINGS, shown } from "./words";
+import { CHANNEL_NAMES, comesThrough, RINGS, shown } from "./words";
 
 const OTHER = WORLD === "production" ? "sandbox" : "production";
 
@@ -41,7 +41,7 @@ export function NumberView({ row, carriers, catalog, agents, onChanged, onGone }
   const rings = RINGS[row.rings];
   // A number is sent to another agent the way it was added; only one imported from an account says enough here to do it again.
   const movable = row.origin === "imported" && row.account != null && row.route.channel !== "web";
-  const wanted = (agent: string) => ({ number, agent, channel: row.route.channel as "phone" | "whatsapp", ...(row.account == null ? {} : { account: row.account }) });
+  const wanted = (agent: string) => ({ number, agent, channel: row.route.channel as WantedNumber["channel"], ...(row.account == null ? {} : { account: row.account }) });
   const done = (): void => {
     setPlan(null);
     setNext(null);
@@ -62,7 +62,7 @@ export function NumberView({ row, carriers, catalog, agents, onChanged, onGone }
               {row.route.agent}
             </Link>
           </Fact>
-          <Fact name="Channel">{row.route.channel === "whatsapp" ? "WhatsApp" : "Phone"}</Fact>
+          <Fact name="Channel">{CHANNEL_NAMES[row.route.channel]}</Fact>
           <Fact name="Comes through">{comesThrough(row, carriers, catalog)}</Fact>
           <Fact name="Last call">{row.last_call_at == null ? "None yet" : ago(row.last_call_at)}</Fact>
         </dl>

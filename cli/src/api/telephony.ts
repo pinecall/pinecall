@@ -144,7 +144,10 @@ export function buyNumber(gw: GatewayClient, body: NumberPurchase, dryRun: boole
 }
 
 /** A number that answers on two channels is let go on the one named. */
-export async function deleteNumber(gw: GatewayClient, number: string, channel?: "phone" | "whatsapp"): Promise<void> {
+/** The channels a number answers on. */
+export type RouteChannel = "phone" | "whatsapp" | "sms";
+
+export async function deleteNumber(gw: GatewayClient, number: string, channel?: RouteChannel): Promise<void> {
   await gw.delete(`/v1/numbers/${seg(number)}`, { channel });
 }
 

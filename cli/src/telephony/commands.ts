@@ -114,7 +114,7 @@ export function register(program: Command, ctx: Context): void {
     .argument("<number>", "+E.164")
     .requiredOption("--agent <slug>")
     .option("--account <id>", "the account that owns it, when the org has several")
-    .option("--channel <channel>", "phone | whatsapp")
+    .option("--channel <channel>", "phone | whatsapp | sms")
     .option("--move", "take the number off the trunk it is on now, when it answers in another environment or for another agent")
     .option("--dry-run", "print the steps and write nothing")
     .action(async (number, flags) =>
@@ -129,7 +129,7 @@ export function register(program: Command, ctx: Context): void {
     .requiredOption("--country <XX>", "two letters")
     .option("--area <digits>", "an area code")
     .requiredOption("--agent <slug>")
-    .option("--channel <channel>", "phone | whatsapp")
+    .option("--channel <channel>", "phone | whatsapp | sms")
     .option("--dry-run", "name the number and buy nothing")
     .action(async (flags) => {
       const input = service.BuyNumberInput.parse({ country: flags.country, agent: flags.agent, areaCode: flags.area, channel: flags.channel, dryRun: flags.dryRun === true });
@@ -139,7 +139,7 @@ export function register(program: Command, ctx: Context): void {
     .command("drop")
     .description("forget the route; the carrier account keeps the number")
     .argument("<number>")
-    .option("--channel <channel>", "phone | whatsapp: the one to let go, for a number that answers on both")
+    .option("--channel <channel>", "phone | whatsapp | sms: the one to let go, for a number that answers on several")
     .action(async (number, flags) => {
       try {
         ctx.io.result(await service.dropNumber(ctx, number, service.DropChannel.parse(flags.channel)), render.dropped);

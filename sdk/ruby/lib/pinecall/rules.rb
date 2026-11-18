@@ -27,11 +27,15 @@ module Pinecall
 
     ON_WHATSAPP = "You are on WhatsApp. Use its formatting: *bold*, _italic_, no headings, no tables, short messages."
 
+    ON_SMS = "You are answering by SMS. Plain text only: no markdown, no lists, no emoji unless the person uses " \
+             "them. One short message, a few sentences at most."
+
     module_function
 
     # How to write on this channel and medium: WhatsApp's formatting, a website's Markdown, or speech.
     def channel_rules_for(channel, medium)
       return ON_WHATSAPP if channel.to_s == "whatsapp"
+      return ON_SMS if channel.to_s == "sms"
 
       channel.to_s == "web" && medium.to_s == "text" ? ON_A_WEBSITE : SPOKEN
     end

@@ -367,6 +367,8 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `GET` | `/v1/signup/google/{token}` | — | Whom Google vouched for, spending nothing: the page asks them only for a workspace. |
 | `POST` | `/v1/signup/verify` | — | The mailed code back: the org made, its admin seated, their first key and a login code. |
 | `POST` | `/v1/tokens` | talk | A room token for one of the key's agents, the dispatch to its environment's fleet inside it. |
+| `POST` | `/v1/sms/twilio/{mark}` | — | A message written to one of the deployment's numbers, onto its contact's conversation. |
+| `POST` | `/v1/sms/twilio/{mark}/status` | — | Where a reply sent by SMS stands, said on its contact's open conversation. |
 | `GET` | `/v1/usage` | usage | The org's metered rows after the cursor, their totals, and the next cursor. |
 | `POST` | `/v1/transcriptions` | talk · pipeline | The note's words, heard on the keys the org's calls run on. |
 | `POST` | `/v1/transcriptions/token` | talk · pipeline | A minute's token for one dictation on the org's keys, with the ears and language asked for. |

@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict
 from pydantic import ValidationError as PydanticValidationError
 
 from runtime.exceptions import UpstreamError
+from runtime.kit.text import cut_in_parts
 from runtime.whatsapp.service.webhook import Inbound
 
 GRAPH = "https://graph.facebook.com/v21.0"
@@ -74,7 +75,8 @@ async def number_of(http: httpx.AsyncClient, token: str, phone_number_id: str) -
 
 async def send_text(http: httpx.AsyncClient, token: str, inbound: Inbound, text: str) -> None:
     """Send the text to the contact from the number they wrote to; Meta's refusal in its words."""
-    for part in parts_of(text):
+    # A reply longer than Meta takes goes out as several.
+    for part in cut_in_parts(text, LONGEST_TEXT):
         body = {
             "messaging_product": "whatsapp",
             "recipient_type": "individual",
@@ -83,26 +85,6 @@ async def send_text(http: httpx.AsyncClient, token: str, inbound: Inbound, text:
             "text": {"body": part, "preview_url": False},
         }
         await _ask(http, "POST", f"{inbound.phone_number_id}/messages", token, json=body)
-
-
-# A reply longer than Meta takes goes out as several, cut where the writing breathes: at a paragraph
-# when one ends in the second half of what fits, else at a line, else at a word, and mid-word only
-# for a word with no space in it.
-def parts_of(text: str) -> list[str]:
-    """The text as the messages it goes out in, each within what Meta takes, in order."""
-    parts: list[str] = []
-    rest = text.strip()
-    while len(rest) > LONGEST_TEXT:
-        cut = _breath_in(rest[:LONGEST_TEXT])
-        parts.append(rest[:cut].rstrip())
-        rest = rest[cut:].lstrip()
-    return [*parts, rest] if rest else parts
-
-
-def _breath_in(head: str) -> int:
-    breaths = [head.rfind(breath) for breath in ("\n\n", "\n", " ")]
-    late = next((cut for cut in breaths if cut >= len(head) // 2), max(breaths))
-    return late if late > 0 else len(head)
 
 
 # One call does both: Meta shows the contact their message was read (the two blue ticks), and,

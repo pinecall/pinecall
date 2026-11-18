@@ -1,4 +1,4 @@
-"""The WhatsApp messages that wait for an agent nobody holds: kept on the agent's log, taken off it, read back."""
+"""The written messages that wait for an agent nobody holds: kept on the agent's log, taken off it, read back."""
 
 from dataclasses import dataclass
 
@@ -27,7 +27,7 @@ async def keep_waiting(logs: Logs, store: Store, route: RouteRow, inbound: whats
     now = store.clock()
     message = MessageWaiting.model_validate(
         {
-            "channel": "whatsapp",
+            "channel": inbound.channel.value,
             "env": route.env.value,
             "number": inbound.number,
             "phone_number_id": inbound.phone_number_id,
@@ -66,6 +66,7 @@ async def list_waiting(store: Store) -> list[Waiting]:
                 message_id=message.message_id,
                 kind="text",
                 text=message.text,
+                channel=message.channel,
             )
             waiting[message.message_id] = Waiting(entry.agent, Env(message.env), inbound, message.received_at)
         after = page[-1].position
