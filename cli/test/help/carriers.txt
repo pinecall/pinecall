@@ -103,6 +103,26 @@ Options:
   --label <name>
   -h, --help              display help for command
 
+$ pinecall carriers add email --help
+Usage: pinecall carriers add email [options]
+
+a mailbox: IMAP to read it, SMTP to answer from it; its password on stdin, then
+a relay's
+
+Options:
+  --address <address>      the mailbox's address
+  --imap-host <host>       where it is read, over TLS
+  --smtp-host <host>       where its replies leave: its own server, or a relay
+                           such as Amazon SES
+  --imap-port <port>       993 when left out
+  --smtp-port <port>       465 (TLS) when left out; 587 is STARTTLS
+  --username <login>       the IMAP login, when it is not the address
+  --smtp-username <login>  a relay's own login; its password is asked after the
+                           mailbox's
+  --name <name>            the name the contact reads beside the address
+  --label <name>
+  -h, --help               display help for command
+
 $ pinecall carriers drop --help
 Usage: pinecall carriers drop [options] [account]
 

@@ -2,7 +2,6 @@
 
 import { z } from "zod";
 
-import * as emailApi from "../../api/email.js";
 import * as dataRender from "../../calls/render.js";
 import * as emailService from "../../email/service.js";
 import * as data from "../../calls/service/data.js";
@@ -133,10 +132,10 @@ export const email = tool({
     if (args.action === "clear") return await emailService.clearLayout(ctx);
     if (args.action === "set") {
       if (args.html === undefined) throw new ToolRefused("set takes the html, saying {{content}} once");
-      return await emailApi.putEmailLayout(ctx.gateway(), args.html);
+      return await emailService.keepLayout(ctx, args.html);
     }
     if (args.text === undefined) throw new ToolRefused("preview takes the text an agent would write");
-    return await emailApi.previewEmail(ctx.gateway(), { text: args.text, ...(args.subject === undefined ? {} : { subject: args.subject }), ...(args.html === undefined ? {} : { html: args.html }) });
+    return await emailService.previewWords(ctx, { text: args.text, ...(args.subject === undefined ? {} : { subject: args.subject }), ...(args.html === undefined ? {} : { html: args.html }) });
   },
 });
 

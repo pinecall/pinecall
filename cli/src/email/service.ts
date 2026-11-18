@@ -34,6 +34,16 @@ export async function setLayout(ctx: Context, file: string): Promise<api.EmailLa
   return api.putEmailLayout(ctx.gateway(), htmlOf(file));
 }
 
+/** HTML kept as the org's layout as it is given, the gateway saying what is wrong with it: the MCP's, which reads no file. */
+export async function keepLayout(ctx: Context, html: string): Promise<api.EmailLayout> {
+  return api.putEmailLayout(ctx.gateway(), html);
+}
+
+/** Words set in the given HTML (or the org's layout) as a reply would be; nothing is sent, nothing is written. */
+export async function previewWords(ctx: Context, body: { text: string; subject?: string; html?: string }): Promise<api.EmailPreview> {
+  return api.previewEmail(ctx.gateway(), body);
+}
+
 export async function clearLayout(ctx: Context): Promise<{ cleared: true }> {
   await api.deleteEmailLayout(ctx.gateway());
   return { cleared: true };
