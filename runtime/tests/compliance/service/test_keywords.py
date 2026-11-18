@@ -77,3 +77,18 @@ async def test_a_thread_is_silenced_by_an_opt_out_made_in_writing_and_by_no_othe
         assert await consents.standing_of(session, scope, number) == "consented"
         # The other env keeps a list of its own.
         assert not await keywords.refuses_messages(session, Scope(tenant.org, Env.production), number)
+
+
+@needs_the_database
+async def test_an_email_contact_is_kept_on_the_list_by_their_address(
+    sessions: async_sessionmaker[AsyncSession], tenant: Tenant
+) -> None:
+    """A contact who asked the agent, in an email, for no more is refused by their address."""
+    scope = Scope(tenant.org, Env.sandbox)
+    address = f"ana-{secrets.token_hex(3)}@Example.org"
+    async with sessions.begin() as session:
+        assert not await keywords.refuses_messages(session, scope, address)
+        await keywords.stop_writing_to(
+            session, scope, address, source=keywords.ASKED_THE_AGENT_IN_WRITING, text="no more", call=None, by="agent"
+        )
+        assert await keywords.refuses_messages(session, scope, address.lower())

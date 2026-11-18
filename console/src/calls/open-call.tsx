@@ -8,6 +8,7 @@ import { type CallScore } from "@pinecall/core/wire/events-call";
 import { useOrg } from "../lib/org";
 import { spotlight } from "./broken";
 import { ChatView } from "./chat";
+import { EmailView } from "./email-view";
 import { useLine } from "./desk";
 import { DetailsPanel } from "./details";
 import { Timeline } from "./log";
@@ -72,12 +73,14 @@ export function OpenCall({ call, person, search, details, onDetails }: { call: s
       <nav className="app-tabs calls-views" aria-label="How the call is read">
         {VIEWS.map((one) => (
           <button key={one.view} type="button" className={view === one.view ? "app-tab app-tab-on calls-tab" : "app-tab calls-tab"} aria-pressed={view === one.view} onClick={() => setView(one.view)}>
-            {one.name}
+            {one.view === "chat" && state.channel === "email" ? "Email" : one.name}
           </button>
         ))}
       </nav>
       <div className="calls-body" ref={body}>
-        {view === "chat" ? (
+        {view === "chat" && state.channel === "email" ? (
+          <EmailView entries={entries} state={state} />
+        ) : view === "chat" ? (
           <ChatView entries={entries} state={state} score={score} onSeek={canSeek ? (at) => tape.current?.seek(at) : undefined} />
         ) : trace !== null ? (
           <TraceView trace={trace} picked={picked} onPick={pickBar} />

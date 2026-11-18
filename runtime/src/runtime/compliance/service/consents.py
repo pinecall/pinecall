@@ -12,7 +12,7 @@ from runtime.compliance.repository.consents import ConsentRepository
 from runtime.enums import ConsentKind
 from runtime.exceptions import ValidationError
 from runtime.kit.repository import page_of
-from runtime.kit.text import parse_e164
+from runtime.kit.text import parse_address
 
 type Standing = Literal["consented", "opted_out", "unknown"]
 
@@ -60,25 +60,25 @@ class Imported:
 
 async def give_consent(session: AsyncSession, scope: Scope, number: str, given: Given) -> None:
     """Write one fact about the number in the scope's env."""
-    await ConsentRepository(session).add(_fact_of(scope, parse_e164(number), given))
+    await ConsentRepository(session).add(_fact_of(scope, parse_address(number), given))
 
 
 # Read as its sisters read a number: until 2026-11 this one trimmed it and no more, so a number its
 # one caller had not parsed first would have stood as unknown beside its own rows.
 async def standing_of(session: AsyncSession, scope: Scope, number: str) -> Standing:
     """What stands for the number: its newest row's, or unknown when there is none."""
-    newest = await ConsentRepository(session).find_newest(scope.org, scope.env, parse_e164(number))
+    newest = await ConsentRepository(session).find_newest(scope.org, scope.env, parse_address(number))
     return _standing_of(None if newest is None else newest.kind)
 
 
 async def newest_of(session: AsyncSession, scope: Scope, number: str) -> ContactConsent | None:
     """The newest fact about the number in the scope's env, or None when there is none."""
-    return await ConsentRepository(session).find_newest(scope.org, scope.env, parse_e164(number))
+    return await ConsentRepository(session).find_newest(scope.org, scope.env, parse_address(number))
 
 
 async def history_of(session: AsyncSession, scope: Scope, number: str) -> History:
     """Every fact about the number, newest first, and what stands."""
-    kept = parse_e164(number)
+    kept = parse_address(number)
     rows = await ConsentRepository(session).list_of_number(scope.org, scope.env, kept)
     return History(number=kept, standing=_standing_of(rows[0].kind if rows else None), rows=rows)
 
@@ -119,7 +119,7 @@ async def opt_out_many(session: AsyncSession, scope: Scope, numbers: Sequence[st
     refused: list[str] = []
     for number in numbers:
         try:
-            kept.append(parse_e164(number))
+            kept.append(parse_address(number))
         except ValidationError:
             refused.append(number)
     await ConsentRepository(session).add_all([_fact_of(scope, number, given) for number in kept])
