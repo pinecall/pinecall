@@ -130,7 +130,7 @@ export const compliance = tool({
       return { ...history, says: dataRender.consent(history) };
     }
     if (args.action === "dnc") return await data.listDoNotCall(ctx, args.after);
-    const asked =
+    const changes =
       args.action === "sms"
         ? {
             ...(args.stop_reply === undefined ? {} : args.stop_reply.trim() === "" ? { noSmsStopReply: true } : { smsStopReply: args.stop_reply }),
@@ -139,8 +139,8 @@ export const compliance = tool({
             ...(args.stop_words === undefined ? {} : args.stop_words.length === 0 ? { standardStopWords: true } : { smsStopWords: args.stop_words.join(",") }),
           }
         : {};
-    if (args.action === "sms" && Object.keys(asked).length === 0) throw new ToolRefused("sms takes stop_reply, carrier_stop_reply, help_reply or stop_words");
-    const row = await data.policy(ctx, data.PolicyInput.parse(asked));
+    if (args.action === "sms" && Object.keys(changes).length === 0) throw new ToolRefused("sms takes stop_reply, carrier_stop_reply, help_reply or stop_words");
+    const row = await data.policy(ctx, data.PolicyInput.parse(changes));
     return { ...row, says: dataRender.policy(row) };
   },
 });
