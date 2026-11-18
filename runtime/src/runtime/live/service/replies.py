@@ -8,10 +8,12 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from runtime.actor import Scope
+from runtime.agents import service as agents
 from runtime.enums import Channel
 from runtime.exceptions import PinecallError
 from runtime.live.parts import LiveParts
 from runtime.providers import service as providers
+from runtime.providers.catalog import Catalog
 from runtime.telephony import service as telephony
 from runtime.telephony.models import Route as RouteRow
 from runtime.whatsapp import service as whatsapp
@@ -35,22 +37,36 @@ class Reaches(Protocol):
         ...
 
 
-# Heard by the ears the org's calls hear with, on the same keys. The keys are read in a transaction
-# that is over before the note is heard.
+# Heard by the ears the agent's calls hear with, on the same keys: the ones for the languages its
+# callers speak, where it says them. Until 2026-11-18 a note was heard by the default's ears told no
+# language, and one in Arabic came back as English that sounds alike. The keys and the agent are
+# read in a transaction that is over before the note is heard.
 @dataclass(frozen=True, slots=True)
 class Ears:
-    """Whose keys a voice note is heard on, and where they are read."""
+    """Whose keys a voice note is heard on, the agent it was sent to, and where they are read."""
 
     live: LiveParts
     scope: Scope
+    agent: str | None = None
 
     async def hear(self, media: whatsapp.Media) -> str | None:
         """What the audio says; None for audio that says nothing."""
         note = providers.read_note(media.data, media.mime_type)
         async with self.live.sessions.begin() as session_:
+            catalog = await providers.get_catalog(session_)
             keys = await providers.keys_of(session_, self.live.vault, self.scope)
-            ears = providers.ears_for(providers.Asked(), await providers.get_catalog(session_), keys)
+            asked = providers.Asked(language=await self._find_language(session_, catalog))
+            ears = providers.ears_for(asked, catalog, keys)
         return (await providers.transcribe(ears, note)).text or None
+
+    async def _find_language(self, session_: AsyncSession, catalog: Catalog) -> str | None:
+        if self.agent is None:
+            return None
+        try:
+            of_its_class = (await agents.agent_of(session_, self.scope, self.agent)).whole
+        except agents.NoSuchAgent:
+            return None
+        return (await agents.resolve_for_call(session_, of_its_class, self.scope, catalog)).declaration.language
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,7 +134,9 @@ async def way_to(session_: AsyncSession, live: LiveParts, route: RouteRow, inbou
         account = await telephony.sms_account_of(session_, live.vault, route)
         status_to = telephony.sms_status_url(live.vault, live.settings.base_url, inbound.number)
         return (
-            None if account is None else BySms(live.http, account, status_to, Ears(live, Scope(route.org, route.env)))
+            None
+            if account is None
+            else BySms(live.http, account, status_to, Ears(live, Scope(route.org, route.env), route.agent))
         )
     token = await telephony.meta_token_for(session_, live.vault, route.org, inbound.phone_number_id)
-    return None if token is None else ByWhatsapp(live.http, token, Ears(live, Scope(route.org, route.env)))
+    return None if token is None else ByWhatsapp(live.http, token, Ears(live, Scope(route.org, route.env), route.agent))

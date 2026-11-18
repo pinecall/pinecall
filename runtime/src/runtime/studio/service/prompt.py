@@ -19,7 +19,13 @@ IN_THEIR_LANGUAGE = "- Answer in the language the caller speaks."
 # other is read by a voice that does not speak it. A class says this in its own words; Studio's prompt
 # is the framework's, so it says it here.
 IN_THE_ONE = "- The caller speaks {language}: answer in {language}."
-IN_ONE_OF_THEM = "- The caller speaks {languages}: answer in the one they last spoke, and never in any other language."
+# A small model keeps to the language a call began in: told only to answer "in the one they last spoke",
+# it answered a caller who had changed to English in Spanish (production, 2026-11-18).
+IN_ONE_OF_THEM = (
+    "- The caller speaks {languages} and may change from one to the other at any moment: write each reply "
+    "whole in the language of the caller's last message, whatever language the call was in before it, and "
+    "never in any other language."
+)
 RULES = "\n".join((INVENT_NOTHING, ONE_QUESTION, IN_THEIR_LANGUAGE))
 
 PROTOCOLS = (

@@ -1,7 +1,6 @@
 """A voice note heard outside a call: the ears a call hears with, on the same keys, said back as text."""
 
 import asyncio
-import dataclasses
 from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from typing import Never
@@ -20,10 +19,11 @@ from runtime.providers.catalog import Catalog
 from runtime.providers.service import plugins
 from runtime.providers.service.catalog import get_catalog
 from runtime.providers.service.keyring import Keyring, keys_of
+from runtime.providers.service.languages import tell_languages
 from runtime.providers.service.pipeline import stage_on_its_key
 from runtime.providers.service.refusals import refusing
 from runtime.providers.service.stages import A_RATE, ears_outside_a_call, silence
-from runtime.providers.stage import Model, Running, primary_language
+from runtime.providers.stage import Model, Running, languages_of, primary_language
 
 # A key's notes a minute: a chat's worth, never a batch job's.
 TRANSCRIPTIONS_A_MINUTE = 30
@@ -98,8 +98,10 @@ def read_asked(stt: str | None, model: str | None, language: str | None, hear: S
 def ears_for(asked: Asked, catalog: Catalog, keys: Keyring) -> Running:
     """The ears asked for, on a key this org may run them on, hearing the language asked."""
     named = None if not asked.stt else Model(vendor=plugins.vendor_doing(asked.stt, Stage.stt), model=asked.model or "")
-    running = stage_on_its_key(Stage.stt, named, catalog, keys, (asked.language,) if asked.language else ())
-    return dataclasses.replace(running, language=asked.language)
+    languages = languages_of(asked.language)
+    running = stage_on_its_key(Stage.stt, named, catalog, keys, languages)
+    # A note in languages its agent says is heard as a call in them is; one asked in none, as the ears come.
+    return tell_languages(Stage.stt, running, languages, catalog) if languages else running
 
 
 def terms_of(hear: Sequence[str] | None) -> tuple[str, ...]:

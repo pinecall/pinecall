@@ -9,8 +9,9 @@ import pytest
 from runtime.enums import Stage
 from runtime.exceptions import Conflict, ServiceUnavailable
 from runtime.providers.catalog import Catalog
-from runtime.providers.service import keyring, pipeline
+from runtime.providers.service import keyring, pipeline, transcription
 from runtime.providers.service.keyring import Keyring
+from runtime.providers.service.transcription import Asked
 from runtime.providers.stage import Model, Voice
 from tests.conftest import configured
 from tests.fakes import acme, talker
@@ -175,6 +176,16 @@ def test_ears_the_org_has_no_key_for_are_never_chosen_and_the_call_runs_on_its_m
     the_defaults = frozenset(f"{acme.ACME}/{model}" for model in (acme.MODEL, acme.EARS, acme.VOICE))
     unlent = Keyring(box={acme.ACME: "box-key"}, lends=the_defaults)
     assert pipeline.build_pipeline(Stages(language="ar"), _by_language(), unlent).stt.model == acme.EARS
+
+
+# A voice note sent to an agent whose callers speak Arabic was heard by the default's ears, told nothing.
+def test_a_note_is_heard_by_the_ears_for_the_languages_its_agent_says() -> None:
+    """Arabic and English run the ears that mix them, as a call does; a note asked in no language, the default's."""
+    keys = Keyring(box={acme.ACME: "box-key", ANOTHER: "box-key"})
+    ears = transcription.ears_for(Asked(language="ar, en"), _by_language(), keys)
+    assert (ears.model, ears.language, ears.hints) == (MIXED_EARS, None, ("ar", "en"))
+    unsaid = transcription.ears_for(Asked(), _by_language(), keys)
+    assert (unsaid.model, unsaid.language, unsaid.hints) == (acme.EARS, None, ())
 
 
 def test_ears_an_agent_names_stay_its_own_and_are_told_the_languages_they_hear_alone() -> None:

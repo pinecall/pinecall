@@ -1,6 +1,8 @@
 """A contact who stops the messages: the word honoured before the model reads it, and what they are told."""
 
+import asyncio
 import secrets
+import time
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, cast
 
@@ -12,6 +14,7 @@ from runtime.actor import Scope
 from runtime.agents.declaration import STOP_MESSAGES
 from runtime.compliance.service import consents, keywords, policy
 from runtime.enums import Channel, Env
+from runtime.live.peers import THREADS, ThreadKey
 from runtime.live.service import opt_outs
 from runtime.live.service.opt_outs import Stop
 from runtime.live.service.replies import BySms
@@ -90,6 +93,39 @@ async def test_a_text_that_says_stop_is_honoured_before_the_model_reads_it_and_s
     assert not await opt_outs.refuses_messages(side.parts, scope, CONTACT)
     assert await opt_outs.take_word(side.parts, route, a_text(number, "yes"), None) is None
     assert twilio.messages == []
+
+
+# On 2026-11-18 a real STOP landed on the gateway that did not hold the contact's thread: the number went on
+# the list, and the conversation stayed open for its two idle hours on the other gateway.
+@needs_the_database
+async def test_a_stop_word_is_answered_by_the_gateway_that_holds_the_contacts_thread(
+    side: Side, tenant: Tenant, routed: tuple[Twilio, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Landing where the thread is not held, the word is handed on whole; handed here, it is honoured here."""
+    _twilio, number = routed
+    scope, stop = Scope(tenant.org, Env.sandbox), a_text(number, "STOP", OptOutType="STOP")
+    key = ThreadKey(tenant.org, Env.sandbox, number, stop.wa_id, Channel.sms)
+    heard = await THREADS.subscribe(side.parts.signal, gateway="the-other-gateway")
+
+    def held_elsewhere(asked: ThreadKey) -> str | None:
+        return "the-other-gateway" if asked == key else None
+
+    with monkeypatch.context() as patched:
+        patched.setattr(side.parts.owners, "find_thread_holder", held_elsewhere)
+        try:
+            assert await side.threads.receive(stop)
+            handed = THREADS.load(await asyncio.wait_for(anext(heard), 2))
+        finally:
+            heard.close()
+    assert (handed.text, handed.channel, handed.carrier_replied) == ("STOP", Channel.sms, True)
+    assert not await opt_outs.refuses_messages(side.parts, scope, CONTACT), "the holder writes it, with its call"
+    # The same message, handed to this gateway by another: nobody holds the thread any more, so it is honoured here.
+    handed_here = THREADS.name.format(gateway=side.parts.owners.id)
+    deadline = time.monotonic() + 5
+    while not await opt_outs.refuses_messages(side.parts, scope, CONTACT):
+        assert time.monotonic() < deadline, "the word handed on was never honoured"
+        side.parts.signal.publish(handed_here, THREADS.dump(handed))
+        await asyncio.sleep(0.05)
 
 
 @needs_the_database

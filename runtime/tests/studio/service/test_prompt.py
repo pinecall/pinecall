@@ -52,7 +52,8 @@ def test_a_spoken_call_of_an_agent_that_says_its_languages_is_told_to_answer_in_
     spoken = {"call": {"channel": "phone", "medium": "voice"}}
     assert "- The caller speaks Arabic: answer in Arabic." in prompt.identity(clinic(), spoken, ("ar",))
     several = prompt.identity(clinic(), spoken, ("hi", "en", "ta"))
-    assert "- The caller speaks Hindi, English or Tamil: answer in the one they last spoke" in several
+    assert "- The caller speaks Hindi, English or Tamil and may change from one to the other at any moment" in several
+    assert "write each reply whole in the language of the caller's last message" in several
     assert "- Answer in the language the caller speaks." not in several
     unnamed = prompt.identity(clinic(), spoken, ("sw",))
     assert "- The caller speaks the language whose tag is sw: answer in the language whose tag is sw." in unnamed

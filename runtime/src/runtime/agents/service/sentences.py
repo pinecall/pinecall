@@ -1,5 +1,6 @@
 """The platform's first sentences in a call's language: written here, or written once by the box's model and kept."""
 
+import asyncio
 import json
 import logging
 from collections.abc import Mapping
@@ -25,8 +26,12 @@ FALLBACK_LANGUAGE = "en"
 # The box's row a language's sentences are kept in once a model wrote them: `sentences/sw`.
 KEPT_UNDER = "sentences/"
 LONGEST_SENTENCE = 300
-# One request, and not long: the call that asks is opening, and says them in English if it is not answered.
-WRITTEN_WITHIN = providers.Patience(within_s=6.0, retries=0)
+# One request, and not long: the call that asks is opening, and says them in English if it is not answered
+# in time. The vendor is told ten seconds because Google refuses a deadline under ten ("Manually set
+# deadline 6s is too short", a 400 that left a call in Swahili its English sentences, 2026-11-18); the
+# call stops waiting sooner.
+ASKED_WITHIN = providers.Patience(within_s=10.0, retries=0)
+WAITED_S = 6.0
 THE_WRITING = "write its first sentences in the call's language"
 
 # An outbound call says who is calling, and a recorded one that it is, before anything else. Each
@@ -209,10 +214,10 @@ async def _write(session: AsyncSession, vault: Vault, language: str) -> Sentence
             providers.Line("system", INSTRUCTIONS.format(language=language)),
             providers.Line("user", THE_SENTENCES),
         ]
-        async with providers.open_answerer(running) as model:
-            answered = (await model.ask(lines, what=THE_WRITING, patience=WRITTEN_WITHIN)).text
-    except PinecallError as refused:
-        logger.warning("the first sentences in %s were not written: %s", language, refused)
+        async with asyncio.timeout(WAITED_S), providers.open_answerer(running) as model:
+            answered = (await model.ask(lines, what=THE_WRITING, patience=ASKED_WITHIN)).text
+    except (PinecallError, TimeoutError) as refused:
+        logger.warning("the first sentences in %s were not written: %s", language, refused or "no answer in time")
         return None
     written = read_written(answered)
     if written is None:

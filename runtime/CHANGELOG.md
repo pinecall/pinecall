@@ -26,6 +26,13 @@
   `GET /v1/studio/channel-rules` answers the framework's. A definition that carries `channel_rules` is not
   read by a runtime before this one. `docs/protocol/studio.md`.
 - **A persona that changes language in the middle of the call**, `switches-language`, in the library.
+- **A voice note is heard by the ears for its agent's languages.** A WhatsApp voice note, or the audio of an
+  MMS, was heard by the default's ears told no language: one in Arabic came back as English that sounds alike,
+  as a call did. It is heard now as a call of that agent is.
+- **A stop word ends the conversation whichever gateway it lands on.** A text that stops the messages is handed
+  to the gateway holding the contact's thread before it is read, as any other message is: it landed on the other
+  gateway on 2026-11-18, where the number went on the list and the conversation stayed open for its two idle
+  hours. The fact now carries the conversation's call there too.
 
 ## 0.11.46 — a contact who texts STOP is written to no more, a written conversation opens on the one before, and the audio of an MMS is heard (2026-11-18)
 

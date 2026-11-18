@@ -156,18 +156,27 @@ class Threads:
             return True
 
         async def read() -> None:
-            # A word that stops, starts again or asks who writes is answered before the model is asked.
-            open_here = self._open.get(_thread_key(Scope(route.org, route.env), inbound))
-            taken = await take_word(
-                self._live, route, inbound, None if open_here is None else open_here.session.call.context.call
-            )
-            if taken == "stop" and open_here is not None:
-                open_here.stop(Stop(by="caller"))
-            if taken is not None:
-                return
-            await self._hear(route, inbound)
+            await self._read(route, inbound)
 
         return await whatsapp.read_once(self._live.sessions, route.org, inbound.message_id, read, at=self._live.now)
+
+    # A word that stops, starts again or asks who writes is answered before the model is asked, and by
+    # the gateway holding the contact's thread: it alone can end the conversation, and knows its call.
+    async def _read(self, route: RouteRow, inbound: whatsapp.Inbound, *, handed: bool = False) -> None:
+        scope = Scope(route.org, route.env)
+        taker = self._live.holders.find_ring_taker(scope, route.agent, inbound.caller)
+        key = _thread_key(taker.scope if taker else scope, inbound)
+        open_here = self._open.get(key)
+        holder = None if open_here is not None or handed else self._live.owners.find_thread_holder(key)
+        if holder is not None and await THREADS.reach(self._live.signal, _hand(inbound), gateway=holder):
+            logger.info("whatsapp: a message for %s was handed to the gateway holding its thread", inbound.number)
+            return
+        call = None if open_here is None else open_here.session.call.context.call
+        taken = await take_word(self._live, route, inbound, call)
+        if taken == "stop" and open_here is not None:
+            open_here.stop(Stop(by="caller"))
+        if taken is None:
+            await self._hear(route, inbound)
 
     # A receipt is said on the conversation it belongs to while that is open, on whichever gateway
     # holds it; one for a conversation that went quiet says nothing anybody is reading.
@@ -335,11 +344,12 @@ class Threads:
             text=handed.text,
             media_id=handed.media_id,
             channel=handed.channel,
+            carrier_replied=handed.carrier_replied,
         )
         async with self._live.sessions.begin() as session_:
             route = await _find_route(session_, inbound)
         if route is not None:
-            await self._hear(route, inbound)
+            await self._read(route, inbound, handed=True)
 
     # A conversation this process never saw is taken up from its log while it has idle time left.
     async def _take_up(
@@ -459,6 +469,7 @@ def _hand(inbound: whatsapp.Inbound) -> HandedMessage:
         text=inbound.text,
         media_id=inbound.media_id,
         channel=inbound.channel,
+        carrier_replied=inbound.carrier_replied,
     )
 
 

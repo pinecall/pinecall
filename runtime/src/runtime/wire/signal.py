@@ -254,3 +254,5 @@ class HandedMessage(BaseModel):
     # Set, this is no message of the contact's but a receipt of the agent's: where it stands, and why it failed.
     status: str | None = None
     error: str | None = None
+    # The carrier answered the contact's stop word itself: the gateway that holds the thread adds nothing.
+    carrier_replied: bool = False
