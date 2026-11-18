@@ -1,8 +1,10 @@
-/** The `line`, `numbers`, `carriers`, `dial`, `text`, `callbacks` and `compliance` tools: the telephony domain and who may be reached, over their services. */
+/** The `line`, `numbers`, `carriers`, `dial`, `text`, `email`, `callbacks` and `compliance` tools: the telephony domain and who may be reached, over their services. */
 
 import { z } from "zod";
 
+import * as emailApi from "../../api/email.js";
 import * as dataRender from "../../calls/render.js";
+import * as emailService from "../../email/service.js";
 import * as data from "../../calls/service/data.js";
 import * as service from "../../telephony/service.js";
 import { tool, ToolRefused } from "../tool.js";
@@ -41,9 +43,9 @@ export const numbers = tool({
   description: "The org's numbers and the agent each reaches; the numbers its carrier accounts own; importing one, or buying one on the deployment's account, shown as steps before anything is written.",
   schema: {
     action: z.enum(["list", "available", "import", "buy"]).describe("list the org's numbers; available is what its carrier accounts own; import points one of them at an agent; buy gets a new one on the deployment's account — import and buy are a dry run unless dry_run is false"),
-    number: z.string().optional().describe("`import`: the number, in +E.164"),
+    number: z.string().optional().describe("`import`: the number, in +E.164; for `email`, the mailbox's address"),
     agent: z.string().optional().describe("`import`, `buy`: the agent that answers it"),
-    channel: z.enum(["phone", "whatsapp", "sms"]).optional().describe("`import`, `buy`: phone unless said. One number answers on several: import it once a channel. `sms` is a number of a Twilio account, whose messages Twilio then posts to Pinecall"),
+    channel: z.enum(["phone", "whatsapp", "sms", "email"]).optional().describe("`import`, `buy`: phone unless said. One number answers on several: import it once a channel. `sms` is a number of a Twilio account, whose messages Twilio then posts to Pinecall; `email` is a mailbox account's address, whose inbox Pinecall reads"),
     account: z.string().optional().describe("`available`, `import`: the carrier account the number lives in, when the org has several (`carriers list` names them)"),
     move: z.boolean().optional().describe("`import`: take the number off the trunk it is on now (another environment's, or another agent's), as a 409 naming that trunk asks"),
     country: z.string().optional().describe("`buy`: the country, two letters (ES, US)"),
@@ -69,9 +71,9 @@ export const carriers = tool({
   name: "carriers",
   title: "Carrier accounts",
   reads: true,
-  description: "The org's carrier accounts — Twilio, a SIP peer, WhatsApp — and one account's networks and how outbound calls leave. Never a secret.",
+  description: "The org's carrier accounts — Twilio, a SIP peer, WhatsApp, a mailbox — and one account's networks and how outbound calls leave. Never a secret.",
   schema: { action: z.enum(["list", "show"]).describe("list the org's carrier accounts, or show one"), account: z.string().optional().describe("`show`: the account's id") },
-  manual: "`carriers` lists the org's carrier accounts and shows one. Adding one takes its secret, and the rule is that no key is printed or passed through an assistant, so it is never a tool: give the person the command to type in their own terminal, `pinecall carriers add twilio --account-sid AC… --user SK…` (`sip` and `whatsapp` the same way), which reads the secret with nothing echoed.",
+  manual: "`carriers` lists the org's carrier accounts and shows one. Adding one takes its secret, and the rule is that no key is printed or passed through an assistant, so it is never a tool: give the person the command to type in their own terminal, `pinecall carriers add twilio --account-sid AC… --user SK…` (`sip`, `whatsapp` and `email --address … --imap-host … --smtp-host …` the same way), which reads the secret with nothing echoed.",
   handler: async (args, ctx) => {
     if (args.action === "show") return await service.showCarrier(ctx, args.account);
     return { carriers: await service.listCarriers(ctx) };
@@ -111,6 +113,31 @@ export const text = tool({
   manual:
     "`text` sends a contact one SMS as the agent and answers with the conversation it was said on: the call's id, the number it left from and the environment. What the contact answers reaches the agent on that conversation, with these words before it. Somebody must be holding the agent, and the agent must answer SMS at a number (`numbers` imports one with `channel: sms`). A contact whose conversation is still open is written on it; any other passes the org's guards as a dial does (a stranger, no consent, quiet hours, too many today), and a refusal says which guard and sends nothing. A contact who texted STOP is refused whatever else is true: `compliance consent` says who did.",
   handler: async (args, ctx) => await service.textOut(ctx, service.TextInput.parse(args)),
+});
+
+export const email = tool({
+  name: "email",
+  title: "Email layout",
+  destroys: true,
+  description: "The HTML the org's agents' emails are set in: shown, kept, tried on words (nothing sent), or cleared back to the plain one.",
+  schema: {
+    action: z.enum(["show", "set", "preview", "clear"]).describe("show the layout; set keeps html as the org's; preview sets words in it as a reply would be, sending nothing; clear goes back to the plain one"),
+    html: z.string().optional().describe("`set`, `preview`: an HTML page that says {{content}} once, where the reply goes, and {{subject}} where the subject should show"),
+    text: z.string().optional().describe("`preview`: the words an agent would write: paragraphs, - lists, **bold**, *italics*, links"),
+    subject: z.string().optional().describe("`preview`: the subject the reply answers"),
+  },
+  manual:
+    "`email` keeps the org's email layout: an agent answers an email in its own words and they are set in it, `{{content}}` where the reply goes, `{{subject}}` where the subject shows; with none, a plain one. `preview` answers the subject, the HTML and the plain part a contact would read, and sends nothing: try a layout on it before `set`. A mailbox is a carrier account (`carriers`), and its address is given to an agent with `numbers import` on the channel `email`.",
+  handler: async (args, ctx) => {
+    if (args.action === "show") return await emailService.showLayout(ctx);
+    if (args.action === "clear") return await emailService.clearLayout(ctx);
+    if (args.action === "set") {
+      if (args.html === undefined) throw new ToolRefused("set takes the html, saying {{content}} once");
+      return await emailApi.putEmailLayout(ctx.gateway(), args.html);
+    }
+    if (args.text === undefined) throw new ToolRefused("preview takes the text an agent would write");
+    return await emailApi.previewEmail(ctx.gateway(), { text: args.text, ...(args.subject === undefined ? {} : { subject: args.subject }), ...(args.html === undefined ? {} : { html: args.html }) });
+  },
 });
 
 export const callbacks = tool({

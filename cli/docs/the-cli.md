@@ -1916,9 +1916,9 @@ no prompt drawn, and the desk leaves when the lines run out.
 ```
 pinecall numbers list
 pinecall numbers available [--account <id>]
-pinecall numbers import <+34…> --agent <slug> [--account <id>] [--channel phone|whatsapp|sms] [--move] [--dry-run]
+pinecall numbers import <+34… or address> --agent <slug> [--account <id>] [--channel phone|whatsapp|sms|email] [--move] [--dry-run]
 pinecall numbers buy --country <XX> [--area <digits>] --agent <slug> [--channel phone|whatsapp|sms] [--dry-run]
-pinecall numbers drop <+34…> [--channel phone|whatsapp|sms]
+pinecall numbers drop <+34… or address> [--channel phone|whatsapp|sms|email]
 ```
 
 **Adding a number to the org from a terminal is `numbers import`**: the number is one an account of
@@ -2023,6 +2023,8 @@ pinecall carriers add twilio --account-sid <AC…> --user <SK…> [--label <name
 pinecall carriers add sip --username <user> --address <ip or network>… [--outbound-host <host>]
                       [--outbound-transport auto|udp|tcp|tls] [--outbound-username <user>] [--label <name>]
 pinecall carriers add whatsapp --phone-number-id <id> [--label <name>]
+pinecall carriers add email --address <address> --imap-host <host> --smtp-host <host> [--imap-port <port>]
+                      [--smtp-port <port>] [--username <login>] [--smtp-username <login>] [--name <name>]
 pinecall carriers drop [<account>]
 ```
 
@@ -2077,6 +2079,14 @@ seals each secret under the platform's vault key and answers the account by its 
   ```
 
   The Meta side, step by step, is [WhatsApp](https://docs.pinecall.io/integrations/whatsapp/).
+- **A mailbox.** `--address` is the mailbox, which the account is named by. The mailbox's password
+  is read first; with `--smtp-username`, a relay's password on a second line (Amazon SES's SMTP
+  credentials, say), an empty one keeping the one given before. IMAP is 993 over TLS and logs in as
+  `--username`, the address when unsaid; SMTP is 465 over TLS, or STARTTLS on any other port (587).
+  Both logins are tried before anything is kept, so a refusal is `<address> cannot be read and
+  answered: …` and exit 2. The address is then given to an agent with `pinecall numbers import
+  <address> --agent <slug> --channel email`, and the agent answers every email that arrives from
+  then on, set in the org's layout ([`email`](#email)).
 
 `add` with an account the org already holds **replaces its secret**: that is how a key is rotated.
 An account's id is its own: Twilio's account SID, the peer's username, Meta's phone number id.
@@ -2310,6 +2320,38 @@ and what they answer reaches it on that conversation, with these words before it
 holding the agent. A contact whose conversation is still open is written on it; any other passes the
 org's guards first, as a dial does, and one that is refused is sent nothing. A contact who texted
 STOP is written to by nobody (`pinecall data consent <number>` says who did).
+
+## `email`
+
+```
+pinecall email layout [show]
+pinecall email layout set <file.html>
+pinecall email layout preview "<words>" [--subject <subject>] [--file <file.html>] [--out <file.html>]
+pinecall email layout clear
+```
+
+```console
+$ pinecall email layout set acme.html
+the org's own layout · 2,418 characters
+  → pinecall email layout preview "<words>" shows a reply in it
+$ pinecall email layout preview "Hola Ana,\n\n- **sábado** 10 a 14" --subject Horarios --out reply.html
+subject  Re: Horarios
+
+  Hola Ana,
+
+  - sábado 10 a 14
+
+HTML written to reply.html
+```
+
+An agent answers an email in its own words, and they are set in the org's **layout**: an HTML file
+that says `{{content}}` once, where the reply goes, and `{{subject}}` wherever the subject should
+show. `set` keeps one (refused here when the file says `{{content}}` nowhere or twice); `clear`
+goes back to the plain one, which every org starts with: the reply on white, in nobody's brand.
+`preview` sets words in the layout as a reply would be and sends nothing: `--file` tries a layout
+before it is kept, and `--out` writes the HTML to open in a browser. A `\n` in the words is a new
+line. The words are read for paragraphs, `-` lists, `**bold**`, `*italics*` and links; everything
+else is text. The mailbox itself is a carrier account ([`carriers add email`](#carriers)).
 
 ## `callbacks`
 

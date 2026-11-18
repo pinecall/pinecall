@@ -29,7 +29,7 @@ module Pinecall
       @direction = direction
       @caller = caller
       @metadata = metadata || {}
-      @medium = (medium || (%w[whatsapp sms].include?(channel.to_s) ? "text" : "voice")).to_s
+      @medium = (medium || (%w[whatsapp sms email].include?(channel.to_s) ? "text" : "voice")).to_s
       @today = today
       @claimed = claimed
       @searching = searching

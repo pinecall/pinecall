@@ -111,7 +111,7 @@ class CallWorld:
         self.metadata = line.metadata
         """What the call was opened with and sealed, as a token's `metadata`; empty when none."""
         self.medium: Medium = line.medium or (
-            "text" if line.channel in ("whatsapp", "sms") else "voice"
+            "text" if line.channel in ("whatsapp", "sms", "email") else "voice"
         )
         self.today = line.today
         """The day the call opened, `YYYY-MM-DD`."""

@@ -125,6 +125,7 @@ only the process in the agent's directory can do: [dev-verbs.md](dev-verbs.md).
 | `POST /v1/calls/{call}/hangup?token=` | the caller's own hang-up, said with the call's token (`log_token` or `participant_token`) as the page leaves: the call ends at once as `caller_hung_up`, `202`. From any page, with `keepalive`. A key is `403`: it ends a call with the verb `end`; a call nobody runs is `404`, one over `409` ([tokens.md](tokens.md)) |
 | WhatsApp | [whatsapp.md](whatsapp.md) |
 | SMS | a route to the agent on the channel `sms`: [numbers.md](numbers.md), "SMS" |
+| Email | a mailbox of the org's, its address routed on the channel `email`: [email.md](email.md) |
 | `POST /v1/agents/{slug}/dial` | a call the agent places, past the org's dial guards: [numbers.md](numbers.md) |
 | `POST /v1/agents/{slug}/text` | an SMS the agent sends first, past the same guards: [numbers.md](numbers.md), "SMS" |
 

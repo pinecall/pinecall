@@ -124,7 +124,7 @@ export function register(program: Command, ctx: Context): void {
     .argument("<number>", "+E.164")
     .requiredOption("--agent <slug>")
     .option("--account <id>", "the account that owns it, when the org has several")
-    .option("--channel <channel>", "phone | whatsapp | sms")
+    .option("--channel <channel>", "phone | whatsapp | sms | email")
     .option("--move", "take the number off the trunk it is on now, when it answers in another environment or for another agent")
     .option("--dry-run", "print the steps and write nothing")
     .action(async (number, flags) =>
@@ -139,7 +139,7 @@ export function register(program: Command, ctx: Context): void {
     .requiredOption("--country <XX>", "two letters")
     .option("--area <digits>", "an area code")
     .requiredOption("--agent <slug>")
-    .option("--channel <channel>", "phone | whatsapp | sms")
+    .option("--channel <channel>", "phone | whatsapp | sms | email")
     .option("--dry-run", "name the number and buy nothing")
     .action(async (flags) => {
       const input = service.BuyNumberInput.parse({ country: flags.country, agent: flags.agent, areaCode: flags.area, channel: flags.channel, dryRun: flags.dryRun === true });
@@ -149,7 +149,7 @@ export function register(program: Command, ctx: Context): void {
     .command("drop")
     .description("forget the route; the carrier account keeps the number")
     .argument("<number>")
-    .option("--channel <channel>", "phone | whatsapp | sms: the one to let go, for a number that answers on several")
+    .option("--channel <channel>", "phone | whatsapp | sms | email: the one to let go, for a number on several")
     .action(async (number, flags) => {
       try {
         ctx.io.result(await service.dropNumber(ctx, number, service.DropChannel.parse(flags.channel)), render.dropped);
@@ -160,7 +160,7 @@ export function register(program: Command, ctx: Context): void {
       }
     });
 
-  const carriers = program.command("carriers").description("list | show | add | drop the org's carrier accounts: Twilio, a SIP peer, WhatsApp").addHelpText("after", CARRIERS);
+  const carriers = program.command("carriers").description("list | show | add | drop the org's carrier accounts: Twilio, a SIP peer, WhatsApp, a mailbox").addHelpText("after", CARRIERS);
   carriers
     .command("list", { isDefault: true })
     .description("every carrier account of the org, oldest first")
@@ -204,6 +204,32 @@ export function register(program: Command, ctx: Context): void {
     .requiredOption("--phone-number-id <id>")
     .option("--label <name>")
     .action(async (flags) => addCarrier({ kind: "whatsapp", phoneNumberId: flags.phoneNumberId, label: flags.label }));
+  add
+    .command("email")
+    .description("a mailbox: IMAP to read it, SMTP to answer from it; its password on stdin, then a relay's")
+    .requiredOption("--address <address>", "the mailbox's address")
+    .requiredOption("--imap-host <host>", "where it is read, over TLS")
+    .requiredOption("--smtp-host <host>", "where its replies leave: its own server, or a relay such as Amazon SES")
+    .option("--imap-port <port>", "993 when left out")
+    .option("--smtp-port <port>", "465 (TLS) when left out; 587 is STARTTLS")
+    .option("--username <login>", "the IMAP login, when it is not the address")
+    .option("--smtp-username <login>", "a relay's own login; its password is asked after the mailbox's")
+    .option("--name <name>", "the name the contact reads beside the address")
+    .option("--label <name>")
+    .action(async (flags) =>
+      addCarrier({
+        kind: "email",
+        address: flags.address,
+        imapHost: flags.imapHost,
+        smtpHost: flags.smtpHost,
+        imapPort: flags.imapPort,
+        smtpPort: flags.smtpPort,
+        username: flags.username,
+        smtpUsername: flags.smtpUsername,
+        senderName: flags.name,
+        label: flags.label,
+      }),
+    );
   carriers
     .command("drop")
     .description("an account let go; its numbers stay routed until dropped")

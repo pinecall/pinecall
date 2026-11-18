@@ -19,10 +19,20 @@ async def deliver(mailbox: Mailbox, email: Email, *, within_s: float = TIMEOUT_S
     message["From"] = mailbox.sender
     message["To"] = email.to
     message["Subject"] = email.subject
+    for name, value in email.headers.items():
+        message[name] = value
     message.set_content(email.text)
     message.add_alternative(email.html, subtype="html")
     try:
         await asyncio.wait_for(asyncio.to_thread(_hand_over, mailbox, message, within_s), within_s)
+    except TimeoutError:
+        raise UpstreamError(f"{mailbox.host}:{mailbox.port} did not answer in {within_s:g}s") from None
+
+
+async def check_login(mailbox: Mailbox, *, within_s: float = TIMEOUT_S) -> None:
+    """Log in to the mail server and send nothing; UpstreamError with its reply when it refuses."""
+    try:
+        await asyncio.wait_for(asyncio.to_thread(_log_in, mailbox, within_s), within_s)
     except TimeoutError:
         raise UpstreamError(f"{mailbox.host}:{mailbox.port} did not answer in {within_s:g}s") from None
 
@@ -56,6 +66,18 @@ def _hand_over(mailbox: Mailbox, message: EmailMessage, timeout: float) -> None:
         raise UpstreamError(
             f"{mailbox.host}:{mailbox.port} refused it: {refused.smtp_code} {said.strip()}"
         ) from refused
+    except (OSError, smtplib.SMTPException) as down:
+        raise UpstreamError(f"{mailbox.host}:{mailbox.port} did not answer: {type(down).__name__}: {down}") from down
+
+
+def _log_in(mailbox: Mailbox, timeout: float) -> None:
+    try:
+        with _connect(mailbox, timeout) as server:
+            if mailbox.security == "starttls":
+                server.starttls(context=ssl.create_default_context())
+            server.login(mailbox.username, mailbox.password)
+    except smtplib.SMTPAuthenticationError as refused:
+        raise UpstreamError(f"{mailbox.host}:{mailbox.port} refused the login: {refused.smtp_code}") from refused
     except (OSError, smtplib.SMTPException) as down:
         raise UpstreamError(f"{mailbox.host}:{mailbox.port} did not answer: {type(down).__name__}: {down}") from down
 

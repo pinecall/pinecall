@@ -46,9 +46,9 @@ The org's numbers and the agent each reaches; the numbers its carrier accounts o
 | parameter | takes | | what it is |
 |---|---|---|---|
 | `action` | `list` · `available` · `import` · `buy` | required | list the org's numbers; available is what its carrier accounts own; import points one of them at an agent; buy gets a new one on the deployment's account — import and buy are a dry run unless dry_run is false |
-| `number` | text |  | `import`: the number, in +E.164 |
+| `number` | text |  | `import`: the number, in +E.164; for `email`, the mailbox's address |
 | `agent` | text |  | `import`, `buy`: the agent that answers it |
-| `channel` | `phone` · `whatsapp` · `sms` |  | `import`, `buy`: phone unless said. One number answers on several: import it once a channel. `sms` is a number of a Twilio account, whose messages Twilio then posts to Pinecall |
+| `channel` | `phone` · `whatsapp` · `sms` · `email` |  | `import`, `buy`: phone unless said. One number answers on several: import it once a channel. `sms` is a number of a Twilio account, whose messages Twilio then posts to Pinecall; `email` is a mailbox account's address, whose inbox Pinecall reads |
 | `account` | text |  | `available`, `import`: the carrier account the number lives in, when the org has several (`carriers list` names them) |
 | `move` | true or false |  | `import`: take the number off the trunk it is on now (another environment's, or another agent's), as a 409 naming that trunk asks |
 | `country` | text |  | `buy`: the country, two letters (ES, US) |
@@ -87,9 +87,9 @@ The org's numbers and the agent each reaches; the numbers its carrier accounts o
 
 ## `carriers`
 
-The org's carrier accounts — Twilio, a SIP peer, WhatsApp — and one account's networks and how outbound calls leave. Never a secret.
+The org's carrier accounts — Twilio, a SIP peer, WhatsApp, a mailbox — and one account's networks and how outbound calls leave. Never a secret.
 
-`carriers` lists the org's carrier accounts and shows one. Adding one takes its secret, and the rule is that no key is printed or passed through an assistant, so it is never a tool: give the person the command to type in their own terminal, `pinecall carriers add twilio --account-sid AC… --user SK…` (`sip` and `whatsapp` the same way), which reads the secret with nothing echoed.
+`carriers` lists the org's carrier accounts and shows one. Adding one takes its secret, and the rule is that no key is printed or passed through an assistant, so it is never a tool: give the person the command to type in their own terminal, `pinecall carriers add twilio --account-sid AC… --user SK…` (`sip`, `whatsapp` and `email --address … --imap-host … --smtp-host …` the same way), which reads the secret with nothing echoed.
 
 | parameter | takes | | what it is |
 |---|---|---|---|
@@ -163,6 +163,20 @@ Have an agent send a contact one SMS first, from a number it answers SMS at. The
 | `to` | text | required | the contact's number, in +E.164 |
 | `text` | text | required | what the contact reads |
 | `from` | text |  | which of the agent's SMS numbers it leaves from; the first when left out |
+| `prod` | true or false |  | true acts in production; left out or false, in the sandbox |
+
+## `email`
+
+The HTML the org's agents' emails are set in: shown, kept, tried on words (nothing sent), or cleared back to the plain one.
+
+`email` keeps the org's email layout: an agent answers an email in its own words and they are set in it, `{{content}}` where the reply goes, `{{subject}}` where the subject shows; with none, a plain one. `preview` answers the subject, the HTML and the plain part a contact would read, and sends nothing: try a layout on it before `set`. A mailbox is a carrier account (`carriers`), and its address is given to an agent with `numbers import` on the channel `email`.
+
+| parameter | takes | | what it is |
+|---|---|---|---|
+| `action` | `show` · `set` · `preview` · `clear` | required | show the layout; set keeps html as the org's; preview sets words in it as a reply would be, sending nothing; clear goes back to the plain one |
+| `html` | text |  | `set`, `preview`: an HTML page that says {{content}} once, where the reply goes, and {{subject}} where the subject should show |
+| `text` | text |  | `preview`: the words an agent would write: paragraphs, - lists, **bold**, *italics*, links |
+| `subject` | text |  | `preview`: the subject the reply answers |
 | `prod` | true or false |  | true acts in production; left out or false, in the sandbox |
 
 ## `callbacks`

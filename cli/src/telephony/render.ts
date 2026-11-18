@@ -77,7 +77,7 @@ export function boughtSoFar(stock: Limit): string {
   return stock.limit === null ? `bought numbers in this env: ${used}, no limit` : `bought numbers in this env: ${used} of ${stock.limit}`;
 }
 
-const CHANNEL_NAMES = { phone: "the phone", whatsapp: "WhatsApp", sms: "SMS" } as const;
+const CHANNEL_NAMES = { phone: "the phone", whatsapp: "WhatsApp", sms: "SMS", email: "email" } as const;
 
 export function dropped({ number, channel }: { number: string; channel?: keyof typeof CHANNEL_NAMES }): string {
   if (channel !== undefined) return `${number} no longer answers ${CHANNEL_NAMES[channel]} here. What it answers on another channel stays, and its account still owns it.`;
@@ -124,7 +124,8 @@ export function metaWebhook(row: CarrierShown): string[] {
 export function carrierKept(kept: CarrierShown): string[] {
   const lines = [`kept: ${carrierLine(kept)}`, ...metaWebhook(kept)];
   if (kept.networks.some((one) => one.state === "waiting")) lines.push("  each waiting network opens once Pinecall's operator approves it");
-  lines.push(formatHint(...(kept.networks.some((one) => one.state === "waiting") ? ["pinecall carriers show says when"] : []), "pinecall numbers import <+34…> --agent <slug> routes one of its numbers"));
+  const routes = kept.kind === "email" ? `pinecall numbers import ${kept.account} --agent <slug> --channel email gives it to an agent` : "pinecall numbers import <+34…> --agent <slug> routes one of its numbers";
+  lines.push(formatHint(...(kept.networks.some((one) => one.state === "waiting") ? ["pinecall carriers show says when"] : []), routes));
   return lines;
 }
 

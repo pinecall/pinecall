@@ -113,7 +113,7 @@ function Board(): ReactNode {
                 <span className="tst-row-name">
                   <span className="dash-clip">{shown(row.number)}</span>
                   <span className="tst-tag">{row.env}</span>
-                  {row.channel !== "phone" && <span className="tst-tag">{row.channel === "whatsapp" ? "WhatsApp" : row.channel === "sms" ? "SMS" : row.channel}</span>}
+                  {row.channel !== "phone" && <span className="tst-tag">{row.channel === "whatsapp" ? "WhatsApp" : row.channel === "sms" ? "SMS" : row.channel === "email" ? "Email" : row.channel}</span>}
                 </span>
                 <span className="tst-row-under">
                   <OrgLink slug={row.org} name={nameOf(row.org)} />, answered by {row.agent}. {cameIn(row)}

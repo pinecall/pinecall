@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **The channel `email`**: a call's `channel` may say it, it is written (`medium: text`), and the built-in rules tell
+  the model to write a whole email in one message; `channelRules` (`channel_rules`) takes `email` for the agent's own.
+
 ## 0.11.49 — a flow writes to somebody by SMS, and an open written conversation reads as open (2026-11-18)
 
 - **`step.text(to, agent, words)`**: a flow has an agent send a contact one SMS first, from a number it answers SMS at (`from_`), and reads what it came to as a `Texted`: `sent`, the `call` it was said on, or what `refused` it.

@@ -1,4 +1,4 @@
-"""The telephony tables: carriers, carrier_networks, routes; and the words two of their columns are written in."""
+"""The telephony tables: carriers, carrier_networks, routes, email_inboxes, email_layouts; and their words."""
 
 from datetime import datetime
 from enum import StrEnum
@@ -27,6 +27,7 @@ class CarrierKind(StrEnum):
     twilio = "twilio"
     sip = "sip"
     whatsapp = "whatsapp"
+    email = "email"
 
 
 class NetworkState(StrEnum):
@@ -118,3 +119,36 @@ class Route(Model):
     def approved(self) -> bool:
         """Whether a call to the number may open."""
         return self.approved_at is not None
+
+
+# A mailbox's inbox is read by one gateway at a time: the one whose lease runs. Where the last pass
+# stopped is the IMAP UID of the newest message read, good while the mailbox keeps its UIDVALIDITY.
+class EmailInbox(Model):
+    """Where the reading of an email account's inbox stands: the newest message read, and who reads it now."""
+
+    __tablename__ = "email_inboxes"
+    __table_args__ = (
+        ForeignKeyConstraint(["org", "account"], ["carriers.org", "carriers.account"], ondelete="CASCADE"),
+    )
+    __kept__ = Kept(not_exported="where the box's reading of a mailbox stands, which the mailbox itself says again")
+
+    org: Mapped[str] = mapped_column(Text, primary_key=True)
+    account: Mapped[str] = mapped_column(Text, primary_key=True)
+    uid_validity: Mapped[int | None] = mapped_column(BigInteger)
+    last_uid: Mapped[int | None] = mapped_column(BigInteger)
+    leased_by: Mapped[str | None] = mapped_column(Text)
+    leased_until: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    read_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(Text)
+
+
+class EmailLayout(Model):
+    """The org's HTML an agent's email is set in: `{{content}}` is where the reply goes."""
+
+    __tablename__ = "email_layouts"
+    __kept__ = Kept(exported=("html", "set_at"))
+
+    org: Mapped[str] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), primary_key=True)
+    html: Mapped[str] = mapped_column(Text, nullable=False)
+    set_by: Mapped[str | None] = mapped_column(Text)
+    set_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, default=utc_now)

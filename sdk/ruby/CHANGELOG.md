@@ -4,6 +4,11 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## Unreleased
+
+- **The channel `email`**: a call's `channel` may say it, it is written (`medium: text`), and the built-in rules tell
+  the model to write a whole email in one message; `channelRules` (`channel_rules`) takes `email` for the agent's own.
+
 ## [0.11.49] — a flow writes to somebody by SMS, and an open written conversation reads as open (2026-11-18)
 
 - **`step.text(to, Agent, words)`**: a flow has an agent send a contact one SMS first, from a number it answers SMS

@@ -113,6 +113,33 @@ describe("carriers", () => {
     });
   });
 
+  it("keeps a mailbox with its password, and a relay's only when its login is named", async () => {
+    const sent = answer("put", "/v1/carrier", { kind: "email", account: "help@acme.test", label: "", networks: [] });
+    const { ctx } = testContext();
+    const alone = service.AddCarrierInput.parse({ kind: "email", address: "help@acme.test", imapHost: "mail.acme.test", smtpHost: "mail.acme.test" });
+    expect(service.secretsOf(alone).map(([, field]) => field)).toEqual(["password"]);
+    const relayed = service.AddCarrierInput.parse({ kind: "email", address: "help@acme.test", imapHost: "mail.acme.test", smtpHost: "email-smtp.us-east-1.amazonaws.com", smtpPort: "587", smtpUsername: "AKIA1", senderName: "Acme" });
+    expect(service.secretsOf(relayed).map(([, field]) => field)).toEqual(["password", "smtp_password"]);
+    await service.addCarrier(ctx, relayed, { password: " p1 ", smtp_password: "ses\n" });
+    expect(sent[0]!.body).toEqual({
+      kind: "email",
+      address: "help@acme.test",
+      password: "p1",
+      imap_host: "mail.acme.test",
+      smtp_host: "email-smtp.us-east-1.amazonaws.com",
+      smtp_port: 587,
+      smtp_username: "AKIA1",
+      smtp_password: "ses",
+      sender_name: "Acme",
+    });
+  });
+
+  it("imports an address for email, and refuses a number there or an address elsewhere", () => {
+    expect(service.ImportNumberInput.parse({ number: "help@acme.test", agent: "front-desk", channel: "email" }).number).toBe("help@acme.test");
+    expect(() => service.ImportNumberInput.parse({ number: "+34910000000", agent: "front-desk", channel: "email" })).toThrow(/an address answers email/);
+    expect(() => service.ImportNumberInput.parse({ number: "help@acme.test", agent: "front-desk" })).toThrow(/--channel email/);
+  });
+
   it("keeps nothing when a secret is missing", async () => {
     const { ctx } = testContext();
     const input = service.AddCarrierInput.parse({ kind: "twilio", accountSid: "AC1", user: "SK1" });

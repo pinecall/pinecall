@@ -21,6 +21,7 @@ const DOMAINS: (() => Promise<{ register: Register }>)[] = [
   () => import("./agents/commands.js"),
   () => import("./knowledge/commands.js"),
   () => import("./telephony/commands.js"),
+  () => import("./email/commands.js"),
   () => import("./billing/commands.js"),
   () => import("./judging/commands.js"),
   () => import("./providers/commands.js"),
@@ -48,7 +49,7 @@ export const MAP = `pinecall · an agent's project in any language, against the 
 
   account     login · whoami · new · generate · mcp
   run         start · console · chat · prompt · kill
-  phone       line · numbers · carriers · callbacks
+  phone       line · numbers · carriers · callbacks · email
   settings    agent · lexicon · pipeline · voices · providers
   testing     test · simulate · personas · judges · judging · eval · runs · cases
   what ran    sessions · supervise · data · limits

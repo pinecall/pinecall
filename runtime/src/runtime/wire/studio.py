@@ -114,6 +114,7 @@ class ChannelRules(WireModel):
     chat: str | None = Field(default=None, min_length=1, max_length=LONGEST_CHANNEL_RULES)
     whatsapp: str | None = Field(default=None, min_length=1, max_length=LONGEST_CHANNEL_RULES)
     sms: str | None = Field(default=None, min_length=1, max_length=LONGEST_CHANNEL_RULES)
+    email: str | None = Field(default=None, min_length=1, max_length=LONGEST_CHANNEL_RULES)
 
 
 class Definition(WireModel):

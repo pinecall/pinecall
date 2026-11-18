@@ -14,7 +14,7 @@ from runtime.enums import Channel, RouteOrigin
 from runtime.exceptions import Conflict, ValidationError
 from runtime.fleet import service as fleet
 from runtime.kit.crypto import Vault
-from runtime.kit.text import parse_e164
+from runtime.kit.text import parse_e164, parse_email
 from runtime.kit.time import now
 from runtime.livekit import Servers
 from runtime.scoping import box_wide
@@ -191,9 +191,9 @@ async def survey_import(
     origin: RouteOrigin | None = None,
 ) -> Survey:
     """Everything importing a number needs, read before anything is written."""
-    number = parse_e164(wanted.number)
+    number = parse_email(wanted.number) if wanted.channel.is_by_email else parse_e164(wanted.number)
     if not wanted.channel.has_a_number:
-        raise ValidationError(f"a number is imported to answer phone, whatsapp or sms, not {wanted.channel}")
+        raise ValidationError(f"a number is imported to answer phone, whatsapp, sms or email, not {wanted.channel}")
     if wanted.channel is Channel.sms and wanted.hooked:
         raise ValidationError(
             "an SMS number is pointed here by this box, through the Twilio account it lives in: import it, "

@@ -14,7 +14,7 @@ from runtime.enums import Channel, KeyScope
 from runtime.exceptions import NotFound
 from runtime.handles import TheVault
 from runtime.kit.http import read_capped_body
-from runtime.kit.text import parse_e164
+from runtime.kit.text import parse_address
 from runtime.postgres import Session, TheBoxSession
 from runtime.telephony.models import Route
 from runtime.telephony.service import numbers, sms
@@ -43,14 +43,14 @@ ChannelAsked = Annotated[Channel | None, Query()]
 
 async def load_number(number: str, actor: NumbersKey, session: Session, channel: ChannelAsked = None) -> Route:
     """The org's number a path names, in the key's env; 404 otherwise, 409 for one on two channels and none named."""
-    return await numbers.get_number(session, actor.org, parse_e164(number), actor.env, channel)
+    return await numbers.get_number(session, actor.org, parse_address(number), actor.env, channel)
 
 
 async def load_number_in_either_env(
     number: str, actor: NumbersKey, session: Session, channel: ChannelAsked = None
 ) -> Route:
     """The org's number a path names, whichever env it answers in; 404 otherwise, 409 as above."""
-    return await numbers.get_number(session, actor.org, parse_e164(number), channel=channel)
+    return await numbers.get_number(session, actor.org, parse_address(number), channel=channel)
 
 
 TheNumber = Annotated[Route, Depends(load_number)]

@@ -256,3 +256,7 @@ class HandedMessage(BaseModel):
     error: str | None = None
     # The carrier answered the contact's stop word itself: the gateway that holds the thread adds nothing.
     carrier_replied: bool = False
+    # An email's subject, the ids before it, and its thread's first id.
+    subject: str | None = None
+    references: list[str] = Field(default_factory=list[str])
+    thread: str = ""

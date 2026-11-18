@@ -150,6 +150,7 @@ const CHANNELS: readonly { name: Channel; label: string; about: string }[] = [
   { name: "chat", label: "Website chat", about: "A written chat on a page of yours." },
   { name: "whatsapp", label: "WhatsApp", about: "Messages on a WhatsApp number." },
   { name: "sms", label: "SMS", about: "Text messages on a phone number." },
+  { name: "email", label: "Email", about: "Emails to a mailbox of yours." },
 ];
 const LONGEST_RULES = 2000;
 

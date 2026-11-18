@@ -16,7 +16,7 @@ import "../dashboard/dashboard.css";
 import "../configure/configure.css";
 import "../numbers/numbers.css";
 
-type Channel = "phone" | "whatsapp" | "sms";
+type Channel = "phone" | "whatsapp" | "sms" | "email";
 
 function Section({ tone, icon, title, about, action, onAdd, children }: { tone: string; icon: IconName; title: string; about: string; action: string; onAdd: () => void; children: ReactNode }): ReactNode {
   return (
@@ -77,6 +77,10 @@ export function ChannelsTab({ agent }: { agent: string }): ReactNode {
       <Section tone="blue" icon="chat" title="SMS" about={`The numbers whose text messages ${agent} answers, from the same number.`} action="Answer SMS" onAdd={() => setAdding("sms")}>
         {of("sms").map(row)}
         {read && of("sms").length === 0 && <p className="dash-quiet num-none">No number answers SMS yet.</p>}
+      </Section>
+      <Section tone="green" icon="chat" title="Email" about={`The mailboxes whose emails ${agent} answers, set in the org's layout.`} action="Connect a mailbox" onAdd={() => setAdding("email")}>
+        {of("email").map(row)}
+        {read && of("email").length === 0 && <p className="dash-quiet num-none">No mailbox yet.</p>}
       </Section>
       {adding !== null && <AddNumberPanel key={adding} agents={[agent]} agent={agent} channel={adding} onAdded={reread} onClose={stopAdding} />}
     </div>

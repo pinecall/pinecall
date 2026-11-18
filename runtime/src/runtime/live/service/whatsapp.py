@@ -6,6 +6,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from functools import partial
+from typing import cast
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,7 +38,10 @@ from runtime.wire.signal import HandedMessage
 
 logger = logging.getLogger(__name__)
 
-# The error a reply the channel refused is said with: `whatsapp_not_sent`, `sms_not_sent`.
+# What an email call's metadata names its thread by.
+EMAIL_THREAD = "email_thread"
+
+# The error a reply the channel refused is said with: `whatsapp_not_sent`, `sms_not_sent`, `email_not_sent`.
 NOT_SENT = "{channel}_not_sent"
 
 # A conversation quiet this long is over: the next message opens a new call. It is under
@@ -378,7 +382,10 @@ class Threads:
         newest = await calls.find_newest_call_with(session_, scope, agent, inbound.caller, inbound.channel)
         entries = [] if newest is None else await calls.list_entries(session_, newest)
         over = any(entry.type in OVER for entry in entries)
-        return None if not entries or over or self._live.store.clock() - entries[-1].ts > self.idle_s else newest
+        if not entries or over or self._live.store.clock() - entries[-1].ts > self.idle_s:
+            return None
+        # One contact writes on several email threads: only the call of this one is taken up.
+        return newest if not inbound.channel.is_by_email or _thread_of(entries[0]) == inbound.thread else None
 
     def _context(
         self, registration: Registration, route: RouteRow, inbound: whatsapp.Inbound, earlier: str | None
@@ -386,6 +393,9 @@ class Threads:
         answering = Route(
             org=route.org, agent=registration.slug, channel=inbound.channel, number=route.number, env=route.env
         )
+        by_email = inbound.channel.is_by_email
+        # An email's call says its thread and subject, which the agent reads and a restart takes it up by.
+        thread = {EMAIL_THREAD: inbound.thread, "subject": inbound.subject or ""} if by_email else {}
         return CallContext(
             call=new_call_id(),
             channel=inbound.channel,
@@ -393,7 +403,10 @@ class Threads:
             caller=inbound.caller,
             route=answering,
             today=today_in(self._live.settings.timezone),
-            contact=Contact(phone=inbound.caller, name=inbound.name),
+            contact=Contact(email=inbound.caller, name=inbound.name)
+            if by_email
+            else Contact(phone=inbound.caller, name=inbound.name),
+            metadata=thread,
             holder=registration.scope.holder or None,
             continues=earlier,
         )
@@ -434,6 +447,9 @@ class Threads:
 async def take_up(live: LiveParts, thread: OpenThread, heard: whatsapp.Inbound) -> QuotaExceeded | None:
     """One message of an open conversation read and answered; the refusal when the org's quota ran out."""
     running = thread.session
+    # An email is answered under the newest message of its thread, which its subject and chain are read from.
+    if heard.channel.is_by_email:
+        thread.inbound = heard
     text = heard.text or await thread.reaches.hear_note(heard)
     try:
         await thread.reaches.mark_read(heard, typing=bool(text) and running.line.agent_may_speak)
@@ -442,8 +458,14 @@ async def take_up(live: LiveParts, thread: OpenThread, heard: whatsapp.Inbound) 
     return None if not text else await written.hear(live, running, text)
 
 
+# The email thread a call was opened on, as its `call.started` says it.
+def _thread_of(started: Entry) -> object:
+    opened = started.data.get("metadata") if started.type == "call.started" else None
+    return cast("dict[str, object]", opened).get(EMAIL_THREAD) if isinstance(opened, dict) else None
+
+
 def _thread_key(scope: Scope, inbound: whatsapp.Inbound | whatsapp.Receipt) -> ThreadKey:
-    return ThreadKey(scope.org, scope.env, inbound.number, inbound.wa_id, inbound.channel)
+    return ThreadKey(scope.org, scope.env, inbound.number, inbound.wa_id, inbound.channel, inbound.thread)
 
 
 # Text, the words of a button or a list row, and a voice note are read; an image, a sticker, a

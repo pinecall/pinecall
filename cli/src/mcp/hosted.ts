@@ -55,7 +55,7 @@ The rule is that no key is printed and none is passed through you: no tool takes
 carrier secret or an app's secret, and none returns a Pinecall key. When a step needs one, never ask
 for it: give the person the command to type in their own terminal, which reads the secret with
 nothing echoed — \`pinecall providers add <vendor>\`, \`pinecall carriers add twilio --account-sid AC… --user SK…\`
-(\`sip\` and \`whatsapp\` the same way), \`pinecall secrets set <NAME>\` — and go on once they say it is done.
+(\`sip\`, \`whatsapp\` and \`email\` the same way), \`pinecall secrets set <NAME>\` — and go on once they say it is done.
 
 What cannot be undone is not a tool: erasing data, forgetting a contact, dropping a base, a number
 or a carrier, removing a deployed app. Those stay \`pinecall\` verbs a person types.`;

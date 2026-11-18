@@ -34,17 +34,22 @@ const ON_SMS =
   "You are answering by SMS. Plain text only: no markdown, no lists, no emoji unless the person uses them. " +
   "One short message, a few sentences at most.";
 
-/** The channels an agent may write its own rules for: a spoken call, a website's written chat, WhatsApp, SMS. */
-export type ChannelName = "voice" | "chat" | "whatsapp" | "sms";
+const ON_EMAIL =
+  "You are answering an email. Write the whole reply in one message: a greeting with the person's name when you know it, " +
+  "short paragraphs, a list with - when you give steps or options, **bold** for what they must not miss, links written out. " +
+  "Answer everything they asked. Close with a one-line sign-off. No subject line: it is set for you.";
+
+/** The channels an agent may write its own rules for: a spoken call, a website's written chat, WhatsApp, SMS, email. */
+export type ChannelName = "voice" | "chat" | "whatsapp" | "sms" | "email";
 
 /** An agent's own words for the channels it names, in place of the framework's; a channel left out keeps the framework's. */
 export type ChannelRules = Partial<Record<ChannelName, string>>;
 
 /** The framework's own rules, by the name an agent writes its own under. */
-export const CHANNEL_RULES: Readonly<Record<ChannelName, string>> = { voice: SPOKEN, chat: ON_A_WEBSITE, whatsapp: ON_WHATSAPP, sms: ON_SMS };
+export const CHANNEL_RULES: Readonly<Record<ChannelName, string>> = { voice: SPOKEN, chat: ON_A_WEBSITE, whatsapp: ON_WHATSAPP, sms: ON_SMS, email: ON_EMAIL };
 
 function channelNameOf(channel: string | undefined, medium: Medium): ChannelName {
-  if (channel === "whatsapp" || channel === "sms") return channel;
+  if (channel === "whatsapp" || channel === "sms" || channel === "email") return channel;
   return channel === "web" && medium === "text" ? "chat" : "voice";
 }
 

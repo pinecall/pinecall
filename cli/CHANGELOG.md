@@ -4,6 +4,14 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+- **Email.** `pinecall carriers add email --address … --imap-host … --smtp-host …` keeps a mailbox (its password on
+  stdin, then a relay's with `--smtp-username`), `pinecall numbers import <address> --agent <slug> --channel email`
+  gives it to an agent, and `pinecall email layout show|set|preview|clear` keeps the HTML its replies are set in. The
+  console's agent Channels tab has an Email section that connects a mailbox, and Messages filters by Email. The MCP's
+  `numbers` tool imports an address on the channel `email`, and its new `email` tool keeps the layout.
+
 ## 0.11.49 — a flow writes to somebody by SMS, and an open written conversation reads as open (2026-11-18)
 
 - Released with the runtime: nothing of this package changed.

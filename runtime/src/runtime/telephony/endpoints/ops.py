@@ -14,7 +14,7 @@ from runtime.compliance import service as compliance
 from runtime.compliance.schemas import DialGuards
 from runtime.enums import Env
 from runtime.handles import TheHttp, TheServers, TheVault
-from runtime.kit.text import parse_e164
+from runtime.kit.text import parse_address
 from runtime.knowledge import service as knowledge
 from runtime.postgres import TheBoxSession
 from runtime.telephony.auth import TheAgentsHeld, TheOrgAsked, TheSipNames
@@ -82,7 +82,7 @@ async def list_box_numbers(_actor: TheOperator, held: TheAgentsHeld, session: Th
 @router.post("/v1/ops/numbers/{number}/approve", status_code=204)
 async def approve_box_number(number: str, actor: TheOperator, org: TheOrgAsked, session: TheBoxSession) -> None:
     """Approve that a number the org hooked is the org's."""
-    await numbers.approve_number(session, org.id, org.slug, parse_e164(number), actor.name)
+    await numbers.approve_number(session, org.id, org.slug, parse_address(number), actor.name)
 
 
 # ── the carriers ──

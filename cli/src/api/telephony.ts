@@ -100,7 +100,21 @@ export type CarrierBody =
       outbound_password?: string;
       label?: string;
     }
-  | { kind: "whatsapp"; phone_number_id: string; access_token: string; app_secret?: string; label?: string };
+  | { kind: "whatsapp"; phone_number_id: string; access_token: string; app_secret?: string; label?: string }
+  | {
+      kind: "email";
+      address: string;
+      password: string;
+      imap_host: string;
+      smtp_host: string;
+      username?: string;
+      imap_port?: number;
+      smtp_port?: number;
+      smtp_username?: string;
+      smtp_password?: string;
+      sender_name?: string;
+      label?: string;
+    };
 
 /** What an org types in its own Meta app so its WhatsApp numbers' messages come to Pinecall. */
 export interface WhatsappSubscription {
@@ -145,7 +159,7 @@ export function buyNumber(gw: GatewayClient, body: NumberPurchase, dryRun: boole
 
 /** A number that answers on two channels is let go on the one named. */
 /** The channels a number answers on. */
-export type RouteChannel = "phone" | "whatsapp" | "sms";
+export type RouteChannel = "phone" | "whatsapp" | "sms" | "email";
 
 export async function deleteNumber(gw: GatewayClient, number: string, channel?: RouteChannel): Promise<void> {
   await gw.delete(`/v1/numbers/${seg(number)}`, { channel });

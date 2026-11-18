@@ -8,7 +8,7 @@ const named = encodeURIComponent;
 
 const RouteSchema = z.looseObject({
   agent: z.string(),
-  channel: z.enum(["phone", "web", "whatsapp", "sms"]),
+  channel: z.enum(["phone", "web", "whatsapp", "sms", "email"]),
   number: z.string().nullable(),
   env: z.enum(["production", "sandbox"]),
   /** Bought on the platform's own account. */
@@ -49,7 +49,7 @@ const CatalogSchema = z.looseObject({
 export type Catalog = z.infer<typeof CatalogSchema>;
 
 const CarrierSchema = z.looseObject({
-  kind: z.enum(["twilio", "sip", "whatsapp"]),
+  kind: z.enum(["twilio", "sip", "whatsapp", "email"]),
   account: z.string(),
   label: z.string().default(""),
   networks: z.array(z.looseObject({ network: z.string(), state: z.enum(["waiting", "approved", "refused"]) })).default([]),
@@ -68,7 +68,20 @@ export type Wired = z.infer<typeof WiredSchema>;
 export type WantedCarrier =
   | { kind: "twilio"; account_sid: string; user: string; secret: string; label?: string }
   | { kind: "sip"; username: string; password: string; addresses: string[]; outbound_host?: string; label?: string }
-  | { kind: "whatsapp"; phone_number_id: string; access_token: string; app_secret?: string; label?: string };
+  | { kind: "whatsapp"; phone_number_id: string; access_token: string; app_secret?: string; label?: string }
+  | {
+      kind: "email";
+      address: string;
+      password: string;
+      imap_host: string;
+      smtp_host: string;
+      username?: string;
+      imap_port?: number;
+      smtp_port?: number;
+      smtp_username?: string;
+      smtp_password?: string;
+      sender_name?: string;
+    };
 
 /** What the org types in its own Meta app, WhatsApp ▸ Configuration ▸ Webhook, so its numbers' messages come here. */
 const SubscriptionSchema = z.looseObject({ callback_url: z.string(), verify_token: z.string(), field: z.string() });
@@ -77,7 +90,7 @@ export type Subscription = z.infer<typeof SubscriptionSchema>;
 export interface WantedNumber {
   number: string;
   agent: string;
-  channel: "phone" | "whatsapp" | "sms";
+  channel: "phone" | "whatsapp" | "sms" | "email";
   /** The account the number lives in. */
   account?: string;
   /** The org points the number here itself: nothing outside is touched. */

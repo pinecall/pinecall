@@ -23,16 +23,22 @@ class Channel(StrEnum):
     web = "web"
     whatsapp = "whatsapp"
     sms = "sms"
+    email = "email"
 
     @property
     def has_a_number(self) -> bool:
-        """Whether a route on this channel answers at a phone number."""
+        """Whether a route on this channel answers at an address of its own: a phone number, or an email address."""
         return self is not Channel.web
 
     @property
     def is_a_thread(self) -> bool:
-        """Whether a contact writes to a number on it, message by message, and is answered there."""
-        return self in (Channel.whatsapp, Channel.sms)
+        """Whether a contact writes to an address on it, message by message, and is answered there."""
+        return self in (Channel.whatsapp, Channel.sms, Channel.email)
+
+    @property
+    def is_by_email(self) -> bool:
+        """Whether its address is an email address, where every other channel's is a phone number."""
+        return self is Channel.email
 
 
 class Medium(StrEnum):

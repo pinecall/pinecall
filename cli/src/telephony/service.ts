@@ -15,24 +15,31 @@ export const SEVERAL_ACCOUNTS = "name one of them";
 export const NAME_THE_ACCOUNT = "  name the account that owns the number: --account <id> (`pinecall carriers list`)";
 
 const E164 = /^\+[1-9]\d{6,14}$/;
+const AN_EMAIL = /^[^\s@<>,;]+@[^\s@<>,;]+\.[^\s@<>,;]+$/;
 
-/** What `numbers import` takes: a number an account of the org owns, pointed at an agent. */
-export const ImportNumberInput = z.object({
-  number: z.string().regex(E164, "a number is +E.164: +34910000000"),
-  agent: z.string().min(1),
-  account: z.string().min(1).optional(),
-  channel: z.enum(["phone", "whatsapp", "sms"]).optional(),
-  move: z.boolean().default(false),
-  dryRun: z.boolean().default(false),
-});
+/** What `numbers import` takes: a number an account of the org owns (an address, for email), pointed at an agent. */
+export const ImportNumberInput = z
+  .object({
+    number: z.string().min(1),
+    agent: z.string().min(1),
+    account: z.string().min(1).optional(),
+    channel: z.enum(["phone", "whatsapp", "sms", "email"]).optional(),
+    move: z.boolean().default(false),
+    dryRun: z.boolean().default(false),
+  })
+  .superRefine((input, said) => {
+    const byEmail = input.channel === "email";
+    if (byEmail && !AN_EMAIL.test(input.number)) said.addIssue({ code: "custom", path: ["number"], message: "an address answers email: help@acme.com" });
+    if (!byEmail && !E164.test(input.number)) said.addIssue({ code: "custom", path: ["number"], message: "a number is +E.164: +34910000000 (an address takes --channel email)" });
+  });
 export type ImportNumberInput = z.infer<typeof ImportNumberInput>;
 
 /** What the gateway's 409 says of a number that answers on two channels, and what to add. */
 export const ON_SEVERAL_CHANNELS = "name the one meant";
-export const NAME_THE_CHANNEL = "  name the channel to let go: --channel phone, whatsapp or sms (the others stay)";
+export const NAME_THE_CHANNEL = "  name the channel to let go: --channel phone, whatsapp, sms or email (the others stay)";
 
 /** The channel `numbers drop` lets go; left out, the number's only route. */
-export const DropChannel = z.enum(["phone", "whatsapp", "sms"]).optional();
+export const DropChannel = z.enum(["phone", "whatsapp", "sms", "email"]).optional();
 
 /** What `numbers buy` takes: a country (and area code) on the deployment's own account, pointed at an agent. */
 export const BuyNumberInput = z.object({
@@ -44,7 +51,7 @@ export const BuyNumberInput = z.object({
 });
 export type BuyNumberInput = z.infer<typeof BuyNumberInput>;
 
-/** What `carriers add` takes: one of the three kinds, its fields; the secrets come apart, off stdin. */
+/** What `carriers add` takes: one of the four kinds, its fields; the secrets come apart, off stdin. */
 export const AddCarrierInput = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("twilio"), accountSid: z.string().min(1), user: z.string().min(1), label: z.string().optional() }),
   z.object({
@@ -57,6 +64,18 @@ export const AddCarrierInput = z.discriminatedUnion("kind", [
     label: z.string().optional(),
   }),
   z.object({ kind: z.literal("whatsapp"), phoneNumberId: z.string().min(1), label: z.string().optional() }),
+  z.object({
+    kind: z.literal("email"),
+    address: z.string().regex(AN_EMAIL, "an address: help@acme.com"),
+    imapHost: z.string().min(1),
+    smtpHost: z.string().min(1),
+    username: z.string().optional(),
+    imapPort: z.coerce.number().int().min(1).max(65535).optional(),
+    smtpPort: z.coerce.number().int().min(1).max(65535).optional(),
+    smtpUsername: z.string().optional(),
+    senderName: z.string().optional(),
+    label: z.string().optional(),
+  }),
 ]);
 export type AddCarrierInput = z.infer<typeof AddCarrierInput>;
 
@@ -82,6 +101,9 @@ export interface CarrierShown extends api.Carrier {
   subscription?: api.WhatsappSubscription;
 }
 
+/** A relay's password: empty keeps the one given before for the same SMTP login. */
+export const SMTP_PASSWORD = "SMTP password, the relay's (empty keeps the one given before)";
+
 /** The app secret's prompt: the one secret that may be left empty. */
 export const META_APP_SECRET = "Meta app secret (empty keeps the one given before)";
 
@@ -89,6 +111,7 @@ export const META_APP_SECRET = "Meta app secret (empty keeps the one given befor
 export function secretsOf(input: AddCarrierInput): [string, string, "optional"?][] {
   if (input.kind === "twilio") return [["Twilio secret (the API key's, or the auth token)", "secret"]];
   if (input.kind === "whatsapp") return [["WhatsApp access token", "access_token"], [META_APP_SECRET, "app_secret", "optional"]];
+  if (input.kind === "email") return [["mailbox password (IMAP)", "password"], ...(input.smtpUsername === undefined ? [] : [[SMTP_PASSWORD, "smtp_password", "optional"] as [string, string, "optional"]])];
   const secrets: [string, string][] = [["SIP password", "password"]];
   if (input.outboundUsername !== undefined) secrets.push(["outbound password", "outbound_password"]);
   return secrets;
@@ -241,6 +264,7 @@ export async function listCallbacks(ctx: Context, input: ListCallbacksInput): Pr
 function carrierBodyOf(input: AddCarrierInput, secrets: Record<string, string>): api.CarrierBody {
   const label = input.label === undefined ? {} : { label: input.label };
   if (input.kind === "twilio") return { kind: "twilio", account_sid: input.accountSid, user: input.user, secret: secrets["secret"]!.trim(), ...label };
+  if (input.kind === "email") return emailBodyOf(input, secrets, label);
   if (input.kind === "whatsapp") {
     const appSecret = (secrets["app_secret"] ?? "").trim();
     return { kind: "whatsapp", phone_number_id: input.phoneNumberId, access_token: secrets["access_token"]!.trim(), ...(appSecret === "" ? {} : { app_secret: appSecret }), ...label };
@@ -256,3 +280,23 @@ function carrierBodyOf(input: AddCarrierInput, secrets: Record<string, string>):
     ...label,
   };
 }
+
+// A mailbox's fields, each sent only when it is given: the gateway's defaults are IMAP 993 and SMTP 465.
+function emailBodyOf(input: Extract<AddCarrierInput, { kind: "email" }>, secrets: Record<string, string>, label: { label?: string }): api.CarrierBody {
+  const relayPassword = (secrets["smtp_password"] ?? "").trim();
+  return {
+    kind: "email",
+    address: input.address,
+    password: secrets["password"]!.trim(),
+    imap_host: input.imapHost,
+    smtp_host: input.smtpHost,
+    ...(input.username === undefined ? {} : { username: input.username }),
+    ...(input.imapPort === undefined ? {} : { imap_port: input.imapPort }),
+    ...(input.smtpPort === undefined ? {} : { smtp_port: input.smtpPort }),
+    ...(input.smtpUsername === undefined ? {} : { smtp_username: input.smtpUsername }),
+    ...(relayPassword === "" ? {} : { smtp_password: relayPassword }),
+    ...(input.senderName === undefined ? {} : { sender_name: input.senderName }),
+    ...label,
+  };
+}
+

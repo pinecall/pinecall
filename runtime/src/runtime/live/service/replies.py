@@ -1,4 +1,4 @@
-"""How a written conversation reaches its contact: WhatsApp through Meta, an SMS through Twilio."""
+"""How a written conversation reaches its contact: WhatsApp through Meta, an SMS through Twilio, an email by SMTP."""
 
 import logging
 from dataclasses import dataclass
@@ -127,9 +127,31 @@ class BySms:
             return None
 
 
-# The one place that tells the two channels apart for a reply.
+@dataclass(frozen=True, slots=True)
+class ByEmail:
+    """The org's own mailbox: the reply set in the org's layout, threaded under what it answers, sent by SMTP."""
+
+    account: telephony.EmailAccount
+    layout: str
+
+    async def send(self, to: whatsapp.Inbound, text: str) -> None:
+        """Answer the email `to` from the address it was written to."""
+        await telephony.send_reply(self.account, telephony.compose_reply(self.account, self.layout, to, text))
+
+    async def mark_read(self, message: whatsapp.Inbound, *, typing: bool) -> None:
+        """Nothing: the inbox marked it read when it was read."""
+
+    async def hear_note(self, message: whatsapp.Inbound) -> str | None:
+        """None: an email's attachments are not read."""
+
+
+# The one place that tells the channels apart for a reply.
 async def way_to(session_: AsyncSession, live: LiveParts, route: RouteRow, inbound: whatsapp.Inbound) -> Reaches | None:
     """How the contact who wrote is answered; None when the box holds nothing to answer with."""
+    if inbound.channel is Channel.email:
+        mailbox = await telephony.email_account_of(session_, live.vault, route.org, route.account)
+        layout = await telephony.layout_of(session_, route.org)
+        return None if mailbox is None else ByEmail(mailbox, layout.html)
     if inbound.channel is Channel.sms:
         account = await telephony.sms_account_of(session_, live.vault, route)
         status_to = telephony.sms_status_url(live.vault, live.settings.base_url, inbound.number)

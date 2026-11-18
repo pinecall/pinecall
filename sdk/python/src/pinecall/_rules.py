@@ -42,28 +42,35 @@ ON_SMS = (
     "You are answering by SMS. Plain text only: no markdown, no lists, no emoji unless the person"
     " uses them. One short message, a few sentences at most."
 )
+ON_EMAIL = (
+    "You are answering an email. Write the whole reply in one message: a greeting with the"
+    " person's name when you know it, short paragraphs, a list with - when you give steps or"
+    " options, **bold** for what they must not miss, links written out. Answer everything they"
+    " asked. Close with a one-line sign-off. No subject line: it is set for you."
+)
 
 
 def medium_of(channel: Channel, medium: Medium | None) -> Medium:
     """The medium a call is had in: the one the gateway said, else the one its channel implies."""
     if medium is not None:
         return medium
-    return "text" if channel in ("whatsapp", "sms") else "voice"
+    return "text" if channel in ("whatsapp", "sms", "email") else "voice"
 
 
 # The framework's own rules, by the name an agent writes its own under: a spoken call, a website's
-# written chat, WhatsApp, SMS.
+# written chat, WhatsApp, SMS, email.
 CHANNEL_RULES: Mapping[str, str] = {
     "voice": SPOKEN,
     "chat": ON_A_WEBSITE,
     "whatsapp": ON_WHATSAPP,
     "sms": ON_SMS,
+    "email": ON_EMAIL,
 }
 
 
 def channel_name_of(channel: Channel, medium: Medium | None) -> str:
-    """The name a channel's rules are written under: `whatsapp`, `sms`, `chat`, else `voice`."""
-    if channel in ("whatsapp", "sms"):
+    """The name a channel's rules are written under: a written channel's, `chat`, else `voice`."""
+    if channel in ("whatsapp", "sms", "email"):
         return channel
     return "chat" if channel == "web" and medium_of(channel, medium) == "text" else "voice"
 

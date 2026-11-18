@@ -144,12 +144,16 @@ class ThreadKey:
     number: str
     wa_id: str
     channel: enums.Channel = enums.Channel.whatsapp
+    # An email thread's first message id: one contact writes on several at once.
+    thread: str = ""
 
     # A WhatsApp thread's name is as it always was, so a gateway of the release before reads it.
     @override
     def __str__(self) -> str:
         named = (self.org, self.env.value, self.number, self.wa_id)
-        return "|".join(named if self.channel is enums.Channel.whatsapp else (*named, self.channel.value))
+        if self.channel is enums.Channel.whatsapp:
+            return "|".join(named)
+        return "|".join((*named, self.channel.value, *((self.thread,) if self.thread else ())))
 
 
 # A session and a thread live where they were opened: another gateway takes one up only once its

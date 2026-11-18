@@ -67,7 +67,7 @@ Arguments:
 Options:
   --agent <slug>
   --account <id>       the account that owns it, when the org has several
-  --channel <channel>  phone | whatsapp | sms
+  --channel <channel>  phone | whatsapp | sms | email
   --move               take the number off the trunk it is on now, when it
                        answers in another environment or for another agent
   --dry-run            print the steps and write nothing
@@ -82,7 +82,7 @@ Options:
   --country <XX>       two letters
   --area <digits>      an area code
   --agent <slug>
-  --channel <channel>  phone | whatsapp | sms
+  --channel <channel>  phone | whatsapp | sms | email
   --dry-run            name the number and buy nothing
   -h, --help           display help for command
 
@@ -92,6 +92,6 @@ Usage: pinecall numbers drop [options] <number>
 forget the route; the carrier account keeps the number
 
 Options:
-  --channel <channel>  phone | whatsapp | sms: the one to let go, for a number
-                       that answers on several
+  --channel <channel>  phone | whatsapp | sms | email: the one to let go, for a
+                       number on several
   -h, --help           display help for command

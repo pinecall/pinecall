@@ -101,7 +101,7 @@ export function lettersOf(thread: Thread): string | undefined {
 }
 
 /** The channels a contact writes on message by message. */
-const WRITTEN = new Set(["whatsapp", "sms"]);
+const WRITTEN = new Set(["whatsapp", "sms", "email"]);
 
 /** Whether a conversation is one a contact writes on a number: a WhatsApp or an SMS thread. */
 export function isWritten(line: { channel: string | null }): boolean {

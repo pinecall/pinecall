@@ -1,14 +1,15 @@
-"""Every statement on the telephony tables: an org's carrier accounts, the networks it asked for, and its numbers."""
+"""Every statement on the telephony tables: an org's carrier accounts, its networks, its numbers, its inboxes."""
 
 from collections.abc import Collection, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import Select, delete, exists, func, select, update
+from sqlalchemy import Select, delete, exists, func, or_, select, update
+from sqlalchemy.dialects.postgresql import insert
 
 from runtime.enums import Channel, Env, RouteOrigin
 from runtime.kit.repository import Repository
-from runtime.telephony.models import Carrier, CarrierKind, CarrierNetwork, NetworkState, Route
+from runtime.telephony.models import Carrier, CarrierKind, CarrierNetwork, EmailInbox, EmailLayout, NetworkState, Route
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,6 +67,13 @@ class CarrierRepository(Repository[Carrier]):
     async def delete_of(self, org: str, account: str) -> bool:
         """Forget the account; whether the org had it. Its numbers' rows name no account from then on."""
         return await self.change(delete(Carrier).where(Carrier.org == org, Carrier.account == account)) > 0
+
+    async def list_routed_mailboxes(self) -> Sequence[Carrier]:
+        """Every org's email accounts that an address of answers on the channel email. Read box-wide by the caller."""
+        routed = exists().where(
+            Route.org == Carrier.org, Route.account == Carrier.account, Route.channel == Channel.email
+        )
+        return await self.all(self.statement().where(Carrier.kind == CarrierKind.email, routed).order_by(Carrier.org))
 
     async def list_of_kind_named(self, kind: CarrierKind, accounts: Collection[str]) -> Sequence[Carrier]:
         """Every org's accounts of the kind under these ids. Read box-wide by the caller."""
@@ -269,3 +277,53 @@ def _with_carrier() -> Select[Route, CarrierKind]:
     return select(Route, Carrier.kind).outerjoin(
         Carrier, (Carrier.org == Route.org) & (Carrier.account == Route.account)
     )
+
+
+class EmailInboxRepository(Repository[EmailInbox]):
+    """Where the reading of each mailbox stands, and which gateway reads it now."""
+
+    model = EmailInbox
+
+    # One gateway reads a mailbox at a time: the lease is taken where none runs, or renewed by its holder.
+    async def lease(self, org: str, account: str, *, by: str, until: datetime, at: datetime) -> EmailInbox | None:
+        """The mailbox's row, now leased to `by` until then; None while another gateway's lease runs."""
+        await self.session.execute(insert(EmailInbox).values(org=org, account=account).on_conflict_do_nothing())
+        free = or_(EmailInbox.leased_until.is_(None), EmailInbox.leased_until < at, EmailInbox.leased_by == by)
+        taken = await self.session.execute(
+            update(EmailInbox)
+            .where(EmailInbox.org == org, EmailInbox.account == account, free)
+            .values(leased_by=by, leased_until=until)
+            .returning(EmailInbox)
+        )
+        return taken.scalar_one_or_none()
+
+    async def move(
+        self, org: str, account: str, *, uid_validity: int | None, last_uid: int | None, at: datetime, error: str | None
+    ) -> None:
+        """Say where the reading stands after a pass, and what went wrong in it."""
+        await self.change(
+            update(EmailInbox)
+            .where(EmailInbox.org == org, EmailInbox.account == account)
+            .values(uid_validity=uid_validity, last_uid=last_uid, read_at=at, last_error=error)
+        )
+
+
+class EmailLayoutRepository(Repository[EmailLayout]):
+    """The HTML each org sets its agents' emails in."""
+
+    model = EmailLayout
+
+    async def find(self, org: str) -> EmailLayout | None:
+        """The org's layout, or None while it keeps the plain one."""
+        return await self.one_or_none(self.statement().where(EmailLayout.org == org))
+
+    async def put(self, org: str, html: str, *, by: str | None, at: datetime) -> EmailLayout:
+        """Keep the org's layout, replacing the one it had."""
+        row = await self.find(org)
+        if row is None:
+            return await self.add(EmailLayout(org=org, html=html, set_by=by, set_at=at))
+        return await self.update(row, html=html, set_by=by, set_at=at)
+
+    async def delete_of(self, org: str) -> bool:
+        """Forget the org's layout; whether it had one."""
+        return await self.change(delete(EmailLayout).where(EmailLayout.org == org)) > 0

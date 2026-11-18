@@ -30,15 +30,20 @@ module Pinecall
     ON_SMS = "You are answering by SMS. Plain text only: no markdown, no lists, no emoji unless the person uses " \
              "them. One short message, a few sentences at most."
 
+    ON_EMAIL = "You are answering an email. Write the whole reply in one message: a greeting with the person's " \
+               "name when you know it, short paragraphs, a list with - when you give steps or options, **bold** " \
+               "for what they must not miss, links written out. Answer everything they asked. Close with a " \
+               "one-line sign-off. No subject line: it is set for you."
+
     # The framework's own rules, by the name an agent writes its own under: a spoken call, a website's
-    # written chat, WhatsApp, SMS.
-    CHANNEL_RULES = { voice: SPOKEN, chat: ON_A_WEBSITE, whatsapp: ON_WHATSAPP, sms: ON_SMS }.freeze
+    # written chat, WhatsApp, SMS, email.
+    CHANNEL_RULES = { voice: SPOKEN, chat: ON_A_WEBSITE, whatsapp: ON_WHATSAPP, sms: ON_SMS, email: ON_EMAIL }.freeze
 
     module_function
 
-    # The name a channel's rules are written under: `whatsapp`, `sms`, a website's `chat`, else `voice`.
+    # The name a channel's rules are written under: `whatsapp`, `sms`, `email`, a website's `chat`, else `voice`.
     def channel_name_of(channel, medium)
-      return channel.to_sym if %w[whatsapp sms].include?(channel.to_s)
+      return channel.to_sym if %w[whatsapp sms email].include?(channel.to_s)
 
       channel.to_s == "web" && medium.to_s == "text" ? :chat : :voice
     end

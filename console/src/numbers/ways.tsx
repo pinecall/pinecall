@@ -25,7 +25,7 @@ export interface WayProps {
   onAdded: (number: string, after?: ReactNode) => void;
 }
 
-function Submit({ busy, doing, children, disabled = false }: { busy: boolean; doing: string; children: ReactNode; disabled?: boolean }): ReactNode {
+export function Submit({ busy, doing, children, disabled = false }: { busy: boolean; doing: string; children: ReactNode; disabled?: boolean }): ReactNode {
   return (
     <div className="cfg-dialog-foot">
       <button type="submit" className="cfg-save" disabled={busy || disabled}>

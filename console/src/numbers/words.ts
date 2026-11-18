@@ -21,9 +21,9 @@ export function e164(typed: string): string {
 }
 
 /** A channel as a person reads it. */
-export const CHANNEL_NAMES: Record<NumberRow["route"]["channel"], string> = { phone: "Phone", web: "Web", whatsapp: "WhatsApp", sms: "SMS" };
+export const CHANNEL_NAMES: Record<NumberRow["route"]["channel"], string> = { phone: "Phone", web: "Web", whatsapp: "WhatsApp", sms: "SMS", email: "Email" };
 
-const KINDS: Record<Carrier["kind"], string> = { twilio: "Twilio", sip: "Your PBX", whatsapp: "WhatsApp" };
+const KINDS: Record<Carrier["kind"], string> = { twilio: "Twilio", sip: "Your PBX", whatsapp: "WhatsApp", email: "Mailbox" };
 
 /** A carrier account in a line: what it is, and the name it was given. */
 export function accountName(carrier: Carrier): string {
@@ -42,7 +42,7 @@ export function comesThrough(row: NumberRow, carriers: readonly Carrier[], catal
 
 /** A way to add a number: what it is called, what it takes, and its form. */
 export interface Way {
-  id: "buy" | "twilio" | "guided" | "pbx" | "whatsapp" | "sms";
+  id: "buy" | "twilio" | "guided" | "pbx" | "whatsapp" | "sms" | "email";
   name: string;
   says: string;
   icon: IconName;
@@ -51,7 +51,7 @@ export interface Way {
 }
 
 /** The ways this deployment offers for a channel, quickest first: buying where it sells, each carrier it admits, an own PBX, WhatsApp. */
-export function waysOffered(catalog: Catalog, channel: "phone" | "whatsapp" | "sms" | null): Way[] {
+export function waysOffered(catalog: Catalog, channel: "phone" | "whatsapp" | "sms" | "email" | null): Way[] {
   const phone: Way[] = [
     ...(catalog.sells ? [{ id: "buy" as const, name: "Buy a number", says: "Pick a country and it rings in seconds, on Pinecall's account.", icon: "coins" as const }] : []),
     ...catalog.carriers.map((carrier): Way => (carrier.how === "automatic" ? { id: "twilio", name: `Bring one from ${carrier.name}`, says: "Connect your account once. We list its numbers and point the one you pick here.", icon: "numbers" } : { id: "guided", name: `Point one from ${carrier.name}`, says: `Paste one address in ${carrier.name}'s portal. Its calls are already trusted here.`, icon: "route", via: carrier.kind })),
@@ -59,5 +59,9 @@ export function waysOffered(catalog: Catalog, channel: "phone" | "whatsapp" | "s
   ];
   const whatsapp: Way = { id: "whatsapp", name: "WhatsApp", says: "A WhatsApp Business number. Messages reach the agent and it replies from it.", icon: "chat" };
   const sms: Way = { id: "sms", name: "SMS", says: "Text messages on a number of your Twilio account, answered from the same number as its calls.", icon: "chat" };
-  return channel === "whatsapp" ? [whatsapp] : channel === "sms" ? [sms] : channel === "phone" ? phone : [...phone, whatsapp, sms];
+  const email: Way = { id: "email", name: "Email", says: "A mailbox of yours. The agent reads what is written to it and answers in your layout.", icon: "chat" };
+  if (channel === "whatsapp") return [whatsapp];
+  if (channel === "sms") return [sms];
+  if (channel === "email") return [email];
+  return channel === "phone" ? phone : [...phone, whatsapp, sms, email];
 }

@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+- **An agent answers email.** An org brings a mailbox of its own as an account of kind `email` (`PUT /v1/carrier`:
+  IMAP to read it, SMTP to answer from it, each with its login, SMTP's possibly a relay's such as Amazon SES), and
+  routes its address to an agent on the new channel `email` (`POST /v1/numbers`, an address where a number goes;
+  migration 000032). Every gateway passes over the routed mailboxes, each read by one at a time under a lease; the
+  first pass answers nothing that was already there. An email nobody wrote as a person (a bounce, `no-reply`, an
+  autoresponder, a list, the mailbox's own) is not answered. Each email thread is its own conversation, keyed by its
+  first message's id; the reply goes out from the address written to, under `Re:` and the subject, threaded with
+  `In-Reply-To` and `References`, marked `Auto-Submitted`. Its words are read for paragraphs, lists, bold, italics and
+  links, everything else escaped, and set in the org's HTML layout (`/v1/org/email/layout`: its own, or a plain one,
+  with a preview that sends nothing). The framework's channel rule `email` tells the model to write a whole email in
+  one message. `docs/protocol/email.md`.
+
 ## 0.11.49 — a flow writes to somebody by SMS, and an open written conversation reads as open (2026-11-18)
 
 - **A flow writes to somebody.** A step of kind `text` asks `{agent, to, text, from?}` and sends the contact one

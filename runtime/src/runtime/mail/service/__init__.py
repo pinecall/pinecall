@@ -14,15 +14,21 @@ from runtime.mail.service.emails import (
     write_link_email,
     write_notice,
 )
+from runtime.mail.service.mailboxes import Mailbox
 from runtime.mail.service.outbox import Outbox
+from runtime.mail.service.smtp import check_login, check_public, deliver
 
 __all__ = [
     "Email",
     "LinkDetails",
+    "Mailbox",
     "Outbox",
     "Wording",
     "button",
+    "check_login",
+    "check_public",
     "code_block",
+    "deliver",
     "fallback",
     "frame",
     "heading",

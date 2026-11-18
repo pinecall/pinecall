@@ -2,7 +2,7 @@ $ pinecall carriers --help
 Usage: pinecall carriers [options] [command]
 
 list | show | add | drop the org's carrier accounts: Twilio, a SIP peer,
-WhatsApp
+WhatsApp, a mailbox
 
 Options:
   -h, --help      display help for command
@@ -63,6 +63,8 @@ Commands:
                       the password on stdin
   whatsapp [options]  a WhatsApp Business number: its id, then Meta's token and
                       your Meta app's secret on stdin
+  email [options]     a mailbox: IMAP to read it, SMTP to answer from it; its
+                      password on stdin, then a relay's
   help [command]      display help for command
 
 $ pinecall carriers add twilio --help

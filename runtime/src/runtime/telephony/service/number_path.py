@@ -131,6 +131,8 @@ def _fence_step(route: Route, fencing: Fencing) -> PathStep:
         return PathStep("fence", "ok", "Signed by Meta, checked on every message")
     if route.channel is Channel.sms:
         return PathStep("fence", "ok", "Posted by Twilio to an address only this number's account knows")
+    if route.channel is Channel.email:
+        return PathStep("fence", "ok", "Read from its own mailbox, with the login the org brought")
     if not route.approved:
         return PathStep(
             "fence",

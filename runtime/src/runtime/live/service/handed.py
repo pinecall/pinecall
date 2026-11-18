@@ -17,6 +17,9 @@ def hand(inbound: whatsapp.Inbound) -> HandedMessage:
         media_id=inbound.media_id,
         channel=inbound.channel,
         carrier_replied=inbound.carrier_replied,
+        subject=inbound.subject,
+        references=list(inbound.references),
+        thread=inbound.thread,
     )
 
 
@@ -50,6 +53,9 @@ def message_of(handed: HandedMessage) -> whatsapp.Inbound:
         media_id=handed.media_id,
         channel=handed.channel,
         carrier_replied=handed.carrier_replied,
+        subject=handed.subject,
+        references=tuple(handed.references),
+        thread=handed.thread,
     )
 
 

@@ -134,7 +134,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `POST` | `/v1/calls/{call}/verbs` | supervise and calls · fleet, or a supervise seat's token | One supervise verb on a live call; the call's log says what it did. |
 | `DELETE` | `/v1/carrier` | numbers | Forget an account; its numbers stay routed until each is let go. |
 | `GET` | `/v1/carrier` | numbers | The org's account, named, never its secret; the only one unless one is asked for. |
-| `PUT` | `/v1/carrier` | numbers | Keep an account of the org: a Twilio account, a SIP peer, a WhatsApp number at Meta. |
+| `PUT` | `/v1/carrier` | numbers | Keep an account of the org: a Twilio account, a SIP peer, a WhatsApp number at Meta, a mailbox. |
 | `GET` | `/v1/carrier/outbound` | numbers | Whether the org can place a call, one sentence per thing missing, and its guards. |
 | `POST` | `/v1/carrier/outbound` | numbers | Make an account dialable: Twilio's termination and a credential; a peer needs nothing. |
 | `GET` | `/v1/carriers` | numbers | Every account of the org, oldest first. |
@@ -335,6 +335,10 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `GET` | `/v1/org/erasures` | team | The org's erasures, newest first: what went, when, and who asked. |
 | `GET` | `/v1/org/policy` | team | The org's compliance settings: retention, calling hours, calls a day per number, and who set them. |
 | `PUT` | `/v1/org/policy` | team | The org's compliance settings replaced whole, from the next nightly run. |
+| `GET` | `/v1/org/email/layout` | numbers | The HTML the org's agents' emails are set in: its own, or the plain one while it wrote none. |
+| `PUT` | `/v1/org/email/layout` | numbers | Keep the org's layout: its agents' next emails are set in it. |
+| `DELETE` | `/v1/org/email/layout` | numbers | Forget the org's layout, back to the plain one. |
+| `POST` | `/v1/org/email/layout/preview` | numbers | Words set in the layout as a reply would be: its subject, its HTML, its plain part. |
 | `GET` | `/v1/org/export` | team | The org's data in the key's environment as JSON Lines: its calls with their logs, then everything it wrote or configured, a line a row, each saying its kind. |
 | `GET` | `/v1/org/judging` | calls | Whether hang-up judging is on, the model it runs on, and its ceiling per call. |
 | `PUT` | `/v1/org/judging` | usage | Hang-up judging on or off, and the model it runs on, from the next call. |

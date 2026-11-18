@@ -1,16 +1,19 @@
-"""The live side's loops: the reaper, which ends what nothing runs any more, and the adopting of an orphaned call."""
+"""The live side's loops: the reaper, the adopting of an orphaned call, and the reading of the mailboxes."""
 
 import logging
 import time
 
 from runtime.kit.loops import loop, survive
 from runtime.live.parts import LiveParts
-from runtime.live.service import handoff, reaper
+from runtime.live.service import handoff, inboxes, reaper
+from runtime.live.service.whatsapp import Threads
 
 logger = logging.getLogger(__name__)
 
 REAPED_EVERY_S = 60.0
 ADOPTED_EVERY_S = 1.0
+# An email is answered within a pass or two: nobody expects a reply by email in seconds.
+READ_EVERY_S = 20.0
 
 
 # Every part of a pass stands alone, whatever it raises: a call the reaper cannot end (a log it
@@ -36,3 +39,9 @@ async def adopt(live: LiveParts) -> None:
     """One pass: the calls whose opener is gone and whose worker reads its commands here are this gateway's."""
     for call in await handoff.adopt_orphans(live.calls, live.holders, time.monotonic()):
         logger.warning("adopted %s: the gateway that opened it is gone, and its worker reads here", call)
+
+
+@loop("inboxes", every_s=READ_EVERY_S)
+async def read_inboxes(live: LiveParts, threads: Threads) -> None:
+    """One pass: the mailboxes this gateway reads, read, and each new email heard on its thread."""
+    await inboxes.read_inboxes(live, threads)

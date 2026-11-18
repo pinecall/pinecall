@@ -15,7 +15,7 @@ from runtime.enums import Channel, Env, RouteOrigin
 from runtime.exceptions import Conflict, NotFound
 from runtime.fleet import service as fleet
 from runtime.kit.crypto import Vault
-from runtime.kit.text import parse_e164
+from runtime.kit.text import parse_address
 from runtime.kit.time import now
 from runtime.livekit import Servers
 from runtime.scoping import box_wide
@@ -233,7 +233,7 @@ async def let_go(
 async def release_named(session: AsyncSession, servers: Servers, org: str, named: str, number: str) -> None:
     """Let go the number of an org the operator names, whichever env it answers in; NotFound for one nobody routed."""
     with box_wide():
-        found = await RouteRepository(session).list_at(org, parse_e164(number))
+        found = await RouteRepository(session).list_at(org, parse_address(number))
         if not found:
             raise NotFound(f"no route for {number} in org {named}")
         for numbered in found:

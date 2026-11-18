@@ -81,6 +81,11 @@ def parse_email(address: str) -> str:
     return data
 
 
+def parse_address(written: str) -> str:
+    """A route's address: an email address when it holds an @, a phone number in E.164 otherwise."""
+    return parse_email(written) if "@" in written else parse_e164(written)
+
+
 # A signed token is three parts between dots.
 JWT_PARTS = 3
 

@@ -69,8 +69,29 @@ class WhatsappAccount(Schema):
     app_secret: str = ""
 
 
+class EmailAccount(Schema):
+    """A mailbox of the org's: IMAP to read it, SMTP to answer from it, each with its login."""
+
+    kind: Literal["email"] = "email"
+    address: Annotated[str, Field(min_length=3, max_length=254)]
+    password: Annotated[str, Field(min_length=1)]
+    imap_host: Annotated[str, Field(min_length=1, max_length=253)]
+    smtp_host: Annotated[str, Field(min_length=1, max_length=253)]
+    # The IMAP login when it is not the address.
+    username: str = ""
+    imap_port: Annotated[int, Field(ge=1, le=65535)] = 993
+    smtp_port: Annotated[int, Field(ge=1, le=65535)] = 465
+    # A relay's own login (Amazon SES's, say); left out, SMTP logs in as IMAP does. A password left out
+    # for the same login keeps the one brought before.
+    smtp_username: str = ""
+    smtp_password: str = ""
+    # The name the contact reads beside the address.
+    sender_name: Annotated[str, Field(max_length=120)] = ""
+    label: str = ""
+
+
 # A new kind of account is a line here, a module of its own, and a line of the registry.
-type Account = Annotated[TwilioAccount | SipPeer | WhatsappAccount, Field(discriminator="kind")]
+type Account = Annotated[TwilioAccount | SipPeer | WhatsappAccount | EmailAccount, Field(discriminator="kind")]
 
 
 class NetworkRow(Row):

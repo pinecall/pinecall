@@ -69,7 +69,7 @@ class Subscription:
 
 @dataclass(frozen=True, slots=True)
 class Inbound:
-    """One message a contact wrote to one of the box's numbers, on WhatsApp or by SMS."""
+    """One message a contact wrote to one of the box's addresses: on WhatsApp, by SMS, or by email."""
 
     number: str
     # The provider's id for that number: Meta's phone number id, or the Twilio account an SMS came through.
@@ -89,11 +89,16 @@ class Inbound:
     channel: Channel = Channel.whatsapp
     # The carrier read the message as a word of its own (STOP, START, HELP) and answered it itself.
     carrier_replied: bool = False
+    # An email's subject, the ids of the messages before it in its thread, and the thread's first id:
+    # one contact's emails on two subjects are two conversations.
+    subject: str | None = None
+    references: tuple[str, ...] = ()
+    thread: str = ""
 
     @property
     def caller(self) -> str:
-        """The sender in E.164: WhatsApp names them by digits alone."""
-        return f"+{self.wa_id}"
+        """The sender: in E.164 (WhatsApp names them by digits alone), or their email address."""
+        return self.wa_id if self.channel.is_by_email else f"+{self.wa_id}"
 
     def may_reach(self, org: str, account: str | None) -> bool:
         """Whether a number of this org, in this account, is one the body's signature vouches for."""
@@ -113,6 +118,8 @@ class Receipt:
     error: str | None = None
     signed_for: frozenset[str] | None = None
     channel: Channel = Channel.whatsapp
+    # No email is answered with a receipt: a receipt names no thread of its own.
+    thread: str = ""
 
     @property
     def caller(self) -> str:

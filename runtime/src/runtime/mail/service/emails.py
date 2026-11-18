@@ -1,7 +1,7 @@
 """An email and the frame it is set in: worded once as text and HTML, in the box's brand."""
 
-from collections.abc import Callable
-from dataclasses import dataclass
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field
 from datetime import datetime
 from html import escape
 
@@ -23,6 +23,9 @@ class Email:
     subject: str
     text: str
     html: str
+    # What threads it in the reader's mail client and says it was written by no person: `Message-ID`,
+    # `In-Reply-To`, `References`, `Auto-Submitted`. The box's own emails carry none.
+    headers: Mapping[str, str] = field(default_factory=dict[str, str])
 
 
 @dataclass(frozen=True, slots=True)

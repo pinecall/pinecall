@@ -38,11 +38,12 @@ Commands:
   memory                                   what memory kept about a contact, forget it on request, and what a golden says of recall
   remember [options] [paths...]            the goldens memory.remember is held to: what a call teaches, and what it never keeps
   numbers                                  list | available | import | buy | drop the numbers the org answers at
-  carriers                                 list | show | add | drop the org's carrier accounts: Twilio, a SIP peer, WhatsApp
+  carriers                                 list | show | add | drop the org's carrier accounts: Twilio, a SIP peer, WhatsApp, a mailbox
   line                                     which phone is yours, and whose terminal anybody else's call rings in
   dial [options] <agent> <number>          have an agent call a number, with what its call opens with
   text [options] <agent> <number> <words>  have an agent send a contact one SMS first
   callbacks [options]                      the numbers people left when every seat was taken: who to call back
+  email                                    the HTML the org's agents' emails are set in
   limits                                   what the org may use in this env, what it used this month, and whose keys its calls run on
   judges                                   every judge a call meets: Pinecall's, switched on or off; the org's own and the agent's own; one tried on calls
   judging [options] [on|off]               whether this org's calls are judged at hang-up, and the model the judges run on: Pinecall's, or one of yours

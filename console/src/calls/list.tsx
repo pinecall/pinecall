@@ -103,6 +103,7 @@ const THREAD_CHANNELS: readonly { value: string; name: string }[] = [
   { value: "", name: "All" },
   { value: "whatsapp", name: "WhatsApp" },
   { value: "sms", name: "SMS" },
+  { value: "email", name: "Email" },
 ];
 
 export function ThreadList({ threads, lines, open, shown: shownCall, url, grouped, onGroup, onErased }: { threads: readonly Thread[]; /** The calls in view, before the status: what the chips count. */ lines: readonly SessionLine[]; open: Thread | undefined; /** The call on screen, one of the open thread's. */ shown: string | undefined; /** One row per person, their calls under it; else one row per call. */ grouped: boolean; onGroup: () => void; /** A call erased from a row's menu: out of the list. */ onErased: (call: string) => void; url: CallsUrl }): ReactNode {

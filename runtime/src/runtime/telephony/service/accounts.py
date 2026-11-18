@@ -23,6 +23,7 @@ from runtime.telephony.models import CarrierKind
 from runtime.telephony.repository import CarrierRepository, RouteRepository
 from runtime.telephony.service import networks, twilio
 from runtime.telephony.service.carrier import Carrier
+from runtime.telephony.service.email_account import EmailAccount
 from runtime.telephony.service.sip_peer import SipPeer
 from runtime.telephony.service.twilio import TwilioAccount
 from runtime.telephony.service.twilio_carrier import TwilioCarrier, dump_account, read_account
@@ -40,6 +41,7 @@ CARRIERS: dict[CarrierKind, type[Carrier]] = {
     CarrierKind.twilio: TwilioCarrier,
     CarrierKind.sip: SipPeer,
     CarrierKind.whatsapp: WhatsappNumber,
+    CarrierKind.email: EmailAccount,
 }
 
 
@@ -166,6 +168,17 @@ async def twilio_account_of(session: AsyncSession, vault: Vault, org: str, numbe
 
 
 # WhatsApp's replies go out with the org's own token for the number, else the box's Meta app's.
+async def email_account_of(session: AsyncSession, vault: Vault, org: str, account: str | None) -> EmailAccount | None:
+    """The mailbox an email route lives in; None when the account is gone or is no mailbox."""
+    if account is None:
+        return None
+    try:
+        found = await get_carrier(session, vault, org, account)
+    except NotFound:
+        return None
+    return found if isinstance(found, EmailAccount) else None
+
+
 async def meta_token_for(session: AsyncSession, vault: Vault, org: str, phone_number_id: str) -> str | None:
     """The org's own Meta token for the number, else the box's, else None."""
     for carrier in await list_carriers(session, vault, org):

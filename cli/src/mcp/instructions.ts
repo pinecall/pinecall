@@ -28,7 +28,7 @@ carrier secret or an app's secret, and none returns a Pinecall key. When a step 
 for it and never send the person to a screen: give them the command to type in their own terminal,
 which reads the secret with nothing echoed —
 \`pinecall providers add <vendor>\`, \`pinecall carriers add twilio --account-sid AC… --user SK…\`
-(\`sip\` and \`whatsapp\` the same way), \`pinecall secrets set <NAME>\` — and go on once they say it is done.
+(\`sip\`, \`whatsapp\` and \`email\` the same way), \`pinecall secrets set <NAME>\` — and go on once they say it is done.
 
 What cannot be undone is not a tool: erasing data, forgetting a contact, dropping a base, a number
 or a carrier, removing a deployed app. Those stay \`pinecall\` verbs a person types.`;
