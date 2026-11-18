@@ -154,11 +154,18 @@ export function register(program: Command, ctx: Context): void {
     .option("--platform-disclosure")
     .option("--no-disclosure")
     .option("--recording-notice")
-    .option("--no-recording-notice");
+    .option("--no-recording-notice")
+    .option("--sms-stop-reply <words>", "what a contact who texts STOP is told, in your words")
+    .option("--carrier-stop-reply", "leave that confirmation to the carrier, the default")
+    .option("--no-sms-stop-reply", "tell them nothing")
+    .option("--sms-help-reply <words>", "what a contact who texts HELP is told")
+    .option("--carrier-help-reply", "leave HELP to the carrier and to the agent, the default")
+    .option("--sms-stop-words <words>", "more words that stop the messages, comma-separated: BAJA,ALTO")
+    .option("--standard-stop-words", "the standard words alone: STOP, UNSUBSCRIBE, CANCEL, END, QUIT…");
   // commander keeps one value for `--x` and `--no-x`, the last said; both said is two answers to one
   // field, which the service refuses. Each flag is heard as it is read, so both are known.
   const said = new Map<string, unknown>();
-  for (const name of ["disclosure", "no-disclosure", "recording-notice", "no-recording-notice"]) policy.on(`option:${name}`, (value: unknown) => said.set(name, value));
+  for (const name of ["disclosure", "no-disclosure", "recording-notice", "no-recording-notice", "sms-stop-reply", "no-sms-stop-reply"]) policy.on(`option:${name}`, (value: unknown) => said.set(name, value));
   policy.action(async (flags) => {
       const input = service.PolicyInput.parse({
         retentionDays: numberOf("--retention-days", flags.retentionDays),
@@ -174,6 +181,13 @@ export function register(program: Command, ctx: Context): void {
         noDisclosure: said.has("no-disclosure"),
         recordingNotice: said.has("recording-notice"),
         noRecordingNotice: said.has("no-recording-notice"),
+        smsStopReply: typeof said.get("sms-stop-reply") === "string" ? (said.get("sms-stop-reply") as string) : undefined,
+        carrierStopReply: flags.carrierStopReply === true,
+        noSmsStopReply: said.has("no-sms-stop-reply"),
+        smsHelpReply: flags.smsHelpReply,
+        carrierHelpReply: flags.carrierHelpReply === true,
+        smsStopWords: flags.smsStopWords,
+        standardStopWords: flags.standardStopWords === true,
       });
       ctx.io.result(await service.policy(ctx, input), render.policy);
     });

@@ -16,7 +16,7 @@ from runtime.billing import service as billing
 from runtime.calls import folds
 from runtime.calls import service as calls
 from runtime.compliance import service as compliance
-from runtime.enums import Channel, ConsentKind, Env
+from runtime.enums import ConsentKind, Env
 from runtime.exceptions import Conflict, PinecallError, QuotaExceeded, ValidationError
 from runtime.judging import service as judging
 from runtime.kit.loops import is_cancellation
@@ -393,6 +393,8 @@ class AppSocket:
             async with self.live.sessions.begin() as session_:
                 if isinstance(wanted, CallOptOut):
                     await _opt_out(session_, served, command.agent, wanted)
+                    # A written conversation ends on it, with the one confirmation its contact is owed.
+                    self.threads.stop(served.call)
                     return
                 claimed = await self._claim_code(session_, served, wanted.code)
         except PinecallError as refused:
@@ -482,10 +484,14 @@ def _refusal(command: Command, code: str, why: str) -> ErrorEvent:
 
 # The list is the org's, not the call's, and nothing lands in the log: an SDK that predates the
 # command would refuse to read an entry it has no shape for.
+# On a channel a contact writes on, the fact says so: it is what silences their thread, where one
+# made on the phone ("do not call me") leaves a message they write later answered.
 async def _opt_out(session_: AsyncSession, served: Served, agent: str, wanted: CallOptOut) -> None:
-    if served.context.channel is not Channel.phone:
+    channel = served.context.channel
+    if not channel.has_a_number:
         raise ValidationError(f"call {served.call} has no phone number at its far end: nothing to put on the list")
+    source = compliance.ASKED_THE_AGENT_IN_WRITING if channel.is_a_thread else ASKED_THE_AGENT
     given = compliance.Given(
-        kind=ConsentKind.opt_out, source=ASKED_THE_AGENT, given_by=f"agent:{agent}", text=wanted.note, call=served.call
+        kind=ConsentKind.opt_out, source=source, given_by=f"agent:{agent}", text=wanted.note, call=served.call
     )
     await compliance.give_consent(session_, served.scope, served.context.caller, given)

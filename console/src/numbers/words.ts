@@ -42,7 +42,7 @@ export function comesThrough(row: NumberRow, carriers: readonly Carrier[], catal
 
 /** A way to add a number: what it is called, what it takes, and its form. */
 export interface Way {
-  id: "buy" | "twilio" | "guided" | "pbx" | "whatsapp";
+  id: "buy" | "twilio" | "guided" | "pbx" | "whatsapp" | "sms";
   name: string;
   says: string;
   icon: IconName;
@@ -51,12 +51,13 @@ export interface Way {
 }
 
 /** The ways this deployment offers for a channel, quickest first: buying where it sells, each carrier it admits, an own PBX, WhatsApp. */
-export function waysOffered(catalog: Catalog, channel: "phone" | "whatsapp" | null): Way[] {
+export function waysOffered(catalog: Catalog, channel: "phone" | "whatsapp" | "sms" | null): Way[] {
   const phone: Way[] = [
     ...(catalog.sells ? [{ id: "buy" as const, name: "Buy a number", says: "Pick a country and it rings in seconds, on Pinecall's account.", icon: "coins" as const }] : []),
     ...catalog.carriers.map((carrier): Way => (carrier.how === "automatic" ? { id: "twilio", name: `Bring one from ${carrier.name}`, says: "Connect your account once. We list its numbers and point the one you pick here.", icon: "numbers" } : { id: "guided", name: `Point one from ${carrier.name}`, says: `Paste one address in ${carrier.name}'s portal. Its calls are already trusted here.`, icon: "route", via: carrier.kind })),
     { id: "pbx", name: "Your own PBX or carrier", says: "Asterisk, FreePBX, 3CX, a local carrier. Its addresses are approved once.", icon: "server" },
   ];
   const whatsapp: Way = { id: "whatsapp", name: "WhatsApp", says: "A WhatsApp Business number. Messages reach the agent and it replies from it.", icon: "chat" };
-  return channel === "whatsapp" ? [whatsapp] : channel === "phone" ? phone : [...phone, whatsapp];
+  const sms: Way = { id: "sms", name: "SMS", says: "Text messages on a number of your Twilio account, answered from the same number as its calls.", icon: "chat" };
+  return channel === "whatsapp" ? [whatsapp] : channel === "sms" ? [sms] : channel === "phone" ? phone : [...phone, whatsapp, sms];
 }

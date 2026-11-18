@@ -1,7 +1,9 @@
-/** The `line`, `numbers`, `carriers`, `dial` and `callbacks` tools: the telephony domain, over its service. */
+/** The `line`, `numbers`, `carriers`, `dial`, `callbacks` and `compliance` tools: the telephony domain and who may be reached, over their services. */
 
 import { z } from "zod";
 
+import * as dataRender from "../../calls/render.js";
+import * as data from "../../calls/service/data.js";
 import * as service from "../../telephony/service.js";
 import { tool, ToolRefused } from "../tool.js";
 import { AGENT } from "./fields.js";
@@ -103,4 +105,42 @@ export const callbacks = tool({
   schema: { agent: z.string().optional().describe("only this agent's"), after: z.number().int().min(0).optional().describe("where the page before ended") },
   manual: "`callbacks` lists the people waiting for a call back, each with the call it came from.",
   handler: async (args, ctx) => await service.listCallbacks(ctx, service.ListCallbacksInput.parse(args)),
+});
+
+export const compliance = tool({
+  name: "compliance",
+  title: "Consent and opt-outs",
+  destroys: true,
+  description: "The org's rules for who may be called and written to: the policy, what a contact who texts STOP or HELP is told, what stands for one number, and the do-not-call list.",
+  schema: {
+    action: z.enum(["policy", "sms", "consent", "dnc"]).describe("policy reads the org's rules; sms sets what a contact who texts STOP or HELP is told; consent says what stands for one number; dnc lists the numbers nobody calls or writes to"),
+    number: z.string().optional().describe("`consent`: the number, in +E.164"),
+    stop_reply: z.string().max(320).optional().describe("`sms`: the one sentence a contact is told when they are taken off; an empty string tells them nothing"),
+    carrier_stop_reply: z.boolean().optional().describe("`sms`: true goes back to the default — the carrier confirms a stop word, and the platform's sentence follows an opt-out the agent took"),
+    help_reply: z.string().max(320).optional().describe("`sms`: what a contact who texts HELP is told; an empty string leaves the word to the carrier and the agent"),
+    stop_words: z.array(z.string()).optional().describe("`sms`: more words that stop the messages, beside the standard ones; an empty list keeps the standard ones alone"),
+    after: z.string().optional().describe("`dnc`: where the page before ended"),
+  },
+  manual:
+    "`compliance policy` reads the org's rules: how long a call is kept, when and how often a number is rung, who needs a consent on file, what an outbound call opens with, and what a contact who texts STOP or HELP is told. `sms` changes that last part alone, one field at a time: `stop_reply`, `help_reply`, `stop_words` (the words of the contacts' own language, beside STOP, UNSUBSCRIBE, CANCEL, END, QUIT). A contact who texts a stop word is taken off before the model reads anything and is written to no more until they text START; that is not a setting. `consent` says what stands for one number (consented, on the list, nothing on file) with every fact about it, newest first: who stopped, when, and in which words. `dnc` lists the numbers on the list. The rest of the policy, a consent given and a number put on the list by hand stay `pinecall data` verbs a person types.",
+  handler: async (args, ctx) => {
+    if (args.action === "consent") {
+      if (args.number === undefined) throw new ToolRefused("consent names the number, in +E.164");
+      const history = await data.consent(ctx, data.ConsentInput.parse({ number: args.number }));
+      return { ...history, says: dataRender.consent(history) };
+    }
+    if (args.action === "dnc") return await data.listDoNotCall(ctx, args.after);
+    const asked =
+      args.action === "sms"
+        ? {
+            ...(args.stop_reply === undefined ? {} : args.stop_reply.trim() === "" ? { noSmsStopReply: true } : { smsStopReply: args.stop_reply }),
+            ...(args.carrier_stop_reply === true ? { carrierStopReply: true } : {}),
+            ...(args.help_reply === undefined ? {} : args.help_reply.trim() === "" ? { carrierHelpReply: true } : { smsHelpReply: args.help_reply }),
+            ...(args.stop_words === undefined ? {} : args.stop_words.length === 0 ? { standardStopWords: true } : { smsStopWords: args.stop_words.join(",") }),
+          }
+        : {};
+    if (args.action === "sms" && Object.keys(asked).length === 0) throw new ToolRefused("sms takes stop_reply, carrier_stop_reply, help_reply or stop_words");
+    const row = await data.policy(ctx, data.PolicyInput.parse(asked));
+    return { ...row, says: dataRender.policy(row) };
+  },
 });

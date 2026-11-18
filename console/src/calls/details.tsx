@@ -18,6 +18,7 @@ import type { Thread } from "./threads";
 import { TraceStep } from "./trace";
 import type { TraceBar } from "./trace-bars";
 import type { WatchedCall } from "./use-watched-call";
+import { CALLS, isWritten, MESSAGES } from "./url";
 
 function Tile({ label, value, sub }: { label: string; value: string; sub: string }): ReactNode {
   return (
@@ -97,7 +98,7 @@ function OtherCalls({ person, shown, search }: { person: Thread; shown: string; 
       <span className="dash-eyebrow">Their other conversations</span>
       <div className="calls-others">
         {others.map((line) => (
-          <Link key={line.call} to={`/calls/${encodeURIComponent(line.call)}${search}`} className="calls-other">
+          <Link key={line.call} to={`${isWritten(line) ? MESSAGES : CALLS}/${encodeURIComponent(line.call)}${search}`} className="calls-other">
             <span className="calls-other-top">
               <span>{line.started_at === null ? line.call : dayOf(line.started_at)}</span>
               <span className="dash-quiet dash-clip">

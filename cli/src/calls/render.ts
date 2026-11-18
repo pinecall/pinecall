@@ -205,7 +205,11 @@ export function policy(row: OrgPolicyRow): string[] {
   const opens = disclosure === null || disclosure === undefined ? 'the platform\'s sentence ("This is an automated assistant calling on behalf of …")' : disclosure === "" ? "nothing: the agent's own greeting must disclose it" : `"${disclosure}"`;
   const notice = row.policy.recording_notice === false ? "a recorded call says nothing of it" : 'a recorded call says "This call may be recorded."';
   const by = row.set_by === null ? "nobody set it" : `set by ${row.set_by}`;
-  return [`retention:      ${kept}`, `calling hours:  ${rung}`, `per number:     ${often}`, `consent:        ${consent}`, `outbound opens: ${opens}`, `recording:      ${notice}`, by];
+  const { sms_stop_reply: stopReply, sms_help_reply: helpReply, sms_stop_words: more } = row.policy;
+  const stopped = stopReply === null || stopReply === undefined ? "taken off the list; the carrier confirms it" : stopReply === "" ? "taken off the list, and told nothing" : `taken off the list and told "${stopReply}"`;
+  const words = more === undefined || more.length === 0 ? "" : ` (also ${more.join(", ")})`;
+  const helped = helpReply === null || helpReply === undefined ? "left to the carrier and the agent" : `"${helpReply}"`;
+  return [`retention:      ${kept}`, `calling hours:  ${rung}`, `per number:     ${often}`, `consent:        ${consent}`, `outbound opens: ${opens}`, `recording:      ${notice}`, `SMS STOP:       ${stopped}${words}`, `SMS HELP:       ${helped}`, by];
 }
 
 export function consent(history: ConsentHistory): string[] {

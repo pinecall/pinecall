@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import insert
 from runtime.actor import Scope
 from runtime.calls.models import CallFact, CallLogHead, ThreadRead
 from runtime.calls.repository.search import facts_of_row
-from runtime.enums import Env
+from runtime.enums import Channel, Env
 from runtime.kit.repository import Repository
 
 # Unread for the reader: one per spoken call started since they read, one per line the contact
@@ -107,8 +107,11 @@ class InboxRepository(Repository[ThreadRead]):
         last = found[limit - 1] if len(found) > limit else None
         return InboxPage(rows=found[:limit], next=None if last is None else f"{last.moved_at!r}:{last.contact}")
 
-    async def list_calls_with(self, scope: Scope, agent: str, contact: str, *, limit: int) -> list[str]:
-        """The contact's newest calls with the agent in the scope."""
+    async def list_calls_with(
+        self, scope: Scope, agent: str, contact: str, *, limit: int, channel: Channel | None = None
+    ) -> list[str]:
+        """The contact's newest calls with the agent in the scope; on one channel when it is named."""
+        on_channel = () if channel is None else (CallFact.channel == channel.value,)
         statement = (
             select(CallLogHead.log)
             .join(CallFact, CallFact.call == CallLogHead.log)
@@ -119,6 +122,7 @@ class InboxRepository(Repository[ThreadRead]):
                 CallLogHead.agent == agent,
                 CallLogHead.call.is_not(None),
                 CallFact.contact == contact,
+                *on_channel,
             )
             .order_by(CallLogHead.started_at.desc().nulls_last(), CallLogHead.log.desc())
             .limit(limit)

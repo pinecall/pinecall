@@ -13,10 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from runtime.actor import Scope
 from runtime.enums import Channel, Env
+from runtime.kit import sms as texts
 from runtime.live.parts import LiveParts
 from runtime.live.peers import THREADS, ThreadKey
 from runtime.live.service import whatsapp, written
-from runtime.live.service.replies import BySms, ByWhatsapp
+from runtime.live.service.replies import BySms, ByWhatsapp, Ears
 from runtime.live.service.whatsapp import OpenThread
 from runtime.providers import service as providers
 from runtime.providers.service import transcription
@@ -67,7 +68,7 @@ async def test_a_message_another_gateway_handed_on_that_cannot_be_read_is_said_a
 def a_thread(side: Side, http: httpx.AsyncClient, message: Inbound, *, agents_line: bool) -> OpenThread:
     """A contact's open conversation, on a call the agent may speak on or one a person took."""
     running = cast("Session", SimpleNamespace(line=SimpleNamespace(agent_may_speak=agents_line)))
-    by_meta = ByWhatsapp(http, "the number's token", side.parts, SCOPE)
+    by_meta = ByWhatsapp(http, "the number's token", Ears(side.parts, SCOPE))
     return OpenThread(session=running, inbound=message, reaches=by_meta)
 
 
@@ -202,7 +203,7 @@ async def test_a_receipt_is_said_on_the_contacts_open_conversation_and_on_no_oth
     running = cast("Session", SimpleNamespace(call=SimpleNamespace(writing=writing)))
     (message,) = webhook.messages_in(a_body(a_text("hola")))
     async with httpx.AsyncClient(transport=httpx.MockTransport(Graph().answer)) as http:
-        thread = OpenThread(session=running, inbound=message, reaches=ByWhatsapp(http, "t", side.parts, SCOPE))
+        thread = OpenThread(session=running, inbound=message, reaches=ByWhatsapp(http, "t", Ears(side.parts, SCOPE)))
         side.threads._open[ThreadKey(tenant.org, Env.sandbox, number, "59899000001")] = thread
         read = Receipt(number, "1055", "59899000001", "wamid.out.1", "read", signed_for=frozenset({tenant.org}))
         await side.threads.note(read)
@@ -235,7 +236,7 @@ async def test_a_message_by_sms_is_answered_from_the_number_written_to_and_marks
         await by_sms.send(message, "¡Hola! " + "palabra " * 300)
     assert asked == ["hola"]
     assert [(sent["From"], sent["To"]) for sent in twilio.messages] == [("+15550100000", "+59899000001")] * 2
-    assert all(len(sent["Body"]) <= sms.LONGEST_TEXT for sent in twilio.messages)
+    assert all(len(sent["Body"]) <= texts.LONGEST for sent in twilio.messages)
     assert twilio.messages[0]["StatusCallback"].endswith("/status")
 
 

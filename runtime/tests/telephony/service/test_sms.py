@@ -1,16 +1,19 @@
 """SMS through Twilio: a number's messages pointed at the box, the address that proves a post, what is posted."""
 
+import httpx
 import pytest
 from cryptography.fernet import Fernet
 
 from runtime.enums import Channel, Env
-from runtime.exceptions import Conflict, Forbidden, ValidationError
+from runtime.exceptions import Conflict, Forbidden, UpstreamError, ValidationError
 from runtime.kit.crypto import Vault
 from runtime.telephony.repository import RouteRepository
 from runtime.telephony.service import accounts, number_hook, numbers, sms
 from runtime.telephony.service.number_hook import NumberImport, Plan
+from runtime.telephony.service.twilio import TwilioAccount
 from runtime.telephony.service.whatsapp_number import WhatsappNumber
 from tests.conftest import needs_the_database
+from tests.fakes.twilio import Twilio
 from tests.telephony.conftest import Line, a_number
 
 VAULT = Vault(Fernet.generate_key().decode())
@@ -139,3 +142,35 @@ async def test_sms_comes_through_a_twilio_account_and_through_nothing_else(line:
         await accounts.put_carrier(session, line.vault, at_meta)
     with pytest.raises(Conflict, match="SMS comes through a Twilio account"):
         await imported(line, NumberImport(line.scope(), "riley", number, channel=Channel.sms, account="1055"))
+
+
+# ── the audio of an MMS ──
+
+
+def test_an_mms_that_carries_audio_is_a_voice_note_and_any_other_attachment_is_nothing_read() -> None:
+    """Audio alone is heard; a picture is dropped, and words beside a picture are the message."""
+    posted = {"To": "+15550100000", "From": "+59899000001", "MessageSid": "MM1", "NumMedia": "1"}
+    where = "https://api.twilio.com/2010-04-01/Accounts/AC1/Messages/MM1/Media/ME1"
+    spoken = sms.read_message({**posted, "MediaUrl0": where, "MediaContentType0": "audio/amr"})
+    assert (spoken.kind, spoken.text, spoken.media_id) == ("audio", None, where)
+    pictured = sms.read_message({**posted, "MediaUrl0": where, "MediaContentType0": "image/jpeg", "Body": "mira"})
+    assert (pictured.kind, pictured.text, pictured.media_id) == ("text", "mira", None)
+    assert sms.read_message({**posted, "NumMedia": "0", "Body": "hola"}).media_id is None
+
+
+async def test_the_audio_of_an_mms_is_fetched_at_twilio_with_the_accounts_pair_and_nowhere_else() -> None:
+    """The address comes in the post: it is asked for only when it is Twilio's own, and never when it is long."""
+    twilio = Twilio()
+    kept = f"/2010-04-01/Accounts/{twilio.account_sid}/Messages/MM1/Media/ME1"
+    twilio.media[kept.removeprefix(f"/2010-04-01/Accounts/{twilio.account_sid}")] = (b"#!AMR-some-audio", "audio/amr")
+    account = TwilioAccount(twilio.account_sid, twilio.user, twilio.secret)
+    async with httpx.AsyncClient(transport=twilio.transport()) as http:
+        media = await sms.read_sms_media(http, account, f"https://api.twilio.com{kept}")
+        assert (media.data, media.mime_type) == (b"#!AMR-some-audio", "audio/amr")
+        for elsewhere in (
+            "https://evil.example/audio.amr",
+            "http://api.twilio.com/x",
+            "https://api.twilio.com.evil.example/x",
+        ):
+            with pytest.raises(UpstreamError, match="not Twilio's"):
+                await sms.read_sms_media(http, account, elsewhere)

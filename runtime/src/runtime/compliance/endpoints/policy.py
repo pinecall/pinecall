@@ -33,6 +33,9 @@ async def put_policy(body: schemas.PolicyBody, actor: TeamKey, session: Session)
         consent_everywhere=body.consent_everywhere,
         disclosure=body.disclosure,
         recording_notice=body.recording_notice,
+        sms_stop_reply=body.sms_stop_reply,
+        sms_help_reply=body.sms_help_reply,
+        sms_stop_words=tuple(body.sms_stop_words),
     )
     return schemas.PolicyRow.of(await policy.put_policy(session, actor.org, wanted, by=actor.asked_by))
 

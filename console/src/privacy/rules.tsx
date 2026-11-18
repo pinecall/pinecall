@@ -21,6 +21,13 @@ const OPENINGS: readonly { value: Opening; name: string }[] = [
   { value: "none", name: "Nothing" },
 ];
 
+const STOP_REPLIES: readonly { value: Opening; name: string }[] = [
+  { value: "platform", name: "The carrier's" },
+  { value: "own", name: "Your own words" },
+  { value: "none", name: "Nothing" },
+];
+const TAKEN_OFF = "You will not receive more messages from this number. Reply START to get them again.";
+
 /** The policy as the form holds it: a number typed is a string, and an empty one is "not set". */
 interface Draft {
   days: string;
@@ -32,6 +39,11 @@ interface Draft {
   opening: Opening;
   words: string;
   notice: boolean;
+  /** What a contact who texts STOP is told: the carrier's own confirmation, the org's sentence, or nothing. */
+  stopReply: Opening;
+  stopWords: string;
+  helpWords: string;
+  moreStopWords: string;
 }
 
 function draftOf(policy: Policy): Draft {
@@ -46,6 +58,10 @@ function draftOf(policy: Policy): Draft {
     opening: disclosure === null ? "platform" : disclosure === "" ? "none" : "own",
     words: disclosure ?? "",
     notice: policy.recording_notice !== false,
+    stopReply: policy.sms_stop_reply == null ? "platform" : policy.sms_stop_reply === "" ? "none" : "own",
+    stopWords: policy.sms_stop_reply ?? "",
+    helpWords: policy.sms_help_reply ?? "",
+    moreStopWords: (policy.sms_stop_words ?? []).join(", "),
   };
 }
 
@@ -64,6 +80,9 @@ function policyOf(draft: Draft): Partial<Policy> | string {
   if (perDay === undefined) return "Calls a day is a whole number, 1 or more. Leave it empty for no limit.";
   if (draft.limited && draft.from >= draft.until) return "Calling hours start before they end.";
   if (draft.opening === "own" && draft.words.trim() === "") return "Write the sentence the agent says first.";
+  if (draft.stopReply === "own" && draft.stopWords.trim() === "") return "Write what a contact who texts STOP is told.";
+  const more = draft.moreStopWords.split(",").map((word) => word.trim()).filter((word) => word !== "");
+  if (more.some((word) => word.length < 2 || word.length > 30)) return "A stop word is 2 to 30 characters.";
   return {
     retention_days: days,
     calling_hours: draft.limited ? { from: draft.from, until: draft.until } : null,
@@ -71,6 +90,9 @@ function policyOf(draft: Draft): Partial<Policy> | string {
     consent_everywhere: draft.everywhere,
     disclosure: draft.opening === "platform" ? null : draft.opening === "none" ? "" : draft.words.trim(),
     recording_notice: draft.notice,
+    sms_stop_reply: draft.stopReply === "platform" ? null : draft.stopReply === "none" ? "" : draft.stopWords.trim(),
+    sms_help_reply: draft.helpWords.trim() === "" ? null : draft.helpWords.trim(),
+    sms_stop_words: more,
   };
 }
 
@@ -190,6 +212,30 @@ export function RulesTab({ names }: { names: Names }): ReactNode {
             about={draft.notice ? "A recorded call says “This call may be recorded.”" : "A recorded call says nothing of it. All-party states need the caller told."}
             aside={<Toggle on={draft.notice} label="Recording notice" onChange={(notice) => change({ notice })} />}
           />
+        </div>
+      </section>
+
+      <section className="tst-list tst-tone-gold" aria-label="Text messages">
+        <Head icon="chat" title="Text messages" about="A contact who texts STOP is put on the do-not-call list at once and written to no more, until they text START." />
+        <div className="prv-settings">
+          <Setting icon="check" title="What STOP is answered" about="STOP, UNSUBSCRIBE, CANCEL, END, QUIT, REVOKE and OPTOUT always stop the messages. This is only what the contact is told.">
+            <div className="dash-switch prv-opening" role="group" aria-label="What STOP is answered">
+              {STOP_REPLIES.map((one) => (
+                <button key={one.value} type="button" aria-pressed={draft.stopReply === one.value} className={draft.stopReply === one.value ? "dash-switch-on" : ""} onClick={() => change({ stopReply: one.value })}>
+                  {one.name}
+                </button>
+              ))}
+            </div>
+            {draft.stopReply === "platform" && <p className="prv-said">Twilio confirms a stop word itself. When the agent takes someone off at their asking, they are told: “{TAKEN_OFF}”</p>}
+            {draft.stopReply === "own" && <textarea className="cfg-input cfg-area" rows={2} maxLength={320} aria-label="Your own confirmation" placeholder="Clínica Norte: you will not receive more messages. Reply START to get them again." value={draft.stopWords} onChange={(event) => change({ stopWords: event.target.value })} />}
+            {draft.stopReply === "none" && <p className="prv-warn">The contact is taken off the list and told nothing by Pinecall.</p>}
+          </Setting>
+          <Setting icon="chat" title="What HELP is answered" about="Empty leaves HELP to the carrier, and to the agent where the message arrives.">
+            <textarea className="cfg-input cfg-area" rows={2} maxLength={320} aria-label="What HELP is answered" placeholder="Clínica Norte: call +1 555 010 0000 or write to help@clinicanorte.com. Reply STOP to stop." value={draft.helpWords} onChange={(event) => change({ helpWords: event.target.value })} />
+          </Setting>
+          <Setting icon="hash" title="More words that stop" about="In your contacts' language, separated by commas. The whole message has to be the word.">
+            <input className="cfg-input" aria-label="More words that stop" placeholder="BAJA, ALTO" spellCheck={false} value={draft.moreStopWords} onChange={(event) => change({ moreStopWords: event.target.value })} />
+          </Setting>
         </div>
       </section>
 

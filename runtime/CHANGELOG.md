@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased
+
+- **A contact who texts STOP is written to no more.** A text that is, whole, a word that stops (`STOP`,
+  `STOPALL`, `UNSUBSCRIBE`, `CANCEL`, `END`, `QUIT`, `REVOKE`, `OPTOUT`, or one the org adds) puts the number
+  on the org's do-not-call list before the model reads it and ends the conversation; nothing more is sent, and
+  what the contact writes is not answered, until `START`. One who asks in other words is taken off by the
+  model, which carries the platform's tool `stop_messages` on every SMS conversation, or by the app's
+  `call.opt_out`, taken on a written channel now. Three settings of the org's policy say what they are told
+  (`sms_stop_reply`, `sms_help_reply`, `sms_stop_words`; migration 000031): by default the carrier confirms
+  a stop word and the platform says one sentence when the agent took the contact off. A number that stopped by
+  text is not dialled either. `docs/protocol/numbers.md`, "SMS".
+- **A written conversation opens on the one before it.** A new WhatsApp or SMS conversation carries on the
+  contact's newest call with the agent, on any channel, up to ten calls back, and greets nobody; it started
+  with an empty history, and only the facts memory kept. A thread is taken up again on the newest call of its
+  own channel: it was the newest of any, so a text that came while a WhatsApp thread was open went on that
+  thread's call. The desk's written message finds the contact's newest thread, where a phone call after it made
+  the thread unanswerable.
+- **An SMS conversation counts its segments.** `call.summary` says `sms_segments` (received and sent, as a
+  carrier bills them) and `sms_lent` (the platform's own carrier account carried them: a number bought from it),
+  and the usage feed carries `sms_segments` and `lent_sms_segments`, which a billing layer prices. Letting an
+  SMS route go empties the number's `SmsUrl` at Twilio.
+- **The audio of an MMS is heard.** A message that carries audio (a phone's "audio message" to a number that
+  is not on iMessage) is fetched at Twilio and read as what it says, by the ears a WhatsApp voice note is
+  heard with.
+
 ## 0.11.45 — a number answers the phone, WhatsApp and SMS at once, and SMS comes through Twilio (2026-11-18)
 
 - **A number answers SMS, through Twilio.** `sms` is a channel: `POST /v1/numbers {channel: "sms"}` on a

@@ -378,3 +378,59 @@ export function WhatsAppWay({ agents, agent: fixed, carriers, owned, mover, onAc
     </form>
   );
 }
+
+/** SMS: a number of the org's Twilio account, whose messages Twilio then posts here. Its calls are not touched. */
+export function SmsWay({ agents, agent: fixed, carriers, owned, mover, onAccount, onAdded }: WayProps): ReactNode {
+  const credentials = useCredentials();
+  const accounts = carriers.filter((one) => one.kind === "twilio");
+  const [another, setAnother] = useState(false);
+  const [number, setNumber] = useState("");
+  const [move, setMove] = useState(false);
+  const [agent, setAgent] = useState(fixed ?? agents[0] ?? "");
+  const [plan, setPlan] = useState<Wired | null>(null);
+
+  if (accounts.length === 0 || another) {
+    return <AccountForm kind="twilio" mover={mover} onBring={async (wanted) => (await mover.move(() => bringCarrier(credentials, wanted)), await onAccount(), setAnother(false))} />;
+  }
+  // A number that already rings as a phone is the usual one to pick: SMS is one more route of the same number.
+  const theirs = owned.filter((one) => accounts.some((account) => account.account === one.account) && !one.held_elsewhere);
+  const picked = theirs.some((one) => one.number === number) ? number : theirs.length === 1 ? (theirs[0]?.number ?? "") : "";
+  const account = theirs.find((one) => one.number === picked)?.account;
+  const wanted: WantedNumber = { number: picked, agent, channel: "sms", ...(account === undefined ? {} : { account }), ...(move ? { move: true } : {}) };
+  if (plan !== null) {
+    return <Plan plan={plan} busy={mover.busy} confirm={`Answer SMS at ${shown(picked)}`} onBack={() => setPlan(null)} onConfirm={() => void mover.move(() => addNumber(credentials, wanted, false)).then(() => onAdded(picked), () => undefined)} />;
+  }
+  const review = (event: FormEvent): void => {
+    event.preventDefault();
+    void mover.move(() => addNumber(credentials, wanted, true)).then(setPlan, () => undefined);
+  };
+  return (
+    <form className="num-form" onSubmit={review}>
+      <p className="num-hint">Twilio is told to send this number's text messages to Pinecall, and the agent answers from the same number. Its calls stay as they are.</p>
+      <Field label="Number">
+        <div className="num-owned" role="radiogroup" aria-label="Which number">
+          {theirs.length === 0 && <p className="dash-quiet">Your Twilio account lists no number.</p>}
+          {theirs.map((one) => (
+            <label key={one.number} className="num-owned-row">
+              <input type="radio" name="owned" checked={picked === one.number} onChange={() => setNumber(one.number)} />
+              <span className="num-owned-number">{shown(one.number)}</span>
+              <span className="num-owned-name dash-clip">{one.imported ? "rings as a phone here" : ""}</span>
+            </label>
+          ))}
+        </div>
+        <button type="button" className="num-link" onClick={() => setAnother(true)}>
+          Connect another Twilio account
+        </button>
+      </Field>
+      <AgentField agents={agents} fixed={fixed !== undefined} value={agent} onChange={setAgent} />
+      <label className="num-owned-row">
+        <input type="checkbox" checked={move} onChange={(event) => setMove(event.target.checked)} />
+        <span className="num-owned-name">Take its messages from the service that gets them now, if another does</span>
+      </label>
+      <span className="num-hint">A US number only delivers SMS once it is registered for A2P 10DLC in Twilio.</span>
+      <Submit busy={mover.busy} doing="Checking…" disabled={picked === "" || agent === ""}>
+        Review
+      </Submit>
+    </form>
+  );
+}

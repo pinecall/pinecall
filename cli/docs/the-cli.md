@@ -2323,7 +2323,10 @@ pinecall data reads [<call-id|number>] [--json]
 pinecall data policy [--retention-days <n> | --keep-all] [--calling-hours <from>-<until> | --any-hours]
                      [--per-number-day <n> | --no-per-number] [--consent-everywhere | --consent-by-law]
                      [--disclosure '…' | --platform-disclosure | --no-disclosure]
-                     [--recording-notice | --no-recording-notice] [--json]
+                     [--recording-notice | --no-recording-notice]
+                     [--sms-stop-reply '…' | --carrier-stop-reply | --no-sms-stop-reply]
+                     [--sms-help-reply '…' | --carrier-help-reply]
+                     [--sms-stop-words BAJA,ALTO | --standard-stop-words] [--json]
 pinecall data consent <number> [--give express|written --source '…' [--text '…'] [--evidence '…'] | --opt-out]
 pinecall data dnc [list [--after <cursor>] | add <number>… --source '…' | import <file> --source '…']
 pinecall data export [--out <file.jsonl>]
@@ -2395,8 +2398,29 @@ per number:     no limit of calls to one number a day (a +1 number: 3)
 consent:        a +1 number needs a consent on file
 outbound opens: the platform's sentence ("This is an automated assistant calling on behalf of …")
 recording:      a recorded call says "This call may be recorded."
+SMS STOP:       taken off the list; the carrier confirms it
+SMS HELP:       left to the carrier and the agent
 set by m_ana
 ```
+
+**A contact who texts STOP is written to no more.** STOP, STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT,
+REVOKE and OPTOUT, as the whole message and whatever their case or punctuation, put the number on
+the do-not-call list before the model reads anything, and the agent writes to it no more until the
+contact texts START, UNSTOP or YES. A contact who asks in other words ("please stop texting me") is
+taken off by the agent itself, which has a tool for it on every SMS conversation. The three settings:
+
+- `--sms-stop-reply '…'` is what they are told. Left to the carrier (`--carrier-stop-reply`, the
+  default) Pinecall sends nothing after a stop word, since Twilio confirms those itself and blocks
+  the number for that contact; and it sends its own one sentence when the agent took them off, which
+  the carrier knew nothing of. `--no-sms-stop-reply` says nothing in either case.
+- `--sms-help-reply '…'` is what a contact who texts HELP or INFO is told. Unset
+  (`--carrier-help-reply`), the word is the carrier's on a long code, and the agent's where it
+  arrives.
+- `--sms-stop-words BAJA,ALTO` adds the words your contacts stop with in their language;
+  `--standard-stop-words` goes back to the standard ones.
+
+Who stopped is on the list (`pinecall data dnc`), with the words and the conversation they said it on
+(`pinecall data consent <number>`). A number on it is not called either.
 
 `consent <number>` is what stands for a number in the environment — consented, on the do-not-call list,
 or nothing on file — and every fact about it, newest first (`GET /v1/org/consents/{number}`).

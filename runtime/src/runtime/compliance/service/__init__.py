@@ -11,12 +11,24 @@ from runtime.compliance.service.dial_guards import (
     guards_of,
     list_dials_to,
 )
+from runtime.compliance.service.keywords import (
+    ASKED_THE_AGENT_IN_WRITING,
+    TAKEN_OFF,
+    TEXTED_STOP,
+    keyword_of,
+    refuses_messages,
+    start_writing_to,
+    stop_writing_to,
+)
 from runtime.compliance.service.policy import policy_of
 from runtime.compliance.service.reads import OPERATOR, record_read
 from runtime.compliance.service.recordings import delete_recording_keys, recording_key_of
 
 __all__ = [
+    "ASKED_THE_AGENT_IN_WRITING",
     "OPERATOR",
+    "TAKEN_OFF",
+    "TEXTED_STOP",
     "Consent",
     "DialAsk",
     "Given",
@@ -28,8 +40,12 @@ __all__ = [
     "guard_second_leg",
     "guards_of",
     "has_opt_out_on",
+    "keyword_of",
     "list_dials_to",
     "policy_of",
     "record_read",
     "recording_key_of",
+    "refuses_messages",
+    "start_writing_to",
+    "stop_writing_to",
 ]

@@ -47,6 +47,10 @@ class Usage:
     lent_minutes: float = 0.0
     # What simulated callers' own models and voices cost, beside the calls' cost_usd: the harness's.
     caller_cost_usd: float = 0.0
+    # The SMS segments conversations exchanged, both ways, and those of them that went through the
+    # box's own carrier account: what a plan bills, where the others are billed by the org's carrier.
+    sms_segments: int = 0
+    lent_sms_segments: int = 0
 
     # Over the fields as declared: until 2026-11 the twelve were listed here by hand, and a new one
     # was three edits.
@@ -134,4 +138,6 @@ def _usage_of_call(summary: CallSummary, opened_by: Opener | None) -> Usage:
         characters=sum(row.characters_count or 0 for row in tts),
         simulations=int(summary.simulated),
         cost_usd=summary.cost.usd,
+        sms_segments=summary.sms_segments or 0,
+        lent_sms_segments=(summary.sms_segments or 0) if summary.sms_lent else 0,
     )

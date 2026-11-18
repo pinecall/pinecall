@@ -33,6 +33,14 @@ class PolicyBody(Schema):
     # An outbound call's opening sentence: null is the platform's, "" is none.
     disclosure: Annotated[str, Field(max_length=500)] | None = None
     recording_notice: bool = True
+    # What a contact who texts STOP is told: null is the carrier's own confirmation, "" is nothing.
+    sms_stop_reply: Annotated[str, Field(max_length=320)] | None = None
+    # What a contact who texts HELP is told: null leaves the word to the carrier and to the agent.
+    sms_help_reply: Annotated[str, Field(max_length=320)] | None = None
+    # The words, beside the standard ones, that a contact of this org stops with.
+    sms_stop_words: Annotated[list[Annotated[str, Field(min_length=2, max_length=30)]], Field(max_length=20)] = Field(
+        default_factory=list[str]
+    )
 
 
 class PolicyRow(Row):

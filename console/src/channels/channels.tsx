@@ -16,7 +16,7 @@ import "../dashboard/dashboard.css";
 import "../configure/configure.css";
 import "../numbers/numbers.css";
 
-type Channel = "phone" | "whatsapp";
+type Channel = "phone" | "whatsapp" | "sms";
 
 function Section({ tone, icon, title, about, action, onAdd, children }: { tone: string; icon: IconName; title: string; about: string; action: string; onAdd: () => void; children: ReactNode }): ReactNode {
   return (
@@ -48,7 +48,7 @@ export function ChannelsTab({ agent }: { agent: string }): ReactNode {
   const read = rows !== null;
 
   const row = (one: NumberRow): ReactNode => (
-    <Link key={one.route.number} to={`/numbers/${encodeURIComponent(one.route.number ?? "")}`} className="num-row">
+    <Link key={`${one.route.number}:${one.route.channel}`} to={`/numbers/${encodeURIComponent(one.route.number ?? "")}${one.route.channel === "phone" ? "" : `/${one.route.channel}`}`} className="num-row">
       <span className="num-row-number">{shown(one.route.number)}</span>
       <span className="num-row-through dash-clip">{comesThrough(one, carriers, catalog)}</span>
       <span className="num-row-when">{one.last_call_at == null ? "No call yet" : `Last call ${ago(one.last_call_at)}`}</span>
@@ -73,6 +73,10 @@ export function ChannelsTab({ agent }: { agent: string }): ReactNode {
       <Section tone="green" icon="chat" title="WhatsApp" about={`The WhatsApp Business numbers whose messages ${agent} answers.`} action="Connect WhatsApp" onAdd={() => setAdding("whatsapp")}>
         {of("whatsapp").map(row)}
         {read && of("whatsapp").length === 0 && <p className="dash-quiet num-none">No WhatsApp number yet.</p>}
+      </Section>
+      <Section tone="blue" icon="chat" title="SMS" about={`The numbers whose text messages ${agent} answers, from the same number.`} action="Answer SMS" onAdd={() => setAdding("sms")}>
+        {of("sms").map(row)}
+        {read && of("sms").length === 0 && <p className="dash-quiet num-none">No number answers SMS yet.</p>}
       </Section>
       {adding !== null && <AddNumberPanel key={adding} agents={[agent]} agent={agent} channel={adding} onAdded={reread} onClose={stopAdding} />}
     </div>

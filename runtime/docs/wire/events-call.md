@@ -154,6 +154,8 @@ What the call was about, how it went, what it consumed and what that cost. Writt
 | `cost` | `Cost` | yes | What the call cost in provider fees and, when the platform priced its own compute (`pinecall-compute`), the platform's, in US dollars; informational. |
 | `recording` | `string` | no | Where the recorder wrote the recording, when one was made; `GET /v1/calls/{call}/recording` serves it from wherever it is kept, reading only the file's name from this path: on the disk it is always `<PINECALL_RECORDINGS>/<call>/audio.ogg` or `audio.sealed`, never another file. |
 | `simulated` | `boolean` | no | A simulated caller, not a person, was on the other end: a persona's call, or a golden the simulated caller played out loud. It counts as one simulation and never as minutes. |
+| `sms_segments` | `integer | null` | no | On an SMS conversation alone: the segments it exchanged, received and sent, as a carrier bills them (160 characters of the GSM alphabet, 70 of any other; 153 and 67 once a message is several). |
+| `sms_lent` | `boolean | null` | no | Whether those segments went through the platform's own carrier account (a number bought from it), which a plan then bills; false on the org's own account, which its carrier bills. |
 | `run` | `string | null` | no | The eval run that opened this call. A written golden's call counts no minutes, as no written call does, and no simulation (its evals are counted); one played out loud is `simulated`. |
 
 ### `call.transferred`

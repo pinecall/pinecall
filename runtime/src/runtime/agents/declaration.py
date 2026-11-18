@@ -35,6 +35,8 @@ DELAYED_AFTER_S = 5.0
 # The ears that take these bars take them only inside these bands and refuse the connection
 # outside one, so the call runs deaf: a setting and a declaration are held to them alike.
 TURN_BANDS = {"eot_threshold": (0.5, 0.9), "eager_eot_threshold": (0.3, 0.9)}
+# The platform's own tool on a channel a contact writes on: the contact asked for no more messages.
+STOP_MESSAGES = "stop_messages"
 # The argument the platform adds to every tool: the line the model says as the tool runs.
 SAY = "say"
 # The quiet an agent may be set to bear: a silence timeout ends the call, an idle line asks first.

@@ -112,7 +112,9 @@ module Pinecall
           cost: { kind: :ref, ref: "Cost", required: true },
           recording: { kind: :str },
           simulated: { kind: :bool },
-          run: { kind: :str, null: true }
+          run: { kind: :str, null: true },
+          sms_segments: { kind: :int, null: true },
+          sms_lent: { kind: :bool, null: true }
         }.freeze,
         "CallTransferred" => {
           to: { kind: :str, required: true },

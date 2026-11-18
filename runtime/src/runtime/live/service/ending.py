@@ -5,6 +5,9 @@ import logging
 import time
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
+from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from runtime.accounts import service as accounts
 from runtime.actor import Scope
@@ -15,6 +18,7 @@ from runtime.calls import folds
 from runtime.calls import service as calls
 from runtime.calls.context import CallContext
 from runtime.calls.log import Log
+from runtime.enums import Channel
 from runtime.exceptions import QuotaExceeded, ValidationError
 from runtime.insights import service as insights
 from runtime.judging import service as judging
@@ -22,6 +26,7 @@ from runtime.knowledge import service as knowledge
 from runtime.live.parts import LiveParts
 from runtime.live.served import Served
 from runtime.providers import service as providers
+from runtime.telephony import service as telephony
 from runtime.wire.base import Entry, WireModel
 from runtime.wire.events import CallEnded, CallStarted, CallSummary, ErrorEvent, MemoryOps
 from runtime.wire.feed import JudgeBroke
@@ -173,6 +178,11 @@ async def remember_now(live: LiveParts, served: Served) -> Remembered:
     return Remembered(facts, (time.perf_counter() - started) * 1000)
 
 
+async def _texts_of(session: AsyncSession, number: str, segments: int) -> dict[str, Any]:
+    route = await telephony.find_route_at(session, Channel.sms, number)
+    return {"sms_segments": segments, "sms_lent": route is not None and route.account is None}
+
+
 # The vendors lent are kept before the summary is written: whoever reads the summary off the metered
 # feed reads them beside it.
 async def price(live: LiveParts, closing: Closing, entries: list[Entry], written: knowledge.MemoryWrite | None) -> None:
@@ -183,11 +193,15 @@ async def price(live: LiveParts, closing: Closing, entries: list[Entry], written
     over = _read(CallEnded, next((entry for entry in reversed(entries) if entry.type == "call.ended"), None))
     started = _read(CallStarted, next((entry for entry in entries if entry.type == "call.started"), None))
     duration = 0.0 if over is None else over.duration_s
+    segments = folds.sms_segments(entries)
     async with live.sessions.begin() as session:
         catalog = await providers.get_catalog(session)
         if sealing.lent:
             await calls.keep_lent(session, closing.call, sealing.lent)
+        # The texts of a number the box bought went out on the box's own carrier account, which paid for them.
+        texted = {} if not segments or started is None else await _texts_of(session, started.to, segments)
     summary = CallSummary(
+        **texted,
         reason="error" if over is None else over.reason,
         outcome=sealing.outcome,
         duration_s=duration,

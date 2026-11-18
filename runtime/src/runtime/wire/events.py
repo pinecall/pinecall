@@ -268,6 +268,8 @@ class CallSummary(WireModel):
     recording: str | None = None
     simulated: bool = False
     run: str | None = None
+    sms_segments: int | None = None
+    sms_lent: bool | None = None
 
 
 class CallTransferred(WireModel):

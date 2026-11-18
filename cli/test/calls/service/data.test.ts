@@ -16,6 +16,19 @@ import { folder, write } from "../../support/project.js";
 const ROW = { policy: { retention_days: 90, calling_hours: { from: 9, until: 20 }, per_number_day: 3, consent_everywhere: false, disclosure: null, recording_notice: true }, set_by: "m_ana", set_at: 1_792_000_000 };
 
 describe("the policy", () => {
+  it("writes what a contact who texts STOP or HELP is told, and the words they stop with", async () => {
+    answer("get", "/v1/org/policy", ROW);
+    const sent = answer("put", "/v1/org/policy", ROW);
+    const { ctx } = testContext();
+    await service.policy(ctx, service.PolicyInput.parse({ smsStopReply: " Clinica: no more messages. ", smsHelpReply: "Clinica: call 555.", smsStopWords: "BAJA, alto ," }));
+    expect(sent[0]!.body).toMatchObject({ sms_stop_reply: "Clinica: no more messages.", sms_help_reply: "Clinica: call 555.", sms_stop_words: ["BAJA", "alto"] });
+    answer("get", "/v1/org/policy", ROW);
+    const back = answer("put", "/v1/org/policy", ROW);
+    await service.policy(ctx, service.PolicyInput.parse({ carrierStopReply: true, carrierHelpReply: true, standardStopWords: true }));
+    expect(back[0]!.body).toMatchObject({ sms_stop_reply: null, sms_help_reply: null, sms_stop_words: [] });
+    await expect(service.policy(ctx, service.PolicyInput.parse({ smsStopReply: "x", noSmsStopReply: true }))).rejects.toThrow("one of --sms-stop-reply");
+  });
+
   it("with no flag is read, and nothing is written", async () => {
     answer("get", "/v1/org/policy", ROW);
     const { ctx } = testContext();

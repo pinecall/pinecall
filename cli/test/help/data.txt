@@ -96,6 +96,18 @@ Options:
   --no-disclosure
   --recording-notice
   --no-recording-notice
+  --sms-stop-reply <words>      what a contact who texts STOP is told, in your
+                                words
+  --carrier-stop-reply          leave that confirmation to the carrier, the
+                                default
+  --no-sms-stop-reply           tell them nothing
+  --sms-help-reply <words>      what a contact who texts HELP is told
+  --carrier-help-reply          leave HELP to the carrier and to the agent, the
+                                default
+  --sms-stop-words <words>      more words that stop the messages,
+                                comma-separated: BAJA,ALTO
+  --standard-stop-words         the standard words alone: STOP, UNSUBSCRIBE,
+                                CANCEL, END, QUIT…
   -h, --help                    display help for command
 
 $ pinecall data consent --help

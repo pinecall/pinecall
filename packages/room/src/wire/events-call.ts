@@ -177,6 +177,9 @@ export const CallSummarySchema = z.strictObject({
   usage: z.array(ModelUsageSchema),
   cost: CostSchema,
   recording: z.string().nullish(),
+  /** On an SMS conversation: the segments it exchanged, both ways, and whether the platform's own carrier account carried them. */
+  sms_segments: z.int().nullish(),
+  sms_lent: z.boolean().nullish(),
 });
 
 /** A transfer asked for by the agent or a supervisor finished, one way or the other. */

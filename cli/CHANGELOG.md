@@ -4,6 +4,15 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+- **`data policy` sets what a contact who texts STOP or HELP is told.** `--sms-stop-reply`, `--sms-help-reply`
+  and `--sms-stop-words`, beside the carrier's own confirmation (`--carrier-stop-reply`, the default). A stop
+  word puts the number on the do-not-call list before the model reads it; `data dnc` and `data consent` show
+  who stopped, with the words.
+- **The MCP's `compliance` tool.** It reads the org's policy, sets what a contact who texts STOP or HELP is
+  told (`sms`), says what stands for one number (`consent`) and lists the do-not-call list (`dnc`).
+
 ## [0.11.45] — a number answers the phone, WhatsApp and SMS at once, and SMS comes through Twilio (2026-11-18)
 
 - **`numbers import --channel sms`: a number answers SMS.** A number of a Twilio account answers SMS beside

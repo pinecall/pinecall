@@ -173,3 +173,20 @@ The callers waiting to be called back, oldest first: who, on which channel, thro
   "next": null
 }
 ```
+
+## `compliance`
+
+The org's rules for who may be called and written to: the policy, what a contact who texts STOP or HELP is told, what stands for one number, and the do-not-call list.
+
+`compliance policy` reads the org's rules: how long a call is kept, when and how often a number is rung, who needs a consent on file, what an outbound call opens with, and what a contact who texts STOP or HELP is told. `sms` changes that last part alone, one field at a time: `stop_reply`, `help_reply`, `stop_words` (the words of the contacts' own language, beside STOP, UNSUBSCRIBE, CANCEL, END, QUIT). A contact who texts a stop word is taken off before the model reads anything and is written to no more until they text START; that is not a setting. `consent` says what stands for one number (consented, on the list, nothing on file) with every fact about it, newest first: who stopped, when, and in which words. `dnc` lists the numbers on the list. The rest of the policy, a consent given and a number put on the list by hand stay `pinecall data` verbs a person types.
+
+| parameter | takes | | what it is |
+|---|---|---|---|
+| `action` | `policy` · `sms` · `consent` · `dnc` | required | policy reads the org's rules; sms sets what a contact who texts STOP or HELP is told; consent says what stands for one number; dnc lists the numbers nobody calls or writes to |
+| `number` | text |  | `consent`: the number, in +E.164 |
+| `stop_reply` | text |  | `sms`: the one sentence a contact is told when they are taken off; an empty string tells them nothing |
+| `carrier_stop_reply` | true or false |  | `sms`: true goes back to the default — the carrier confirms a stop word, and the platform's sentence follows an opt-out the agent took |
+| `help_reply` | text |  | `sms`: what a contact who texts HELP is told; an empty string leaves the word to the carrier and the agent |
+| `stop_words` | a list of texts |  | `sms`: more words that stop the messages, beside the standard ones; an empty list keeps the standard ones alone |
+| `after` | text |  | `dnc`: where the page before ended |
+| `prod` | true or false |  | true acts in production; left out or false, in the sandbox |

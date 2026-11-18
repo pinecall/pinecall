@@ -95,7 +95,10 @@ model's, the agent's `say`, a supervisor's — goes to the contact through Meta'
 send Meta refuses is an `error` entry `whatsapp_not_sent` on the call's own log.
 
 A conversation quiet for two hours is over: its call ends `timeout` and the next message opens a
-new one. Two hours is under Meta's 24-hour customer-service window, which only that close keeps. A
+new one. That new call carries on the contact's newest call with the agent, on whatever channel
+(`continues` on its `call.started`): it opens on the turns of that call and of those it carried on
+itself, ten calls back at most, and greets nobody. A conversation that comes back within the two
+hours is taken up on its own call, the newest on its own channel. Two hours is under Meta's 24-hour customer-service window, which only that close keeps. A
 turn past the org's quota ends the conversation unanswered. A gateway that restarts takes up a
 conversation that still had idle time left, from its log, with its history.
 

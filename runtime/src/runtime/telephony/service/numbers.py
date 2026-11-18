@@ -21,7 +21,7 @@ from runtime.livekit import Servers
 from runtime.scoping import box_wide
 from runtime.telephony.models import CarrierKind, Route
 from runtime.telephony.repository import Numbered, RouteRepository
-from runtime.telephony.service import accounts, catalog, fence, number_path, rebuild, sfu
+from runtime.telephony.service import accounts, catalog, fence, number_path, rebuild, sfu, sms
 from runtime.telephony.service.carrier import SipNames
 from runtime.telephony.service.catalog import BOX_CARRIER, Admission
 from runtime.telephony.service.hand_over import AgentsHeld
@@ -218,6 +218,16 @@ async def release_number(session: AsyncSession, servers: Servers, route: Route) 
     # A written channel is on no trunk, and the number may still ring as a phone.
     if route.channel is Channel.phone:
         await sfu.let_go(servers[route.env], route.org, route.number)
+
+
+# What a person lets go: an SMS route also takes the number's messages off this box at its carrier.
+async def let_go(
+    session: AsyncSession, vault: Vault, http: httpx.AsyncClient, servers: Servers, names: SipNames, route: Route
+) -> None:
+    """Let the number go on the route's channel, at its carrier too where the box pointed it."""
+    if route.channel is Channel.sms and names.domain:
+        await sms.stop_posting(session, vault, http, f"https://{names.domain}", route)
+    await release_number(session, servers, route)
 
 
 async def release_named(session: AsyncSession, servers: Servers, org: str, named: str, number: str) -> None:

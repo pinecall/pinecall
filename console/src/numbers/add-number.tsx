@@ -8,7 +8,7 @@ import { Icon } from "../shell/icons";
 import { SidePanel } from "../ui/side-panel";
 import { readCarriers, readCatalog, readOwned, type Carrier, type Catalog, type Owned } from "./door";
 import { Path, useMove } from "./parts";
-import { BuyWay, GuidedWay, PbxWay, TwilioWay, WhatsAppWay, type WayProps } from "./ways";
+import { BuyWay, GuidedWay, PbxWay, SmsWay, TwilioWay, WhatsAppWay, type WayProps } from "./ways";
 import { shown, waysOffered, type Way } from "./words";
 
 function Form({ way, ...props }: WayProps & { way: Way }): ReactNode {
@@ -23,11 +23,13 @@ function Form({ way, ...props }: WayProps & { way: Way }): ReactNode {
       return <PbxWay {...props} />;
     case "whatsapp":
       return <WhatsAppWay {...props} />;
+    case "sms":
+      return <SmsWay {...props} />;
   }
 }
 
 /** `agent` opens it for one agent, which every way then rings; `channel` keeps it to the phone's ways or to WhatsApp. */
-export function AddNumberPanel({ agents, agent, channel = null, onAdded, onClose }: { agents: readonly string[]; agent?: string | undefined; channel?: "phone" | "whatsapp" | null; onAdded: (number: string) => void; onClose: () => void }): ReactNode {
+export function AddNumberPanel({ agents, agent, channel = null, onAdded, onClose }: { agents: readonly string[]; agent?: string | undefined; channel?: "phone" | "whatsapp" | "sms" | null; onAdded: (number: string) => void; onClose: () => void }): ReactNode {
   const credentials = useCredentials();
   const mover = useMove();
   const [catalog, setCatalog] = useState<Catalog | null>(null);
@@ -52,12 +54,12 @@ export function AddNumberPanel({ agents, agent, channel = null, onAdded, onClose
   // One way alone is no choice: its form is the panel.
   const only = ways.length === 1 ? ways[0] : undefined;
   const open = way ?? only ?? null;
-  const title = added !== null ? shown(added.number) : open !== null ? open.name : channel === "whatsapp" ? "Connect WhatsApp" : "Add a number";
+  const title = added !== null ? shown(added.number) : open !== null ? open.name : channel === "whatsapp" ? "Connect WhatsApp" : channel === "sms" ? "Answer SMS" : "Add a number";
 
   return (
     <SidePanel
       title={title}
-      icon={channel === "whatsapp" ? "chat" : "numbers"}
+      icon={channel === "phone" || channel === null ? "numbers" : "chat"}
       about={added !== null ? undefined : open === null ? (agent === undefined ? "Every way ends the same: a number that reaches one of your agents." : `Every way ends the same: a number that reaches ${agent}.`) : open.says}
       onClose={onClose}
       footer={

@@ -9,8 +9,8 @@ from contextlib import contextmanager
 from livekit.agents import RunContext, StopResponse, ToolError, llm
 from livekit.agents.beta.tools import EndCallTool
 
-from runtime.agents.declaration import SAY, ToolSpec
-from runtime.enums import Direction
+from runtime.agents.declaration import SAY, STOP_MESSAGES, ToolSpec
+from runtime.enums import Channel, Direction
 from runtime.exceptions import PinecallError
 from runtime.kit.text import Json, JsonObject
 from runtime.session.agent import agent_of
@@ -34,6 +34,20 @@ VOICEMAIL_TOOL = ToolSpec(
         "Call this only when a machine answered: an answering machine or a voicemail greeting asking "
         "for a message, never a person. Say nothing yourself: the message, if the agent has one, is "
         "left for you and the call ends."
+    ),
+    parameters={"type": "object", "properties": {}},
+    quiet=True,
+)
+# Offered on SMS, where a contact may ask in any words to be written to no more (47 CFR
+# 64.1200(a)(10): any reasonable means). The word STOP alone never reaches the model: the gateway
+# takes it. The gateway reads this call off the log, takes the contact off, tells them once and ends.
+STOP_MESSAGES_TOOL = ToolSpec(
+    name=STOP_MESSAGES,
+    description=(
+        "Call this when the person asks, in any words, to stop receiving messages from this number: "
+        '"stop texting me", "take me off your list", "no more messages". They are taken off at '
+        "once, told so, and the conversation ends: write nothing else in the reply that calls it. "
+        "Never call it for anything else, such as cancelling an appointment."
     ),
     parameters={"type": "object", "properties": {}},
     quiet=True,
@@ -77,6 +91,8 @@ class Toolbox:
         # A call somebody placed to a person is the one a machine answers instead.
         if declaration.voicemail is not None and call.context.direction is Direction.outbound:
             tools.extend(as_livekit_tools([VOICEMAIL_TOOL], self._run_voicemail))
+        if call.context.channel is Channel.sms:
+            tools.extend(as_livekit_tools([STOP_MESSAGES_TOOL], self._run_stop_messages))
         if declaration.hangup is not None:
             tools.append(
                 EndCallTool(
@@ -172,6 +188,11 @@ class Toolbox:
         if voicemail is not None and voicemail.message is not None:
             await context.session.say(voicemail.message, allow_interruptions=False)
         self.leave()
+        raise StopResponse
+
+    # Never reaches the app: written down here, and what it does is the gateway's, which reads the log.
+    async def _run_stop_messages(self, use: ToolUse, context: RunContext[Call]) -> str | llm.ToolResult:
+        await write_platform_tool(context.userdata, use.name, use.call_id, context.speech_handle.id)
         raise StopResponse
 
 

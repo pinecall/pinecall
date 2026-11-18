@@ -2,14 +2,15 @@
 
 import logging
 from collections.abc import Mapping
+from urllib.parse import urlsplit
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from runtime.enums import Channel
-from runtime.exceptions import Conflict, Forbidden, NotFound, ServiceUnavailable
+from runtime.exceptions import Conflict, Forbidden, NotFound, ServiceUnavailable, UpstreamError
+from runtime.kit import sms as texts
 from runtime.kit.crypto import Vault
-from runtime.kit.text import cut_in_parts
 from runtime.telephony.models import Route
 from runtime.telephony.repository import RouteRepository
 from runtime.telephony.service import accounts, twilio
@@ -27,9 +28,9 @@ MARK_OF = "sms of "
 LONGEST_POST = 64 * 1024
 # What Twilio is answered so that it says nothing to the contact itself: the reply is the agent's.
 NOTHING_TO_SAY = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>'
-# Twilio takes 1,600 characters a message (twilio.com/docs/messaging/api/message-resource); a
-# longer reply goes out as several.
-LONGEST_TEXT = 1600
+# Where Twilio keeps what a contact attached, and the most of it that is heard as a note.
+TWILIO = "api.twilio.com"
+LONGEST_MEDIA = 8 * 1024 * 1024
 # What a number newly bought posts to, which is nobody's: it is pointed here without being asked.
 TWILIOS_OWN = "https://demo.twilio.com/"
 # The word Twilio says of a message nobody will get, with the code that says why.
@@ -90,20 +91,43 @@ async def survey_messages(
     return [Step(f"twilio: {number}'s messages posted to this box", stands=owned.sms_url == url, write=point)]
 
 
+# Best effort: the route goes whatever Twilio answers, and a post for a number nobody routed is dropped.
+async def stop_posting(
+    session: AsyncSession, vault: Vault, http: httpx.AsyncClient, base_url: str, route: Route
+) -> None:
+    """Have Twilio post the number's messages nowhere, when it posts them to this box."""
+    account = await sms_account_of(session, vault, route)
+    if account is None:
+        return
+    try:
+        api = twilio.twilio_of(http, account)
+        owned = await api.find_number(route.number)
+        if owned is not None and owned.sms_url == sms_hook_url(vault, base_url, route.number):
+            await api.point_messages(owned.sid, "")
+    except UpstreamError:
+        logger.warning("sms: Twilio still posts %s's messages here: it did not take the change", route.number)
+
+
 # ── a message in, a reply out ──
 
 
 def read_message(form: Mapping[str, str]) -> whatsapp.Inbound:
-    """One message as Twilio posts it: who wrote, to which number, what."""
+    """One message as Twilio posts it: who wrote, to which number, what, and the audio an MMS carries."""
+    attached = form.get("MediaUrl0") if form.get("NumMedia", "0") not in ("", "0") else None
+    spoken = attached if attached and form.get("MediaContentType0", "").startswith("audio/") else None
     return whatsapp.Inbound(
         number=form.get("To", ""),
         phone_number_id=form.get("AccountSid", ""),
         wa_id=form.get("From", "").lstrip("+"),
         name=None,
         message_id=form.get("MessageSid") or form.get("SmsSid") or "",
-        kind="text",
+        kind="audio" if spoken and not form.get("Body") else "text",
         text=form.get("Body") or None,
+        # An MMS's audio is a voice note, heard as WhatsApp's is; any other attachment carries nothing read.
+        media_id=spoken,
         channel=Channel.sms,
+        # Sent by a Messaging Service with Advanced Opt-Out: Twilio has replied to the word already.
+        carrier_replied=bool(form.get("OptOutType")),
     )
 
 
@@ -120,6 +144,21 @@ def read_receipt(form: Mapping[str, str]) -> whatsapp.Receipt:
         error=f"Twilio error {code}" if status in FAILED and code else None,
         channel=Channel.sms,
     )
+
+
+# The address is Twilio's own word in a post only Twilio could make; it is asked for with the
+# account's pair all the same, and at Twilio alone.
+async def read_sms_media(http: httpx.AsyncClient, account: TwilioAccount, url: str) -> whatsapp.Media:
+    """The audio a contact sent by MMS, as Twilio keeps it; refused when it is not Twilio's, or longer than a note."""
+    host = urlsplit(url).hostname or ""
+    if host != TWILIO or not url.startswith("https://"):
+        raise UpstreamError(
+            f"an MMS's media at {host or 'nowhere'} is not Twilio's: it is not fetched", vendor=twilio.VENDOR
+        )
+    answer = await twilio.twilio_of(http, account).fetch_media(url)
+    if len(answer.content) > LONGEST_MEDIA:
+        raise UpstreamError("an MMS's audio longer than is heard", vendor=twilio.VENDOR)
+    return whatsapp.Media(data=answer.content, mime_type=answer.headers.get("content-type", ""))
 
 
 async def sms_account_of(session: AsyncSession, vault: Vault, route: Route) -> TwilioAccount | None:
@@ -145,7 +184,7 @@ async def send_sms(
 ) -> None:
     """Send the text to the contact from the number they wrote to, as several when it is long."""
     api = twilio.twilio_of(http, account)
-    for part in cut_in_parts(text, LONGEST_TEXT):
+    for part in texts.parts_of(text):
         await api.send_message(sender, to, part, status_to=status_to)
 
 

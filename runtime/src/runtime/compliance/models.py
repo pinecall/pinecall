@@ -3,6 +3,7 @@
 from datetime import datetime
 
 from sqlalchemy import TIMESTAMP, BigInteger, Boolean, ForeignKey, Identity, Index, Integer, SmallInteger, Text
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
 from runtime.enums import ConsentKind, Env, ReadKind
@@ -22,6 +23,9 @@ class OrgPolicy(Model):
             "consent_everywhere",
             "disclosure",
             "recording_notice",
+            "sms_stop_reply",
+            "sms_help_reply",
+            "sms_stop_words",
             "set_by",
             "set_at",
         )
@@ -39,6 +43,13 @@ class OrgPolicy(Model):
     # NULL is the platform's sentence, '' is none.
     disclosure: Mapped[str | None] = mapped_column(Text)
     recording_notice: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # What a contact who texts STOP is told: NULL is the carrier's own confirmation and, when the
+    # agent took them off, the platform's sentence; '' is nothing; anything else is said as written.
+    sms_stop_reply: Mapped[str | None] = mapped_column(Text)
+    # What a contact who texts HELP is told; NULL leaves it to the carrier, and to the agent.
+    sms_help_reply: Mapped[str | None] = mapped_column(Text)
+    # The words, beside the standard ones, that a contact of this org stops with.
+    sms_stop_words: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, default=list, server_default="{}")
 
 
 # `subject` is a call, a number, an agent or the org itself, as text: the row of a read stays when what

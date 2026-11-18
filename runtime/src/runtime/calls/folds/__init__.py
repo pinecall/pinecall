@@ -4,6 +4,7 @@ from runtime.calls.folds.facts import CallFacts, facts_of, fold, line_of
 from runtime.calls.folds.latencies import interruption_delays, medians, samples
 from runtime.calls.folds.phone_legs import phone_legs
 from runtime.calls.folds.state import apply, list_unanswered_tools, reduce
+from runtime.calls.folds.texts import sms_segments
 from runtime.calls.folds.usage import bill_row, total_by_org, usage_row
 
 __all__ = [
@@ -19,6 +20,7 @@ __all__ = [
     "phone_legs",
     "reduce",
     "samples",
+    "sms_segments",
     "total_by_org",
     "usage_row",
 ]

@@ -87,7 +87,10 @@ own at `GET /v1/hosted/usage`. A price per app-month, prorated by those seconds,
 Pinecall's cloud charges $5 an app a month.
 
 The judges' tokens are on `call.score` (`judge_cost_usd`), apart from the call's, and a call
-judged again is a second row with its own `evals`. Not in any row:
+judged again is a second row with its own `evals`. An SMS conversation's row carries
+`sms_segments`, the segments it received and sent as a carrier counts them, and
+`lent_sms_segments`, those of them the platform's own carrier account carried (a number bought
+from it): what a plan bills, where an org's own Twilio account is billed by Twilio. Not in any row:
 a WhatsApp message (Meta charges for templates only, and the runtime answers inside the 24 hours a
 person opens), a number's monthly rental, the embeddings of a lookup or a push.
 

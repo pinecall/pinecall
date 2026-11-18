@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **`optOut` on a WhatsApp or SMS conversation**, and `call.summary` says an SMS conversation's `sms_segments`.
+
 ## 0.11.45 — a number answers the phone, WhatsApp and SMS at once, and SMS comes through Twilio (2026-11-18)
 
 - **`sms` is a channel.** A call by SMS is written (`medium: text`), and the built-in rule tells the model to write plain, short text.
@@ -287,43 +291,39 @@
 
 ## 0.1.13 — The wire reads evals.spent, call.started.expects and call.summary.run (2026-10-11)
 
-- The wire reads `evals.spent` (what the harness asked a model — a judge tried, personas
-  written, a case group diagnosed — its evals counted), `call.started.expects` (what a simulated
-  caller expects, replacing `accepts_when`/`declines_when`), a
-  `call.summary`'s `run`, and `credits.exhausted` for the `evals` and `simulations` quotas. Needs
-  runtime 0.1.46.
+- The wire reads `evals.spent` (what the harness asked a model — a judge tried, personas written, a case group
+  diagnosed — its evals counted), `call.started.expects` (what a simulated caller expects, replacing
+  `accepts_when`/`declines_when`), a `call.summary`'s `run`, and `credits.exhausted` for the `evals` and `simulations`
+  quotas. Needs runtime 0.1.46.
 
 ## 0.1.12 — Every judge is a model's answer, and the class names the judge's model (2026-10-10)
 
-- `@judge("<vendor>/<model>", builds=…, options=…)`: the model the agent's calls are judged on,
-  over the org's choice and Pinecall's. On a key of the org's own — a local model through
-  `options={"base_url": "…"}` among them — its evals are never billed.
-- The wire reads what the runtime now writes: a judge's `na` and `classified` answers with their
-  `choice` or `score`, `call.score`'s `evals` and `own_key`, and `call.summary`'s `simulated`.
+- `@judge("<vendor>/<model>", builds=…, options=…)`: the model the agent's calls are judged on, over the org's choice
+  and Pinecall's. On a key of the org's own — a local model through `options={"base_url": "…"}` among them — its evals
+  are never billed.
+- The wire reads what the runtime now writes: a judge's `na` and `classified` answers with their `choice` or `score`,
+  `call.score`'s `evals` and `own_key`, and `call.summary`'s `simulated`.
 
 ## 0.1.11 — A greeting is words or improvise, a hangup is words or True, and the ears choose who ends the turn (2026-10-10)
 
-- `greeting = "…"` (said as written), `greeting = improvise` (the model opens on its prompt) and
-  `greeting = improvise("…")` (with an instruction); `interruptible=True`, or `words("…",
-  interruptible=True)`, for an opening the caller may cut short, which by default they cannot. The
-  `{"say": …}` / `{"reply": …}` dicts are gone.
-- `hangup = "…"` (when, in your words) or `hangup = True` (whenever the model judges); the
-  `{"when": …}` dict is gone.
-- `@stt(…, end_of_turn="stt" | "livekit" | "smart-turn")`: who says the caller's turn is over, as
-  @pinecall/agents 0.9.26 says it. Needs runtime 0.1.43.
+- `greeting = "…"` (said as written), `greeting = improvise` (the model opens on its prompt) and `greeting =
+  improvise("…")` (with an instruction); `interruptible=True`, or `words("…", interruptible=True)`, for an opening the
+  caller may cut short, which by default they cannot. The `{"say": …}` / `{"reply": …}` dicts are gone.
+- `hangup = "…"` (when, in your words) or `hangup = True` (whenever the model judges); the `{"when": …}` dict is gone.
+- `@stt(…, end_of_turn="stt" | "livekit" | "smart-turn")`: who says the caller's turn is over, as @pinecall/agents
+  0.9.26 says it. Needs runtime 0.1.43.
 
 ## 0.1.10 — The class declares its voice, its models and the rest, and wins (2026-10-10)
 
-- **A class declares its environment again, and it wins over the settings.** `@voice("<vendor>",
-  "<id>", model=…)`, `@llm("<vendor>/<model>", temperature=…)`, `@stt(…)` and `@knowledge(path=…,
-  text=…)`, and class attributes for `language`, `greeting`, `hangup`, `turn`, `says`, `hears`,
-  `docs`, `memory` and `record`. A field the class declares is not read from the settings, the
-  console shows it "set by the class", and `pinecall agent set` of it is refused. Needs runtime
-  0.1.42.
-- `builds=` and `options=` on the three models: a class of the vendor's plugin and its keyword
-  arguments (`@llm("openai/gpt-5.4-mini", builds="responses.LLM", options={"use_websocket": True})`),
-  only on the org's own key for the vendor. One of these annotated as state is refused at class
-  creation with how to declare it; the refusal that named a CLI verb is gone.
+- **A class declares its environment again, and it wins over the settings.** `@voice("<vendor>", "<id>", model=…)`,
+  `@llm("<vendor>/<model>", temperature=…)`, `@stt(…)` and `@knowledge(path=…, text=…)`, and class attributes for
+  `language`, `greeting`, `hangup`, `turn`, `says`, `hears`, `docs`, `memory` and `record`. A field the class declares
+  is not read from the settings, the console shows it "set by the class", and `pinecall agent set` of it is refused.
+  Needs runtime 0.1.42.
+- `builds=` and `options=` on the three models: a class of the vendor's plugin and its keyword arguments
+  (`@llm("openai/gpt-5.4-mini", builds="responses.LLM", options={"use_websocket": True})`), only on the org's own key
+  for the vendor. One of these annotated as state is refused at class creation with how to declare it; the refusal
+  that named a CLI verb is gone.
 
 ## 0.1.9 — The release CI refused for a format (2026-10-09)
 
@@ -331,14 +331,13 @@
 
 ## 0.1.8 — A tool announces itself (2026-10-09)
 
-- `@tool(announce="Let me check the agenda.")`: what the agent says as the tool starts, when the
-  model's turn said nothing itself; a turn that spoke and then called the tool is not announced
-  twice. Needs runtime 0.1.11.
+- `@tool(announce="Let me check the agenda.")`: what the agent says as the tool starts, when the model's turn said
+  nothing itself; a turn that spoke and then called the tool is not announced twice. Needs runtime 0.1.11.
 
 ## 0.1.7 — A call runs on the day a golden pinned (2026-10-09)
 
-- `call.today` is the day `call.started` names when a golden pinned one (`today`), so an agent resolves
-  "on Monday" against the golden's day, as the model does; the clock's day otherwise. Needs runtime 0.1.10.
+- `call.today` is the day `call.started` names when a golden pinned one (`today`), so an agent resolves "on Monday"
+  against the golden's day, as the model does; the clock's day otherwise. Needs runtime 0.1.10.
 
 ## 0.1.6 — The first release: an agent as a Python class (2026-10-09)
 

@@ -270,6 +270,9 @@ class UsageTotals(Row):
     lent_minutes: float = 0.0
     # What simulated callers' own models and voices cost, beside the calls' cost.
     caller_cost_usd: float = 0.0
+    # The SMS segments exchanged, both ways, and those that went through the box's own carrier account.
+    sms_segments: int = 0
+    lent_sms_segments: int = 0
 
 
 # Flat, as v1 wrote it: a billing layer that reads the feed today reads it unchanged. Each number is
@@ -298,6 +301,10 @@ class UsageRow(Row):
     lent: list[str] = Field(default_factory=list[str])
     # A simulated call.summary's caller: what its own model and voice cost, beside the agent's cost_usd.
     caller_cost_usd: float = Field(0.0, validation_alias=AliasPath("used", "caller_cost_usd"))
+    # The SMS segments an SMS conversation exchanged, both ways; and those of them the box's own
+    # carrier account carried, which a plan bills.
+    sms_segments: int = Field(0, validation_alias=AliasPath("used", "sms_segments"))
+    lent_sms_segments: int = Field(0, validation_alias=AliasPath("used", "lent_sms_segments"))
 
 
 class UsagePage(Row):

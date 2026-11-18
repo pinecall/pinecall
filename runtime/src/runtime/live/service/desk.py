@@ -8,13 +8,19 @@ from runtime.accounts import service as accounts
 from runtime.actor import Actor
 from runtime.calls import service as calls
 from runtime.compliance import service as compliance
-from runtime.enums import ReadKind
+from runtime.enums import Channel, ReadKind
 from runtime.exceptions import Conflict, NotFound
 from runtime.live.parts import LiveParts
 from runtime.live.service import commands, tokens
-from runtime.wire.commands import SupervisorVerb, Verb
+from runtime.wire.commands import SayVerb, SupervisorVerb, Verb
 from runtime.wire.parts import Supervisor
 from runtime.wire.room import RoomScope
+
+# Meta lets a business write freely only this long after the contact's last message
+# (developers.facebook.com/docs/whatsapp/cloud-api/guides/send-messages).
+WHATSAPP_WINDOW_S = 24 * 60 * 60
+# The channels a contact writes on message by message, as a call's facts name them.
+THREAD_CHANNELS = frozenset(channel.value for channel in Channel if channel.is_a_thread)
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,3 +94,29 @@ def supervisor_of(actor: Actor | None, visit: tokens.Visit | None) -> Supervisor
     if actor.person is not None:
         return Supervisor(id=actor.person.id, name=actor.person.name)
     return Supervisor(id=f"key:{actor.org}")
+
+
+# A written message goes out on the contact's newest conversation on a channel they write on. It goes
+# the way every verb of the desk goes: to whichever gateway runs the conversation. Until 2026-11 the
+# contact's newest call of any kind was asked, and a phone call after a thread left the thread
+# unanswerable.
+async def say_as_agent(
+    session_: AsyncSession, live: LiveParts, actor: Actor, slug: str, contact: str, text: str
+) -> str:
+    """Say something as the agent on the contact's open WhatsApp or SMS conversation; the call it was said on."""
+    with_them = await calls.list_calls_with(session_, actor.scope, slug, contact)
+    facts = await calls.facts_of_calls(session_, with_them)
+    newest = next((call for call in with_them if call in facts and facts[call].channel in THREAD_CHANNELS), None)
+    if newest is None:
+        raise Conflict(f"a message is written on a WhatsApp or an SMS thread, and {contact} has none with {slug}")
+    # The log's own clock, which stamped when the contact last wrote. The window is WhatsApp's alone.
+    quiet_for = live.store.clock() - max(facts[newest].heard_at, default=0.0)
+    if facts[newest].channel == Channel.whatsapp and quiet_for > WHATSAPP_WINDOW_S:
+        raise Conflict(
+            f"WhatsApp's window with {contact} closed 24 h after their last message: only a template reaches them now"
+        )
+    if await live.store.is_sealed(newest):
+        raise Conflict(f"{contact}'s conversation went quiet and is sealed: their next message opens a new one")
+    by = Supervisor(id=actor.asked_by, name=None if actor.person is None else actor.person.name)
+    await send_verb(live, Supervising(newest, by), SayVerb(text=text))
+    return newest

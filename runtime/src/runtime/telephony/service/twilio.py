@@ -200,6 +200,19 @@ class Twilio:
             form["StatusCallback"] = status_to
         return str((await self._post(f"{self.home}/Messages.json", form)).get("sid") or "")
 
+    # Twilio answers a media address with a redirect to where the bytes are, which takes no pair.
+    async def fetch_media(self, url: str) -> httpx.Response:
+        """What a contact attached to a message, as Twilio keeps it for the account."""
+        try:
+            answer = await self.http.get(url, auth=self.auth, timeout=TIMEOUT_S, follow_redirects=True)
+        except httpx.HTTPError as silent:
+            raise UpstreamError(
+                f"Twilio did not answer ({type(silent).__name__})", vendor=VENDOR, retryable=True
+            ) from silent
+        if answer.is_error:
+            raise UpstreamError(f"Twilio kept no such media ({answer.status_code})", vendor=VENDOR)
+        return answer
+
     async def buy(self, number: str) -> TwilioNumber:
         """Buy the number onto the account: this costs money."""
         return TwilioNumber.model_validate(

@@ -90,10 +90,14 @@ async def list_calls_with(session: AsyncSession, scope: Scope, slug: str, contac
     return calls
 
 
-# What a conversation that comes back asks: a WhatsApp thread is taken up again on its newest call.
-async def find_newest_call_with(session: AsyncSession, scope: Scope, slug: str, contact: str) -> str | None:
-    """The contact's newest call with the agent, or None when they never spoke."""
-    newest = await InboxRepository(session).list_calls_with(scope, slug, contact, limit=1)
+# What a conversation that comes back asks. Taken up again, it is the newest call on its own
+# channel: until 2026-11 it was the newest on any, and a text that came while a WhatsApp thread was
+# open went on that thread's call. What a new one carries on is the newest on any channel.
+async def find_newest_call_with(
+    session: AsyncSession, scope: Scope, slug: str, contact: str, channel: Channel | None = None
+) -> str | None:
+    """The contact's newest call with the agent, on a channel when one is named, or None when they never spoke."""
+    newest = await InboxRepository(session).list_calls_with(scope, slug, contact, limit=1, channel=channel)
     return newest[0] if newest else None
 
 

@@ -71,6 +71,11 @@ async def standing_of(session: AsyncSession, scope: Scope, number: str) -> Stand
     return _standing_of(None if newest is None else newest.kind)
 
 
+async def newest_of(session: AsyncSession, scope: Scope, number: str) -> ContactConsent | None:
+    """The newest fact about the number in the scope's env, or None when there is none."""
+    return await ConsentRepository(session).find_newest(scope.org, scope.env, parse_e164(number))
+
+
 async def history_of(session: AsyncSession, scope: Scope, number: str) -> History:
     """Every fact about the number, newest first, and what stands."""
     kept = parse_e164(number)

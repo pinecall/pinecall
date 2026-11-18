@@ -11,6 +11,12 @@ const PolicySchema = z.looseObject({
   consent_everywhere: z.boolean().nullish(),
   disclosure: z.string().nullish(),
   recording_notice: z.boolean().nullish(),
+  /** What a contact who texts STOP is told: null leaves it to the carrier, "" is nothing. */
+  sms_stop_reply: z.string().nullish(),
+  /** What a contact who texts HELP is told: null leaves the word to the carrier and the agent. */
+  sms_help_reply: z.string().nullish(),
+  /** The words, beside the standard ones, that a contact stops the messages with. */
+  sms_stop_words: z.array(z.string()).nullish(),
 });
 
 /** Retention, the calling rules, consent, and what a call says first. */

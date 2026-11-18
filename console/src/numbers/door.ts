@@ -84,6 +84,8 @@ export interface WantedNumber {
   hooked?: boolean;
   /** A hooked number's carrier, of the catalog. */
   via?: string;
+  /** Take the number off where it is now: another trunk for its calls, another service for its messages. */
+  move?: boolean;
 }
 
 export interface WantedPurchase {

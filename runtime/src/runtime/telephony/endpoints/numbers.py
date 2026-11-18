@@ -98,9 +98,11 @@ async def buy_number(
 
 
 @router.delete("/v1/numbers/{number}", status_code=204)
-async def release_number(route: TheNumber, servers: TheServers, session: Session) -> None:
+async def release_number(
+    route: TheNumber, vault: TheVault, http: TheHttp, servers: TheServers, names: TheSipNames, session: Session
+) -> None:
     """Let the number go: its route and its admission; the account keeps it."""
-    await numbers.release_number(session, servers, route)
+    await numbers.let_go(session, vault, http, servers, names, route)
 
 
 @router.put("/v1/numbers/{number}/env")

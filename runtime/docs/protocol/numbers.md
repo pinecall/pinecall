@@ -180,8 +180,33 @@ typing sign; there is no 24-hour window; a reply longer than 1,600 characters go
 reply Twilio refuses is an `error` entry `sms_not_sent`. Each reply is sent with a `StatusCallback`
 (`…/{mark}/status`), and what Twilio says of it (`queued`, `sent`, `delivered`, `undelivered`,
 `failed`) is a `message.status` entry on the open conversation, a failure with `Twilio error
-<code>`. Only text is read: an MMS's media is dropped. Letting the SMS route go leaves the number's
-`SmsUrl` as it is at Twilio: a post for a number nobody routed is answered `200` and dropped.
+<code>`. Text is read, and the audio of an MMS (`MediaUrl0` with an `audio/*` type): fetched at
+`api.twilio.com` alone, on the account's pair, 8 MB at most, and heard as a WhatsApp voice note is,
+by the conversation's own task. A format the ears cannot read is a line in the log. Any other
+media is dropped. Letting the SMS route go
+(`DELETE /v1/numbers/{number}?channel=sms`) empties the number's `SmsUrl` at Twilio when it is
+this deployment's; a post for a number nobody routed is answered `200` and dropped.
+
+**A contact who stops.** A text that is, whole, one of `STOP`, `STOPALL`, `UNSUBSCRIBE`, `CANCEL`,
+`END`, `QUIT`, `REVOKE`, `OPTOUT` (case, accents and punctuation aside), or a word the org added
+(`sms_stop_words` of `PUT /v1/org/policy`), is honoured on the gateway it lands on, before any
+conversation hears it: an `opt_out` fact on the org's list for that number (`contact_consents`,
+its `source` "the contact texted a word that stops the messages", with the words and the call),
+the open conversation ended `caller_hung_up`, and nothing asked of the model. From then on what
+that contact writes is not answered and nothing is sent to it, until it texts `START`, `UNSTOP` or
+`YES`, which writes an `express` consent and lifts it. A number on the list for the phone alone
+(asked on a call, or added by hand) that writes is answered: the one who wrote asked for it.
+What is silenced is a thread whose contact stopped in writing, checked before each reply.
+
+A contact who asks in other words is the model's to hear: every SMS conversation carries the
+platform's tool `stop_messages`, and the app's `call.opt_out` is taken on a written channel too.
+Either writes the fact (`source` "the contact asked the agent, in writing"), sends the one
+confirmation the rules allow, and ends the conversation `agent_hung_up`; what the model wrote
+beside the call is not sent. The confirmation is the org's `sms_stop_reply`: null says nothing
+after a stop word (the carrier confirms those itself, and a post that carries Twilio's `OptOutType`
+is never answered here) and the platform's sentence when the agent took the contact off; `""` says
+nothing ever. `sms_help_reply` answers `HELP` and `INFO` where they arrive; null leaves the word to
+the carrier, and to the model.
 
 ## Letting one go, moving one — `DELETE /v1/numbers/{number}`, `PUT /v1/numbers/{number}/env`
 

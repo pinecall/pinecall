@@ -32,7 +32,7 @@ const CHANNELS = [
 
 /** A row opens the call beside its thread; the status picked goes with it. */
 function hrefOf(call: string, url: CallsUrl): string {
-  return `/calls/${encodeURIComponent(call)}${url.status === "" ? "" : `?status=${url.status}`}`;
+  return `${url.base}/${encodeURIComponent(call)}${url.status === "" ? "" : `?status=${url.status}`}`;
 }
 
 function Row({ line, to, now, onErased }: { line: SessionLine; to: string; now: number; onErased: (call: string) => void }): ReactNode {
@@ -89,7 +89,7 @@ export function CallsTable({ lines, url, onErased }: { /** What the page follows
   const filtering = url.query !== "" || url.agent !== "" || url.channel !== "" || url.status !== "";
 
   const open = (event: KeyboardEvent<HTMLInputElement>): void => {
-    if (event.key === "Enter" && A_CALL.test(typed)) void navigate(`/calls/${encodeURIComponent(typed)}`);
+    if (event.key === "Enter" && A_CALL.test(typed)) void navigate(`${url.base}/${encodeURIComponent(typed)}`);
   };
 
   return (

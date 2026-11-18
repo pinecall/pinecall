@@ -56,6 +56,13 @@ class Policy:
     # An outbound call's opening sentence: None is the platform's, "" is none.
     disclosure: str | None = None
     recording_notice: bool = True
+    # What a contact who texts STOP is told: None is the carrier's own confirmation (and the
+    # platform's sentence when the agent took them off), "" is nothing.
+    sms_stop_reply: str | None = None
+    # What a contact who texts HELP is told; None leaves the word to the carrier and to the agent.
+    sms_help_reply: str | None = None
+    # The words, beside the standard ones, that a contact of this org stops with.
+    sms_stop_words: tuple[str, ...] = ()
     # Who set it last, and when; None on an org nobody set one for.
     set_by: str | None = None
     set_at: datetime | None = None
@@ -94,6 +101,9 @@ def _policy_of(row: OrgPolicy) -> Policy:
         consent_everywhere=row.consent_everywhere,
         disclosure=row.disclosure,
         recording_notice=row.recording_notice,
+        sms_stop_reply=row.sms_stop_reply,
+        sms_help_reply=row.sms_help_reply,
+        sms_stop_words=tuple(row.sms_stop_words),
         set_by=row.set_by,
         set_at=row.set_at,
     )
@@ -109,6 +119,9 @@ def _columns_of(policy: Policy) -> dict[str, Any]:
         "consent_everywhere": policy.consent_everywhere,
         "disclosure": policy.disclosure,
         "recording_notice": policy.recording_notice,
+        "sms_stop_reply": policy.sms_stop_reply,
+        "sms_help_reply": policy.sms_help_reply,
+        "sms_stop_words": list(policy.sms_stop_words),
     }
 
 

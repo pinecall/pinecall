@@ -19,6 +19,7 @@ export type { ConsentHistory, DoNotCall, DoNotCallImported, Erasure, ErasureTrai
 export const SAY_YES = (what: string, who: string): string => `erasing ${what} ${who} cannot be undone: \`--yes\` erases it`;
 const ONE_OR_THE_OTHER = (a: string, b: string): string => `${a} and ${b} say two things about one field`;
 const ONE_DISCLOSURE = "one of --disclosure '<your words>', --platform-disclosure or --no-disclosure";
+const ONE_STOP_REPLY = "one of --sms-stop-reply '<your words>', --carrier-stop-reply or --no-sms-stop-reply";
 const HOURS = /^(\d{1,2})-(\d{1,2})$/;
 const DAYS = { error: "--retention-days takes a whole number of days, 1 or more; --keep-all keeps every call" };
 const PER_DAY = { error: "--per-number-day takes a whole number of calls, 1 or more; --no-per-number lifts it" };
@@ -38,6 +39,13 @@ export const PolicyInput = z.object({
   noDisclosure: z.boolean().default(false),
   recordingNotice: z.boolean().default(false),
   noRecordingNotice: z.boolean().default(false),
+  smsStopReply: z.string().max(320).optional(),
+  carrierStopReply: z.boolean().default(false),
+  noSmsStopReply: z.boolean().default(false),
+  smsHelpReply: z.string().max(320).optional(),
+  carrierHelpReply: z.boolean().default(false),
+  smsStopWords: z.string().optional(),
+  standardStopWords: z.boolean().default(false),
 });
 export type PolicyInput = z.infer<typeof PolicyInput>;
 
@@ -168,5 +176,16 @@ function changesOf(input: PolicyInput): Partial<api.OrgPolicy> {
   if (input.noDisclosure) changes.disclosure = "";
   if (input.recordingNotice) changes.recording_notice = true;
   if (input.noRecordingNotice) changes.recording_notice = false;
+  const stopReplies = [input.smsStopReply !== undefined, input.carrierStopReply, input.noSmsStopReply].filter(Boolean).length;
+  if (stopReplies > 1 || (input.smsStopReply !== undefined && input.smsStopReply.trim() === "")) throw new UsageError(ONE_STOP_REPLY);
+  if (input.smsHelpReply !== undefined && input.carrierHelpReply) throw new UsageError(ONE_OR_THE_OTHER("--sms-help-reply", "--carrier-help-reply"));
+  if (input.smsStopWords !== undefined && input.standardStopWords) throw new UsageError(ONE_OR_THE_OTHER("--sms-stop-words", "--standard-stop-words"));
+  if (input.smsStopReply !== undefined) changes.sms_stop_reply = input.smsStopReply.trim();
+  if (input.carrierStopReply) changes.sms_stop_reply = null;
+  if (input.noSmsStopReply) changes.sms_stop_reply = "";
+  if (input.smsHelpReply !== undefined) changes.sms_help_reply = input.smsHelpReply.trim();
+  if (input.carrierHelpReply) changes.sms_help_reply = null;
+  if (input.smsStopWords !== undefined) changes.sms_stop_words = input.smsStopWords.split(",").map((word) => word.trim()).filter((word) => word !== "");
+  if (input.standardStopWords) changes.sms_stop_words = [];
   return changes;
 }

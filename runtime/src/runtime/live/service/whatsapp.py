@@ -3,22 +3,26 @@
 import asyncio
 import dataclasses
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
+from functools import partial
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from runtime.actor import Actor, Scope
+from runtime.actor import Scope
+from runtime.agents.declaration import STOP_MESSAGES
 from runtime.calls import service as calls
 from runtime.calls.context import CallContext, Contact, Route, new_call_id
-from runtime.enums import Channel, Direction
-from runtime.exceptions import Conflict, PinecallError, QuotaExceeded, UpstreamError
+from runtime.enums import Direction
+from runtime.exceptions import PinecallError, QuotaExceeded, UpstreamError
 from runtime.kit.loops import survive
 from runtime.kit.time import today_in
 from runtime.live.holders import Registration
 from runtime.live.parts import LiveParts
 from runtime.live.peers import THREADS, ThreadKey
-from runtime.live.service import desk, written
+from runtime.live.service import written
+from runtime.live.service.opt_outs import Stop, refuses_messages, take_off, take_word
 from runtime.live.service.replies import Reaches, way_to
 from runtime.live.service.waiting import Waiting, keep_waiting, list_waiting, mark_taken
 from runtime.scoping import box_task
@@ -27,9 +31,7 @@ from runtime.telephony import service as telephony
 from runtime.telephony.models import Route as RouteRow
 from runtime.whatsapp import service as whatsapp
 from runtime.wire.base import Entry
-from runtime.wire.commands import SayVerb
 from runtime.wire.events import ErrorEvent, MessageStatus
-from runtime.wire.parts import Supervisor
 from runtime.wire.signal import HandedMessage
 
 logger = logging.getLogger(__name__)
@@ -50,6 +52,10 @@ WINDOW_S = 24 * 60 * 60
 OVER = {"call.ended", "supervisor.ended"}
 
 
+# What a conversation's own task takes off its queue: a message, the call over, the contact stopping.
+type Heard = whatsapp.Inbound | Stop | None
+
+
 @dataclass(slots=True)
 class OpenThread:
     """One contact's open conversation: its session, the token it replies with, what is unread."""
@@ -57,18 +63,38 @@ class OpenThread:
     session: session.Session
     inbound: whatsapp.Inbound
     reaches: Reaches
-    # A None is the call over: the desk ended it, or it was hung up some other way.
-    heard: asyncio.Queue[whatsapp.Inbound | None] = field(default_factory=asyncio.Queue[whatsapp.Inbound | None])
+    # A None is the call over: the desk ended it, or it was hung up some other way. A Stop is the
+    # contact asking for no more messages: the conversation ends once what came before it is done.
+    heard: asyncio.Queue[Heard] = field(default_factory=asyncio.Queue[Heard])
     serving: asyncio.Task[None] | None = None
+    # Whether the contact asked, in writing, for no more messages; asked of the list before each reply.
+    refuses: Callable[[], Awaitable[bool]] | None = None
+    stopped: bool = False
+
+    def stop(self, stop: Stop) -> None:
+        """Write nothing more to the contact, and end the conversation when its turn comes."""
+        self.stopped = True
+        self.heard.put_nowait(stop)
 
     # The model's turns, the agent's `say` and a supervisor's reach the contact on one path.
     async def reply(self, entry: Entry) -> None:
-        """Send a durable turn.agent to the contact; Meta's refusal is an error on the call."""
+        """Send a durable turn.agent to the contact; the channel's refusal is an error on the call."""
         if entry.type in OVER:
             self.heard.put_nowait(None)
             return
+        # The model called the platform's tool: nothing it wrote beside the call is sent.
+        if entry.type == "tool.call" and entry.data.get("name") == STOP_MESSAGES and not self.stopped:
+            self.stop(Stop(by="agent", written=False, call=entry.call))
+            return
         answer = entry.data.get("text")
         if entry.type != "turn.agent" or entry.ephemeral or not isinstance(answer, str) or not answer:
+            return
+        if self.stopped or (self.refuses is not None and await self.refuses()):
+            logger.info(
+                "%s: a reply to %s was not sent: they asked for no more",
+                self.inbound.channel.value,
+                self.inbound.caller,
+            )
             return
         try:
             await self.reaches.send(self.inbound, answer)
@@ -130,6 +156,15 @@ class Threads:
             return True
 
         async def read() -> None:
+            # A word that stops, starts again or asks who writes is answered before the model is asked.
+            open_here = self._open.get(_thread_key(Scope(route.org, route.env), inbound))
+            taken = await take_word(
+                self._live, route, inbound, None if open_here is None else open_here.session.call.context.call
+            )
+            if taken == "stop" and open_here is not None:
+                open_here.stop(Stop(by="caller"))
+            if taken is not None:
+                return
             await self._hear(route, inbound)
 
         return await whatsapp.read_once(self._live.sessions, route.org, inbound.message_id, read, at=self._live.now)
@@ -156,6 +191,14 @@ class Threads:
         holder = None if handed else self._live.owners.find_thread_holder(key)
         if holder is not None:
             await THREADS.reach(self._live.signal, _hand_receipt(receipt), gateway=holder)
+
+    # The app's own command took the contact off the list: the conversation is told, and ends.
+    def stop(self, call: str) -> bool:
+        """End the open conversation of this call as one whose contact asked for no more; whether it is here."""
+        thread = next((one for one in self._open.values() if one.session.call.context.call == call), None)
+        if thread is not None and not thread.stopped:
+            thread.stop(Stop(by="agent"))
+        return thread is not None
 
     # Off the app socket's own loop: opening a conversation may wait on the model.
     def answer_waiting(self, registration: Registration) -> None:
@@ -253,13 +296,18 @@ class Threads:
                 return None
             try:
                 taken = await self._take_up(session_, registration, inbound)
+                # A new conversation carries on what this contact and the agent last said, on any channel.
+                earlier = await calls.find_newest_call_with(
+                    session_, registration.scope, registration.slug, inbound.caller
+                )
                 running = taken or await written.open_written(
-                    session_, live, registration, self._context(registration, route, inbound)
+                    session_, live, registration, self._context(registration, route, inbound, earlier)
                 )
             except PinecallError as refused:
                 logger.warning("whatsapp: agent %s cannot answer at %s: %s", route.agent, inbound.number, refused)
                 return None
         thread = OpenThread(session=running, inbound=inbound, reaches=reaches)
+        thread.refuses = partial(refuses_messages, live, Scope(route.org, route.env), inbound.caller)
         # Before the session starts, so every turn the contact is owed reaches them.
         served = live.calls.find(running.call.context.call)
         if served is not None:
@@ -297,7 +345,8 @@ class Threads:
     async def _take_up(
         self, session_: AsyncSession, registration: Registration, inbound: whatsapp.Inbound
     ) -> session.Session | None:
-        newest = await calls.find_newest_call_with(session_, registration.scope, registration.slug, inbound.caller)
+        contact = (registration.scope, registration.slug, inbound.caller)
+        newest = await calls.find_newest_call_with(session_, *contact, inbound.channel)
         if newest is None:
             return None
         entries = await calls.list_entries(session_, newest)
@@ -305,7 +354,9 @@ class Threads:
             return None
         return await written.resume_written(session_, self._live, registration, newest)
 
-    def _context(self, registration: Registration, route: RouteRow, inbound: whatsapp.Inbound) -> CallContext:
+    def _context(
+        self, registration: Registration, route: RouteRow, inbound: whatsapp.Inbound, earlier: str | None
+    ) -> CallContext:
         answering = Route(
             org=route.org, agent=registration.slug, channel=inbound.channel, number=route.number, env=route.env
         )
@@ -318,6 +369,7 @@ class Threads:
             today=today_in(self._live.settings.timezone),
             contact=Contact(phone=inbound.caller, name=inbound.name),
             holder=registration.scope.holder or None,
+            continues=earlier,
         )
 
     # The idle period starts once every message is answered: a slow turn is never cut off. Each turn
@@ -335,6 +387,10 @@ class Threads:
                     return
                 if heard is None:
                     await running.close()
+                    return
+                if isinstance(heard, Stop):
+                    await take_off(self._live, Scope(key.org, key.env), thread.inbound, thread.reaches, heard)
+                    await session.end(running, "caller_hung_up" if heard.by == "caller" else "agent_hung_up", heard.by)
                     return
                 # One message that cannot be answered is said with its call: the contact's next one is.
                 with survive("answering a WhatsApp message", call):
@@ -358,31 +414,6 @@ async def take_up(live: LiveParts, thread: OpenThread, heard: whatsapp.Inbound) 
     except (UpstreamError, httpx.HTTPError):
         logger.warning("%s: a message to %s was not marked read", heard.channel.value, heard.number, exc_info=True)
     return None if not text else await written.hear(live, running, text)
-
-
-# A supervisor's `say` on the open conversation, sent to the contact by its reply tap. It goes the way
-# every verb of the desk goes: to whichever gateway runs the conversation. Until 2026-11 it was said
-# to the session of this gateway alone, and with more than one gateway an open conversation was
-# answered as one that "went quiet and is sealed" whenever the request landed on another.
-async def say_as_agent(
-    session_: AsyncSession, live: LiveParts, actor: Actor, slug: str, contact: str, text: str
-) -> str:
-    """Say something as the agent on the contact's open WhatsApp conversation; the call it was said on."""
-    newest = (await calls.list_calls_with(session_, actor.scope, slug, contact))[0]
-    facts = (await calls.facts_of_calls(session_, [newest])).get(newest)
-    channel = None if facts is None else facts.channel
-    if facts is None or channel is None or not Channel(channel).is_a_thread:
-        raise Conflict(f"a message is written on a WhatsApp or an SMS thread, and {contact}'s newest call is {channel}")
-    # The log's own clock, which stamped when the contact last wrote. The window is WhatsApp's alone.
-    if channel == Channel.whatsapp and live.store.clock() - max(facts.heard_at, default=0.0) > WINDOW_S:
-        raise Conflict(
-            f"WhatsApp's window with {contact} closed 24 h after their last message: only a template reaches them now"
-        )
-    if await live.store.is_sealed(newest):
-        raise Conflict(f"{contact}'s conversation went quiet and is sealed: their next message opens a new one")
-    by = Supervisor(id=actor.asked_by, name=None if actor.person is None else actor.person.name)
-    await desk.send_verb(live, desk.Supervising(newest, by), SayVerb(text=text))
-    return newest
 
 
 def _thread_key(scope: Scope, inbound: whatsapp.Inbound | whatsapp.Receipt) -> ThreadKey:

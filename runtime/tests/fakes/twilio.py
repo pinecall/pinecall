@@ -42,6 +42,8 @@ class Twilio:
     sms_urls: dict[str, str] = field(default_factory=dict[str, str])
     # Every text sent, as its form.
     messages: list[dict[str, str]] = field(default_factory=list[dict[str, str]])
+    # What contacts attached to their messages, by the path Twilio keeps each at: its bytes and their type.
+    media: dict[str, tuple[bytes, str]] = field(default_factory=dict[str, tuple[bytes, str]])
     # A listing longer than this comes in pages.
     page_size: int = 50
     requests: list[tuple[str, str]] = field(default_factory=list[tuple[str, str]])
@@ -88,6 +90,9 @@ class Twilio:
         if path.startswith("/IncomingPhoneNumbers/") and request.method == "POST":
             self.sms_urls[path.removeprefix("/IncomingPhoneNumbers/").removesuffix(".json")] = form["SmsUrl"]
             return httpx.Response(200, json={})
+        if path in self.media:
+            data, content_type = self.media[path]
+            return httpx.Response(200, content=data, headers={"content-type": content_type})
         if path == "/Messages.json" and request.method == "POST":
             self.messages.append(form)
             return httpx.Response(201, json={"sid": a_sid("SM", len(self.messages)), "status": "queued"})

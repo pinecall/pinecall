@@ -6,7 +6,7 @@ from runtime.agents.auth import KnownAgent
 from runtime.enums import ReadKind
 from runtime.live import schemas
 from runtime.live.auth import SuperviseKey, TalkKey, TheLive, TheRestagedCall, TheSigner, TheSupervisedCall
-from runtime.live.service import commands, desk, whatsapp
+from runtime.live.service import commands, desk
 from runtime.postgres import Session
 from runtime.wire.commands import Verb
 
@@ -47,7 +47,7 @@ async def send_thread_message(
     slug: KnownAgent, contact: str, body: schemas.ThreadMessageRequest, actor: TalkKey, live: TheLive, session: Session
 ) -> schemas.ThreadMessageResponse:
     """Say something as the agent on the contact's open WhatsApp conversation."""
-    call = await whatsapp.say_as_agent(session, live, actor, slug, contact, body.text)
+    call = await desk.say_as_agent(session, live, actor, slug, contact, body.text)
     return schemas.ThreadMessageResponse(contact=contact, call=call)
 
 

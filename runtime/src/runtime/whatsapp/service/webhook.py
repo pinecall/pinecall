@@ -87,6 +87,8 @@ class Inbound:
     signed_for: frozenset[str] | None = None
     # The channel it was written on: a thread of a number is a channel's, and so is how it is answered.
     channel: Channel = Channel.whatsapp
+    # The carrier read the message as a word of its own (STOP, START, HELP) and answered it itself.
+    carrier_replied: bool = False
 
     @property
     def caller(self) -> str:

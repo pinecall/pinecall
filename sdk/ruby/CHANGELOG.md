@@ -4,6 +4,10 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## Unreleased
+
+- **`optOut` on a WhatsApp or SMS conversation**, and `call.summary` says an SMS conversation's `sms_segments`.
+
 ## [0.11.45] — a number answers the phone, WhatsApp and SMS at once, and SMS comes through Twilio (2026-11-18)
 
 - **`sms` is a channel.** A call by SMS is written (`medium: text`), and the built-in rule tells the model to write plain, short text.

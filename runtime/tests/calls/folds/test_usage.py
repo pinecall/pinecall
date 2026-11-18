@@ -67,6 +67,17 @@ def test_a_written_call_the_gateway_opened_spends_messages_and_no_minutes() -> N
     assert (written.calls, written.minutes, written.messages, written.input_tokens) == (1, 0.0, 8, 900)
 
 
+def test_an_sms_conversations_segments_are_metered_and_billed_only_on_the_boxs_own_account() -> None:
+    """Twilio bills the org for a number of its own account; the box's plan bills what the box's account carried."""
+    own: JsonObject = {**a_summary([LLM]), "sms_segments": 7, "sms_lent": False}
+    lent: JsonObject = {**a_summary([LLM]), "sms_segments": 7, "sms_lent": True}
+    on_theirs = usage_row(metered(7, "dental", "call.summary", own, opened_by=Opener.gateway)).used
+    on_ours = usage_row(metered(8, "dental", "call.summary", lent, opened_by=Opener.gateway)).used
+    assert (on_theirs.sms_segments, on_theirs.lent_sms_segments) == (7, 0)
+    assert (on_ours.sms_segments, on_ours.lent_sms_segments) == (7, 7)
+    assert usage_row(metered(9, "dental", "call.summary", a_summary([LLM]))).used.sms_segments == 0
+
+
 def test_a_spoken_call_the_fleet_or_an_app_opened_spends_minutes_and_no_messages() -> None:
     """One quota for each kind of call: a call's turns were messages whoever spoke them."""
     for opener in (Opener.fleet, Opener.app):

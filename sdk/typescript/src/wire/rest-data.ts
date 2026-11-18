@@ -55,6 +55,12 @@ export const OrgPolicySchema = z.strictObject({
   // An outbound call's opening sentence: null is the platform's, "" is none.
   disclosure: z.string().max(500).nullish(),
   recording_notice: z.boolean().optional(),
+  // What a contact who texts STOP is told: null is the carrier's own confirmation, "" is nothing.
+  sms_stop_reply: z.string().max(320).nullish(),
+  // What a contact who texts HELP is told: null leaves the word to the carrier and to the agent.
+  sms_help_reply: z.string().max(320).nullish(),
+  // The words, beside the standard ones, that a contact of this org stops the messages with.
+  sms_stop_words: z.array(z.string().min(2).max(30)).max(20).optional(),
 });
 
 export type OrgPolicy = z.infer<typeof OrgPolicySchema>;

@@ -12,7 +12,7 @@ import { AgentPick, StatusChips } from "./filters";
 import { lengthOf } from "../lib/format";
 import { copyOf, dayOf, hourOf } from "./format";
 import { dayName, lastOf, lettersOf, threadDays, titleOf, type Thread } from "./threads";
-import type { CallsUrl } from "./url";
+import { useCallsBase, type CallsUrl } from "./url";
 import { useNow } from "./use-now";
 
 // A busy day shows this many threads and a button for the next as many.
@@ -83,11 +83,12 @@ function ThreadRow({ thread, to, on, now, held, onErased }: { thread: Thread; to
 /** Every call of the open thread, newest first, the one shown marked. */
 function ThreadCalls({ thread, shown, search, now, onErased }: { thread: Thread; shown: string | undefined; search: string; now: number; onErased: (call: string) => void }): ReactNode {
   const menu = useCallMenu(onErased);
+  const base = useCallsBase();
   if (thread.lines.length < 2) return null;
   return (
     <div className="calls-theirs" aria-label="Their calls">
       {thread.lines.map((line) => (
-        <Link key={line.call} to={`/calls/${encodeURIComponent(line.call)}${search}`} className={line.call === shown ? "calls-their calls-their-on" : "calls-their"} aria-current={line.call === shown ? "true" : undefined} onContextMenu={(event) => menu(event, line, titleOf(thread))}>
+        <Link key={line.call} to={`${base}/${encodeURIComponent(line.call)}${search}`} className={line.call === shown ? "calls-their calls-their-on" : "calls-their"} aria-current={line.call === shown ? "true" : undefined} onContextMenu={(event) => menu(event, line, titleOf(thread))}>
           <span className="calls-their-when">{line.started_at === null ? "—" : `${dayOf(line.started_at)}, ${hourOf(line.started_at)}`}</span>
           <span className={isLive(line) ? "calls-their-how dash-mood-good" : "calls-their-how"}>{isLive(line) ? elapsed(line.started_at, now) : lengthOf(line.started_at, line.ended_at)}</span>
           <Mark line={line} />
@@ -96,6 +97,12 @@ function ThreadCalls({ thread, shown, search, now, onErased }: { thread: Thread;
     </div>
   );
 }
+
+const THREAD_CHANNELS: readonly { value: string; name: string }[] = [
+  { value: "", name: "All" },
+  { value: "whatsapp", name: "WhatsApp" },
+  { value: "sms", name: "SMS" },
+];
 
 export function ThreadList({ threads, lines, open, shown: shownCall, url, grouped, onGroup, onErased }: { threads: readonly Thread[]; /** The calls in view, before the status: what the chips count. */ lines: readonly SessionLine[]; open: Thread | undefined; /** The call on screen, one of the open thread's. */ shown: string | undefined; /** One row per person, their calls under it; else one row per call. */ grouped: boolean; onGroup: () => void; /** A call erased from a row's menu: out of the list. */ onErased: (call: string) => void; url: CallsUrl }): ReactNode {
   const navigate = useNavigate();
@@ -106,7 +113,7 @@ export function ThreadList({ threads, lines, open, shown: shownCall, url, groupe
   const shown = threads.filter((thread) => words === "" || `${titleOf(thread)} ${thread.handle} ${lastOf(thread)}`.toLowerCase().includes(words));
   const days = threadDays(shown).map((day) => ({ day, rows: shownOf(day, open, more) }));
   const order = days.flatMap(({ rows }) => rows);
-  const hrefOf = (thread: Thread): string => `/calls/${encodeURIComponent(thread.latest.call)}${url.search}`;
+  const hrefOf = (thread: Thread): string => `${url.base}/${encodeURIComponent(thread.latest.call)}${url.search}`;
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -125,13 +132,22 @@ export function ThreadList({ threads, lines, open, shown: shownCall, url, groupe
   }, [contact]);
 
   return (
-    <aside className="app-list" aria-label="Calls">
+    <aside className="app-list" aria-label={url.written ? "Messages" : "Calls"}>
       <div className="app-list-head">
-        <span className="app-list-title">Calls</span>
+        <span className="app-list-title">{url.written ? "Messages" : "Calls"}</span>
         <span className="dash-quiet">{threads.length}</span>
       </div>
       <input className="app-input" aria-label="Search a caller or number" placeholder="Search a caller or number" value={url.query} onChange={(event) => url.ask("q", event.target.value)} />
       <AgentPick url={url} />
+      {url.written && (
+        <div className="calls-chips" role="group" aria-label="Which channel">
+          {THREAD_CHANNELS.map((one) => (
+            <button key={one.value} type="button" className={url.channel === one.value ? "calls-chip calls-chip-on" : "calls-chip"} aria-pressed={url.channel === one.value} onClick={() => url.ask("channel", one.value)}>
+              {one.name}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="calls-filters">
         <StatusChips lines={lines} url={url} />
         {/* One row per call, or one per person: theirs to choose, kept in this browser. */}
@@ -140,7 +156,7 @@ export function ThreadList({ threads, lines, open, shown: shownCall, url, groupe
         </button>
       </div>
       <div className="app-rows">
-        {threads.length === 0 && <p className="dash-quiet app-none">{lines.length === 0 ? "No call yet. The first one shows up here the moment it starts." : "No call here right now."}</p>}
+        {threads.length === 0 && <p className="dash-quiet app-none">{lines.length === 0 ? (url.written ? "No message yet. A WhatsApp or SMS conversation shows up here the moment a contact writes." : "No call yet. The first one shows up here the moment it starts.") : url.written ? "No conversation here right now." : "No call here right now."}</p>}
         {threads.length > 0 && shown.length === 0 && <p className="dash-quiet app-none">Nobody here matches “{url.query}”.</p>}
         {days.map(({ day, rows }) => {
           const left = day.lines.length - rows.length;

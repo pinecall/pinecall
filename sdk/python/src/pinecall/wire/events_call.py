@@ -121,6 +121,9 @@ class CallSummary(WireModel):
     simulated: bool = False
     # The eval run that opened the call: its minutes are the run's, never the org's.
     run: str | None = None
+    # On an SMS conversation: the segments it exchanged, and whether the platform's own account carried them.
+    sms_segments: int | None = None
+    sms_lent: bool | None = None
 
 
 class CallTransferred(WireModel):

@@ -5,6 +5,7 @@ from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
 from typing import Any, Protocol
 
+from livekit.agents import llm
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from runtime.accounts import service as accounts
@@ -143,7 +144,18 @@ async def open_written_as(
     await openings.admit(session_, live, scope, registration.slug)
     opening = Opening(context, setup.declaration, scope, Opener.gateway, registration.owner)
     served = await openings.open_served(live, opening, setup.versions)
-    return start_session(live, served, setup.model, setup.recalled, test=setup.test)
+    carried = await _history_of(session_, live, context)
+    return start_session(live, served, setup.model, setup.recalled, test=setup.test, carried=carried)
+
+
+# A contact who writes again is the same person: the conversation opens on what was said before, on
+# whatever channel, and greets nobody a second time. Until 2026-11 a thread that had gone quiet came
+# back to an agent that remembered nothing of it but the facts its memory kept.
+async def _history_of(session_: AsyncSession, live: LiveParts, context: CallContext) -> llm.ChatContext | None:
+    if context.continues is None:
+        return None
+    turns = await calls.list_carried(session_, live.vault, context.continues)
+    return session.history_of(turns).history if turns else None
 
 
 # A gateway that restarted forgot the call, not the caller: no admission, no second greeting. It runs
@@ -220,10 +232,11 @@ def start_session(
     *,
     written: int = 0,
     test: Mapping[str, Any] | None = None,
+    carried: llm.ChatContext | None = None,
 ) -> session.Session:
     """The session of a written call served here, built and said to run here; not yet started."""
     platform = GatewayPlatform(live, served, recalled)
-    call = session.Call(served.context, served.declaration, platform, written=written)
+    call = session.Call(served.context, served.declaration, platform, carried=carried, written=written)
     running = session.open_written(
         call, model, lookup_budget_ms=live.settings.text_lookup_budget_ms, tool_steps=live.settings.max_tool_steps
     )

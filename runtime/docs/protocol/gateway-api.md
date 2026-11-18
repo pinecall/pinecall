@@ -279,7 +279,7 @@ and carriers: [numbers.md](numbers.md). Usage, insights, limits and judging:
 [console-api.md](console-api.md).
 
 The org's compliance settings are one row, replaced whole (`team`): `GET /v1/org/policy` answers
-`{policy: {retention_days, calling_hours: {from, until} | null, per_number_day, consent_everywhere, disclosure, recording_notice}, set_by, set_at}`
+`{policy: {retention_days, calling_hours: {from, until} | null, per_number_day, consent_everywhere, disclosure, recording_notice, sms_stop_reply, sms_help_reply, sms_stop_words}, set_by, set_at}`
 and `PUT /v1/org/policy` takes the policy. `retention_days` is how many days a sealed call is kept
 before the nightly run erases it through the erasure path (§3); `null` keeps everything, which is
 also an org nobody set. `calling_hours` and `per_number_day` are the org's outbound calling rules,
@@ -291,7 +291,9 @@ with `disclosure` — `null` is the platform's sentence in the agent's language 
 automated assistant calling on behalf of {org name}."*), `""` is none, anything else is said as
 written — and every recorded spoken call, either direction, then says *"This call may be recorded."*
 unless `recording_notice` is `false`. A call nobody records says no notice; a written call says
-neither. Both play in the sandbox too, so a test hears what a caller will. A client that changes
+neither. Both play in the sandbox too, so a test hears what a caller will. `sms_stop_reply`,
+`sms_help_reply` and `sms_stop_words` say what a contact who texts STOP or HELP is told, and which
+more words stop the messages ([numbers.md](numbers.md), "A contact who stops"). A client that changes
 one field reads the row and writes it back whole. The trail is `GET /v1/org/erasures`.
 
 `GET /v1/org/export` (`team`) is the org's calls and everything it wrote or configured, in the
