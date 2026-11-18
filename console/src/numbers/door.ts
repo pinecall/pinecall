@@ -68,7 +68,11 @@ export type Wired = z.infer<typeof WiredSchema>;
 export type WantedCarrier =
   | { kind: "twilio"; account_sid: string; user: string; secret: string; label?: string }
   | { kind: "sip"; username: string; password: string; addresses: string[]; outbound_host?: string; label?: string }
-  | { kind: "whatsapp"; phone_number_id: string; access_token: string; label?: string };
+  | { kind: "whatsapp"; phone_number_id: string; access_token: string; app_secret?: string; label?: string };
+
+/** What the org types in its own Meta app, WhatsApp ▸ Configuration ▸ Webhook, so its numbers' messages come here. */
+const SubscriptionSchema = z.looseObject({ callback_url: z.string(), verify_token: z.string(), field: z.string() });
+export type Subscription = z.infer<typeof SubscriptionSchema>;
 
 export interface WantedNumber {
   number: string;
@@ -105,6 +109,10 @@ export async function readCatalog(credentials: Credentials): Promise<Catalog> {
 
 export async function readCarriers(credentials: Credentials): Promise<Carrier[]> {
   return z.looseObject({ carriers: z.array(CarrierSchema) }).parse(await read(credentials, "/v1/carriers")).carriers;
+}
+
+export async function readSubscription(credentials: Credentials): Promise<Subscription> {
+  return SubscriptionSchema.parse(await read(credentials, "/v1/whatsapp/subscription"));
 }
 
 /** Keep an account of the org's, or the same account with a new secret; a Twilio pair is checked with Twilio. */

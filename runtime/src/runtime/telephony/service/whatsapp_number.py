@@ -1,5 +1,6 @@
 """A WhatsApp number of an org at Meta: the id replies are sent from and the org's token; on no trunk, no call out."""
 
+import dataclasses
 import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -41,6 +42,9 @@ class WhatsappNumber(Carrier):
     phone_number_id: str
     access_token: str
     label: str = ""
+    # The secret of the org's own Meta app, which signs this number's deliveries; empty for a number
+    # the box's app answers.
+    app_secret: str = ""
 
     @property
     @override
@@ -57,9 +61,11 @@ class WhatsappNumber(Carrier):
             phone_number_id=read_text(account, "phone_number_id"),
             access_token=read_text(account, "access_token"),
             label=read_optional_text(account, "label") or "",
+            app_secret=read_optional_text(account, "app_secret") or "",
         )
 
-    # Every field, as the release before 2026-11 wrote it and reads it, refusing one it does not know.
+    # Every field, as the release before 2026-11 wrote it and reads it, refusing one it does not know:
+    # the app's secret is written only for a number that brought one.
     @override
     def dump(self) -> dict[str, Any]:
         """The number as its row seals it."""
@@ -69,12 +75,18 @@ class WhatsappNumber(Carrier):
             "access_token": self.access_token,
             "label": self.label,
         }
+        if self.app_secret:
+            account["app_secret"] = self.app_secret
         return {"account": account, "outbound": None}
 
+    # A token is renewed far more often than an app changes: bringing the number again with a new
+    # token and no secret keeps the secret it had.
     @override
     def keep_from(self, was: object) -> Self:
-        """The number as brought: the box made nothing on the one before."""
-        return self
+        """The number as brought, with the app's secret it had when it brings none."""
+        if self.app_secret or not isinstance(was, WhatsappNumber):
+            return self
+        return dataclasses.replace(self, app_secret=was.app_secret)
 
     # Meta is asked for the number the id names, as the inbox asks it: a token that does not open it
     # is refused here, in Meta's words, and not on the first message.

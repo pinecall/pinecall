@@ -1,5 +1,7 @@
 """What an account is to telephony, whatever its kind: the networks it is fenced to, where it is dialled, its API."""
 
+import dataclasses
+
 import httpx
 import pytest
 
@@ -125,6 +127,15 @@ def test_only_twilio_has_an_api_the_box_drives() -> None:
 async def test_a_peer_is_asked_nothing_before_its_first_call() -> None:
     async with httpx.AsyncClient() as http:
         await a_peer().verify(http)
+
+
+def test_a_whatsapp_number_seals_its_apps_secret_only_when_it_brought_one() -> None:
+    """A number the box's app answers is sealed as it always was; one with its own app carries the secret."""
+    assert "app_secret" not in a_whatsapp().dump()["account"]
+    own = dataclasses.replace(a_whatsapp(), app_secret="the app's")
+    sealed = own.dump()
+    assert sealed["account"]["app_secret"] == "the app's"
+    assert WhatsappNumber.read(ORG, sealed["account"], None) == own
 
 
 async def test_a_whatsapp_number_is_kept_only_when_meta_opens_it_with_the_token() -> None:

@@ -64,6 +64,9 @@ class WhatsappAccount(Schema):
     phone_number_id: Annotated[str, Field(min_length=1)]
     access_token: Annotated[str, Field(min_length=1)]
     label: str = ""
+    # The secret of the org's own Meta app; left out for a number the box's app answers, or to keep the
+    # one brought before.
+    app_secret: str = ""
 
 
 # A new kind of account is a line here, a module of its own, and a line of the registry.

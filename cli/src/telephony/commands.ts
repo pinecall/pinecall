@@ -181,7 +181,7 @@ export function register(program: Command, ctx: Context): void {
     );
   add
     .command("whatsapp")
-    .description("a WhatsApp Business number: its id, and Meta's token on stdin")
+    .description("a WhatsApp Business number: its id, then Meta's token and your Meta app's secret on stdin")
     .requiredOption("--phone-number-id <id>")
     .option("--label <name>")
     .action(async (flags) => addCarrier({ kind: "whatsapp", phoneNumberId: flags.phoneNumberId, label: flags.label }));

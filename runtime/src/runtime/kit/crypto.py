@@ -1,6 +1,7 @@
 """Secrets at rest: the vault that seals them, the fingerprint a key is kept as, a password's hash."""
 
 import hashlib
+import hmac
 import secrets
 
 from argon2 import PasswordHasher
@@ -28,6 +29,7 @@ class Vault:
         try:
             self._fernet = MultiFernet([Fernet(key) for key in listed])
             self._newest = Fernet(listed[0])
+            self._keys = listed
         except ValueError:
             raise ConfigurationError(
                 "PINECALL_VAULT_KEY holds something that is not a Fernet key: a comma-separated list of "
@@ -52,6 +54,16 @@ class Vault:
         except InvalidToken:
             raise ServiceUnavailable("a sealed value is under a key the vault no longer lists") from None
 
+    # A word the box gives out and knows again with nothing stored: it is no seal, and says nothing
+    # of the text but that this vault vouched for it.
+    def sign(self, plain: str) -> str:
+        """The newest key's mark on the text, as 32 hex characters."""
+        return _mark(self._keys[0], plain)
+
+    def is_signed(self, plain: str, mark: str) -> bool:
+        """Whether a listed key made this mark on the text."""
+        return any(hmac.compare_digest(_mark(key, plain).encode(), mark.encode()) for key in self._keys)
+
     def is_under_newest(self, sealed: str) -> bool:
         """Whether the newest key is the one the value is sealed under."""
         try:
@@ -59,6 +71,10 @@ class Vault:
         except InvalidToken:
             return False
         return True
+
+
+def _mark(key: str, plain: str) -> str:
+    return hmac.new(key.encode(), plain.encode(), hashlib.sha256).hexdigest()[:32]
 
 
 def fingerprint(secret: str) -> str:

@@ -373,7 +373,8 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `WS` | `/v1/transcriptions/stream` | — | Raw 16 kHz PCM frames in, `{type: interim\|final, text}` out as it is heard; `end` closes the audio and `{type: done}` follows once the words are settled. |
 | `GET` | `/v1/voices` | pipeline | The voices the providers row lists for a vendor, else its plugin's; neither is a 404. |
 | `POST` | `/v1/voices/sample` | pipeline | The line said by that vendor's voice, over the path a call speaks on. |
-| `GET` | `/v1/whatsapp/webhook` | — | Meta subscribing: its challenge echoed back when it says this deployment's word. |
+| `GET` | `/v1/whatsapp/subscription` | numbers | What the org types in its own Meta app: the callback URL, the verify token, the field. |
+| `GET` | `/v1/whatsapp/webhook` | — | Meta subscribing: its challenge echoed back when it says this deployment's word, or one given to an org. |
 | `POST` | `/v1/whatsapp/webhook` | — | Every message of a signed body onto its contact's conversation. |
 | `GET` | `/v1/whoami` | — | Whose key this is, the environment this request acts in, and what the key opens. |
 | `GET` | `/widget/{file}` | — | A file of the widget, for any site to load as a module. |

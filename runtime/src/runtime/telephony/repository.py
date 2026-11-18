@@ -1,6 +1,6 @@
 """Every statement on the telephony tables: an org's carrier accounts, the networks it asked for, and its numbers."""
 
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -66,6 +66,12 @@ class CarrierRepository(Repository[Carrier]):
     async def delete_of(self, org: str, account: str) -> bool:
         """Forget the account; whether the org had it. Its numbers' rows name no account from then on."""
         return await self.change(delete(Carrier).where(Carrier.org == org, Carrier.account == account)) > 0
+
+    async def list_of_kind_named(self, kind: CarrierKind, accounts: Collection[str]) -> Sequence[Carrier]:
+        """Every org's accounts of the kind under these ids. Read box-wide by the caller."""
+        return await self.all(
+            self.statement().where(Carrier.kind == kind, Carrier.account.in_(accounts)).order_by(Carrier.org)
+        )
 
     async def list_every(self) -> Sequence[Carrier]:
         """Every org's accounts. Read box-wide by the caller."""

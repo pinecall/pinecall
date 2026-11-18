@@ -33,11 +33,13 @@ from runtime.providers.service.stages import (
     voice_outside_a_call,
 )
 from runtime.providers.service.telemetry import Telemetry, check_public, forget_telemetry, telemetry_of
+from runtime.providers.service.transcription import Asked, ears_for, read_note, transcribe
 from runtime.providers.service.trials import try_realtime, try_stage
 from runtime.providers.service.voices import list_by_vendor, list_in_catalog
 
 __all__ = [
     "Answerer",
+    "Asked",
     "Keyring",
     "Line",
     "Patience",
@@ -56,6 +58,7 @@ __all__ = [
     "completion_usage",
     "cost_of",
     "default_voice",
+    "ears_for",
     "forget_telemetry",
     "get_catalog",
     "hears_and_speaks",
@@ -70,6 +73,7 @@ __all__ = [
     "open_answerer",
     "parse_lending",
     "put_box_credentials",
+    "read_note",
     "refuse_a_silence_out_of_band",
     "refuse_realtime_as_llm",
     "refuse_untaken_settings",
@@ -84,6 +88,7 @@ __all__ = [
     "telemetry_of",
     "thinking_of",
     "thinking_outside_a_call",
+    "transcribe",
     "try_realtime",
     "try_stage",
     "tts_of",

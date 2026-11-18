@@ -1,13 +1,37 @@
-"""The WhatsApp threads' ear for what another gateway hands on: a message it cannot read is said, the next heard."""
+"""The WhatsApp threads: what a gateway hands on, a message taken up, a voice note, whose number a body reaches."""
 
 import asyncio
+import dataclasses
+import secrets
 import time
+from types import SimpleNamespace
+from typing import TYPE_CHECKING, cast
 
+import httpx
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from runtime.actor import Scope
+from runtime.enums import Channel, Env
+from runtime.live.parts import LiveParts
 from runtime.live.peers import THREADS
-from tests.conftest import needs_the_database, until
+from runtime.live.service import whatsapp, written
+from runtime.live.service.whatsapp import OpenThread
+from runtime.providers import service as providers
+from runtime.providers.service import transcription
+from runtime.telephony.repository import RouteRepository, RouteToWrite
+from runtime.telephony.service import accounts
+from runtime.telephony.service.whatsapp_number import WhatsappNumber
+from runtime.whatsapp.service import webhook
+from runtime.whatsapp.service.webhook import Inbound
+from tests.conftest import Tenant, needs_the_database, until
+from tests.fakes.meta import Graph, a_body, a_text
 from tests.live.conftest import Side
+
+if TYPE_CHECKING:
+    from runtime.session.session import Session
+
+SCOPE = Scope("an org", Env.sandbox)
 
 HEARD_WITHIN_S = 5.0
 
@@ -31,3 +55,111 @@ async def test_a_message_another_gateway_handed_on_that_cannot_be_read_is_said_a
     before = caplog.text.count(said)
     side.parts.signal.publish(handed_on, b'{"number": 7}')
     await until(lambda: caplog.text.count(said) > before)
+
+
+# ── a message of an open conversation ──
+
+
+def a_thread(http: httpx.AsyncClient, message: Inbound, *, agents_line: bool) -> OpenThread:
+    """A contact's open conversation, on a call the agent may speak on or one a person took."""
+    running = cast("Session", SimpleNamespace(line=SimpleNamespace(agent_may_speak=agents_line)))
+    return OpenThread(session=running, inbound=message, http=http, token="the number's token")
+
+
+@pytest.fixture
+def asked(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """What the model was asked, in place of asking it."""
+    texts: list[str] = []
+
+    async def hear(live: LiveParts, running: "Session", text: str) -> None:
+        texts.append(text)
+
+    monkeypatch.setattr(written, "hear", hear)
+    return texts
+
+
+@needs_the_database
+@pytest.mark.parametrize("agents_line", [True, False])
+async def test_a_message_taken_up_is_marked_read_and_typing_is_shown_only_while_the_model_writes(
+    side: Side, asked: list[str], *, agents_line: bool
+) -> None:
+    """The contact sees the two blue ticks either way; "typing…" only when the model is the one answering."""
+    meta = Graph()
+    (message,) = webhook.messages_in(a_body(a_text("quiero un turno")))
+    async with httpx.AsyncClient(transport=httpx.MockTransport(meta.answer)) as http:
+        thread = a_thread(http, message, agents_line=agents_line)
+        assert await whatsapp.take_up(side.parts, SCOPE, thread, message) is None
+    assert meta.read == [("wamid.1", agents_line)]
+    assert asked == ["quiero un turno"]
+
+
+@needs_the_database
+async def test_a_message_is_answered_even_when_meta_refuses_to_mark_it_read(side: Side, asked: list[str]) -> None:
+    meta = Graph(refusal=(400, "message is too old to be marked read"))
+    (message,) = webhook.messages_in(a_body(a_text("hola")))
+    async with httpx.AsyncClient(transport=httpx.MockTransport(meta.answer)) as http:
+        assert await whatsapp.take_up(side.parts, SCOPE, a_thread(http, message, agents_line=True), message) is None
+    assert asked == ["hola"]
+
+
+@needs_the_database
+async def test_a_voice_note_is_read_as_what_it_says(
+    side: Side, asked: list[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Its audio is fetched from Meta on the number's token and heard; the model is asked its words."""
+    meta = Graph(media={"media.7": (b"OggS", "audio/ogg; codecs=opus")})
+    heard: list[tuple[bytes, bool]] = []
+
+    async def transcribe(ears: object, note: transcription.Note) -> transcription.Transcript:
+        heard.append((note.audio, note.raw))
+        return transcription.Transcript(text="quiero cancelar mi turno", language="es", audio_ms=1800, vendor="fake")
+
+    def no_ears(asked: object, catalog: object, keys: object) -> None:
+        return None
+
+    monkeypatch.setattr(providers, "ears_for", no_ears)
+    monkeypatch.setattr(providers, "transcribe", transcribe)
+    note: dict[str, object] = {"from": "59899000001", "id": "wamid.5", "type": "audio", "audio": {"id": "media.7"}}
+    (message,) = webhook.messages_in(a_body(note))
+    async with httpx.AsyncClient(transport=httpx.MockTransport(meta.answer)) as http:
+        assert await whatsapp.take_up(side.parts, SCOPE, a_thread(http, message, agents_line=True), message) is None
+    assert heard == [(b"OggS", False)]
+    assert asked == ["quiero cancelar mi turno"]
+    assert meta.read == [("wamid.5", True)]
+
+
+@needs_the_database
+async def test_a_voice_note_that_cannot_be_fetched_is_read_and_nothing_is_asked(side: Side, asked: list[str]) -> None:
+    """Meta keeps no such audio: the message is marked read with no typing promised, and the model is not asked."""
+    meta = Graph(refusal=(400, "Unsupported get request. Object with ID 'media.9' does not exist"))
+    note: dict[str, object] = {"from": "59899000001", "id": "wamid.6", "type": "audio", "audio": {"id": "media.9"}}
+    (message,) = webhook.messages_in(a_body(note))
+    async with httpx.AsyncClient(transport=httpx.MockTransport(meta.answer)) as http:
+        assert await whatsapp.take_up(side.parts, SCOPE, a_thread(http, message, agents_line=True), message) is None
+    assert asked == []
+
+
+# ── whose number a signed body reaches ──
+
+
+@needs_the_database
+async def test_a_body_an_orgs_app_signed_never_reaches_a_number_of_another_org(
+    side: Side, sessions: async_sessionmaker[AsyncSession], tenant: Tenant, caplog: pytest.LogCaptureFixture
+) -> None:
+    """An org signs, with its own app's secret, a body that names another org's number as the one written to."""
+    number = f"+5982{secrets.randbelow(10**7):07d}"
+    route = RouteToWrite(
+        org=tenant.org, number=number, agent="recepcion", channel=Channel.whatsapp, env=Env.sandbox, account="1055"
+    )
+    async with sessions.begin() as session:
+        own = WhatsappNumber(org=tenant.org, phone_number_id="1055", access_token="a token", app_secret="theirs")
+        await accounts.put_carrier(session, side.parts.vault, own)
+        await RouteRepository(session).put(route)
+    (message,) = webhook.messages_in(a_body(a_text("hola")))
+    forged = dataclasses.replace(message, number=number, signed_for=frozenset({"another org"}))
+    assert await side.threads.receive(forged) is True
+    assert "the Meta app that signed it is not that number's" in caplog.text
+    # The same message, vouched for by the number's own org, is read: nobody holds the agent, so it waits.
+    theirs = dataclasses.replace(forged, signed_for=frozenset({tenant.org}))
+    assert await side.threads.receive(theirs) is True
+    assert "nobody holds agent recepcion" in caplog.text

@@ -70,10 +70,18 @@ export interface CarrierListed extends api.Carrier {
   routed: number;
 }
 
-/** The secrets an account takes, in order: [what the prompt names, the body's field]. */
-export function secretsOf(input: AddCarrierInput): [string, string][] {
+/** A carrier account, and for a WhatsApp number what its org types in its own Meta app. */
+export interface CarrierShown extends api.Carrier {
+  subscription?: api.WhatsappSubscription;
+}
+
+/** The app secret's prompt: the one secret that may be left empty. */
+export const META_APP_SECRET = "Meta app secret (empty keeps the one given before)";
+
+/** The secrets an account takes, in order: [what the prompt names, the body's field, "optional" for one that may be empty]. */
+export function secretsOf(input: AddCarrierInput): [string, string, "optional"?][] {
   if (input.kind === "twilio") return [["Twilio secret (the API key's, or the auth token)", "secret"]];
-  if (input.kind === "whatsapp") return [["WhatsApp access token", "access_token"]];
+  if (input.kind === "whatsapp") return [["WhatsApp access token", "access_token"], [META_APP_SECRET, "app_secret", "optional"]];
   const secrets: [string, string][] = [["SIP password", "password"]];
   if (input.outboundUsername !== undefined) secrets.push(["outbound password", "outbound_password"]);
   return secrets;
@@ -126,17 +134,23 @@ export async function listCarriers(ctx: Context): Promise<CarrierListed[]> {
   return carriers.map((row) => ({ ...row, routed: routed.filter((number) => number.account === row.account).length }));
 }
 
-/** The org's only account, or the one named. */
-export async function showCarrier(ctx: Context, account?: string): Promise<api.Carrier> {
-  return api.getCarrier(ctx.gateway(), account);
+/** The org's only account, or the one named; a WhatsApp number with what Meta's webhook is given. */
+export async function showCarrier(ctx: Context, account?: string): Promise<CarrierShown> {
+  return withSubscription(ctx, await api.getCarrier(ctx.gateway(), account));
 }
 
 /** An account kept, its secrets by the field each fills; the same account again replaces its secret. */
-export async function addCarrier(ctx: Context, input: AddCarrierInput, secrets: Record<string, string>): Promise<api.Carrier> {
-  for (const [name, field] of secretsOf(input)) {
-    if ((secrets[field] ?? "").trim() === "") throw new UsageError(`no ${name} was given: nothing was kept`);
+export async function addCarrier(ctx: Context, input: AddCarrierInput, secrets: Record<string, string>): Promise<CarrierShown> {
+  for (const [name, field, optional] of secretsOf(input)) {
+    if (optional === undefined && (secrets[field] ?? "").trim() === "") throw new UsageError(`no ${name} was given: nothing was kept`);
   }
-  return api.putCarrier(ctx.gateway(), carrierBodyOf(input, secrets));
+  return withSubscription(ctx, await api.putCarrier(ctx.gateway(), carrierBodyOf(input, secrets)));
+}
+
+// A WhatsApp number answers once its Meta app delivers to Pinecall: the two values that takes are said with the account.
+async function withSubscription(ctx: Context, carrier: api.Carrier): Promise<CarrierShown> {
+  if (carrier.kind !== "whatsapp") return carrier;
+  return { ...carrier, subscription: await api.getWhatsappSubscription(ctx.gateway()) };
 }
 
 /** An account forgotten; its numbers stay routed until each is dropped. */
@@ -204,7 +218,10 @@ export async function listCallbacks(ctx: Context, input: ListCallbacksInput): Pr
 function carrierBodyOf(input: AddCarrierInput, secrets: Record<string, string>): api.CarrierBody {
   const label = input.label === undefined ? {} : { label: input.label };
   if (input.kind === "twilio") return { kind: "twilio", account_sid: input.accountSid, user: input.user, secret: secrets["secret"]!.trim(), ...label };
-  if (input.kind === "whatsapp") return { kind: "whatsapp", phone_number_id: input.phoneNumberId, access_token: secrets["access_token"]!.trim(), ...label };
+  if (input.kind === "whatsapp") {
+    const appSecret = (secrets["app_secret"] ?? "").trim();
+    return { kind: "whatsapp", phone_number_id: input.phoneNumberId, access_token: secrets["access_token"]!.trim(), ...(appSecret === "" ? {} : { app_secret: appSecret }), ...label };
+  }
   return {
     kind: "sip",
     username: input.username,

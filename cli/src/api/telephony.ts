@@ -100,7 +100,14 @@ export type CarrierBody =
       outbound_password?: string;
       label?: string;
     }
-  | { kind: "whatsapp"; phone_number_id: string; access_token: string; label?: string };
+  | { kind: "whatsapp"; phone_number_id: string; access_token: string; app_secret?: string; label?: string };
+
+/** What an org types in its own Meta app so its WhatsApp numbers' messages come to Pinecall. */
+export interface WhatsappSubscription {
+  callback_url: string;
+  verify_token: string;
+  field: string;
+}
 
 /** One call back somebody asked for, as the org's list shows it. */
 export interface Callback {
@@ -156,6 +163,10 @@ export function getCarrier(gw: GatewayClient, account?: string): Promise<Carrier
 
 export function putCarrier(gw: GatewayClient, body: CarrierBody): Promise<Carrier> {
   return gw.put<Carrier>("/v1/carrier", body);
+}
+
+export function getWhatsappSubscription(gw: GatewayClient): Promise<WhatsappSubscription> {
+  return gw.get<WhatsappSubscription>("/v1/whatsapp/subscription");
 }
 
 export async function deleteCarrier(gw: GatewayClient, account?: string): Promise<void> {

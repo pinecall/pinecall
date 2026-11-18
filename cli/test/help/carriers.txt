@@ -61,8 +61,8 @@ Commands:
                       stdin
   sip [options]       a SIP peer: who calls from where, and how calls go out;
                       the password on stdin
-  whatsapp [options]  a WhatsApp Business number: its id, and Meta's token on
-                      stdin
+  whatsapp [options]  a WhatsApp Business number: its id, then Meta's token and
+                      your Meta app's secret on stdin
   help [command]      display help for command
 
 $ pinecall carriers add twilio --help
@@ -93,7 +93,8 @@ Options:
 $ pinecall carriers add whatsapp --help
 Usage: pinecall carriers add whatsapp [options]
 
-a WhatsApp Business number: its id, and Meta's token on stdin
+a WhatsApp Business number: its id, then Meta's token and your Meta app's secret
+on stdin
 
 Options:
   --phone-number-id <id>

@@ -69,7 +69,7 @@ the bucket are `store` in the chart's values, and the key is the environment's `
 | `PINECALL_LOG_LEVEL` · `PINECALL_LOG_FORMAT` | `DEBUG` · `INFO` · `WARNING` · `ERROR`; and the gateway's lines, `text` for a terminal or `json` for a journal |
 | `PINECALL_OTLP_ENDPOINT` · `PINECALL_OTLP_HEADERS` · `PINECALL_OTLP_PII` | where the worker sends a call's traces (OTLP over HTTP), the headers each export carries (a credential), and whether a span carries what was said. Unset, nothing reaches the operator; an org's own collector is its `pinecall telemetry`, exported to per call whatever the box says |
 
-The platform's own Twilio account (the one it buys numbers on) and its Meta app (the secret every WhatsApp webhook is signed with, the handshake's word, the token replies go out on when an org brought none) are not variables: they are the sealed rows `credentials/twilio` and `credentials/whatsapp` of `box_settings`, beside the platform's vendor keys. See [numbers.md](protocol/numbers.md).
+The platform's own Twilio account (the one it buys numbers on) and its Meta app (the secret Meta signs its own numbers' deliveries with, its handshake word, the token replies go out on when an org brought none; an org's own Meta app comes with the org's number, [whatsapp.md](protocol/whatsapp.md)) are not variables: they are the sealed rows `credentials/twilio` and `credentials/whatsapp` of `box_settings`, beside the platform's vendor keys. See [numbers.md](protocol/numbers.md).
 
 The source is `runtime/config.py`: one field per variable, with its alias and its
 one-line description. A variable this table names and that file does not, or the reverse, is a bug

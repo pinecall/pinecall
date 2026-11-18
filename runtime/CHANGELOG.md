@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **A WhatsApp number of an org's own Meta app is heard.** Meta delivers a number's messages to the webhook of
+  the app the number lives in, signed with that app's secret, and the gateway knew one secret: the platform's
+  own app's. An org that brought a number of its own app could reply on its token and never received a
+  message. A WhatsApp account now carries its app's secret (`app_secret` on `PUT /v1/carrier`; bringing the
+  account again without it keeps the one it had), `GET /v1/whatsapp/subscription` says what the org types in
+  its app (the callback URL, a verify token the gateway knows again and stores nowhere, the field `messages`),
+  and the webhook takes a body the platform's app signed, or one an org's own app signed for that org's number
+  and for no other. A deployment with no Meta app of its own answers an unsigned body `403`, where it said
+  `503`. `docs/protocol/whatsapp.md`.
+- **A WhatsApp contact sees their message read and the agent typing, and can tap or speak.** A message is
+  marked read as it is taken up, with "typing…" while the model writes and without it when a supervisor holds
+  the conversation. A tap on a reply button, a list row or a template's quick reply is read as the words on
+  it; a voice note is fetched from Meta and heard by the ears the org's calls hear with, on the same keys,
+  and read as what it says. A reply longer than the 4,096 characters Meta takes goes out as several. An
+  image, a sticker, a document and a location are still dropped.
 - **A simulated caller rings the agent by phone, over SIP.** `via: "sip"` on `POST /v1/simulations`,
   `/v1/simulations/compare` and `/v1/evals/voice` seats the caller in a room of its own and dials a leg from
   it to the sandbox's own SIP service, in G.711 µ-law at 8 kHz, through the trunk that admits production's

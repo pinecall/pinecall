@@ -1,6 +1,7 @@
 """The WhatsApp threads this gateway keeps open, one per contact, and the messages that wait for an agent."""
 
 import asyncio
+import dataclasses
 import logging
 from dataclasses import dataclass, field
 
@@ -12,13 +13,14 @@ from runtime.calls import service as calls
 from runtime.calls.context import CallContext, Contact, Route, new_call_id
 from runtime.calls.log import Logs, Store
 from runtime.enums import Channel, Direction, Env
-from runtime.exceptions import Conflict, PinecallError, UpstreamError
+from runtime.exceptions import Conflict, PinecallError, QuotaExceeded, UpstreamError
 from runtime.kit.loops import survive
 from runtime.kit.time import today_in
 from runtime.live.holders import Registration
 from runtime.live.parts import LiveParts
 from runtime.live.peers import THREADS, ThreadKey
 from runtime.live.service import desk, written
+from runtime.providers import service as providers
 from runtime.scoping import box_task
 from runtime.session import service as session
 from runtime.telephony import service as telephony
@@ -68,7 +70,7 @@ class OpenThread:
     http: httpx.AsyncClient
     token: str
     # A None is the call over: the desk ended it, or it was hung up some other way.
-    heard: asyncio.Queue[str | None] = field(default_factory=asyncio.Queue[str | None])
+    heard: asyncio.Queue[whatsapp.Inbound | None] = field(default_factory=asyncio.Queue[whatsapp.Inbound | None])
     serving: asyncio.Task[None] | None = None
 
     # The model's turns, the agent's `say` and a supervisor's reach the contact on one path.
@@ -131,6 +133,12 @@ class Threads:
             route = await _find_route(session_, inbound)
         if route is None:
             return True
+        if not inbound.may_reach(route.org, route.account):
+            logger.warning(
+                "whatsapp: a message to %s was dropped: the Meta app that signed it is not that number's",
+                inbound.number,
+            )
+            return True
 
         async def read() -> None:
             await self._hear(route, inbound)
@@ -167,7 +175,13 @@ class Threads:
             logger.info("whatsapp: a message for %s was handed to the gateway holding its thread", inbound.number)
             return True
         if thread is None and registration is None:
-            self._waiting.append(kept or await keep_waiting(self._live.logs, self._live.store, route, inbound))
+            # What waits is kept as its words: a voice note is heard now, with nobody to hand it to.
+            worded = None if kept is not None else await self._word(scope, inbound)
+            if kept is None and worded is None:
+                return True
+            self._waiting.append(
+                kept or await keep_waiting(self._live.logs, self._live.store, route, worded or inbound)
+            )
             logger.warning(
                 "whatsapp: nobody holds agent %s, so a message to %s waits for somebody", route.agent, inbound.number
             )
@@ -175,8 +189,18 @@ class Threads:
         if thread is None and registration is not None:
             thread = await self._open_thread(registration, route, inbound)
         if thread is not None:
-            thread.heard.put_nowait(inbound.text)
+            thread.heard.put_nowait(inbound)
         return True
+
+    # Off the webhook's request wherever it can be: a note for an open conversation is heard by the
+    # conversation's own task (`_serve`), and here only when the message waits for an agent.
+    async def _word(self, scope: Scope, inbound: whatsapp.Inbound) -> whatsapp.Inbound | None:
+        if inbound.media_id is None:
+            return inbound
+        async with self._live.sessions.begin() as session_:
+            token = await telephony.meta_token_for(session_, self._live.vault, scope.org, inbound.phone_number_id)
+        text = None if token is None else await hear_note(self._live, scope, token, inbound)
+        return None if text is None else dataclasses.replace(inbound, text=text, media_id=None)
 
     # Oldest first, so one contact's messages reach their conversation in order. A message that
     # goes back to waiting (whoever held the agent left meanwhile) is not marked taken: until 2026-11
@@ -243,6 +267,7 @@ class Threads:
             message_id=handed.message_id,
             kind=handed.kind,
             text=handed.text,
+            media_id=handed.media_id,
         )
         async with self._live.sessions.begin() as session_:
             route = await _find_route(session_, inbound)
@@ -285,22 +310,55 @@ class Threads:
             # The agent hung up on a message: the thread is over, the contact's next one opens a call.
             while not running.closed:
                 try:
-                    answer = await asyncio.wait_for(thread.heard.get(), timeout=self.idle_s)
+                    heard = await asyncio.wait_for(thread.heard.get(), timeout=self.idle_s)
                 except TimeoutError:
                     await session.end(running, "timeout", "platform")
                     return
-                if answer is None:
+                if heard is None:
                     await running.close()
                     return
                 # One message that cannot be answered is said with its call: the contact's next one is.
                 with survive("answering a WhatsApp message", call):
-                    if await written.hear(self._live, running, answer) is not None:
+                    if await take_up(self._live, Scope(key.org, key.env), thread, heard) is not None:
                         return
         finally:
             self._open.pop(key, None)
             self._live.owners.hold_thread(key, here=False)
             self._live.calls.close_call(call)
             self._live.logs.forget(call)
+
+
+# The contact sees their message read as it is taken up, and "typing…" while the model writes; with
+# a person on the line the model is not asked, so the message is read and nothing is promised.
+async def take_up(live: LiveParts, scope: Scope, thread: OpenThread, heard: whatsapp.Inbound) -> QuotaExceeded | None:
+    """One message of an open conversation read and answered; the refusal when the org's quota ran out."""
+    running = thread.session
+    text = heard.text or await hear_note(live, scope, thread.token, heard, thread.http)
+    try:
+        await whatsapp.mark_read(thread.http, thread.token, heard, typing=bool(text) and running.line.agent_may_speak)
+    except (UpstreamError, httpx.HTTPError):
+        logger.warning("whatsapp: Meta was not told a message to %s was read", heard.number, exc_info=True)
+    return None if not text else await written.hear(live, running, text)
+
+
+# A voice note is heard by the ears the org's calls hear with, on the same keys, and read as what it
+# says. The keys are read in a transaction that is over before the note is heard.
+async def hear_note(
+    live: LiveParts, scope: Scope, token: str, inbound: whatsapp.Inbound, http: httpx.AsyncClient | None = None
+) -> str | None:
+    """What a voice note says; None for one that could not be fetched or heard, or that says nothing."""
+    if inbound.media_id is None:
+        return None
+    try:
+        media = await whatsapp.read_media(http or live.http, token, inbound.media_id)
+        note = providers.read_note(media.data, media.mime_type)
+        async with live.sessions.begin() as session_:
+            keys = await providers.keys_of(session_, live.vault, scope)
+            ears = providers.ears_for(providers.Asked(), await providers.get_catalog(session_), keys)
+        return (await providers.transcribe(ears, note)).text or None
+    except (PinecallError, httpx.HTTPError):
+        logger.warning("whatsapp: a voice note to %s was not heard", inbound.number, exc_info=True)
+        return None
 
 
 async def keep_waiting(logs: Logs, store: Store, route: RouteRow, inbound: whatsapp.Inbound) -> Waiting:
@@ -391,12 +449,19 @@ def _hand(inbound: whatsapp.Inbound) -> HandedMessage:
         message_id=inbound.message_id,
         kind=inbound.kind,
         text=inbound.text,
+        media_id=inbound.media_id,
     )
 
 
+# Text, the words of a button or a list row, and a voice note are read; an image, a sticker, a
+# location carry nothing the model is given.
 async def _find_route(session_: AsyncSession, inbound: whatsapp.Inbound) -> RouteRow | None:
-    if inbound.kind != "text" or not inbound.text:
-        logger.warning("whatsapp: a %s to %s was dropped: only text is read", inbound.kind or "message", inbound.number)
+    if not inbound.text and inbound.media_id is None:
+        logger.warning(
+            "whatsapp: a %s to %s was dropped: only words and voice notes are read",
+            inbound.kind or "message",
+            inbound.number,
+        )
         return None
     route = await telephony.find_route_at(session_, Channel.whatsapp, inbound.number)
     if route is None:

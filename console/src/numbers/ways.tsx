@@ -1,11 +1,11 @@
 /** One form per way to add a number: buying one, bringing one from Twilio, pointing one from a carrier, an own PBX, WhatsApp. */
 
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import { useCredentials } from "@pinecall/core/credentials";
 import { Select } from "../ui/select";
 import { Field } from "../ui/setting";
-import { addNumber, bringCarrier, buyNumber, type Carrier, type Owned, type WantedCarrier, type WantedNumber, type Wired } from "./door";
+import { addNumber, bringCarrier, buyNumber, readSubscription, type Carrier, type Owned, type Subscription, type WantedCarrier, type WantedNumber, type Wired } from "./door";
 import { AgentField, Copy, Plan, type Mover } from "./parts";
 import { accountName, e164, shown, type Way } from "./words";
 
@@ -83,19 +83,50 @@ export function BuyWay({ agents, agent: fixed, mover, onAdded }: WayProps): Reac
   );
 }
 
+/** What goes in the org's own Meta app so its messages come here: read once, shown to copy; nothing while the gateway has not said. */
+function MetaWebhook(): ReactNode {
+  const credentials = useCredentials();
+  const [told, setTold] = useState<Subscription | null>(null);
+  useEffect(() => {
+    let asked = true;
+    void readSubscription(credentials).then((subscription) => asked && setTold(subscription), () => undefined);
+    return () => void (asked = false);
+  }, [credentials]);
+  if (told === null) return null;
+  return (
+    <>
+      <p className="num-hint">
+        In your Meta app, open WhatsApp ▸ Configuration, set the webhook to these two, and subscribe to the <code>{told.field}</code> field. Without it the agent can reply but never hears a message.
+      </p>
+      <dl className="num-setup">
+        <dt>Callback URL</dt>
+        <dd>
+          <Copy text={told.callback_url} />
+        </dd>
+        <dt>Verify token</dt>
+        <dd>
+          <Copy text={told.verify_token} />
+        </dd>
+      </dl>
+    </>
+  );
+}
+
 function AccountForm({ kind, mover, onBring }: { kind: "twilio" | "whatsapp"; mover: Mover; onBring: (wanted: WantedCarrier) => Promise<void> }): ReactNode {
   const [label, setLabel] = useState("");
   const [id, setId] = useState("");
   const [user, setUser] = useState("");
   const [secret, setSecret] = useState("");
+  const [appSecret, setAppSecret] = useState("");
   const bring = (event: FormEvent): void => {
     event.preventDefault();
     const called = label.trim() === "" ? {} : { label: label.trim() };
-    void onBring(kind === "twilio" ? { kind, account_sid: id.trim(), user: user.trim() || id.trim(), secret, ...called } : { kind, phone_number_id: id.trim(), access_token: secret.trim(), ...called }).catch(() => undefined);
+    const app = appSecret.trim() === "" ? {} : { app_secret: appSecret.trim() };
+    void onBring(kind === "twilio" ? { kind, account_sid: id.trim(), user: user.trim() || id.trim(), secret, ...called } : { kind, phone_number_id: id.trim(), access_token: secret.trim(), ...app, ...called }).catch(() => undefined);
   };
   return (
     <form className="num-form" onSubmit={bring}>
-      <p className="num-hint">{kind === "twilio" ? "Connect the account once. It is checked with Twilio, kept encrypted, and never shown again." : "Connect the number at Meta once. The agent's replies go out on this token."}</p>
+      <p className="num-hint">{kind === "twilio" ? "Connect the account once. It is checked with Twilio, kept encrypted, and never shown again." : "Connect the number of your Meta app once. Replies go out on its token, and its messages are checked against the app's secret."}</p>
       <Field label={kind === "twilio" ? "Account SID" : "Phone number ID"}>
         <input className="cfg-input" aria-label={kind === "twilio" ? "Account SID" : "Phone number ID"} placeholder={kind === "twilio" ? "AC…" : "From Meta's WhatsApp settings"} required spellCheck={false} autoComplete="off" value={id} onChange={(event) => setId(event.target.value)} />
       </Field>
@@ -107,9 +138,15 @@ function AccountForm({ kind, mover, onBring }: { kind: "twilio" | "whatsapp"; mo
       <Field label={kind === "twilio" ? "Secret" : "Access token"}>
         <input className="cfg-input" type="password" aria-label={kind === "twilio" ? "Secret" : "Access token"} placeholder={kind === "twilio" ? "The key's secret, or the auth token" : "A system user's, so it does not expire"} required autoComplete="new-password" value={secret} onChange={(event) => setSecret(event.target.value)} />
       </Field>
+      {kind === "whatsapp" && (
+        <Field label="App secret">
+          <input className="cfg-input" type="password" aria-label="App secret" placeholder="Your Meta app's, from App settings ▸ Basic" required autoComplete="new-password" spellCheck={false} value={appSecret} onChange={(event) => setAppSecret(event.target.value)} />
+        </Field>
+      )}
       <Field label="Name">
         <input className="cfg-input" aria-label="Name" placeholder="Optional" autoComplete="off" value={label} onChange={(event) => setLabel(event.target.value)} />
       </Field>
+      {kind === "whatsapp" && <MetaWebhook />}
       <Submit busy={mover.busy} doing="Connecting…">
         {kind === "twilio" ? "Connect Twilio" : "Connect WhatsApp"}
       </Submit>
@@ -324,7 +361,7 @@ export function WhatsAppWay({ agents, agent: fixed, carriers, owned, mover, onAc
   const add = (event: FormEvent): void => {
     event.preventDefault();
     const account = theirs.find((one) => one.number === number)?.account;
-    void mover.move(() => addNumber(credentials, { number, agent, channel: "whatsapp", ...(account === undefined ? {} : { account }) }, false)).then(() => onAdded(number), () => undefined);
+    void mover.move(() => addNumber(credentials, { number, agent, channel: "whatsapp", ...(account === undefined ? {} : { account }) }, false)).then(() => onAdded(number, <MetaWebhook />), () => undefined);
   };
   return (
     <form className="num-form" onSubmit={add}>

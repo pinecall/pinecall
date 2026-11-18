@@ -1,6 +1,6 @@
 """Telephony's rules, one module per noun; what another domain uses is named here, and nothing else."""
 
-from runtime.telephony.service.accounts import meta_token_for, twilio_account_of
+from runtime.telephony.service.accounts import list_own_meta_apps, meta_token_for, twilio_account_of
 from runtime.telephony.service.carrier import SipNames
 from runtime.telephony.service.hand_over import hand_on, unbridge
 from runtime.telephony.service.legs import (
@@ -69,6 +69,7 @@ __all__ = [
     "is_a_phone",
     "leg_to",
     "list_answered_routes",
+    "list_own_meta_apps",
     "list_phone_routes",
     "list_routes",
     "meta_token_for",

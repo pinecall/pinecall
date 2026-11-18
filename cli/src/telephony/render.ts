@@ -3,7 +3,7 @@
 import type { Limit } from "../billing/service.js";
 import { count, date, formatHint, formatNotice } from "../kit/format.js";
 import { table } from "../kit/table.js";
-import type { AvailableNumbers, Callback, CallbackPage, Carrier, CarrierListed, Dialed, NumberBought, NumberPlan, NumberRow, OwnedNumber, TheLine } from "./service.js";
+import type { AvailableNumbers, Callback, CallbackPage, Carrier, CarrierListed, CarrierShown, Dialed, NumberBought, NumberPlan, NumberRow, OwnedNumber, TheLine } from "./service.js";
 
 export const NO_NUMBERS = "no number answers in this env: `pinecall numbers import <+34…> --agent <slug>`";
 export const NO_CARRIERS = "the org holds no carrier account: `pinecall carriers add twilio --account-sid AC… --user SK…`";
@@ -103,12 +103,23 @@ export function carrierLine(row: Carrier, routed?: number): string {
   return said.join(" · ");
 }
 
-export function carrier(row: Carrier): string {
-  return carrierLine(row);
+export function carrier(row: CarrierShown): string[] {
+  return [carrierLine(row), ...metaWebhook(row)];
 }
 
-export function carrierKept(kept: Carrier): string[] {
-  const lines = [`kept: ${carrierLine(kept)}`];
+/** What a WhatsApp number's org types in its own Meta app, WhatsApp ▸ Configuration ▸ Webhook. */
+export function metaWebhook(row: CarrierShown): string[] {
+  if (row.subscription === undefined) return [];
+  return [
+    "  in your Meta app, WhatsApp ▸ Configuration ▸ Webhook:",
+    `    Callback URL   ${row.subscription.callback_url}`,
+    `    Verify token   ${row.subscription.verify_token}`,
+    `    then subscribe to the webhook field \`${row.subscription.field}\``,
+  ];
+}
+
+export function carrierKept(kept: CarrierShown): string[] {
+  const lines = [`kept: ${carrierLine(kept)}`, ...metaWebhook(kept)];
   if (kept.networks.some((one) => one.state === "waiting")) lines.push("  each waiting network opens once Pinecall's operator approves it");
   lines.push(formatHint(...(kept.networks.some((one) => one.state === "waiting") ? ["pinecall carriers show says when"] : []), "pinecall numbers import <+34…> --agent <slug> routes one of its numbers"));
   return lines;

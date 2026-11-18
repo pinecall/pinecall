@@ -13,10 +13,9 @@ from tests.conftest import BOX, Gateway, Tenant, needs_the_services
 
 # Live streams answer nothing until something happens: they are opened elsewhere, never swept.
 STREAMS = frozenset({"/v1/events", "/v1/ops/events"})
-# Closed on a box without the credentials they need, and saying so with 503: a test box has neither.
-CLOSED_HERE = {
-    "/v1/whatsapp/webhook": "no Meta app",
-}
+# Closed on a box without the credentials they need, and saying so with 503. Meta's webhook left
+# this list when an org's own Meta app could subscribe: a box with no app of its own answers it 403.
+CLOSED_HERE: dict[str, str] = {}
 # A read that takes longer than this is reported as hanging, which is a failure of its own.
 WITHIN_S = 5.0
 

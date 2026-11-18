@@ -2022,8 +2022,9 @@ $ pinecall numbers import +34910000000 --agent clinica-norte
 **Every secret is read on stdin, never from the command line**, where `ps` and the shell's history
 would keep it: typed with nothing echoed on a terminal, or piped one per line —
 `printf '%s\n' "$TWILIO_SECRET" | pinecall carriers add twilio …`. A SIP peer reads its password,
-and its outbound password on a second line when `--outbound-username` is given. Nothing is printed
-back: the gateway seals each secret under the platform's vault key and answers the account by its id.
+and its outbound password on a second line when `--outbound-username` is given; a WhatsApp number
+reads Meta's token, and the Meta app's secret on a second line. Nothing is printed back: the gateway
+seals each secret under the platform's vault key and answers the account by its id.
 
 - **Twilio.** `--user` is an API key SID (make one at Twilio → Account → API keys, and revoke it
   there any time) or the account SID again, with the auth token as the secret. The pair is tried
@@ -2035,9 +2036,26 @@ back: the gateway seals each secret under the platform's vault key and answers t
   5060 opens to it; `show` prints `waiting`, `approved` or `refused` beside each. The four
   `--outbound-*` flags say where the platform dials it; unsaid, the platform dials with the pair it
   registers with.
-- **WhatsApp.** `--phone-number-id` is the number's id at Meta, and the access token is the secret.
-  Meta is asked for that number with that token before anything is kept, so an id or a token Meta
-  does not open is `Meta does not open WhatsApp number <id> with this token: …` and exit 2.
+- **WhatsApp.** `--phone-number-id` is the number's id at Meta. Two secrets are read: the access
+  token, then the secret of the Meta app the number lives in (App settings ▸ Basic), which Meta signs
+  the number's messages with. An empty second line keeps the app secret given before, so a token is
+  renewed by typing the token alone. Meta is asked for that number with that token before anything is
+  kept, so an id or a token Meta does not open is `Meta does not open WhatsApp number <id> with this
+  token: …` and exit 2. `add` and `show` then print what goes in the Meta app's WhatsApp ▸
+  Configuration ▸ Webhook, without which the agent replies but never hears a message:
+
+  ```console
+  $ pinecall carriers add whatsapp --phone-number-id 105512345678901 --label Clínica
+  WhatsApp access token:
+  Meta app secret (empty keeps the one given before):
+  kept: 105512345678901 · whatsapp · Clínica
+    in your Meta app, WhatsApp ▸ Configuration ▸ Webhook:
+      Callback URL   https://cloud.pinecall.io/v1/whatsapp/webhook
+      Verify token   org_8f2c….3f9ac01d77b24e6a8c5d1f0b9e7a6c42
+      then subscribe to the webhook field `messages`
+  ```
+
+  The Meta side, step by step, is [WhatsApp](https://docs.pinecall.io/integrations/whatsapp/).
 
 `add` with an account the org already holds **replaces its secret**: that is how a key is rotated.
 An account's id is its own: Twilio's account SID, the peer's username, Meta's phone number id.

@@ -15,7 +15,7 @@ carrier with no API here), a WhatsApp number at Meta. Each is one row, sealed un
 { "kind": "twilio", "account_sid": "AC…", "user": "SK…", "secret": "…", "label": "Clínica" }
 { "kind": "sip", "username": "pbx", "password": "…", "addresses": ["203.0.113.0/24"],
   "outbound_host": "sip.carrier.example", "outbound_transport": "tls" }
-{ "kind": "whatsapp", "phone_number_id": "1055…", "access_token": "…" }
+{ "kind": "whatsapp", "phone_number_id": "1055…", "access_token": "…", "app_secret": "…" }
 ```
 
 `PUT /v1/carrier` adds an account, or replaces the secret of one the org already holds. A Twilio

@@ -3,14 +3,21 @@
 A WhatsApp number answers like a phone number: a route of channel `whatsapp` says which agent,
 and a conversation is a written call on the app that holds that agent, in the route's environment.
 
-## The platform's Meta app
+## Whose Meta app delivers a number's messages
 
-One Meta app serves every org's numbers on a deployment. Its secret (every webhook body is signed with
-it), the handshake's word and a token replies go out on when an org brought none are the sealed
-row `credentials/whatsapp` of `box_settings`: `{app_secret, verify_token, access_token?}`. A deployment
-without the row answers `503` at the webhook. An org that brings its own number at Meta adds it as
-an account (`PUT /v1/carrier {"kind": "whatsapp", "phone_number_id", "access_token"}`,
-[numbers.md](numbers.md)) and replies to its contacts go out on its own token.
+A WhatsApp number lives in a Meta app, and Meta delivers that number's messages to the webhook of
+that app, signed with that app's secret. Two apps are known to a deployment:
+
+- **An org's own.** An org that made its Meta app brings the number as an account with the app's
+  secret (`PUT /v1/carrier {"kind": "whatsapp", "phone_number_id", "access_token", "app_secret"}`,
+  [numbers.md](numbers.md)). Replies to its contacts go out on its token, and a body is taken for
+  that number when it carries the signature of that secret. Bringing the account again with no
+  `app_secret` keeps the one it had: a token is renewed far more often than an app changes.
+- **The platform's.** One Meta app of the operator's, for numbers that live in it. Its secret, its
+  handshake word and a token replies go out on are the sealed row `credentials/whatsapp` of
+  `box_settings`: `{app_secret, verify_token, access_token?}`. An account brought with no
+  `app_secret` is a number of this app. A deployment without the row answers no number of its own;
+  its orgs' own apps still subscribe.
 
 ```
 console → Numbers → Add a number → WhatsApp
@@ -22,15 +29,29 @@ beside the Twilio numbers, with the account it lives in, and `POST /v1/numbers {
 channel: "whatsapp", account}` routes it. A token Meta refuses (a temporary one expires in a day;
 a system user's does not) leaves the account listed with no number, said in the gateway's log.
 
+## What an org types in its Meta app — `GET /v1/whatsapp/subscription`
+
+The scope `numbers`. `200 {callback_url, verify_token, field}`: the address of the webhook below at
+the deployment's public name, the word the org's app subscribes with, and the one webhook field to
+subscribe to (`messages`). The word is `<org id>.<mark>`, the mark being the vault's own on the org:
+the gateway knows it again and stores nothing. It is typed once, in the app's WhatsApp ▸
+Configuration; an app already subscribed is asked nothing when the vault's key changes.
+
 ## The webhook — `GET` · `POST /v1/whatsapp/webhook`
 
-`GET` is Meta subscribing: `hub.mode=subscribe` and `hub.verify_token` equal to the platform's word
-(compared in constant time) echo `hub.challenge` back as plain text; any other word is `403`.
+`GET` is Meta subscribing: `hub.mode=subscribe` and a `hub.verify_token` that is the word given to
+an org, or the platform's own (each compared in constant time), echo `hub.challenge` back as plain
+text; any other word is `403`.
 
 `POST` is a delivery. The signature (`X-Hub-Signature-256: sha256=<HMAC-SHA256 of the raw
-body>`) is checked on the bytes as they came, before anything reads them: `403` when it does not
-match. Past it the answer is `200 {received: n}`, because Meta disables a webhook that keeps
-failing: a receipt, an image, a number nobody routed are a line in the log and nothing else.
+body>`) is checked on the bytes as they came. A body the platform's app signed is taken whole. Any
+other is read for the phone number ids it names and for nothing else (eight at most: an org's app
+serves a handful), and the accounts under those ids that brought an `app_secret` are tried: a
+message is taken when the secret of its own number's account signed the body, and only for a route
+of that account's org through that account. So an org's secret vouches for its numbers and for no
+other, whatever the body says the number written to is. A body no known app signed is `403`. Past
+the signature the answer is `200 {received: n}`, because Meta disables a webhook that keeps failing:
+a delivery receipt, an image, a number nobody routed are a line in the log and nothing else.
 
 Meta delivers a message again when it thinks it unanswered, for up to 7 days, and each message is
 read once. Its id is claimed per org (`whatsapp_seen`) before it is read, and the claim is the
@@ -40,6 +61,22 @@ or kept for nobody (below). A reading that fails gives the claim back and the de
 so Meta's next one reads it; a delivery that arrives while another is still reading it is `503`,
 so Meta keeps it until that reading is done; a claim a process died holding is read again by the
 first delivery ten minutes after it. The nightly retention run forgets the ids past 7 days.
+
+## What is read, and what the contact sees
+
+A text is read as it was written; a tap on a reply button, a row of a list or a template's quick
+reply as the words on it. A voice note is fetched from Meta on the number's token (8 MB at most) and
+heard by the ears the org's calls hear with, on the same keys, with no language named: what it says
+is the message. A note for an open conversation is heard by the conversation's own task, never
+inside the webhook's request; one for an agent nobody holds is heard as it arrives, since what waits
+is kept as its words. An image, a sticker, a document, a location are dropped and said in the log.
+
+As a message is taken up it is marked read at Meta (`status: read`: the contact's two blue ticks),
+and with `typing_indicator` when the model is about to be asked, which shows "typing…" until the
+reply goes out or 25 seconds pass. With a person on the line (a supervisor's takeover) it is marked
+read alone. A refusal of either is a line in the log: the message is answered all the same. A reply
+longer than the 4,096 characters Meta takes goes out as several, cut at a paragraph, a line or a
+word.
 
 ## A conversation
 

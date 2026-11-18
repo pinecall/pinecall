@@ -87,6 +87,27 @@ describe("pinecall carriers", () => {
     expect(ran.out).toContain("each waiting network opens once Pinecall's operator approves it");
   });
 
+  it("add whatsapp reads the token, then the Meta app's secret, and says what Meta's webhook is given", async () => {
+    const sent = answer("put", "/v1/carrier", { kind: "whatsapp", account: "1099", label: "Clínica", networks: [] });
+    answer("get", "/v1/whatsapp/subscription", { callback_url: "https://cloud.pinecall.io/v1/whatsapp/webhook", verify_token: "org_1.3f9a", field: "messages" });
+    const ran = await run(["carriers", "add", "whatsapp", "--phone-number-id", "1099", "--label", "Clínica"], { stdin: "wa-token\napp-secret\n" });
+    expect(ran.code).toBe(0);
+    expect(sent[0]!.body).toEqual({ kind: "whatsapp", phone_number_id: "1099", access_token: "wa-token", app_secret: "app-secret", label: "Clínica" });
+    expect(ran.out).toContain("kept: 1099 · whatsapp · Clínica");
+    expect(ran.out).toContain("    Callback URL   https://cloud.pinecall.io/v1/whatsapp/webhook");
+    expect(ran.out).toContain("    Verify token   org_1.3f9a");
+    expect(ran.out).toContain("subscribe to the webhook field `messages`");
+    expect(ran.out).not.toContain("app-secret");
+  });
+
+  it("add whatsapp with the token alone sends no app secret, so the one given before is kept", async () => {
+    const sent = answer("put", "/v1/carrier", { kind: "whatsapp", account: "1099", label: "", networks: [] });
+    answer("get", "/v1/whatsapp/subscription", { callback_url: "https://cloud.pinecall.io/v1/whatsapp/webhook", verify_token: "org_1.3f9a", field: "messages" });
+    const ran = await run(["carriers", "add", "whatsapp", "--phone-number-id", "1099"], { stdin: "wa-token\n" });
+    expect(ran.code).toBe(0);
+    expect(sent[0]!.body).toEqual({ kind: "whatsapp", phone_number_id: "1099", access_token: "wa-token" });
+  });
+
   it("add with no secret piped keeps nothing", async () => {
     const ran = await run(["carriers", "add", "whatsapp", "--phone-number-id", "1099"]);
     expect(ran.code).toBe(2);

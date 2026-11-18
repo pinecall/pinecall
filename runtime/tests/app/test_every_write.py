@@ -21,7 +21,7 @@ WITHIN_S = 5.0
 ANSWERED_HERE = {
     ("POST", "/v1/agents/{slug}/personas/generate"): (404, "the sweep's slug is nobody's agent"),
     ("POST", "/v1/livekit/webhook"): (401, "LiveKit signs its events; a key opens nothing here"),
-    ("POST", "/v1/whatsapp/webhook"): (503, "no Meta app on a test box"),
+    ("POST", "/v1/whatsapp/webhook"): (403, "no Meta app signed the sweep's body"),
     ("POST", "/v1/contacts/memory/eval"): (503, "the test box's providers row names no embedder"),
     ("POST", "/v1/knowledge/{base}/eval"): (503, "the test box's providers row names no embedder"),
     ("PUT", "/v1/knowledge/{base}"): (503, "the test box's providers row names no embedder"),

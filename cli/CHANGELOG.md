@@ -6,6 +6,11 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **`carriers add whatsapp` asks for the Meta app's secret and says what goes in Meta's webhook.** A WhatsApp
+  number lives in the org's own Meta app, and its messages reach the agent only when that app's webhook points
+  at Pinecall and Pinecall knows the secret the app signs with. The verb reads the access token and then the
+  app secret (an empty line keeps the one given before, so a token is renewed alone), and `add` and `show`
+  print the callback URL, the verify token and the field to subscribe to.
 - **`simulate --via sip` rings the agent by phone**, and `--delay`, `--jitter` and `--rate` give the caller's
   line a network. `--via sip` dials a SIP leg in a carrier's codec into the call's room, so the agent answers a
   phone call at its number or at the box's test line (the sandbox's alone); `--delay`, `--jitter` and `--rate`

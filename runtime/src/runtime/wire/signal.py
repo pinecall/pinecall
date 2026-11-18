@@ -247,3 +247,5 @@ class HandedMessage(BaseModel):
     message_id: str
     kind: str
     text: str | None
+    # A voice note's audio at Meta, heard by the gateway that holds the thread.
+    media_id: str | None = None

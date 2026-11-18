@@ -2,7 +2,7 @@
 
 import json
 import logging
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -174,6 +174,21 @@ async def meta_token_for(session: AsyncSession, vault: Vault, org: str, phone_nu
         return (await whatsapp.box_meta_app(session, vault)).access_token
     except ServiceUnavailable:
         return None
+
+
+# Meta's webhook asks before any org is known: a body names the numbers written to, and the orgs
+# that brought one of them with an app's secret are the ones whose app may have signed it.
+async def list_own_meta_apps(
+    session: AsyncSession, vault: Vault, phone_number_ids: Collection[str]
+) -> list[whatsapp.OwnApp]:
+    """Every org's own Meta app that signs for one of these WhatsApp numbers."""
+    rows = await CarrierRepository(session).list_of_kind_named(CarrierKind.whatsapp, phone_number_ids)
+    opened = (carrier_of(vault, row) for row in rows)
+    return [
+        whatsapp.OwnApp(org=carrier.org, phone_number_id=carrier.phone_number_id, app_secret=carrier.app_secret)
+        for carrier in opened
+        if isinstance(carrier, WhatsappNumber) and carrier.app_secret
+    ]
 
 
 # ── the account the box buys numbers on ──
