@@ -26,10 +26,10 @@ TheBoxApp = Annotated[webhook.MetaApp | None, Depends(find_box_app)]
 
 # The signature is checked on the bytes as they came. A body the box's app did not sign is read for
 # the numbers it names and for nothing else, to find the orgs whose own app may have signed it.
-async def read_signed_messages(
+async def read_signed_delivery(
     request: Request, box: TheBoxApp, sessions: TheSessions, vault: TheVault
-) -> list[webhook.Inbound]:
-    """The messages of a body the box's app signed, or an org's own; 403 for a body neither did."""
+) -> webhook.Delivery:
+    """What a body the box's app signed carries, or an org's own; 403 for a body neither did."""
     body = await read_capped_body(request, webhook.LONGEST_WEBHOOK, "a webhook's body")
     header = request.headers.get(webhook.SIGNATURE_HEADER)
     own: list[webhook.OwnApp] = []
@@ -40,7 +40,7 @@ async def read_signed_messages(
     return webhook.read_signed(box, own, body, header)
 
 
-SignedMessages = Annotated[list[webhook.Inbound], Depends(read_signed_messages)]
+SignedDelivery = Annotated[webhook.Delivery, Depends(read_signed_delivery)]
 
 
 def subscription_of(actor: NumbersKey, vault: TheVault, settings: TheSettings) -> webhook.Subscription:

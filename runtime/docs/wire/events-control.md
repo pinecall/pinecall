@@ -245,6 +245,17 @@ This reader missed a stretch: it reconnected too late for the store, or fell beh
 | `to_seq` | `integer` | yes | The last seq the reader did not get. |
 | `snapshot` | `State | null` | yes | The state at to_seq, when the platform could compute it. Null when only ephemeral entries were dropped. |
 
+### `message.status`
+
+A message the agent wrote on a written channel moved at its provider: WhatsApp says each reply was sent, then delivered to the contact's phone, then read. Written on the conversation's call while it is open; a status that arrives after the conversation went quiet is dropped.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `message_id` | `string` | yes | The provider's id for the message the agent wrote. |
+| `status` | `string` | yes | Where it stands, in the provider's word: `sent`, `delivered`, `read` or `failed`. |
+| `to` | `string` | yes | The contact it was written to, E.164. |
+| `error` | `string | null` | yes | Why it failed, in the provider's words; null for any other status. |
+
 ### `message.taken`
 
 A message that was waiting (message.waiting) was answered, on this call — or will never be: `call` is null when it outlived WhatsApp's customer-service window and nothing may be said to it any more.

@@ -17,6 +17,13 @@
   it; a voice note is fetched from Meta and heard by the ears the org's calls hear with, on the same keys,
   and read as what it says. A reply longer than the 4,096 characters Meta takes goes out as several. An
   image, a sticker, a document and a location are still dropped.
+- **A WhatsApp reply says where it stands: `message.status`.** Meta's receipts were answered `200` and thrown
+  away. Each is now an entry on the contact's open conversation, `{message_id, status, to, error}`: `sent`,
+  `delivered`, `read`, or `failed` with Meta's reason (the 24-hour window closed, a number that is not on
+  WhatsApp). It is said by whichever gateway holds the conversation, and vouched for as a message is: a receipt
+  an org's own app signed is said on that org's number alone. One that arrives after the conversation went
+  quiet is dropped. An SDK from before this release reports the event as one it does not know, to its error
+  listeners, and goes on. `docs/wire/events-control.md`.
 - **A simulated caller rings the agent by phone, over SIP.** `via: "sip"` on `POST /v1/simulations`,
   `/v1/simulations/compare` and `/v1/evals/voice` seats the caller in a room of its own and dials a leg from
   it to the sandbox's own SIP service, in G.711 µ-law at 8 kHz, through the trunk that admits production's

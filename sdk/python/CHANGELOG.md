@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **`message.status` says where a WhatsApp reply stands.** A reply the agent wrote is sent, then delivered to
+  the contact's phone, then read, or it failed with Meta's reason: each is an event on the conversation's call,
+  `{message_id, status, to, error}`, for ``@agent.on("message.status")``. An older package reports the event as one it
+  does not know and goes on.
+
 ## 0.11.43 — released with the runtime's setup on a Mac's own Ollama (2026-11-17)
 
 ## 0.11.42 — a machine of your own sets up from nothing, a refused call says why, and the night's retention runs again (2026-11-17)

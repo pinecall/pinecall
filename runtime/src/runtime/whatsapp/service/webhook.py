@@ -88,11 +88,40 @@ class Inbound:
         """The sender in E.164: WhatsApp names them by digits alone."""
         return f"+{self.wa_id}"
 
-    # A body an org's own app signed vouches for that org's number and for nothing else: without
-    # this, an org could sign a body that names another org's number as the one written to.
     def may_reach(self, org: str, account: str | None) -> bool:
         """Whether a number of this org, in this account, is one the body's signature vouches for."""
-        return self.signed_for is None or (org in self.signed_for and account == self.phone_number_id)
+        return _vouches(self.signed_for, self.phone_number_id, org, account)
+
+
+@dataclass(frozen=True, slots=True)
+class Receipt:
+    """Where a message the agent wrote stands with its contact, as Meta says it: sent, delivered, read, failed."""
+
+    number: str
+    phone_number_id: str
+    wa_id: str
+    message_id: str
+    status: str
+    # Meta's words for a message that failed.
+    error: str | None = None
+    signed_for: frozenset[str] | None = None
+
+    @property
+    def caller(self) -> str:
+        """The contact in E.164."""
+        return f"+{self.wa_id}"
+
+    def may_reach(self, org: str, account: str | None) -> bool:
+        """Whether a number of this org, in this account, is one the body's signature vouches for."""
+        return _vouches(self.signed_for, self.phone_number_id, org, account)
+
+
+@dataclass(frozen=True, slots=True)
+class Delivery:
+    """What one signed body carries: the contacts' messages, and the receipts of the agent's."""
+
+    messages: list[Inbound]
+    receipts: list[Receipt]
 
 
 # Which agent answers a number, whether an app holds it and the call a contact's messages go on are
@@ -102,6 +131,10 @@ class Threads(Protocol):
 
     async def receive(self, inbound: Inbound) -> bool:
         """Read the message once, onto its contact's conversation; False while another delivery reads it."""
+        ...
+
+    async def note(self, receipt: Receipt) -> None:
+        """Say on the contact's open conversation where a message the agent wrote stands."""
         ...
 
 
@@ -171,11 +204,30 @@ class _Metadata(_Lenient):
     phone_number_id: str = ""
 
 
+class _Failure(_Lenient):
+    title: str | None = None
+    message: str | None = None
+
+
+class _Status(_Lenient):
+    id: str = ""
+    status: str = ""
+    recipient_id: str = ""
+    errors: list[_Failure] = Field(default_factory=list[_Failure])
+
+    @property
+    def failure(self) -> str | None:
+        """Why Meta says the message failed, in its words; None for one that did not."""
+        said = (error.message or error.title for error in self.errors)
+        return next((words for words in said if words), None)
+
+
 # A delivery receipt arrives in this shape, with `statuses` and no messages.
 class _Value(_Lenient):
     metadata: _Metadata | None = None
     contacts: list[_Contact] = Field(default_factory=list[_Contact])
     messages: list[_Message] = Field(default_factory=list[_Message])
+    statuses: list[_Status] = Field(default_factory=list[_Status])
 
 
 class _Change(_Lenient):
@@ -264,6 +316,32 @@ def messages_in(body: bytes) -> list[Inbound]:
     return found
 
 
+def receipts_in(body: bytes) -> list[Receipt]:
+    """Every receipt in Meta's body, in Meta's order: where a message the agent wrote stands."""
+    try:
+        parsed = _Body.model_validate_json(body)
+    except PydanticValidationError:
+        return []
+    found: list[Receipt] = []
+    for change in (change for entry in parsed.entry for change in entry.changes):
+        value = change.value
+        if value is None or value.metadata is None:
+            continue
+        found += [
+            Receipt(
+                number=f"+{value.metadata.display_phone_number.lstrip('+')}",
+                phone_number_id=value.metadata.phone_number_id,
+                wa_id=status.recipient_id,
+                message_id=status.id,
+                status=status.status,
+                error=status.failure,
+            )
+            for status in value.statuses
+            if status.id and status.status and status.recipient_id
+        ]
+    return found
+
+
 # Read before anybody vouched for the body, and for one thing: whose app may have signed it.
 def numbers_named_in(body: bytes) -> set[str]:
     """The phone number ids a body names; none for a body that is no envelope, or one that names too many."""
@@ -276,11 +354,11 @@ def numbers_named_in(body: bytes) -> set[str]:
     return named if len(named) <= FEW_NUMBERS else set()
 
 
-# A receipt is a signed body with no message in it: it is taken, and answered 200 like any other.
-def read_signed(box: MetaApp | None, own: Sequence[OwnApp], body: bytes, header: str | None) -> list[Inbound]:
-    """The messages of a body the box's app signed, or an org's own for its numbers; Forbidden for any other."""
+# A body of receipts alone is signed like any other, and answered 200 like any other.
+def read_signed(box: MetaApp | None, own: Sequence[OwnApp], body: bytes, header: str | None) -> Delivery:
+    """What a body the box's app signed carries, or an org's own for its numbers; Forbidden for any other."""
     if box is not None and is_signed(box.app_secret, body, header):
-        return messages_in(body)
+        return Delivery(messages_in(body), receipts_in(body))
     signers: dict[str, set[str]] = {}
     for app in own:
         if is_signed(app.app_secret, body, header):
@@ -290,11 +368,18 @@ def read_signed(box: MetaApp | None, own: Sequence[OwnApp], body: bytes, header:
             "the body carries the signature of no Meta app this box knows: its own, or one an org brought "
             "with its number (`pinecall carriers add whatsapp` asks for the app's secret)"
         )
-    return [
-        dataclasses.replace(message, signed_for=frozenset(signers[message.phone_number_id]))
-        for message in messages_in(body)
-        if message.phone_number_id in signers
-    ]
+    return Delivery(
+        [
+            dataclasses.replace(message, signed_for=frozenset(signers[message.phone_number_id]))
+            for message in messages_in(body)
+            if message.phone_number_id in signers
+        ],
+        [
+            dataclasses.replace(receipt, signed_for=frozenset(signers[receipt.phone_number_id]))
+            for receipt in receipts_in(body)
+            if receipt.phone_number_id in signers
+        ],
+    )
 
 
 # Past the signature the answer is 200: Meta disables a webhook that keeps failing, so what goes
@@ -305,19 +390,28 @@ def read_signed(box: MetaApp | None, own: Sequence[OwnApp], body: bytes, header:
 # and every claim of the body was written in the request's one transaction, so that 500 took back
 # the claims of the messages before it, which were queued on their conversations already: Meta
 # delivered the body again and they were answered twice.
-async def receive_all(threads: Threads, messages: Sequence[Inbound]) -> int:
-    """Every message of a signed body onto its contact's conversation; how many the body carried."""
+async def receive_all(threads: Threads, delivery: Delivery) -> int:
+    """Every message of a signed body onto its contact's conversation, every receipt said; how many messages."""
     unread = 0
-    for inbound in messages:
+    for inbound in delivery.messages:
         with survive("reading a WhatsApp message", inbound.message_id):
             if not await threads.receive(inbound):
                 unread += 1
+    for receipt in delivery.receipts:
+        with survive("noting a WhatsApp receipt", receipt.message_id):
+            await threads.note(receipt)
     if unread:
         raise ServiceUnavailable(f"{unread} of these messages are being read by another delivery: send it again")
-    return len(messages)
+    return len(delivery.messages)
 
 
 # ── private ──
+
+
+# A body an org's own app signed vouches for that org's number and for nothing else: without this,
+# an org could sign a body that names another org's number as the one written to.
+def _vouches(signed_for: frozenset[str] | None, phone_number_id: str, org: str, account: str | None) -> bool:
+    return signed_for is None or (org in signed_for and account == phone_number_id)
 
 
 # Read as strictly as it is written: a row that is not the three fields of an app is no app, and

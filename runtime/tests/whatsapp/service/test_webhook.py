@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from runtime.exceptions import Forbidden, ServiceUnavailable
 from runtime.kit.crypto import Vault
 from runtime.whatsapp.service import webhook
-from runtime.whatsapp.service.webhook import Inbound, MetaApp, OwnApp
+from runtime.whatsapp.service.webhook import Delivery, Inbound, MetaApp, OwnApp, Receipt
 from tests.conftest import needs_the_database
 from tests.fakes.meta import OUR_NUMBER, SIGNING, a_body, a_text, signed
 
@@ -162,7 +162,7 @@ def own_app(org: str = "org_ana", number: str = "1055", secret: str = THEIRS) ->
 
 def test_a_body_the_boxs_app_signed_vouches_for_every_number() -> None:
     body = a_body(a_text("hola"))
-    (message,) = webhook.read_signed(meta_app(), [own_app()], body, signed(body))
+    (message,) = webhook.read_signed(meta_app(), [own_app()], body, signed(body)).messages
     assert message.signed_for is None
     assert message.may_reach("any org", None)
 
@@ -170,7 +170,7 @@ def test_a_body_the_boxs_app_signed_vouches_for_every_number() -> None:
 def test_a_body_an_orgs_own_app_signed_vouches_for_that_orgs_number_alone() -> None:
     """Signed with the secret an org brought with its number: its messages are taken, for that org and that number."""
     body = a_body(a_text("hola"))
-    (message,) = webhook.read_signed(meta_app(), [own_app()], body, signed(body, THEIRS))
+    (message,) = webhook.read_signed(meta_app(), [own_app()], body, signed(body, THEIRS)).messages
     assert message.signed_for == frozenset({"org_ana"})
     assert message.may_reach("org_ana", "1055")
     assert not message.may_reach("org_eva", "1055")
@@ -180,7 +180,9 @@ def test_a_body_an_orgs_own_app_signed_vouches_for_that_orgs_number_alone() -> N
 
 def test_two_orgs_that_brought_one_number_with_one_app_are_both_vouched_for() -> None:
     body = a_body(a_text("hola"))
-    (message,) = webhook.read_signed(None, [own_app("org_ana"), own_app("org_eva")], body, signed(body, THEIRS))
+    (message,) = webhook.read_signed(
+        None, [own_app("org_ana"), own_app("org_eva")], body, signed(body, THEIRS)
+    ).messages
     assert message.signed_for == frozenset({"org_ana", "org_eva"})
 
 
@@ -191,7 +193,7 @@ def test_an_app_signs_for_its_own_numbers_and_never_for_one_it_only_names() -> N
     with pytest.raises(Forbidden, match="no Meta app this box knows"):
         webhook.read_signed(meta_app(), [theirs], forged, signed(forged, THEIRS))
     # Named beside a number that is the signer's own, it is still not the signer's to vouch for.
-    assert webhook.read_signed(meta_app(), [own_app(), theirs], forged, signed(forged, THEIRS)) == []
+    assert webhook.read_signed(meta_app(), [own_app(), theirs], forged, signed(forged, THEIRS)) == Delivery([], [])
 
 
 @pytest.mark.parametrize("box", [None, meta_app()])
@@ -203,11 +205,76 @@ def test_a_body_nobody_signed_is_refused_with_or_without_an_app_of_the_boxs(box:
         webhook.read_signed(box, [], body, None)
 
 
-def test_a_receipt_an_orgs_app_signed_is_taken_and_carries_nothing() -> None:
-    """Meta sends an app every delivery receipt: refused, it would disable the org's webhook."""
-    value = {"metadata": {"display_phone_number": "598", "phone_number_id": "1055"}, "statuses": [{"status": "read"}]}
-    receipt = json.dumps({"entry": [{"changes": [{"value": value}]}]}).encode()
-    assert webhook.read_signed(None, [own_app()], receipt, signed(receipt, THEIRS)) == []
+def a_receipt_body(*statuses: dict[str, object], phone_number_id: str = "1055") -> bytes:
+    """Meta's envelope around receipts of messages sent from the box's number."""
+    value = {
+        "metadata": {"display_phone_number": OUR_NUMBER.lstrip("+"), "phone_number_id": phone_number_id},
+        "statuses": list(statuses),
+    }
+    return json.dumps({"entry": [{"changes": [{"field": "messages", "value": value}]}]}).encode()
+
+
+def test_a_receipt_says_which_message_of_the_agents_stands_where_for_which_contact() -> None:
+    """Sent, delivered, read, each names the message and the contact; a failed one carries Meta's words."""
+    failed = {"code": 131047, "title": "Re-engagement message", "message": "More than 24 hours have passed"}
+    body = a_receipt_body(
+        {"id": "wamid.out.1", "status": "delivered", "recipient_id": "59899000001", "timestamp": "1"},
+        {"id": "wamid.out.2", "status": "failed", "recipient_id": "59899000001", "errors": [failed]},
+        {"id": "", "status": "read", "recipient_id": "59899000001"},
+    )
+    assert webhook.messages_in(body) == []
+    assert webhook.receipts_in(body) == [
+        Receipt(OUR_NUMBER, "1055", "59899000001", "wamid.out.1", "delivered"),
+        Receipt(OUR_NUMBER, "1055", "59899000001", "wamid.out.2", "failed", "More than 24 hours have passed"),
+    ]
+    assert webhook.receipts_in(a_body(a_text("hola"))) == []
+
+
+def test_a_receipt_an_orgs_app_signed_is_taken_for_that_orgs_number_alone() -> None:
+    """Meta sends an app every receipt: refused, it would disable the org's webhook; taken, it vouches as a message."""
+    body = a_receipt_body({"id": "wamid.out.1", "status": "read", "recipient_id": "59899000001"})
+    delivery = webhook.read_signed(None, [own_app()], body, signed(body, THEIRS))
+    (receipt,) = delivery.receipts
+    assert delivery.messages == []
+    assert (receipt.status, receipt.caller, receipt.signed_for) == ("read", "+59899000001", frozenset({"org_ana"}))
+    assert receipt.may_reach("org_ana", "1055")
+    assert not receipt.may_reach("org_eva", "1055")
+    (by_the_box,) = webhook.read_signed(meta_app(), [], body, signed(body)).receipts
+    assert by_the_box.signed_for is None
+
+
+class Kept:
+    """The threads, as the webhook is handed them: what was received and what was noted."""
+
+    def __init__(self) -> None:
+        """Nothing yet."""
+        self.received: list[str] = []
+        self.noted: list[str] = []
+
+    async def receive(self, inbound: Inbound) -> bool:
+        """Keep the message's id; one named `busy` is being read by another delivery."""
+        self.received.append(inbound.message_id)
+        return inbound.message_id != "busy"
+
+    async def note(self, receipt: Receipt) -> None:
+        """Keep the receipt's status; one for the message `broken` cannot be said."""
+        if receipt.message_id == "broken":
+            raise RuntimeError("the conversation's log did not take it")
+        self.noted.append(receipt.status)
+
+
+async def test_every_message_is_received_and_every_receipt_noted_and_the_messages_are_counted() -> None:
+    """A receipt that cannot be said is a line in the log: the body is answered, and the next receipt is said."""
+    kept = Kept()
+    messages = webhook.messages_in(a_body(a_text("uno", message="wamid.1"), a_text("dos", message="wamid.2")))
+    receipts = [
+        Receipt(OUR_NUMBER, "1055", "59899000001", "broken", "sent"),
+        Receipt(OUR_NUMBER, "1055", "59899000001", "wamid.out.1", "delivered"),
+    ]
+    assert await webhook.receive_all(kept, Delivery(messages, receipts)) == 2
+    assert (kept.received, kept.noted) == (["wamid.1", "wamid.2"], ["delivered"])
+    with pytest.raises(ServiceUnavailable, match="another delivery"):
+        await webhook.receive_all(kept, Delivery(webhook.messages_in(a_body(a_text("x", message="busy"))), []))
 
 
 def test_the_numbers_a_body_names_are_read_before_anybody_vouched_for_it() -> None:

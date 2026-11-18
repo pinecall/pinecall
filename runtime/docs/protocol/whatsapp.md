@@ -78,6 +78,14 @@ read alone. A refusal of either is a line in the log: the message is answered al
 longer than the 4,096 characters Meta takes goes out as several, cut at a paragraph, a line or a
 word.
 
+Meta then says where each reply stands, in bodies that carry `statuses` and no message: `sent`,
+`delivered`, `read`, or `failed` with its reason. Each is a durable `message.status` entry on the
+contact's open conversation, `{message_id, status, to, error}`
+([events-control.md](../wire/events-control.md)), written by the gateway that holds the
+conversation: one that lands on another gateway is handed to it, once. A receipt is vouched for as a
+message is, so one an org's own app signed is said on that org's number alone. A receipt for a
+conversation that went quiet is dropped: its log is sealed.
+
 ## A conversation
 
 Each message goes onto its contact's conversation, keyed by the org, the environment, the number and the

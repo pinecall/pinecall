@@ -309,6 +309,12 @@ module Pinecall
           ops: { kind: :list, items: { kind: :ref, ref: "MemoryOp" }, required: true },
           speech_id: { kind: :str }
         }.freeze,
+        "MessageStatus" => {
+          message_id: { kind: :str, required: true },
+          status: { kind: :str, required: true },
+          to: { kind: :str, required: true },
+          error: { kind: :str, null: true, required: true }
+        }.freeze,
         "MessageTaken" => {
           message_id: { kind: :str, required: true },
           call: { kind: :str, null: true, required: true }

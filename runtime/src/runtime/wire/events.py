@@ -446,6 +446,15 @@ class MemoryOps(WireModel):
     speech_id: str | None = None
 
 
+class MessageStatus(WireModel):
+    """Where a message the agent wrote stands with its contact: sent, delivered, read, or failed."""
+
+    message_id: str
+    status: str
+    to: str
+    error: str | None
+
+
 class MessageTaken(WireModel):
     """One waiting message, off the queue."""
 
@@ -681,6 +690,7 @@ EVENTS: dict[str, type[WireModel]] = {
     "log.caught_up": LogCaughtUp,
     "log.gap": LogGap,
     "memory.ops": MemoryOps,
+    "message.status": MessageStatus,
     "message.taken": MessageTaken,
     "message.waiting": MessageWaiting,
     "metrics.avatar": AvatarMetrics,

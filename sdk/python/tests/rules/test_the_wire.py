@@ -100,6 +100,7 @@ IGNORED: dict[str, str] = {
             "tool.failed",
             "judge.broke",
             "worker.changed",
+            "message.status",
             "message.taken",
             "message.waiting",
             "prompt.changed",

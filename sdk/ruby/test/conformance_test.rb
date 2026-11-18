@@ -115,6 +115,7 @@ class ConformanceTest < Minitest::Test
     "tool.failed" => THE_GATEWAYS,
     "judge.broke" => THE_GATEWAYS,
     "worker.changed" => THE_GATEWAYS,
+    "message.status" => THE_GATEWAYS,
     "message.taken" => THE_GATEWAYS,
     "message.waiting" => THE_GATEWAYS,
     "prompt.changed" => THE_GATEWAYS,

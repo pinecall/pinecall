@@ -11,8 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from runtime.actor import Actor, Scope
 from runtime.calls import service as calls
 from runtime.calls.context import CallContext, Contact, Route, new_call_id
-from runtime.calls.log import Logs, Store
-from runtime.enums import Channel, Direction, Env
+from runtime.enums import Channel, Direction
 from runtime.exceptions import Conflict, PinecallError, QuotaExceeded, UpstreamError
 from runtime.kit.loops import survive
 from runtime.kit.time import today_in
@@ -20,6 +19,7 @@ from runtime.live.holders import Registration
 from runtime.live.parts import LiveParts
 from runtime.live.peers import THREADS, ThreadKey
 from runtime.live.service import desk, written
+from runtime.live.service.waiting import Waiting, keep_waiting, list_waiting, mark_taken
 from runtime.providers import service as providers
 from runtime.scoping import box_task
 from runtime.session import service as session
@@ -28,14 +28,12 @@ from runtime.telephony.models import Route as RouteRow
 from runtime.whatsapp import service as whatsapp
 from runtime.wire.base import Entry
 from runtime.wire.commands import SayVerb
-from runtime.wire.events import ErrorEvent, MessageTaken, MessageWaiting
+from runtime.wire.events import ErrorEvent, MessageStatus
 from runtime.wire.parts import Supervisor
 from runtime.wire.signal import HandedMessage
 
 logger = logging.getLogger(__name__)
 
-WAITING = "message.waiting"
-TAKEN = "message.taken"
 NOT_SENT = "whatsapp_not_sent"
 
 # A conversation quiet this long is over: the next message opens a new call. It is under
@@ -49,16 +47,6 @@ WINDOW_S = 24 * 60 * 60
 # However the call ends, the conversation is over with it: a written call a supervisor ends
 # only says so, and its session is closed here.
 OVER = {"call.ended", "supervisor.ended"}
-
-
-@dataclass(frozen=True, slots=True)
-class Waiting:
-    """A message kept for an agent nobody held when it arrived."""
-
-    agent: str
-    env: Env
-    inbound: whatsapp.Inbound
-    received_at: float
 
 
 @dataclass(slots=True)
@@ -144,6 +132,29 @@ class Threads:
             await self._hear(route, inbound)
 
         return await whatsapp.read_once(self._live.sessions, route.org, inbound.message_id, read, at=self._live.now)
+
+    # A receipt is said on the conversation it belongs to while that is open, on whichever gateway
+    # holds it; one for a conversation that went quiet says nothing anybody is reading.
+    async def note(self, receipt: whatsapp.Receipt, *, handed: bool = False) -> None:
+        """Say on the contact's open conversation where a message the agent wrote stands."""
+        async with self._live.sessions.begin() as session_:
+            route = await telephony.find_route_at(session_, Channel.whatsapp, receipt.number)
+        if route is None or not receipt.may_reach(route.org, route.account):
+            return
+        scope = Scope(route.org, route.env)
+        registration = self._live.holders.find_ring_taker(scope, route.agent, receipt.caller)
+        key = _thread_key(registration.scope if registration else scope, receipt)
+        thread = self._open.get(key)
+        if thread is not None:
+            said = MessageStatus(
+                message_id=receipt.message_id, status=receipt.status, to=receipt.caller, error=receipt.error
+            )
+            thread.session.call.writing.write("message.status", said)
+            return
+        # Handed on once: a receipt another gateway sent here is not sent on again.
+        holder = None if handed else self._live.owners.find_thread_holder(key)
+        if holder is not None:
+            await THREADS.reach(self._live.signal, _hand_receipt(receipt), gateway=holder)
 
     # Off the app socket's own loop: opening a conversation may wait on the model.
     def answer_waiting(self, registration: Registration) -> None:
@@ -259,6 +270,9 @@ class Threads:
 
     # Claimed and read by the gateway it landed on: here it is only heard.
     async def _take_on(self, handed: HandedMessage) -> None:
+        if handed.status is not None:
+            await self.note(_receipt_of(handed, handed.status), handed=True)
+            return
         inbound = whatsapp.Inbound(
             number=handed.number,
             phone_number_id=handed.phone_number_id,
@@ -361,56 +375,6 @@ async def hear_note(
         return None
 
 
-async def keep_waiting(logs: Logs, store: Store, route: RouteRow, inbound: whatsapp.Inbound) -> Waiting:
-    """Keep the message on the agent's log until somebody holds the agent."""
-    now = store.clock()
-    message = MessageWaiting.model_validate(
-        {
-            "channel": "whatsapp",
-            "env": route.env.value,
-            "number": inbound.number,
-            "phone_number_id": inbound.phone_number_id,
-            "from": inbound.wa_id,
-            "name": inbound.name,
-            "message_id": inbound.message_id,
-            "text": inbound.text or "",
-            "received_at": now,
-        }
-    )
-    await logs.agent(route.agent).append(WAITING, message.dump())
-    return Waiting(route.agent, route.env, inbound, now)
-
-
-async def mark_taken(logs: Logs, waiting: Waiting, call: str | None) -> None:
-    """The message off the queue: the call it went on, or none when its window closed."""
-    await logs.agent(waiting.agent).append(TAKEN, MessageTaken(message_id=waiting.inbound.message_id, call=call).dump())
-
-
-async def list_waiting(store: Store) -> list[Waiting]:
-    """Every message still waiting, oldest first, read off every agent's log."""
-    waiting: dict[str, Waiting] = {}
-    after = 0
-    while page := await store.list_across([WAITING, TAKEN], after=after):
-        for row in page:
-            entry = row.entry
-            if entry.type == TAKEN:
-                waiting.pop(str(entry.data.get("message_id")), None)
-                continue
-            message = MessageWaiting.model_validate(entry.data)
-            inbound = whatsapp.Inbound(
-                number=message.number,
-                phone_number_id=message.phone_number_id,
-                wa_id=message.from_,
-                name=message.name,
-                message_id=message.message_id,
-                kind="text",
-                text=message.text,
-            )
-            waiting[message.message_id] = Waiting(entry.agent, Env(message.env), inbound, message.received_at)
-        after = page[-1].position
-    return list(waiting.values())
-
-
 # A supervisor's `say` on the open conversation, sent to the contact by its reply tap. It goes the way
 # every verb of the desk goes: to whichever gateway runs the conversation. Until 2026-11 it was said
 # to the session of this gateway alone, and with more than one gateway an open conversation was
@@ -436,8 +400,34 @@ async def say_as_agent(
     return newest
 
 
-def _thread_key(scope: Scope, inbound: whatsapp.Inbound) -> ThreadKey:
+def _thread_key(scope: Scope, inbound: whatsapp.Inbound | whatsapp.Receipt) -> ThreadKey:
     return ThreadKey(scope.org, scope.env, inbound.number, inbound.wa_id)
+
+
+def _hand_receipt(receipt: whatsapp.Receipt) -> HandedMessage:
+    return HandedMessage(
+        number=receipt.number,
+        phone_number_id=receipt.phone_number_id,
+        wa_id=receipt.wa_id,
+        name=None,
+        message_id=receipt.message_id,
+        kind="status",
+        text=None,
+        status=receipt.status,
+        error=receipt.error,
+    )
+
+
+# Vouched for by the gateway that took it off the webhook: handed on, it names no signer.
+def _receipt_of(handed: HandedMessage, status: str) -> whatsapp.Receipt:
+    return whatsapp.Receipt(
+        number=handed.number,
+        phone_number_id=handed.phone_number_id,
+        wa_id=handed.wa_id,
+        message_id=handed.message_id,
+        status=status,
+        error=handed.error,
+    )
 
 
 def _hand(inbound: whatsapp.Inbound) -> HandedMessage:

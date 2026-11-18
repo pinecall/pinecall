@@ -7,7 +7,7 @@ from fastapi.responses import PlainTextResponse
 
 from runtime.handles import TheVault
 from runtime.whatsapp import schemas
-from runtime.whatsapp.auth import SignedMessages, TheBoxApp, TheSubscription, TheThreads
+from runtime.whatsapp.auth import SignedDelivery, TheBoxApp, TheSubscription, TheThreads
 from runtime.whatsapp.service import webhook
 
 router = APIRouter()
@@ -26,9 +26,9 @@ async def verify_webhook(
 
 
 @router.post("/v1/whatsapp/webhook")
-async def receive_webhook(messages: SignedMessages, threads: TheThreads) -> schemas.Received:
-    """Every message of a signed body onto its contact's conversation."""
-    return schemas.Received(received=await webhook.receive_all(threads, messages))
+async def receive_webhook(delivery: SignedDelivery, threads: TheThreads) -> schemas.Received:
+    """Every message of a signed body onto its contact's conversation, and every receipt of the agent's said."""
+    return schemas.Received(received=await webhook.receive_all(threads, delivery))
 
 
 # An org with a Meta app of its own types these two in the app's WhatsApp ▸ Configuration.

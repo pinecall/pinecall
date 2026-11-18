@@ -263,6 +263,14 @@ export const MemoryOpsSchema = z.strictObject({
 
 export type MemoryOps = z.infer<typeof MemoryOpsSchema>;
 
+/** Where a message the agent wrote stands with its contact: sent, delivered, read, or failed. */
+export const MessageStatusSchema = z.strictObject({
+  message_id: z.string(),
+  status: z.string(),
+  to: z.string(),
+  error: z.string().nullable(),
+});
+
 /** One waiting message, off the queue. */
 export const MessageTakenSchema = z.strictObject({
   message_id: z.string(),

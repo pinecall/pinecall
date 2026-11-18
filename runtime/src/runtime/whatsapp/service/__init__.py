@@ -2,11 +2,12 @@
 
 from runtime.whatsapp.service.graph import mark_read, number_of, read_media, send_text
 from runtime.whatsapp.service.seen import forget_seen_before, read_once
-from runtime.whatsapp.service.webhook import Inbound, OwnApp, box_meta_app
+from runtime.whatsapp.service.webhook import Inbound, OwnApp, Receipt, box_meta_app
 
 __all__ = [
     "Inbound",
     "OwnApp",
+    "Receipt",
     "box_meta_app",
     "forget_seen_before",
     "mark_read",

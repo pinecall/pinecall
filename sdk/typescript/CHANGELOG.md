@@ -5,6 +5,13 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
+## Unreleased
+
+- **`message.status` says where a WhatsApp reply stands.** A reply the agent wrote is sent, then delivered to
+  the contact's phone, then read, or it failed with Meta's reason: each is an event on the conversation's call,
+  `{message_id, status, to, error}`, for `on("message.status")`. An older package reports the event as one it
+  does not know and goes on.
+
 ## 0.11.43 — a Mac's own Ollama keeps its models, a Studio agent with no tool answers, and a failed release is said first (2026-11-17)
 
 - Released with the runtime: nothing of this package changed.

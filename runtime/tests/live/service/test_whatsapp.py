@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from runtime.actor import Scope
 from runtime.enums import Channel, Env
 from runtime.live.parts import LiveParts
-from runtime.live.peers import THREADS
+from runtime.live.peers import THREADS, ThreadKey
 from runtime.live.service import whatsapp, written
 from runtime.live.service.whatsapp import OpenThread
 from runtime.providers import service as providers
@@ -23,7 +23,8 @@ from runtime.telephony.repository import RouteRepository, RouteToWrite
 from runtime.telephony.service import accounts
 from runtime.telephony.service.whatsapp_number import WhatsappNumber
 from runtime.whatsapp.service import webhook
-from runtime.whatsapp.service.webhook import Inbound
+from runtime.whatsapp.service.webhook import Inbound, Receipt
+from runtime.wire.events import MessageStatus
 from tests.conftest import Tenant, needs_the_database, until
 from tests.fakes.meta import Graph, a_body, a_text
 from tests.live.conftest import Side
@@ -163,3 +164,46 @@ async def test_a_body_an_orgs_app_signed_never_reaches_a_number_of_another_org(
     theirs = dataclasses.replace(forged, signed_for=frozenset({tenant.org}))
     assert await side.threads.receive(theirs) is True
     assert "nobody holds agent recepcion" in caplog.text
+
+
+# ── where a message of the agent's stands ──
+
+
+class Writing:
+    """A call's writing, as a receipt needs it: what was queued for its log."""
+
+    def __init__(self) -> None:
+        """Nothing written yet."""
+        self.written: list[tuple[str, object]] = []
+
+    def write(self, kind: str, event: object) -> None:
+        """Keep the entry that would be queued."""
+        self.written.append((kind, event))
+
+
+@needs_the_database
+async def test_a_receipt_is_said_on_the_contacts_open_conversation_and_on_no_other(
+    side: Side, sessions: async_sessionmaker[AsyncSession], tenant: Tenant
+) -> None:
+    """Meta says a reply was read: the conversation's log says so; a receipt another org's app signed says nothing."""
+    number = f"+5982{secrets.randbelow(10**7):07d}"
+    route = RouteToWrite(
+        org=tenant.org, number=number, agent="recepcion", channel=Channel.whatsapp, env=Env.sandbox, account="1055"
+    )
+    async with sessions.begin() as session:
+        own = WhatsappNumber(org=tenant.org, phone_number_id="1055", access_token="a token", app_secret="theirs")
+        await accounts.put_carrier(session, side.parts.vault, own)
+        await RouteRepository(session).put(route)
+    writing = Writing()
+    running = cast("Session", SimpleNamespace(call=SimpleNamespace(writing=writing)))
+    (message,) = webhook.messages_in(a_body(a_text("hola")))
+    async with httpx.AsyncClient(transport=httpx.MockTransport(Graph().answer)) as http:
+        thread = OpenThread(session=running, inbound=message, http=http, token="t")
+        side.threads._open[ThreadKey(tenant.org, Env.sandbox, number, "59899000001")] = thread
+        read = Receipt(number, "1055", "59899000001", "wamid.out.1", "read", signed_for=frozenset({tenant.org}))
+        await side.threads.note(read)
+        await side.threads.note(dataclasses.replace(read, signed_for=frozenset({"another org"})))
+        await side.threads.note(dataclasses.replace(read, wa_id="59899000002"))
+    assert writing.written == [
+        ("message.status", MessageStatus(message_id="wamid.out.1", status="read", to="+59899000001", error=None))
+    ]

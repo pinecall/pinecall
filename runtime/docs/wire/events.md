@@ -46,6 +46,7 @@ Every event the gateway writes, one line each, with the page that holds its data
 | `log.caught_up` | call | yes | [events-control.md](events-control.md) | The replay is done: everything up to seq has been sent and what follows is live. |
 | `log.gap` | call | yes | [events-control.md](events-control.md) | This reader missed a stretch: it reconnected too late for the store, or fell behind and the fanout dropped ephemeral entries. |
 | `memory.ops` | call | no | [events-app.md](events-app.md) | What memory did for this turn or at hangup: a recall before the reply, a remember after the call, a forget on request. |
+| `message.status` | call | no | [events-control.md](events-control.md) | A message the agent wrote on a written channel moved at its provider: WhatsApp says each reply was sent, then delivered to the contact's phone, then read. |
 | `message.taken` | agent | no | [events-control.md](events-control.md) | A message that was waiting (message.waiting) was answered, on this call — or will never be: `call` is null when it outlived WhatsApp's customer-service window and nothing may be said to it any more. |
 | `message.waiting` | agent | no | [events-control.md](events-control.md) | A message reached one of the org's numbers while no app held the agent it routes to — the process between two deploys, a gateway just restarted. |
 | `metrics.avatar` | call | no | [events-call.md](events-call.md) | One avatar timing report: livekit's AvatarMetrics, every field. |

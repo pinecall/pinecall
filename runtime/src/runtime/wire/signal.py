@@ -249,3 +249,6 @@ class HandedMessage(BaseModel):
     text: str | None
     # A voice note's audio at Meta, heard by the gateway that holds the thread.
     media_id: str | None = None
+    # Set, this is no message of the contact's but a receipt of the agent's: where it stands, and why it failed.
+    status: str | None = None
+    error: str | None = None
