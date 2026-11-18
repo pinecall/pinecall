@@ -5,6 +5,10 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
+## 0.11.48 — an agent writes first by SMS, and a person's message on a thread reaches the contact (2026-11-18)
+
+- Released with the runtime: nothing of this package changed.
+
 ## 0.11.47 — an agent says the languages its callers speak, a channel takes the agent's own words, and a stop word ends the conversation on any gateway (2026-11-18)
 
 - **`channelRules` takes the agent's own words for a channel.** `channelRules = { whatsapp: "…", sms: "…" }`

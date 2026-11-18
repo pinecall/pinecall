@@ -4,7 +4,7 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## 0.11.48 — an agent writes first by SMS, and a person's message on a thread reaches the contact (2026-11-18)
 
 - **`pinecall text <agent> <number> "<words>"`**: the agent sends a contact one SMS first, past the guards a
   dial passes, and what they answer reaches it on that conversation. The MCP's `text` tool does the same.

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.48 — an agent writes first by SMS, and a person's message on a thread reaches the contact (2026-11-18)
 
 - **An agent writes first.** `POST /v1/agents/{slug}/text {to, text, from?, consent?}` sends a contact one SMS
   as the agent, from a number it answers SMS at: on the conversation the contact has going, or on a new one

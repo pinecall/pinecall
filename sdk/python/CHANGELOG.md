@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.48 — an agent writes first by SMS, and a person's message on a thread reaches the contact (2026-11-18)
+
+- Released with the runtime: nothing of this package changed.
+
 ## 0.11.47 — an agent says the languages its callers speak, a channel takes the agent's own words, and a stop word ends the conversation on any gateway (2026-11-18)
 
 - **`channel_rules` takes the agent's own words for a channel.** `channel_rules = {"whatsapp": "…"}` says how the agent writes there in place of the framework's own way, and every channel it leaves out keeps the framework's (`voice`, `chat`, `whatsapp`, `sms`); `False` still leaves the block out on every channel.
@@ -39,28 +43,25 @@
 
 ## 0.11.38 — a page's chat is written, a visitor keeps the conversation from page to page, and an app of one agent is one row (2026-11-13)
 
-- **A page may be one environment's alone.** `app.page("site", only="sandbox")` keeps a guide or a
-  demo to the sandbox: a deploy to production sends the app alone. `pinecall start` follows the same
-  rule, and anything but `sandbox` or `production` is refused as the app is declared.
+- **A page may be one environment's alone.** `app.page("site", only="sandbox")` keeps a guide or a demo to the
+  sandbox: a deploy to production sends the app alone. `pinecall start` follows the same rule, and anything but
+  `sandbox` or `production` is refused as the app is declared.
 
 ## 0.11.37 — an app's own page dictates, the widget's header is a menu, and a page going away ends its call (2026-11-13)
 
 - **An app's page dictates on this machine too.** `pinecall start` answers `POST /pinecall/dictation` beside the
-  page's ticket and its code, with your key and no captcha: the gateway's socket whole, as the deployed
-  page's door answers it.
+  page's ticket and its code, with your key and no captcha: the gateway's socket whole, as the deployed page's door
+  answers it.
 
 ## 0.11.36 — a Python app names its agents by slug, and Brightside Dental is an example in every language (2026-11-13)
 
-- **An agent is named by its slug.** A voice app's `app.py` imported its agents from
-  `pinecall_agents.<folder>.agent`, a package only the loader makes: it ran, and no type checker
-  could read it, nor could one agent import the teammate it passes a call to. A line's `answers`,
-  `team` and `fallback`, a page's `answers`, what a line's function returns, `self.call.handoff`
-  and a flow's `step.call` take the agent's slug, its folder's name, as well as its class:
-  `app.line("+1 415 555 0134", "front-desk", team=["billing"])`. A slug no agent is served as is
-  refused by name.
-- **Brightside Dental, the voice app on pinecall.io's editor, is an example**
-  (`examples/python/brightside_dental`): two agents, a team, a rule, a flow, and the clinic they
-  share, the same app as the TypeScript and Ruby ones.
+- **An agent is named by its slug.** A voice app's `app.py` imported its agents from `pinecall_agents.<folder>.agent`,
+  a package only the loader makes: it ran, and no type checker could read it, nor could one agent import the teammate
+  it passes a call to. A line's `answers`, `team` and `fallback`, a page's `answers`, what a line's function returns,
+  `self.call.handoff` and a flow's `step.call` take the agent's slug, its folder's name, as well as its class:
+  `app.line("+1 415 555 0134", "front-desk", team=["billing"])`. A slug no agent is served as is refused by name.
+- **Brightside Dental, the voice app on pinecall.io's editor, is an example** (`examples/python/brightside_dental`):
+  two agents, a team, a rule, a flow, and the clinic they share, the same app as the TypeScript and Ruby ones.
 
 ## 0.11.35 — a judge reads what the platform said as the platform's (2026-11-13)
 
@@ -72,35 +73,36 @@
 
 ## 0.11.33 — a tool's answer follows what its app said, and the overflow speaks the agent's language (2026-11-13)
 
-- **A file at the project's root that is no voice app says the way out.** `app.py` there is read as the
-  project's voice app; one that is something else (a Flask app) is refused by a sentence that says so, and
-  that another name frees it.
+- **A file at the project's root that is no voice app says the way out.** `app.py` there is read as the project's
+  voice app; one that is something else (a Flask app) is refused by a sentence that says so, and that another name
+  frees it.
 
 ## 0.11.32 — a passed call is answered at once, and the doctor reads a cluster (2026-11-12)
 
-- **A call passed to a teammate is answered by the teammate, at once**, as in TypeScript: what the transfer
-  tool answers says the call is the teammate's, that nobody is left to connect the caller to, and to reply to
-  what they last said. Under the words before, a small model said "one moment while I connect you" and waited.
+- **A call passed to a teammate is answered by the teammate, at once**, as in TypeScript: what the transfer tool
+  answers says the call is the teammate's, that nobody is left to connect the caller to, and to reply to what they
+  last said. Under the words before, a small model said "one moment while I connect you" and waited.
 
 ## 0.11.31 — a voice app, and @agent says what an agent is (2026-11-12)
 
-- **A voice app, as in TypeScript:** `app.py` holds `voice_app(…)`: lines with a greeting, a team
-  (`takes`) the call passes between, a line that chooses who answers, rules every agent keeps,
-  `silence`, `on` for what the app hears, and a page of its own (`app.page("ui/dist")`).
-- **Flows:** `@flow("…")` on an `async def (input, step)`: sleeps, calls, waits and effects kept by
-  the gateway, so a run outlives the process. `app.on(name, flow)` starts one.
+- **A voice app, as in TypeScript:** `app.py` holds `voice_app(…)`: lines with a greeting, a team (`takes`) the call
+  passes between, a line that chooses who answers, rules every agent keeps, `silence`, `on` for what the app hears,
+  and a page of its own (`app.page("ui/dist")`).
+- **Flows:** `@flow("…")` on an `async def (input, step)`: sleeps, calls, waits and effects kept by the gateway, so a
+  run outlives the process. `app.on(name, flow)` starts one.
 - **Tasks:** a tool asks the caller for what it lacks with `self.ask(GetEmail)`; `task(…)` makes one.
 - **The caller's screen:** `screen()`, `part(…)`, `scenes`, `@tool(shows=…)`, `self.call.show(…)`.
 - **An agent declares its `timezone`.**
 
-- **The wire reads `stage.changed`**: the agent's settings name another vendor, model or voice for a stage of a
-  live call. The model and the voice run from its next turn; the ears wait for the next call (`applied` false).
+- **The wire reads `stage.changed`**: the agent's settings name another vendor, model or voice for a stage of a live
+  call. The model and the voice run from its next turn; the ears wait for the next call (`applied` false).
 
 ## 0.11.30 — an app is written whole in its class (2026-11-09)
 
 - **A class declares its monitors:** `monitors`, each a number of its calls and the line it fires across.
 
-- **A tool may be `quiet`:** a move on the caller's screen that runs as the model calls it and asks for no answer, as in TypeScript.
+- **A tool may be `quiet`:** a move on the caller's screen that runs as the model calls it and asks for no answer, as
+  in TypeScript.
 
 - **A class may declare several knowledge bases:** `bases`, in place of `docs`.
 
@@ -108,17 +110,18 @@
 
 ## 0.11.29 — an agent may bear silence, leave a voicemail, and name its own fallbacks (2026-11-09)
 
-- **A class declares the quiet, a machine and its fallbacks:** `silence_timeout`, `idle`, `voicemail`,
-  `stt_fallbacks` and `tts_fallbacks`, each over the agent's settings.
-- **Docs: an app is set by its code.** The CLI and the console no longer write a code agent's settings, so the guides declare the voice, the knowledge, the base it searches and the memory policy on the class.
+- **A class declares the quiet, a machine and its fallbacks:** `silence_timeout`, `idle`, `voicemail`, `stt_fallbacks`
+  and `tts_fallbacks`, each over the agent's settings.
+- **Docs: an app is set by its code.** The CLI and the console no longer write a code agent's settings, so the guides
+  declare the voice, the knowledge, the base it searches and the memory policy on the class.
 - **The wire reads `turn.detection`**: who ends the caller's turn on a spoken call (the ears, livekit's detector or
   Smart Turn), its model, and the least silence it waits. Written once after `call.started`.
 
 ## 0.11.28 — the wire reads vendor.failed and org.quiet (2026-11-05)
 
-- **The wire reads `vendor.failed` and `org.quiet`, and `credits.exhausted` carries `calls`.** A vendor that
-  failed a call, a newborn org with no call that went well, and the calls holding an org's seats when the
-  calls-at-once limit refused: the gateway's, read off the log, nothing for an app to fold.
+- **The wire reads `vendor.failed` and `org.quiet`, and `credits.exhausted` carries `calls`.** A vendor that failed a
+  call, a newborn org with no call that went well, and the calls holding an org's seats when the calls-at-once limit
+  refused: the gateway's, read off the log, nothing for an app to fold.
 
 ## 0.11.27 — released with the CLI's tilde (2026-11-04)
 
@@ -131,24 +134,23 @@
   agent, fixed over the console. `Client.hold_audio` and `.upload_hold_audio` are the doors.
 
 - **A class that declares `docs` pushes its folder.** Once the agent registers, every Markdown file under
-  `agents/<slug>/docs/` is written into the declared base by path, the base's other files kept, once per
-  process: `pinecall start` and a deploy need no `pinecall docs push`. `Client.push_knowledge` is the door.
+  `agents/<slug>/docs/` is written into the declared base by path, the base's other files kept, once per process:
+  `pinecall start` and a deploy need no `pinecall docs push`. `Client.push_knowledge` is the door.
 
-- **`max_duration` and `llm_timeout`** as class attributes: the longest a voice call runs (minutes, or `"off"`)
-  and how long a turn waits for the model's first word (seconds), fixed over the settings.
+- **`max_duration` and `llm_timeout`** as class attributes: the longest a voice call runs (minutes, or `"off"`) and
+  how long a turn waits for the model's first word (seconds), fixed over the settings.
 
-- **A class owns its judges and its personas, as code.** `judges = judges(on=["consent", …],
-  own=[OFFERS_NEXT_SLOT])` names which of Pinecall's judges the agent's calls meet and the agent's
-  own, each an `own_judge(name=…, asks=…, answer=…, choices=…, when=…, trigger=…, reads=…)`;
-  `personas = personas(on=…, own=…)` the same for the callers `pinecall simulate` plays, each of its
-  own an `own_persona(name=…, goal=…, style=…, …)`. `pinecall new` writes both in
-  `agents/<slug>/harness.py`. Both reach the gateway on `agent.configure` (`judges`, `personas` on
-  `AgentConfig`), the console shows them locked, and a wrong one, or two of one name, is refused
-  when the agent registers, by a sentence that names it.
+- **A class owns its judges and its personas, as code.** `judges = judges(on=["consent", …], own=[OFFERS_NEXT_SLOT])`
+  names which of Pinecall's judges the agent's calls meet and the agent's own, each an `own_judge(name=…, asks=…,
+  answer=…, choices=…, when=…, trigger=…, reads=…)`; `personas = personas(on=…, own=…)` the same for the callers
+  `pinecall simulate` plays, each of its own an `own_persona(name=…, goal=…, style=…, …)`. `pinecall new` writes both
+  in `agents/<slug>/harness.py`. Both reach the gateway on `agent.configure` (`judges`, `personas` on `AgentConfig`),
+  the console shows them locked, and a wrong one, or two of one name, is refused when the agent registers, by a
+  sentence that names it.
 
-- **`agent.waiting` is read.** The runtime writes it when the agent's turn is over: every sentence of the
-  reply played, every tool it called run. An app on an earlier version logged `unknown event type: agent.waiting`
-  on every turn; this one parses it and leaves it to `call.on`.
+- **`agent.waiting` is read.** The runtime writes it when the agent's turn is over: every sentence of the reply
+  played, every tool it called run. An app on an earlier version logged `unknown event type: agent.waiting` on every
+  turn; this one parses it and leaves it to `call.on`.
 
 ## 0.11.24 — released with the dot's marked walk (2026-10-25)
 
@@ -158,10 +160,10 @@
 
 ## 0.11.21 — released with the tutor's walks (2026-10-25)
 
-- **The view's `resumed` is true on a call handed over mid-conversation**; it never was on a live call.
-  (2026-10-24 tools eval, P F3)
-- **`remembers("…")` matches case aside**, as in TypeScript and Ruby: "usual doctor" is in
-  "Usual doctor is Dr. Vidal.". (P F7)
+- **The view's `resumed` is true on a call handed over mid-conversation**; it never was on a live call. (2026-10-24
+  tools eval, P F3)
+- **`remembers("…")` matches case aside**, as in TypeScript and Ruby: "usual doctor" is in "Usual doctor is Dr.
+  Vidal.". (P F7)
 - **`call.history.length`** (and `len(call.history)`), the count every SDK's page names. (P F4)
 
 ## 0.11.20 — released with the runtime's live readers (2026-10-24)
@@ -182,30 +184,30 @@
 
 ## 0.11.16 — a failing view or hook fails its call, every write names its author, pii masked everywhere (2026-10-23)
 
-- **A view that cannot be rendered fails its call**: the opening no longer stops half way (no state, no
-  following) when the view raises; the call's log gets a `render.failed` line and the model keeps the view
-  it had. (found by the 2026-10-23 eval, B B8)
-- **A hook that raises fails its call, not the rest of it**: the call's log gets a `hook.failed` line naming
-  the hook (and the event) and the error, and the opening no longer stops half way when `on_call` raises.
-  (found by the 2026-10-23 eval, B B8)
-- **Every state write carries its author on the wire** (`StateSet.cause`: tool and call id, event and
-  entry, or hook `on_call`/`on_memory`), and `EventMeta.seq` is the log's seq of the entry (it was a per-call
-  counter); the `state.cause` custom line is gone. (found by the 2026-10-23 eval, B B4)
-- **A line logged in `on_call` lands on the call's log**, as `on_end`'s already did. (found by the 2026-10-23
-  eval, B B3)
-- **The SDK sends `call.done` after the end hook, and registers `says_done`**, so the gateway's seal waits for
-  what the hook logs before it seals the log. (found by the 2026-10-23 eval, S2)
-- **`call.to`, `call.direction`, `call.caller` and `call.metadata`** (the token's, sealed). (found by the
-  2026-10-23 eval, K F6)
-- **`python -m pinecall.serve start` prints what the log keeps** (private values masked), says on stderr
-  when an admin kills an agent (`Client.on_killed`), and the client no longer answers `end_call`. (found by
-  the 2026-10-23 eval, A F3, J F3, R2)
+- **A view that cannot be rendered fails its call**: the opening no longer stops half way (no state, no following)
+  when the view raises; the call's log gets a `render.failed` line and the model keeps the view it had. (found by the
+  2026-10-23 eval, B B8)
+- **A hook that raises fails its call, not the rest of it**: the call's log gets a `hook.failed` line naming the hook
+  (and the event) and the error, and the opening no longer stops half way when `on_call` raises. (found by the
+  2026-10-23 eval, B B8)
+- **Every state write carries its author on the wire** (`StateSet.cause`: tool and call id, event and entry, or hook
+  `on_call`/`on_memory`), and `EventMeta.seq` is the log's seq of the entry (it was a per-call counter); the
+  `state.cause` custom line is gone. (found by the 2026-10-23 eval, B B4)
+- **A line logged in `on_call` lands on the call's log**, as `on_end`'s already did. (found by the 2026-10-23 eval, B
+  B3)
+- **The SDK sends `call.done` after the end hook, and registers `says_done`**, so the gateway's seal waits for what
+  the hook logs before it seals the log. (found by the 2026-10-23 eval, S2)
+- **`call.to`, `call.direction`, `call.caller` and `call.metadata`** (the token's, sealed). (found by the 2026-10-23
+  eval, K F6)
+- **`python -m pinecall.serve start` prints what the log keeps** (private values masked), says on stderr when an admin
+  kills an agent (`Client.on_killed`), and the client no longer answers `end_call`. (found by the 2026-10-23 eval, A
+  F3, J F3, R2)
 
 ## 0.11.15 — the serve entry registers as its host (2026-10-23)
 
-- **The serve entry registers as `PINECALL_HOST` when it is set**, else as this machine's
-  hostname (`Client.host`). A hosted app's runner names each host, and the gateway knows a release
-  is serving by it, on a machine that runs several.
+- **The serve entry registers as `PINECALL_HOST` when it is set**, else as this machine's hostname (`Client.host`). A
+  hosted app's runner names each host, and the gateway knows a release is serving by it, on a machine that runs
+  several.
 
 ## 0.11.14 — released with every other package (2026-10-23)
 
@@ -213,8 +215,8 @@
 
 ## 0.11.13 — the wire knows `app.failed` (2026-10-23)
 
-- **The wire knows `app.failed`, a feed event.** A hosted app that did not build, start or stay up: the org's alert, read by
-  the console; an app acts on none of it.
+- **The wire knows `app.failed`, a feed event.** A hosted app that did not build, start or stay up: the org's alert,
+  read by the console; an app acts on none of it.
 
 ## 0.11.12 — released with every other package (2026-10-23)
 
@@ -238,30 +240,29 @@
 
 ## 0.11.7 — The wire knows the feed's tool.ran, tool.failed and judge.broke (2026-10-20)
 
-- **The wire knows the feed's `tool.ran`, `tool.failed` and `judge.broke`.** Each with only its
-  call, agent and name (and seconds): the org's feed says a tool answered or failed and a judge
-  found a call broken, never what it said.
+- **The wire knows the feed's `tool.ran`, `tool.failed` and `judge.broke`.** Each with only its call, agent and name
+  (and seconds): the org's feed says a tool answered or failed and a judge found a call broken, never what it said.
 
 ## 0.11.6 — A tool's untyped parameter with a default takes the default's type (2026-10-19)
 
-- **A tool's parameter with a default and no annotation takes the default's type.** `cantidad=1`
-  reached the model as text to fill; an int, a float, a bool or a str default now types it.
+- **A tool's parameter with a default and no annotation takes the default's type.** `cantidad=1` reached the model as
+  text to fill; an int, a float, a bool or a str default now types it.
 
 ## 0.11.5 — @realtime: a voice call's model that hears and speaks itself, beside the @llm (2026-10-19)
 
-- **A voice call runs on a realtime model while a written call keeps the LLM.** `@realtime("xai/grok-voice-3.0", options={"voice": "eve"})` names the
-  model the agent's voice calls (phone and web) run on alone, one that hears and speaks itself — no
-  ears, its own voice — while the `llm` keeps answering its written calls. Its options run on the
+- **A voice call runs on a realtime model while a written call keeps the LLM.** `@realtime("xai/grok-voice-3.0",
+  options={"voice": "eve"})` names the model the agent's voice calls (phone and web) run on alone, one that hears and
+  speaks itself — no ears, its own voice — while the `llm` keeps answering its written calls. Its options run on the
   org's own key for the vendor; an `llm` that names such a model is refused at registration.
 
-- **An agent an admin killed is declared no more.** An `error` coded `killed` on one agent
-  (`POST /v1/agents/{slug}/kill`) drops it from the agents the client declares: the socket stays,
-  the other agents go on, and a reconnect leaves the killed one out.
+- **An agent an admin killed is declared no more.** An `error` coded `killed` on one agent (`POST
+  /v1/agents/{slug}/kill`) drops it from the agents the client declares: the socket stays, the other agents go on, and
+  a reconnect leaves the killed one out.
 
-- **An agent no longer says it will check and then stops.** The first protocol every agent is given now
-  says to call the tool in the same reply, that saying it is about to act does not act, and never to ask
-  the caller to wait: once it stops talking nothing happens until the caller speaks. Open models said
-  "Let me check the details of your order. Please wait." and ended the turn (2026-10-18).
+- **An agent no longer says it will check and then stops.** The first protocol every agent is given now says to call
+  the tool in the same reply, that saying it is about to act does not act, and never to ask the caller to wait: once
+  it stops talking nothing happens until the caller speaks. Open models said "Let me check the details of your order.
+  Please wait." and ended the turn (2026-10-18).
 
 ## 0.11.4 — Released with every other package (2026-10-17)
 
@@ -289,9 +290,8 @@
 
 ## 0.10.0 — One repository, one version (2026-10-12)
 
-- Published from [pinecall/pinecall](https://github.com/pinecall/pinecall) with every other
-  Pinecall package, at the one version they all carry from here on. Nothing a server
-  imports changes.
+- Published from [pinecall/pinecall](https://github.com/pinecall/pinecall) with every other Pinecall package, at the
+  one version they all carry from here on. Nothing a server imports changes.
 
 ## 0.1.13 — The wire reads evals.spent, call.started.expects and call.summary.run (2026-10-11)
 
