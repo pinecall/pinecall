@@ -49,6 +49,17 @@ class Called:
     message: str | None = None
 
 
+@dataclass(frozen=True)
+class Texted:
+    """What a text a flow sent came to; `refused` names why nothing was sent."""
+
+    sent: bool
+    call: str | None = None
+    from_: str | None = None
+    refused: str | None = None
+    message: str | None = None
+
+
 @dataclass
 class Flow:
     """A flow by its name, which is how the gateway knows its runs."""
@@ -187,6 +198,26 @@ class Step:
         said = cast("JsonObject", await self._waited("call", asked) or {})
         known = {name: said.get(name) for name in ("reason", "call", "refused", "message")}
         return Called(answered=bool(said.get("answered")), **cast("dict[str, str | None]", known))
+
+    async def text(
+        self, to: str, agent: type | str, words: str, *, from_: str | None = None
+    ) -> Texted:
+        """Have an agent, its class or its slug, send a contact one SMS first."""
+        cls = _config.agent_named(agent) if isinstance(agent, str) else agent
+        slug = None if cls is None else self._slug_of(cls)
+        if slug is None:
+            named = agent if isinstance(agent, str) else agent.__name__
+            raise DeclarationRefused(f"{self._of.name}: {named} is no agent this process serves")
+        asked: JsonObject = {"agent": slug, "to": to, "text": words}
+        if from_ is not None:
+            asked["from"] = from_
+        said = cast("JsonObject", await self._waited("text", asked) or {})
+        known = {name: said.get(name) for name in ("call", "refused", "message")}
+        return Texted(
+            sent=bool(said.get("sent")),
+            from_=cast("str | None", said.get("from")),
+            **cast("dict[str, str | None]", known),
+        )
 
     async def wait_for(
         self, event: str, *, match: JsonObject | None = None, within: str | None = None

@@ -264,6 +264,7 @@ class StepKind(StrEnum):
     wait = "wait"
     run = "run"
     emit = "emit"
+    text = "text"
 
 
 class AppKind(StrEnum):

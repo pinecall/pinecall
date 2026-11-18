@@ -2,7 +2,7 @@
 
 import pytest
 
-from pinecall import Agent, Called, DeclarationRefused, Step, _config, flow
+from pinecall import Agent, Called, DeclarationRefused, Step, Texted, _config, flow
 from pinecall._app_work import AppDoor
 from pinecall.flows import FlowChanged, StepUnwritten, advance, cancelled, seconds_of, started
 from pinecall.wire._names import JsonObject
@@ -97,6 +97,36 @@ async def test_a_call_step_dials_as_the_agents_slug_and_reads_how_it_ended(
         "instruction": "Remind them.",
     }
     assert ended == [Called(answered=False, refused="Forbidden", message="a stranger")]
+
+
+async def test_a_text_step_writes_as_the_agents_slug_and_reads_what_it_came_to(
+    door: AppDoor, kept: KeptApp
+) -> None:
+    sent: list[Texted] = []
+
+    @flow("remind-visit")
+    async def remind(visit: JsonObject, step: Step) -> None:
+        words = "Your cleaning is tomorrow at 9:30."
+        sent.append(await step.text(str(visit["phone"]), Reminder, words, from_="+14155550134"))
+        kept.texted = {"sent": False, "refused": "Forbidden", "message": "they stopped"}
+        sent.append(await step.text(str(visit["phone"]), Reminder, "One more thing."))
+
+    run = await started(door, remind, "visit-7", {"phone": "+59899000001"})
+    assert (await advance(door, remind, run, slug_of)).status == "done"
+    steps = kept.runs[run.id]["steps"]
+    assert [step["asked"] for step in steps] == [  # type: ignore[union-attr]
+        {
+            "agent": "brightside-reminder",
+            "to": "+59899000001",
+            "text": "Your cleaning is tomorrow at 9:30.",
+            "from": "+14155550134",
+        },
+        {"agent": "brightside-reminder", "to": "+59899000001", "text": "One more thing."},
+    ]
+    assert sent == [
+        Texted(sent=True, call="call_text", from_="+14155550134"),
+        Texted(sent=False, refused="Forbidden", message="they stopped"),
+    ]
 
 
 async def test_a_call_step_takes_the_agent_by_its_slug_and_refuses_one_nobody_is_served_as(

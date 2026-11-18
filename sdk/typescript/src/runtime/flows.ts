@@ -17,6 +17,17 @@ export interface Called {
   message?: string;
 }
 
+/** What a text a flow sent came to. `refused` names why nothing was sent: a dial guard, a contact who stopped, nobody holding the agent. */
+export interface Texted {
+  sent: boolean;
+  /** The conversation the words were said on. */
+  call?: string;
+  /** The number they left from. */
+  from?: string;
+  refused?: string;
+  message?: string;
+}
+
 /** What a call a flow places opens with. */
 export interface Opening {
   state?: Data;
@@ -37,6 +48,8 @@ export interface Step {
   sleepUntil(at: Date | string, options?: { before?: string }): Promise<void>;
   /** Have an agent call a number, and wait for how the call ended. */
   call(to: string, agent: Ctor, opening?: Opening): Promise<Called>;
+  /** Have an agent send a contact one SMS first, from a number it answers SMS at: `step.text(visit.phone, Reminder, "Your cleaning is tomorrow at 9:30.")`. */
+  text(to: string, agent: Ctor, words: string, options?: { from?: string }): Promise<Texted>;
   /** Wait for an event of the app whose data has what `match` names, for `within` at most; null when it gave up. */
   waitFor(event: string, options?: { match?: Data; within?: string }): Promise<Data | null>;
   /** Run something once: what it returned is kept, and read back instead of run again. */
@@ -149,7 +162,7 @@ export async function advance(door: AppDoor, of: Flow, run: KeptRun, slugOf: (ag
     return before;
   };
   // A step that waits: written, and the function left there unless the gateway answered it at once.
-  const waited = async (kind: "sleep" | "wait" | "call", asked: Data): Promise<unknown> => {
+  const waited = async (kind: "sleep" | "wait" | "call" | "text", asked: Data): Promise<unknown> => {
     const before = written(kind);
     if (before?.over === true) return before.result;
     if (before !== undefined) throw new Parked();
@@ -168,6 +181,12 @@ export async function advance(door: AppDoor, of: Flow, run: KeptRun, slugOf: (ag
       const slug = slugOf(agent);
       if (slug === undefined) throw new DeclarationRefused(`${of.name}: ${agent.name} is no agent this process serves`);
       return (await waited("call", { agent: slug, to, ...opening })) as Called;
+    },
+    // Over as it is written: what the gateway answered is read back, and the words are never sent twice.
+    text: async (to, agent, words, options = {}) => {
+      const slug = slugOf(agent);
+      if (slug === undefined) throw new DeclarationRefused(`${of.name}: ${agent.name} is no agent this process serves`);
+      return (await waited("text", { agent: slug, to, text: words, ...(options.from === undefined ? {} : { from: options.from }) })) as Texted;
     },
     waitFor: async (event, options = {}) => {
       const until = options.within === undefined ? {} : { until: new Date(Date.now() + secondsOf(options.within) * 1000).toISOString() };

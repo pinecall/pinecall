@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Agent } from "../../src/agent/agent.js";
 import { DeclarationRefused } from "../../src/agent/tools.js";
-import { advance, cancelled, flow, secondsOf, started, StepUnwritten, type Called } from "../../src/runtime/flows.js";
+import { advance, cancelled, flow, secondsOf, started, StepUnwritten, type Called, type Texted } from "../../src/runtime/flows.js";
 
 import { KeptApp } from "./kept/gateway.js";
 
@@ -107,6 +107,23 @@ describe("a run", () => {
 
     expect(await advance(kept.door, remind, await started(kept.door, remind, "visit-7", {}), slugOf)).toEqual({ status: "done" });
     expect(ended).toEqual([{ answered: false, refused: "QuietHours", message: "it is 23:10 there" }]);
+  });
+
+  it("sends a text as the agent's slug, over as it is written, and reads what refused one", async () => {
+    const sent: Texted[] = [];
+    const remind = flow("remind-visit", async (visit, step) => {
+      sent.push(await step.text(String(visit["phone"]), Reminder, "Your cleaning is tomorrow at 9:30.", { from: "+14155550134" }));
+      kept.texted = { sent: false, refused: "Forbidden", message: "+14155550142 asked for no more messages" };
+      sent.push(await step.text(String(visit["phone"]), Reminder, "One more thing."));
+    });
+
+    const run = await started(kept.door, remind, "visit-7", { phone: "+14155550142" });
+    expect(await advance(kept.door, remind, run, slugOf)).toEqual({ status: "done" });
+    expect(kept.runs.get(run.id)!.steps.map((step) => [step.kind, step.asked])).toEqual([
+      ["text", { agent: "brightside-reminder", to: "+14155550142", text: "Your cleaning is tomorrow at 9:30.", from: "+14155550134" }],
+      ["text", { agent: "brightside-reminder", to: "+14155550142", text: "One more thing." }],
+    ]);
+    expect(sent).toEqual([{ sent: true, call: "call_text", from: "+14155550134" }, { sent: false, refused: "Forbidden", message: "+14155550142 asked for no more messages" }]);
   });
 
   it("waits for an event, and reads null when it gave up", async () => {

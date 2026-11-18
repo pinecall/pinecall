@@ -13,6 +13,8 @@ export class KeptApp {
   readonly asked: string[] = [];
   /** A call step answered at once, as a dial a guard refused is. */
   refuses: unknown;
+  /** What a text step is answered: it is over as it is written. */
+  texted: unknown = { sent: true, call: "call_text", from: "+14155550134" };
   /** What a call told to take another agent's stages is answered. */
   staged = 202;
   /** When set, every write of a step fails with it. */
@@ -80,6 +82,7 @@ export class KeptApp {
       const step: JournalStep = { seq: Number(body["seq"]), kind, asked: (body["asked"] as Record<string, unknown>) ?? {}, over: false, result: null };
       if (kind === "run" || kind === "emit") Object.assign(step, { over: true, result: body["result"] ?? null });
       else if (kind === "call" && this.refuses !== undefined) Object.assign(step, { over: true, result: this.refuses });
+      else if (kind === "text") Object.assign(step, { over: true, result: this.texted });
       else run.status = WAITS[kind]!;
       if (kind === "emit") this.send(String(step.asked["name"]), step.asked["data"] as Record<string, unknown>);
       run.steps.push(step);

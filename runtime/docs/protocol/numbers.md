@@ -193,7 +193,9 @@ is one of the numbers the agent answers SMS at in the key's environment, the fir
 1600 characters at most, sent as several messages when it is long. A contact whose conversation has
 idle time left is written on it, as one more message. Any other is cold, and passes every guard a dial
 does on one row of the same ledger ("Dialling out"): the number's shape, a stranger unless the org
-dials anywhere, the consent on file or given with the request, the hours, the pace. A contact who
+dials anywhere, the consent on file or given with the request, the hours, the pace. The hours and the
+pace are the calls' own, one count for both: under the TCPA a text is a call (47 CFR 64.1200), so a
+contact rung twice today is not also written to past the org's `per_number_day`. A contact who
 stopped the messages in writing is `403` in either environment, whatever consent the request
 carries. Nobody holding the agent is `409`: what they answer would reach no app. The words are a `say`
 on the call (`supervisor.verb`, by whoever holds the key), logged as the agent's turn and sent by the

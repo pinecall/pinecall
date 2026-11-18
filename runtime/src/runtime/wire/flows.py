@@ -16,6 +16,7 @@ A_SLEEP_ASKS = "a sleep step asks {until}: a time, ISO 8601 with its zone: 2026-
 A_WAIT_ASKS = "a wait step asks {event, match?, until?}: the event's name, what of its data must match, and a time"
 A_CALL_ASKS = "a call step asks {agent, to}: the agent that calls, and the number in +E.164"
 AN_EMIT_ASKS = "an emit step asks {name, data?}: the event's name, and what it carries"
+A_TEXT_ASKS = "a text step asks {agent, to, text}: the agent that writes, the number in +E.164, and the words"
 
 
 def fit(given: JsonObject) -> JsonObject:
@@ -78,6 +79,15 @@ class CallStep(_Asked):
     instruction: Words = None
 
 
+class TextStep(_Asked):
+    """`text` asks `{agent, to, text, from?}`: who writes, the contact's number, and the words of one SMS."""
+
+    agent: str
+    to: str
+    text: str = Field(min_length=1, max_length=1600)
+    from_: Words = Field(default=None, alias="from")
+
+
 class EmitStep(_Asked):
     """`emit` asks `{name, data?}`: an event sent to the run's own app."""
 
@@ -91,7 +101,7 @@ class RunStep(WireModel):
     result: Json = None
 
 
-type Step = SleepStep | WaitStep | CallStep | RunStep | EmitStep
+type Step = SleepStep | WaitStep | CallStep | RunStep | EmitStep | TextStep
 
 
 # What it asks is read after the journal was looked at (`flows.service.write_step`), never as the body
@@ -118,5 +128,7 @@ class StepSent(WireModel):
                 return CallStep.parse(self.asked, A_CALL_ASKS)
             case StepKind.emit:
                 return EmitStep.parse(self.asked, AN_EMIT_ASKS)
+            case StepKind.text:
+                return TextStep.parse(self.asked, A_TEXT_ASKS)
             case StepKind.run:
                 return RunStep(result=self.result)

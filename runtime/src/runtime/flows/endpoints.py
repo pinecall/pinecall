@@ -6,7 +6,7 @@ from fastapi import APIRouter, Query
 
 from runtime.enums import RunStatus
 from runtime.flows import schemas, service
-from runtime.flows.auth import TheApp, TheAppRead, TheDial, TheHolders
+from runtime.flows.auth import TheApp, TheAppRead, TheLiveSide
 from runtime.handles import TheSessions
 from runtime.live.auth import AppKey
 from runtime.postgres import Session
@@ -63,12 +63,11 @@ async def write_step(
     run: str,
     body: schemas.StepRequest,
     actor: AppKey,
-    holders: TheHolders,
-    dial: TheDial,
+    side: TheLiveSide,
     session: Session,
 ) -> schemas.RunRow:
-    """Write the run's next step: a sleep, a wait, a call, or what a step the process ran came to."""
-    return schemas.RunRow.of(await service.write_step(session, holders, dial, app, run, actor.asked_by, body))
+    """Write the run's next step: a sleep, a wait, a call, a text, or what a step the process ran came to."""
+    return schemas.RunRow.of(await service.write_step(session, side, app, run, actor.asked_by, body))
 
 
 @router.post("/v1/apps/{app}/runs/{run}/end")

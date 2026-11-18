@@ -19,7 +19,8 @@ from runtime.kit.text import Json, JsonObject
 from runtime.kit.time import now
 from runtime.live import service as live
 from runtime.scoping import box_wide
-from runtime.wire.flows import CallStep, EmitStep, RunStep, SleepStep, StepSent, WaitStep
+from runtime.wire.flows import CallStep, EmitStep, RunStep, SleepStep, StepSent, TextStep, WaitStep
+from runtime.wire.parts import Supervisor
 
 # A process that took work and died gives it back after this long; one that lives asks again sooner.
 LEASED_FOR = timedelta(seconds=60)
@@ -79,6 +80,16 @@ class Holders(Protocol):
 
 
 type Dial = Callable[[AsyncSession, live.Placement], Awaitable[live.PlacedCall]]
+type SendText = Callable[[AsyncSession, live.Texting], Awaitable[live.Texted]]
+
+
+@dataclass(frozen=True, slots=True)
+class LiveSide:
+    """What a step reaches of the live side: who holds an agent, the dial, the text."""
+
+    holders: Holders
+    dial: Dial
+    text: SendText
 
 
 # ── a run's moves ──
@@ -265,7 +276,7 @@ async def cancel_run(session: AsyncSession, app: App, run: str) -> FlowRun:
 # 2026-11 no step renewed the lease, and of two processes of one app the second was handed a run the
 # first was still writing once a stretch of it passed LEASED_FOR, so the flow's code ran twice.
 async def write_step(
-    session: AsyncSession, holders: Holders, dial: Dial, app: App, run: str, asked_by: str, sent: StepSent
+    session: AsyncSession, side: LiveSide, app: App, run: str, asked_by: str, sent: StepSent
 ) -> FlowRun:
     """Write the run's next step. One sent again is the one already written, so a retry writes nothing twice."""
     found = await _get(session, app, run, locked=True)
@@ -295,9 +306,11 @@ async def write_step(
         case WaitStep(event=event, match=wanted, until=hour):
             await _park(session, found, Event(event, wanted, hour))
         case CallStep() as asked:
-            refused = await _call(session, holders, dial, app, found, sent.seq, asked, asked_by)
+            refused = await _call(session, side.holders, side.dial, app, found, sent.seq, asked, asked_by)
             if refused is not None:
                 row.result = {"value": refused}
+        case TextStep() as asked:
+            row.result = {"value": await _text(session, side, app, asked, asked_by)}
     if found.status == RunStatus.ready:
         found.leased_until, found.moved_at = now() + LEASED_FOR, now()
     await steps.add(row)
@@ -345,6 +358,21 @@ async def _call(
         return {"answered": False, "refused": type(refused).__name__, "message": refused.message}
     park(run, Call(placed.call, at + LONGEST_CALL))
     return None
+
+
+# A text is over as it is written, and what refused it is the step's answer as a refused dial is. The
+# words are said on the conversation before this transaction commits: a step whose request died in
+# that moment is sent again by the flow's next stretch, and the contact reads the words twice.
+async def _text(session: AsyncSession, side: LiveSide, app: App, asked: TextStep, asked_by: str) -> JsonObject:
+    if side.holders.find_serving(app.scope, asked.agent) is None:
+        return {"sent": False, "refused": NO_APP, "message": f"nobody holds {asked.agent}"}
+    wanted = live.Text(to=asked.to, text=asked.text, shown=asked.from_)
+    by = Supervisor(id=asked_by, name=None)
+    try:
+        texted = await side.text(session, live.Texting(app.scope, asked.agent, wanted, by, now()))
+    except PinecallError as refused:
+        return {"sent": False, "refused": type(refused).__name__, "message": refused.message}
+    return {"sent": True, "call": texted.call, "from": texted.shown}
 
 
 async def _park(session: AsyncSession, run: FlowRun, on: Clock | Event) -> None:

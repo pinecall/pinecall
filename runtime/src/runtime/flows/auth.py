@@ -9,10 +9,10 @@ from runtime.actor import Actor
 from runtime.auth import Authenticator
 from runtime.enums import KeyScope
 from runtime.flows.repository import App
-from runtime.flows.service import Dial, Holders
+from runtime.flows.service import Dial, Holders, LiveSide
 from runtime.kit.text import parse_slug
 from runtime.live import service as live
-from runtime.live.auth import AppKey, TheLive
+from runtime.live.auth import AppKey, TheLive, TheWhatsappThreads
 
 # An app's runs are read with the key its process serves with, or by who reads the calls.
 ReadsRuns = Annotated[Actor, Depends(Authenticator(KeyScope.app, KeyScope.calls))]
@@ -56,5 +56,14 @@ def holders_of(parts: TheLive) -> Holders:
     return parts.holders
 
 
-TheDial = Annotated[Dial, Depends(dial_of)]
-TheHolders = Annotated[Holders, Depends(holders_of)]
+# A text step writes as the text endpoint does, on the threads this gateway keeps.
+def live_side_of(parts: TheLive, threads: TheWhatsappThreads) -> LiveSide:
+    """What a step reaches of the live side, bound to what serves calls and threads on this gateway."""
+
+    async def text(session: AsyncSession, texting: live.Texting) -> live.Texted:
+        return await live.send_text(session, parts, threads, texting)
+
+    return LiveSide(holders_of(parts), dial_of(parts), text)
+
+
+TheLiveSide = Annotated[LiveSide, Depends(live_side_of)]

@@ -72,6 +72,21 @@ class FlowsTest < Minitest::Test
     assert_equal "Forbidden", ended.first.refused
   end
 
+  def test_a_text_step_writes_as_the_agents_slug_and_reads_what_it_came_to
+    sent = []
+    remind = Pinecall.flow("remind-visit") do |visit, step|
+      sent << step.text(visit[:phone], Reminder, "Your cleaning is tomorrow at 9:30.", from: "+14155550134")
+      @kept.texted = { sent: false, refused: "Forbidden", message: "they stopped" }
+      sent << step.text(visit[:phone], Reminder, "One more thing.")
+    end
+
+    assert_equal "done", remind.advance(@door, remind.started(@door, "visit-7", { phone: "+59899000001" }), SLUG_OF).status
+    asked = { agent: "brightside-reminder", to: "+59899000001", text: "Your cleaning is tomorrow at 9:30.", from: "+14155550134" }
+    assert_equal asked, @kept.runs["run_1"][:steps].first[:asked]
+    assert_equal [true, "call_text", "+14155550134"], [sent.first.sent, sent.first.call, sent.first.from]
+    assert_equal [false, "Forbidden"], [sent.last.sent, sent.last.refused]
+  end
+
   def test_a_step_the_gateway_could_not_write_leaves_the_run_as_it_was
     remind = Pinecall.flow("remind-visit") { |_visit, step| step.sleep("1h") }
     run = remind.started(@door, "visit-7", {})

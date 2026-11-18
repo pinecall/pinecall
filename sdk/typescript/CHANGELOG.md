@@ -5,6 +5,12 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
+## Unreleased
+
+- **`step.text(to, Agent, words)`**: a flow has an agent send a contact one SMS first, from a number it answers SMS
+  at (`{ from }` picks one), past the guards a call passes. It answers at once with a `Texted`: `sent`, the `call` the
+  words were said on, or what `refused` it (a guard, a contact who stopped the messages, nobody holding the agent).
+
 ## 0.11.48 — an agent writes first by SMS, and a person's message on a thread reaches the contact (2026-11-18)
 
 - Released with the runtime: nothing of this package changed.

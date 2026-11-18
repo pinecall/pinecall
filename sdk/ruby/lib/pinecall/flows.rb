@@ -13,6 +13,9 @@ module Pinecall
     # What a call a flow placed came to; `refused` names why nothing rang.
     Called = Data.define(:answered, :reason, :call, :refused, :message)
 
+    # What a text a flow sent came to; `refused` names why nothing was sent.
+    Texted = Data.define(:sent, :call, :from, :refused, :message)
+
     # Where a stretch of a run left it; a failed one says what its function raised.
     Advanced = Data.define(:status, :error)
 
@@ -114,6 +117,16 @@ module Pinecall
         asked = { agent: slug, to:, state:, metadata:, greeting:, instruction:, from: }.compact
         said = waited("call", asked) || {}
         Called.new(answered: said[:answered] == true, reason: said[:reason], call: said[:call], refused: said[:refused],
+                   message: said[:message])
+      end
+
+      # Have an agent send a contact one SMS first, from a number it answers SMS at.
+      def text(to, agent, words, from: nil)
+        slug = @slug_of.call(agent)
+        raise DeclarationRefused, "#{@flow.name}: #{agent} is no agent this process serves" if slug.nil?
+
+        said = waited("text", { agent: slug, to:, text: words, from: }.compact) || {}
+        Texted.new(sent: said[:sent] == true, call: said[:call], from: said[:from], refused: said[:refused],
                    message: said[:message])
       end
 

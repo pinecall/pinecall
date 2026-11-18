@@ -34,7 +34,7 @@ export { ToolFailed, runTool } from "./runtime/run-tool.js";
 export * from "./runtime/connect.js";
 export { GetEmail, GetName, GetPhone, task, type Task, type TaskSpec } from "./agent/tasks.js";
 export { part, screenOf, type Asked, type Part, type Screen, type ScreenNode } from "./agent/screen.js";
-export { Flow, flow, type Called, type FlowBody, type Opening, type Step } from "./runtime/flows.js";
+export { Flow, flow, type Called, type FlowBody, type Opening, type Step, type Texted } from "./runtime/flows.js";
 export { VoiceApp, voiceApp, type AppOptions, type Heard, type Hearing, type Line, type LineOptions, type Page, type Silence } from "./runtime/app.js";
 export type { Answering, Team } from "./runtime/handoff.js";
 export * from "./agent/visibility.js";

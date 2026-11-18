@@ -63,11 +63,15 @@ since the function changed under its run. Only a `ready` run takes a new step.
 | `wait` | `{event, match?, until?}` | the run is `waiting` for an event of that name whose data has every key of `match` with the same value; at `until` it gives up, and the step's result is `null` |
 | `call` | `{agent, to, from?, state?, metadata?, greeting?, instruction?}` | places the call as `POST /v1/agents/{agent}/dial` does, after the same guards ([numbers.md](numbers.md)); the run is `calling` until the call ends |
 
+| `text` | `{agent, to, text, from?}` | sends the contact one SMS as `POST /v1/agents/{agent}/text` does, after the same guards ([numbers.md](numbers.md), "SMS"); over as it is written |
+
 Each step reads back as `{seq, kind, asked, over, result}`. A `sleep` ends with `null`, a `wait`
 with the event's data, a `call` with `{answered, reason, call}`: `reason` is the call's end reason,
 and `answered` is false for `no_answer`, `busy` and `dial_failed`. A dial the guards refused, or an
 agent nobody is holding, is the step's result and no error: `{answered: false, refused, message}`,
-written at once with the run still `ready`, so the function reads which guard and goes on. The
+written at once with the run still `ready`, so the function reads which guard and goes on. A `text`
+ends with `{sent: true, call, from}`, the conversation it was said on, or `{sent: false, refused,
+message}` the same way: a guard, a contact who stopped the messages, nobody holding the agent. The
 call's metadata carries `flow_run`, the run that placed it. Cancelling a run does not end a call it
 placed.
 

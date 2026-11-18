@@ -97,6 +97,7 @@ already in the journal answers what it came to. What must happen once goes insid
 | `step.sleep("2h")` | the run sleeps: a number and `s`, `m`, `h` or `d` |
 | `step.sleep_until(at, before: "24h")` | until a `Time` or an ISO string, or that long before it |
 | `step.call(to, Agent, state:, metadata:, greeting:, instruction:, from:)` | the agent calls the number; a `Flow::Called` says how it ended, or why nothing rang |
+| `step.text(to, Agent, words, from:)` | the agent sends the contact one SMS first; a `Flow::Texted` says the call it was said on, or why nothing was sent |
 | `step.wait_for(event, match:, within:)` | an event sent to the app whose data has what `match` names; nil once `within` passed |
 | `step.run { … }` | your own code, once; what it returned is kept |
 | `step.emit(name, data)` | sends an event to the app |

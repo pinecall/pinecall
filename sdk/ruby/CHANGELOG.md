@@ -4,6 +4,11 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## Unreleased
+
+- **`step.text(to, Agent, words)`**: a flow has an agent send a contact one SMS first, from a number it answers SMS
+  at (`from:`), and reads what it came to as a `Texted`: `sent`, the `call` it was said on, or what `refused` it.
+
 ## [0.11.48] — an agent writes first by SMS, and a person's message on a thread reaches the contact (2026-11-18)
 
 - Released with the runtime: nothing of this package changed.

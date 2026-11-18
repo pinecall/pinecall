@@ -33,24 +33,46 @@ class Text:
 
 
 @dataclass(frozen=True, slots=True)
+class Texting:
+    """A text asked for: the scope, the agent, what is asked, who asked and when."""
+
+    scope: Scope
+    agent: str
+    asked: Text
+    by: Supervisor
+    at: datetime
+    # The contact is the asker's own verified phone: a test, held to no contact's hours.
+    own_phone: bool = False
+
+
+@dataclass(frozen=True, slots=True)
 class Texted:
-    """A text a key asked for, said on its conversation: the call it is, and the number it left from."""
+    """A text said on its conversation: the call it is, and the number it left from."""
 
     call: str
     to: str
     shown: str
 
 
-# A contact who asked for no more messages is written to by nobody, in either env: only their own
-# START lifts it. A conversation that has idle time left is the contact's own doing, and the text is
-# one more message of it; a cold one passes every guard a dial does (a stranger, the consent, the
-# hours, the pace), on one row of the same ledger. The words are said as a supervisor's are, so the
-# log names who asked, and they reach the contact by the conversation's own reply tap.
+# Asked with a key, for one of its agents, as a dial is.
 async def text_as_agent(
     session: AsyncSession, live: LiveParts, threads: Threads, actor: Actor, slug: str, text: Text, at: datetime
 ) -> Texted:
+    """Send the contact one SMS as the agent for whoever holds the key; the call it was said on."""
+    by = Supervisor(id=actor.asked_by, name=None if actor.person is None else actor.person.name)
+    own_phone = text.to in live.holders.phones_of(actor.env, actor.asked_by)
+    return await send_text(session, live, threads, Texting(actor.scope, slug, text, by, at, own_phone))
+
+
+# A contact who asked for no more messages is written to by nobody, in either env: only their own
+# START lifts it. A conversation that has idle time left is the contact's own doing, and the text is
+# one more message of it; a cold one passes every guard a dial does (a stranger, the consent, the
+# hours, the pace), on one row of the same ledger: under the TCPA a text is a call. The words are
+# said as a supervisor's are, so the log names who asked, and they reach the contact by the
+# conversation's own reply tap.
+async def send_text(session: AsyncSession, live: LiveParts, threads: Threads, texting: Texting) -> Texted:
     """Send the contact one SMS as the agent, on the conversation going or a new one; the call it was said on."""
-    scope = actor.scope
+    scope, slug, text = texting.scope, texting.agent, texting.asked
     route = await _find_route_shown(session, scope, slug, text.shown)
     if await compliance.refuses_messages(session, scope, text.to):
         raise Forbidden(f"{text.to} asked for no more messages: only their own START lifts it")
@@ -61,20 +83,24 @@ async def text_as_agent(
     going = await threads.find_going(registration.scope, slug, contact)
     call = going or new_call_id()
     if going is None:
-        await _guard(session, live, actor, slug, text, route.number, call, at)
+        await _guard(session, live, texting, route.number or "", call)
     call = await threads.open_to(registration, route, contact, call)
-    by = Supervisor(id=actor.asked_by, name=None if actor.person is None else actor.person.name)
-    await send_verb(live, Supervising(call, by), SayVerb(text=text.text))
-    return Texted(call=call, to=text.to, shown=route.number)
+    await send_verb(live, Supervising(call, texting.by), SayVerb(text=text.text))
+    return Texted(call=call, to=text.to, shown=route.number or "")
 
 
-async def _guard(
-    session: AsyncSession, live: LiveParts, actor: Actor, slug: str, text: Text, shown: str, call: str, at: datetime
-) -> None:
-    scope = actor.scope
-    own_phone = text.to in live.holders.phones_of(actor.env, actor.asked_by)
+async def _guard(session: AsyncSession, live: LiveParts, texting: Texting, shown: str, call: str) -> None:
+    scope, text = texting.scope, texting.asked
     ask = compliance.DialAsk(
-        scope, slug, text.to, shown, actor.asked_by, call, at, own_phone=own_phone, consent=text.consent
+        scope,
+        texting.agent,
+        text.to,
+        shown,
+        texting.by.id,
+        call,
+        texting.at,
+        own_phone=texting.own_phone,
+        consent=text.consent,
     )
 
     async def has_reached(destination: str) -> bool:

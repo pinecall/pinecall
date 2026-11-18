@@ -98,7 +98,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `GET` | `/v1/apps/{app}/runs/{run}` | app · calls | One run with its journal. |
 | `POST` | `/v1/apps/{app}/runs/{run}/cancel` | app | Stop a run where it stands. |
 | `POST` | `/v1/apps/{app}/runs/{run}/end` | app | The flow returned, or threw: the run is over. |
-| `POST` | `/v1/apps/{app}/runs/{run}/steps` | app | Write the run's next step: a sleep, a wait, a call, or what a step the process ran came to. |
+| `POST` | `/v1/apps/{app}/runs/{run}/steps` | app | Write the run's next step: a sleep, a wait, a call, a text, or what a step the process ran came to. |
 | `POST` | `/v1/apps/{app}/stop` | app | Tell the app it was stopped, and close its socket. |
 | `POST` | `/v1/apps/{app}/work` | app | What the app's process is owed, waited for up to `wait_s`: unheard events, and the runs ready to go on. |
 | `POST` | `/v1/agents/{slug}/kill` | team and app (an admin) | Let go of the agent in every app that holds it in the env, whoever's; the apps keep their other agents, and nothing is erased. |

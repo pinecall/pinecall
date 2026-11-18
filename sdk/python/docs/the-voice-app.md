@@ -155,6 +155,7 @@ outlives a deploy, a crash and a night with nothing running.
 | `await step.sleep("2h")` | the run sleeps: a number and `s`, `m`, `h` or `d` |
 | `await step.sleep_until(at, before="24h")` | until a time (a `datetime` with its zone, or an ISO string), or that long before it |
 | `await step.call(to, Agent, state=, metadata=, greeting=, instruction=, from_=)` | the agent calls the number, and the step answers how the call ended: `Called(answered, reason, call)`, or at once `Called(answered=False, refused=, message=)` when the org's guards refused it |
+| `await step.text(to, Agent, words, from_=)` | the agent sends the contact one SMS first, and the step answers at once: `Texted(sent, call, from_)`, or `Texted(sent=False, refused, message)` |
 | `await step.wait_for(event, match=, within=)` | waits for an event sent to the app whose data has what `match` names; its data, or `None` once `within` passed |
 | `await step.run(effect)` | runs your own code once and keeps what it returned |
 | `await step.emit(name, data)` | sends an event to the app |

@@ -133,6 +133,21 @@ async def test_a_call_nobody_can_place_is_the_steps_answer_and_the_run_goes_on(
 
 
 @needs_the_services
+async def test_a_text_nobody_can_send_is_the_steps_answer_and_one_with_no_words_is_refused(
+    gateway: Gateway, tenant: Tenant
+) -> None:
+    run = await _started(gateway, tenant)
+    asked = {"agent": "reminder", "to": "+14155550142", "text": "Your cleaning is tomorrow at 9:30."}
+    texted = await _post(gateway, tenant, f"/runs/{run}/steps", {"seq": 1, "kind": "text", "asked": asked})
+    assert texted["status"] == "ready", "a text is over as it is written"
+    read = (await gateway.http.get(f"{APP}/runs/{run}", headers=tenant.person)).json()
+    assert (read["steps"][0]["result"]["sent"], read["steps"][0]["result"]["refused"]) == (False, "no_app")
+    wordless = {"seq": 2, "kind": "text", "asked": {"agent": "reminder", "to": "+14155550142"}}
+    refused = await gateway.http.post(f"{APP}/runs/{run}/steps", json=wordless, headers=tenant.person)
+    assert refused.status_code == 400 and "a text step asks {agent, to, text}" in refused.text
+
+
+@needs_the_services
 async def test_a_cancelled_run_stays_cancelled_and_is_listed_by_its_status(gateway: Gateway, tenant: Tenant) -> None:
     run = await _started(gateway, tenant)
     assert (await _post(gateway, tenant, f"/runs/{run}/cancel"))["status"] == "cancelled"

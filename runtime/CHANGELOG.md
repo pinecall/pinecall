@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **A flow writes to somebody.** A step of kind `text` asks `{agent, to, text, from?}` and sends the contact one
+  SMS as `POST /v1/agents/{agent}/text` does, past the same guards. It is over as it is written, with `{sent: true,
+  call, from}` or `{sent: false, refused, message}`, read by the flow as a refused call is. `docs/protocol/flows.md`.
+- A text the agent sends first is held to the hours and the daily pace of a call, on purpose: under the TCPA a text
+  is a call. `docs/protocol/numbers.md`, "SMS".
+
 ## 0.11.48 — an agent writes first by SMS, and a person's message on a thread reaches the contact (2026-11-18)
 
 - **An agent writes first.** `POST /v1/agents/{slug}/text {to, text, from?, consent?}` sends a contact one SMS
