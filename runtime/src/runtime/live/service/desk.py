@@ -10,6 +10,7 @@ from runtime.calls import service as calls
 from runtime.compliance import service as compliance
 from runtime.enums import Channel, ReadKind
 from runtime.exceptions import Conflict, NotFound
+from runtime.kit.text import JsonObject
 from runtime.live.parts import LiveParts
 from runtime.live.service import commands, tokens
 from runtime.wire.commands import SayVerb, SupervisorVerb, Verb
@@ -79,8 +80,16 @@ async def take_seat(
 # log and to whoever sent it, whichever gateway the request landed on.
 async def send_verb(live: LiveParts, supervising: Supervising, verb: Verb) -> None:
     """One supervise verb on a live call; the call's log says what it did."""
-    wanted = SupervisorVerb(by=supervising.by, verb=verb)
-    await commands.send_to_live_call(live, supervising.call, commands.SUPERVISOR_VERB, wanted.dump())
+    await commands.send_to_live_call(live, supervising.call, commands.SUPERVISOR_VERB, as_sent(supervising.by, verb))
+
+
+# A verb made here names itself by a default, which the wire leaves out as it does every field nobody
+# set, and whoever reads it tells the verbs apart by that name. Until 2026-11-18 a `say` the gateway
+# wrote itself (a person's message on a thread) was refused by the call it was for: no `verb`.
+def as_sent(by: Supervisor, verb: Verb) -> JsonObject:
+    """The verb as a live call reads it: who sent it, and the verb with its own name on it."""
+    wanted = SupervisorVerb(by=by, verb=verb).dump()
+    return {**wanted, "verb": {**verb.dump(), "verb": verb.verb}}
 
 
 def supervisor_of(actor: Actor | None, visit: tokens.Visit | None) -> Supervisor:

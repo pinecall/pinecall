@@ -8,6 +8,9 @@
   call is `outbound`, carries on what the two last said, and greets nobody: the words given are its opening.
   A contact who stopped the messages in writing is refused in either environment. `docs/protocol/numbers.md`,
   "SMS".
+- **A person's message on a thread reaches the contact.** `POST /v1/agents/{slug}/threads/{contact}/messages`
+  sent its `say` without the verb's name, which the wire leaves out as a default nobody set, and the call it
+  was for refused it (`422`). A verb the gateway writes itself is sent with its name.
 
 ## 0.11.47 — an agent says the languages its callers speak, a channel takes the agent's own words, and a stop word ends the conversation on any gateway (2026-11-18)
 
