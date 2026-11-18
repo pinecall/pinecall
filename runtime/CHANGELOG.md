@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.46 — a contact who texts STOP is written to no more, a written conversation opens on the one before, and the audio of an MMS is heard (2026-11-18)
 
 - **A contact who texts STOP is written to no more.** A text that is, whole, a word that stops (`STOP`,
   `STOPALL`, `UNSUBSCRIBE`, `CANCEL`, `END`, `QUIT`, `REVOKE`, `OPTOUT`, or one the org adds) puts the number
