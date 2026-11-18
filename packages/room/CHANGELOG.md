@@ -4,6 +4,11 @@ All notable changes to `@pinecall/room`. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## 0.11.44 — a WhatsApp number of your own Meta app is heard and says where each reply stands, a simulated caller rings by phone, and a restarted process keeps its line (2026-11-18)
+
+- **The wire knows `message.status`**: where a WhatsApp reply stands (`sent`, `delivered`, `read`, `failed`), an
+  event of the call's log a room may be handed.
+
 ## 0.11.43 — a Mac's own Ollama keeps its models, a Studio agent with no tool answers, and a failed release is said first (2026-11-17)
 
 - Released with the runtime: nothing of this package changed.

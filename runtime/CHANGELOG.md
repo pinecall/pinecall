@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.44 — a WhatsApp number of your own Meta app is heard and says where each reply stands, a simulated caller rings by phone, and a restarted process keeps its line (2026-11-18)
 
 - **A WhatsApp number of an org's own Meta app is heard.** Meta delivers a number's messages to the webhook of
   the app the number lives in, signed with that app's secret, and the gateway knew one secret: the platform's
