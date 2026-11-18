@@ -9,8 +9,8 @@ import { Select, type SelectItem } from "../ui/select";
 import { readReport, type Report, type Stage } from "./door";
 import { brandOf } from "./vendors";
 
-// The languages offered by name; any other is typed as its tag, and the gateway checks it with the vendors.
-const TAGS: readonly string[] = ["en", "es", "pt", "fr", "de", "it", "nl", "ca", "sv", "da", "nb", "fi", "pl", "cs", "ro", "hu", "el", "tr", "ru", "uk", "ar", "he", "fa", "hi", "bn", "ta", "te", "mr", "gu", "kn", "ml", "pa", "id", "vi", "th", "ja", "ko", "zh"];
+// The languages offered by name; any other is typed as its tag, and the gateway checks it with the vendors. Norwegian is `no`, as every transcriber names it.
+const TAGS: readonly string[] = ["en", "es", "pt", "fr", "de", "it", "nl", "ca", "sv", "da", "no", "fi", "pl", "cs", "ro", "hu", "el", "tr", "ru", "uk", "ar", "he", "fa", "hi", "bn", "ta", "te", "mr", "gu", "kn", "ml", "pa", "id", "vi", "th", "ja", "ko", "zh"];
 const NAMES = new Intl.DisplayNames(["en"], { type: "language" });
 const OTHER = "other";
 // Callers who mix their language with English are the usual reason for two: these are one click.

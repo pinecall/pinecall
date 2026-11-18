@@ -14,6 +14,7 @@ NAMES = {
     "sv": "Swedish",
     "da": "Danish",
     "nb": "Norwegian",
+    "no": "Norwegian",
     "fi": "Finnish",
     "pl": "Polish",
     "cs": "Czech",

@@ -2,9 +2,7 @@
 
 ## Unreleased
 
-- **`channel_rules` takes the agent's own words for a channel.** `channel_rules = {"whatsapp": "…"}` says how
-  the agent writes there in place of the framework's own way, and every channel it leaves out keeps the
-  framework's (`voice`, `chat`, `whatsapp`, `sms`); `False` still leaves the block out on every channel.
+- **`channel_rules` takes the agent's own words for a channel.** `channel_rules = {"whatsapp": "…"}` says how the agent writes there in place of the framework's own way, and every channel it leaves out keeps the framework's (`voice`, `chat`, `whatsapp`, `sms`); `False` still leaves the block out on every channel.
 
 ## 0.11.46 — a contact who texts STOP is written to no more, a written conversation opens on the one before, and the audio of an MMS is heard (2026-11-18)
 

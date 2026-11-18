@@ -23,7 +23,7 @@ def a_language() -> str:
 def test_every_language_written_here_has_both_sentences_and_names_the_org_once() -> None:
     assert set(MAY_BE_RECORDED) == set(CALLING_FOR)
     assert [language for language, said in CALLING_FOR.items() if said.count("{org}") != 1] == []
-    assert CALLING_FOR["pt"].format(org="Al Noor") == "Aqui fala um assistente automático em nome de Al Noor."
+    assert CALLING_FOR["pt"].format(org="Al Noor") == "Este é um assistente automático que liga em nome de Al Noor."
 
 
 def test_a_models_answer_is_read_as_the_two_sentences_whatever_it_wrote_around_them() -> None:
