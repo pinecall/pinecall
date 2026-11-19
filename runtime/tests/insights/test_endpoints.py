@@ -139,16 +139,29 @@ async def test_the_window_counts_the_copies_a_list_of_calls_reads(
 async def test_the_window_counts_as_live_the_calls_with_somebody_on_them(
     gateway: Gateway, tenant: Tenant, sessions: async_sessionmaker[AsyncSession], call: str, agent: str
 ) -> None:
-    """A phone call going on is live; a WhatsApp or an email conversation open for hours is not."""
-    going = {f"{call}_phone": "phone", f"{call}_whatsapp": "whatsapp", f"{call}_email": "email"}
+    """A phone call going on is live; a written conversation open for hours is not, nor a head nobody wrote to."""
+    going = {
+        f"{call}_phone": "phone",
+        f"{call}_whatsapp": "whatsapp",
+        f"{call}_email": "email",
+        f"{call}_unwritten": None,
+    }
     async with sessions.begin() as session:
         for one, channel in going.items():
             session.add(
                 CallLogHead(
-                    log=one, call=one, agent=agent, org=tenant.org, env=Env.sandbox, holder="", started_at=time.time()
+                    log=one,
+                    call=one,
+                    agent=agent,
+                    org=tenant.org,
+                    env=Env.sandbox,
+                    holder="",
+                    started_at=time.time(),
+                    seq=0 if channel is None else 3,
                 )
             )
             await session.flush()
-            session.add(CallFact(call=one, channel=channel))
+            if channel is not None:
+                session.add(CallFact(call=one, channel=channel))
     window = await asked(gateway, tenant, "/v1/insights", days=7, agent=agent)
-    assert (window["conversations"]["now"], window["live"]) == (3, 1)
+    assert (window["conversations"]["now"], window["live"]) == (4, 1)

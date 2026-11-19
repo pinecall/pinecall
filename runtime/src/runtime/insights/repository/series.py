@@ -43,7 +43,9 @@ def _count(selected: str, *, by_day: bool = False, rest: str = "") -> TextClause
 
 # "before" is the window of the same length right before it. A call is judged once a judge
 # settled, and passed unless a judge said it did not.
-# Somebody on the line now: a conversation written message by message is open for hours with nobody on it.
+# Somebody on the line now: a conversation written message by message is open for hours with nobody on it,
+# and a head claimed for a call that never wrote an entry (seq 0) is no call at all. Until 2026-11-19 both
+# were counted: an org with nothing going on read "4 live".
 THREADS = ", ".join(f"'{channel.value}'" for channel in Channel if channel.is_a_thread)
 
 WINDOW = text(f"""
@@ -62,7 +64,9 @@ select
     count(*) filter (where {WINDOWED} and f.channel = 'whatsapp') as whatsapp,
     count(*) filter (where {WINDOWED} and f.channel = 'sms') as sms,
     count(*) as total,
-    count(*) filter (where not head.sealed and coalesce(f.channel, '') not in ({THREADS})) as live
+    count(*) filter (
+        where not head.sealed and head.seq > 0 and coalesce(f.channel, '') not in ({THREADS})
+    ) as live
 {CALLS}
 """)
 
