@@ -2329,7 +2329,8 @@ STOP is written to by nobody (`pinecall data consent <number>` says who did).
 ```
 pinecall email layout [show]
 pinecall email layout set <file.html>
-pinecall email layout preview "<words>" [--subject <subject>] [--file <file.html>] [--out <file.html>]
+pinecall email layout text
+pinecall email layout preview "<words>" [--subject <subject>] [--file <file.html>] [--text-only] [--out <file.html>]
 pinecall email layout clear
 ```
 
@@ -2353,8 +2354,15 @@ show. `set` keeps one (refused here when the file says `{{content}}` nowhere or 
 goes back to the plain one, which every org starts with: the reply on white, in nobody's brand.
 `preview` sets words in the layout as a reply would be and sends nothing: `--file` tries a layout
 before it is kept, and `--out` writes the HTML to open in a browser. A `\n` in the words is a new
-line. The words are read for paragraphs, `-` lists, `**bold**`, `*italics*` and links; everything
-else is text. The mailbox itself is a carrier account ([`carriers add email`](#carriers)).
+line. The words are read for paragraphs, `-` lists, `**bold**`, `*italics*`, links and images
+(`![what it shows](https://…)`); everything else is text.
+
+An org that wants **no template** has two ways. `clear` keeps the plain layout: the words as simple
+HTML, their links and images live, on white. `text` goes further: the org's emails are sent as text
+alone, one `text/plain` part and no HTML, the marks taken off and each link's address beside its
+words. `show` says which it is, `preview --text-only` shows an email that way before it is chosen,
+and `set` or `clear` brings HTML back. The mailbox itself is a carrier account
+([`carriers add email`](#carriers)).
 
 ## `callbacks`
 

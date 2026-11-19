@@ -118,24 +118,26 @@ export const email = tool({
   name: "email",
   title: "Email layout",
   destroys: true,
-  description: "The HTML the org's agents' emails are set in: shown, kept, tried on words (nothing sent), or cleared back to the plain one.",
+  description: "How the org's agents' emails are set: an HTML layout shown, kept, tried on words (nothing sent) or cleared back to the plain one, or text alone with no template.",
   schema: {
-    action: z.enum(["show", "set", "preview", "clear"]).describe("show the layout; set keeps html as the org's; preview sets words in it as a reply would be, sending nothing; clear goes back to the plain one"),
+    action: z.enum(["show", "set", "text", "preview", "clear"]).describe("show how the emails are set; set keeps html as the org's layout; text sends them as text alone, no template and no HTML; preview sets words as a reply would be, sending nothing; clear goes back to the plain layout"),
     html: z.string().optional().describe("`set`, `preview`: an HTML page that says {{content}} once, where the reply goes, and {{subject}} where the subject should show"),
     text: z.string().optional().describe("`preview`: the words an agent would write: paragraphs, - lists, **bold**, *italics*, links"),
     subject: z.string().optional().describe("`preview`: the subject the reply answers"),
+    text_only: z.boolean().optional().describe("`preview`: the email as text alone, with no HTML, whatever the org keeps"),
   },
   manual:
-    "`email` keeps the org's email layout: an agent answers an email in its own words and they are set in it, `{{content}}` where the reply goes, `{{subject}}` where the subject shows; with none, a plain one. `preview` answers the subject, the HTML and the plain part a contact would read, and sends nothing: try a layout on it before `set`. A mailbox is a carrier account (`carriers`), and its address is given to an agent with `numbers import` on the channel `email`.",
+    "`email` keeps the org's email layout: an agent answers an email in its own words and they are set in it, `{{content}}` where the reply goes, `{{subject}}` where the subject shows; with none, a plain one. `text` is for an org that wants no template: its emails go as their words alone, one text part and no HTML, until a layout is `set` or it is `clear`ed. `preview` answers the subject, the HTML and the plain part a contact would read, and sends nothing: try a layout on it before `set`. A mailbox is a carrier account (`carriers`), and its address is given to an agent with `numbers import` on the channel `email`.",
   handler: async (args, ctx) => {
     if (args.action === "show") return await emailService.showLayout(ctx);
     if (args.action === "clear") return await emailService.clearLayout(ctx);
+    if (args.action === "text") return await emailService.sendTextOnly(ctx);
     if (args.action === "set") {
       if (args.html === undefined) throw new ToolRefused("set takes the html, saying {{content}} once");
       return await emailService.keepLayout(ctx, args.html);
     }
     if (args.text === undefined) throw new ToolRefused("preview takes the text an agent would write");
-    return await emailService.previewWords(ctx, { text: args.text, ...(args.subject === undefined ? {} : { subject: args.subject }), ...(args.html === undefined ? {} : { html: args.html }) });
+    return await emailService.previewWords(ctx, { text: args.text, ...(args.subject === undefined ? {} : { subject: args.subject }), ...(args.html === undefined ? {} : { html: args.html }), ...(args.text_only === undefined ? {} : { text_only: args.text_only }) });
   },
 });
 

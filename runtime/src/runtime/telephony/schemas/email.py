@@ -11,16 +11,20 @@ LONGEST = 200_000
 
 
 class EmailLayoutRow(Row):
-    """GET /v1/org/email/layout: the HTML an agent's email is set in, and whether it is the org's own."""
+    """GET /v1/org/email/layout: the HTML an email is set in, whether it is the org's own, whether it is text alone."""
 
     html: str
     own: bool
+    # The org chose no HTML at all: `html` is then the plain layout, which nothing is set in.
+    text_only: bool = False
 
 
 class PutEmailLayout(Schema):
-    """PUT /v1/org/email/layout: the org's HTML, saying once with `{{content}}` where the reply goes."""
+    """PUT /v1/org/email/layout: the org's HTML, `{{content}}` once where the reply goes; or `text_only` and no HTML."""
 
-    html: Annotated[str, Field(min_length=1, max_length=LONGEST)]
+    html: Annotated[str | None, Field(default=None, min_length=1, max_length=LONGEST)] = None
+    # The org's emails go as text alone, one `text/plain` part: said without `html`.
+    text_only: bool = False
 
 
 class PreviewEmail(Schema):
@@ -30,11 +34,15 @@ class PreviewEmail(Schema):
     subject: Annotated[str, Field(max_length=300)] = "Your message"
     # A layout to try before it is kept; the org's own (or the plain one) when left out.
     html: Annotated[str | None, Field(default=None, max_length=LONGEST)] = None
+    # Try the email as text alone, whatever the org keeps; left out, as the org keeps it.
+    text_only: bool | None = None
+    # Try it in the plain layout, the one of an org that keeps none, whatever the org keeps.
+    plain: bool = False
 
 
 class PreviewedEmail(Row):
-    """The reply as the contact would read it: its subject, its HTML in the layout, and its plain part."""
+    """The reply as the contact would read it: its subject, its HTML in the layout (none as text alone), its text."""
 
     subject: str
-    html: str
+    html: str | None
     text: str

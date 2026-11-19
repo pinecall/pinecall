@@ -1,4 +1,4 @@
-/** The org's email layout: shown, set from a file, cleared, and tried on words before a contact reads it. */
+/** How the org's emails are set: a layout shown, set from a file or cleared, text alone with no template, and words tried before a contact reads them. */
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
@@ -17,6 +17,7 @@ export const PreviewInput = z.object({
   subject: z.string().optional(),
   file: z.string().optional(),
   out: z.string().optional(),
+  textOnly: z.boolean().optional(),
 });
 export type PreviewInput = z.infer<typeof PreviewInput>;
 
@@ -31,16 +32,21 @@ export async function showLayout(ctx: Context): Promise<api.EmailLayout> {
 
 /** The file's HTML kept as the org's layout; refused here when it says nowhere where the reply goes. */
 export async function setLayout(ctx: Context, file: string): Promise<api.EmailLayout> {
-  return api.putEmailLayout(ctx.gateway(), htmlOf(file));
+  return api.putEmailLayout(ctx.gateway(), { html: htmlOf(file) });
+}
+
+/** No template at all: the org's emails go as their words, one text part and no HTML. */
+export async function sendTextOnly(ctx: Context): Promise<api.EmailLayout> {
+  return api.putEmailLayout(ctx.gateway(), { text_only: true });
 }
 
 /** HTML kept as the org's layout as it is given, the gateway saying what is wrong with it: the MCP's, which reads no file. */
 export async function keepLayout(ctx: Context, html: string): Promise<api.EmailLayout> {
-  return api.putEmailLayout(ctx.gateway(), html);
+  return api.putEmailLayout(ctx.gateway(), { html });
 }
 
 /** Words set in the given HTML (or the org's layout) as a reply would be; nothing is sent, nothing is written. */
-export async function previewWords(ctx: Context, body: { text: string; subject?: string; html?: string }): Promise<api.EmailPreview> {
+export async function previewWords(ctx: Context, body: api.PreviewBody): Promise<api.EmailPreview> {
   return api.previewEmail(ctx.gateway(), body);
 }
 
@@ -51,12 +57,15 @@ export async function clearLayout(ctx: Context): Promise<{ cleared: true }> {
 
 /** The words set in the org's layout (or the file's), as the contact would read them; nothing is sent. */
 export async function previewLayout(ctx: Context, input: PreviewInput): Promise<Previewed> {
-  const body: { text: string; subject?: string; html?: string } = { text: input.text };
+  const body: api.PreviewBody = { text: input.text };
   if (input.subject !== undefined) body.subject = input.subject;
   if (input.file !== undefined) body.html = htmlOf(input.file);
+  if (input.textOnly === true) body.text_only = true;
   const preview = await api.previewEmail(ctx.gateway(), body);
-  if (input.out !== undefined) writeFileSync(input.out, preview.html);
-  return { ...preview, written: input.out ?? null };
+  // An org that sends text alone has no HTML to write: the words are the email.
+  const written = input.out !== undefined && preview.html !== null ? input.out : null;
+  if (written !== null && preview.html !== null) writeFileSync(written, preview.html);
+  return { ...preview, written };
 }
 
 function htmlOf(file: string): string {

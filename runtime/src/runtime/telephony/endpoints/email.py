@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from runtime.exceptions import NotFound
+from runtime.exceptions import NotFound, ValidationError
 from runtime.postgres import Session
 from runtime.telephony.auth import NumbersKey
 from runtime.telephony.schemas import email as schemas
@@ -19,14 +19,19 @@ async def get_email_layout(actor: NumbersKey, session: Session) -> schemas.Email
 
 @router.put("/v1/org/email/layout")
 async def put_email_layout(body: schemas.PutEmailLayout, actor: NumbersKey, session: Session) -> schemas.EmailLayoutRow:
-    """Keep the org's layout: its agents' next emails are set in it."""
-    kept = await email_layout.put_layout(session, actor.org, body.html, by=actor.asked_by)
+    """Keep how the org's emails are set: in its layout, or as text alone."""
+    if body.text_only == (body.html is not None):
+        raise ValidationError("say the layout's `html`, or `text_only` for emails with no HTML: one of the two")
+    if body.html is None:
+        kept = await email_layout.send_text_only(session, actor.org, by=actor.asked_by)
+    else:
+        kept = await email_layout.put_layout(session, actor.org, body.html, by=actor.asked_by)
     return schemas.EmailLayoutRow.model_validate(kept)
 
 
 @router.delete("/v1/org/email/layout", status_code=204)
 async def delete_email_layout(actor: NumbersKey, session: Session) -> None:
-    """Forget the org's layout, back to the plain one."""
+    """Forget how the org set its emails, back to the plain layout."""
     if not await email_layout.delete_layout(session, actor.org):
         raise NotFound("the org has no layout of its own: its agents' emails are set in the plain one")
 
@@ -36,10 +41,12 @@ async def delete_email_layout(actor: NumbersKey, session: Session) -> None:
 async def preview_email(body: schemas.PreviewEmail, actor: NumbersKey, session: Session) -> schemas.PreviewedEmail:
     """Words set in the layout as a reply would be: its subject, its HTML, its plain part."""
     kept = await email_layout.layout_of(session, actor.org)
-    layout = email_layout.check_layout(body.html) if body.html else kept.html
+    tried = email_layout.check_layout(body.html) if body.html else email_layout.PLAIN if body.plain else None
+    layout = kept.html if tried is None else tried
+    text_only = kept.text_only and tried is None if body.text_only is None else body.text_only
     subject = email_reply.reply_subject(body.subject)
     return schemas.PreviewedEmail(
         subject=subject,
-        html=email_layout.set_in(layout, body.text, subject=subject),
+        html=None if text_only else email_layout.set_in(layout, body.text, subject=subject),
         text=email_layout.text_of(body.text),
     )

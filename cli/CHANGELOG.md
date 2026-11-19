@@ -6,6 +6,9 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## 0.11.51 — live is somebody on the line and never a written conversation; Emails is a page of its own, with a mailbox's server and the org's template in an agent's channels (2026-11-19)
 
+- **`pinecall email layout text`**: no template and no HTML, the org's emails go as text alone. `show` says so,
+  `preview --text-only` shows an email that way before it is chosen, and the MCP's `email` tool takes `text` and
+  `text_only`. A reply's words may show an image, `![what it shows](https://…)`.
 - **A written conversation is open, never live.** The gateway says `live` only of a call with somebody on it; a
   WhatsApp, SMS or email conversation waiting for its contact is open. `pinecall sessions` says `open` in its row,
   `pinecall sessions <call>` says `open  waiting for the contact's next message`, `--json` and the MCP's `call` and

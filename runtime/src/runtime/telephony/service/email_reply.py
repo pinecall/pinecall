@@ -1,10 +1,10 @@
-"""An agent's reply by email: set in the org's layout, threaded under the message it answers, and sent by SMTP."""
+"""An agent's reply by email: set in the org's layout or sent as text alone, threaded under the message it answers."""
 
 from email.utils import make_msgid
 
 from runtime.mail import service as mail
 from runtime.telephony.service.email_account import EmailAccount
-from runtime.telephony.service.email_layout import set_in, text_of
+from runtime.telephony.service.email_layout import Layout, set_in, text_of
 from runtime.whatsapp import service as whatsapp
 
 # What a reply's subject says when the email it answers had none.
@@ -19,8 +19,8 @@ def reply_subject(answered: str | None) -> str:
 
 # Threaded as every client threads a reply (RFC 5322): `In-Reply-To` names the message answered and
 # `References` the whole chain before it. `Auto-Submitted` (RFC 3834) tells another robot not to answer.
-def compose_reply(account: EmailAccount, layout: str, answered: whatsapp.Inbound, text: str) -> mail.Email:
-    """The reply as it goes out: to the contact, under the subject answered, as HTML in the layout and as text."""
+def compose_reply(account: EmailAccount, layout: Layout, answered: whatsapp.Inbound, text: str) -> mail.Email:
+    """The reply as it goes out: to the contact, under the subject answered, as text and as HTML in the org's layout."""
     subject = reply_subject(answered.subject)
     chain = [*answered.references, answered.message_id]
     headers = {
@@ -33,7 +33,7 @@ def compose_reply(account: EmailAccount, layout: str, answered: whatsapp.Inbound
         to=answered.caller,
         subject=subject,
         text=text_of(text),
-        html=set_in(layout, text, subject=subject),
+        html=None if layout.text_only else set_in(layout.html, text, subject=subject),
         headers=headers,
     )
 

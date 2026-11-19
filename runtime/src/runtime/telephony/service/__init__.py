@@ -4,7 +4,7 @@ from runtime.telephony.service.accounts import email_account_of, list_own_meta_a
 from runtime.telephony.service.carrier import SipNames
 from runtime.telephony.service.email_account import EmailAccount
 from runtime.telephony.service.email_box import read_new
-from runtime.telephony.service.email_layout import layout_of
+from runtime.telephony.service.email_layout import Layout, layout_of
 from runtime.telephony.service.email_message import read_email
 from runtime.telephony.service.email_reply import compose_reply, send_reply
 from runtime.telephony.service.hand_over import hand_on, unbridge
@@ -58,6 +58,7 @@ __all__ = [
     "RINGS_FROM",
     "Arrival",
     "EmailAccount",
+    "Layout",
     "Legs",
     "SipNames",
     "Trunk",

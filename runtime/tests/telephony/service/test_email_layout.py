@@ -23,6 +23,21 @@ def test_a_link_cannot_carry_an_attribute_of_its_own() -> None:
     assert 'onmouseover="' not in html
 
 
+def test_an_image_is_shown_as_wide_as_the_email_and_carries_no_attribute_of_its_own() -> None:
+    """`![what](https://…)` is the one thing a reply shows that is not its words; the plain part says its address."""
+    html = email_layout.html_of("Nuestro local:\n\n![La entrada](https://acme.example/door.png)")
+    assert (
+        '<img src="https://acme.example/door.png" alt="La entrada" style="max-width:100%;height:auto;border:0;">'
+        in html
+    )
+    assert "<a " not in html, "an image's address is not linked a second time"
+    assert 'onerror="' not in email_layout.html_of('![x" onerror="alert(1)](https://a.example/i.png)')
+    assert (
+        email_layout.text_of("![La entrada](https://acme.example/door.png)")
+        == "La entrada (https://acme.example/door.png)"
+    )
+
+
 def test_a_layout_says_once_where_the_reply_goes_and_the_subject_is_escaped_wherever_it_is_asked_for() -> None:
     """One {{content}}; the subject set in as text; the plain layout is a layout too."""
     for wrong in ("<p>no place</p>", f"{CONTENT}{CONTENT}"):

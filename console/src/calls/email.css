@@ -44,3 +44,7 @@
   .mail-template-body { grid-template-columns: minmax(0, 1fr); }
   .mail-template-preview { height: 460px; }
 }
+
+/* The four ways an org's emails are set, and an email that is text alone as a mail client shows it. */
+.mail-template-says { margin: -4px 0 12px; }
+.mail-text-preview { margin: 0; padding: 16px 18px; overflow: auto; border: 1px solid var(--line); border-radius: 12px; background: #fff; color: #1d1d1f; font-family: var(--mono); font-size: 13px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }

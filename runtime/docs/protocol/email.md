@@ -64,9 +64,12 @@ Each `turn.agent` of an email call is one email to the contact, from the address
 subject `Re:` and the subject answered (said once), `In-Reply-To` the email answered (the newest of
 the thread), `References` the chain before it and that email, `Auto-Submitted: auto-replied`, and a
 `Message-ID` of the address's domain. Its HTML is the org's layout with the reply's words set where
-it says `{{content}}`; its plain part is the words alone. The words are read for paragraphs, lists
-(`-`, `1.`), `**bold**`, `*italics*` and links (`[words](https://…)` and bare addresses);
-everything else is text, escaped. A reply SMTP refuses is an `error` on the call, `email_not_sent`,
+it says `{{content}}`; its plain part is the words alone. An org that set `text_only` has no HTML
+part: the email is one `text/plain` part. The words are read for paragraphs, lists (`-`, `1.`),
+`**bold**`, `*italics*`, links (`[words](https://…)` and bare addresses) and images
+(`![what it shows](https://…)`, as wide as the email at most); everything else is text, escaped.
+In the plain part the marks are taken off and a link's or an image's address stands beside its
+words. A reply SMTP refuses is an `error` on the call, `email_not_sent`,
 in the server's words. The framework's rule for the channel (`email` of `GET
 /v1/studio/channel-rules`) tells the model to write the whole reply in one message.
 
@@ -74,10 +77,13 @@ in the server's words. The framework's rule for the channel (`email` of `GET
 
 | door | does |
 |---|---|
-| `GET` | `{html, own}`: the org's layout, or the plain one (`own: false`) while it wrote none |
+| `GET` | `{html, own, text_only}`: the org's layout, or the plain one (`own: false`) while it chose nothing; `text_only: true` when its emails go as text alone, `html` then the plain one, which nothing is set in |
 | `PUT {html}` | keeps the org's layout; it must say `{{content}}` exactly once, and is 200,000 characters at most; `{{subject}}` is replaced wherever it is, escaped |
-| `DELETE` | back to the plain one; `404` when the org had none |
-| `POST /preview {text, subject?, html?}` | `{subject, html, text}`: the words set in `html` (or the org's layout) as a reply would be; nothing is sent |
+| `PUT {text_only: true}` | no template and no HTML: the org's emails are one `text/plain` part. `html` and `text_only` together, or neither, is `400` |
+| `DELETE` | back to the plain layout; `404` when the org had chosen nothing |
+| `POST /preview {text, subject?, html?, text_only?, plain?}` | `{subject, html, text}`: the words as a reply would be, set in `html`, in the plain layout with `plain`, or in what the org keeps; `html` is `null` when it goes as text alone (the org's choice, or `text_only`); nothing is sent |
 
-All four take `numbers`. The plain layout is the reply on white, in the reader's own font, in
-nobody's brand.
+All take `numbers`. An org has three ways to send with no template of its own design: nothing chosen
+(the plain layout: the reply as simple HTML on white, in the reader's own font, nobody's brand, its
+links and images live), `text_only` (no HTML at all), or a layout that is little more than
+`{{content}}`.

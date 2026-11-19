@@ -18,6 +18,11 @@
   ended: update it.
 - **The insights' `live` counts calls.** A head claimed for a call that never wrote an entry was counted with the
   written conversations: an org with nothing going on read `live: 4`.
+- **An email with no template: text alone, or simple HTML with its images.** `PUT /v1/org/email/layout {text_only:
+  true}` sends the org's emails as one `text/plain` part, no HTML beside it (migration 000033); with nothing chosen
+  they stay simple HTML on white. A reply's words may show an image, `![what it shows](https://…)`. The preview tries
+  either whatever the org keeps (`text_only`, `plain`). The console's card has the four choices side by side: Text
+  only, No template, Simple, HTML.
 - **Mailboxes are their own page in the console**, never listed under Numbers. A mailbox's page says what an email to
   it goes through in an email's words, and holds its **Server settings** and the org's **Email template**; the
   sandbox's test line ("Call from your mobile") shows under phone numbers alone. The pages of a conversation say

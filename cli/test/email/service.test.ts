@@ -1,11 +1,12 @@
 /** The org's email layout from the CLI: a file that says where the reply goes, kept; words tried on it; cleared. */
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
 import { UsageError } from "../../src/errors.js";
+import * as render from "../../src/email/render.js";
 import * as service from "../../src/email/service.js";
 import { answer } from "../support/gateway.js";
 import { testContext } from "../support/context.js";
@@ -38,5 +39,20 @@ describe("email layout", () => {
     const shown = await service.previewLayout(ctx, service.PreviewInput.parse({ text: "Hola", subject: "Horarios", file: join(dir, "try.html"), out }));
     expect(sent[0]!.body).toEqual({ text: "Hola", subject: "Horarios", html: OURS });
     expect([shown.subject, shown.written, readFileSync(out, "utf8")]).toEqual(["Re: Horarios", out, "<h1>Acme</h1><p>Hola</p>"]);
+  });
+
+  it("with no template sends text alone: kept without HTML, shown as that, and a preview has no HTML to write", async () => {
+    const kept = { html: "<p>{{content}}</p>", own: true, text_only: true };
+    const sent = answer("put", "/v1/org/email/layout", kept);
+    const asked = answer("post", "/v1/org/email/layout/preview", { subject: "Re: Horarios", html: null, text: "Hola Ana" });
+    const { ctx } = testContext();
+    expect(await service.sendTextOnly(ctx)).toEqual(kept);
+    expect(sent[0]!.body).toEqual({ text_only: true });
+    expect(render.layout(kept)[0]).toBe("text alone: no template, and no HTML part in the org's emails");
+    const out = join(folder(), "reply.html");
+    const shown = await service.previewLayout(ctx, service.PreviewInput.parse({ text: "Hola **Ana**", textOnly: true, out }));
+    expect(asked[0]!.body).toEqual({ text: "Hola **Ana**", text_only: true });
+    expect([shown.html, shown.written, existsSync(out)]).toEqual([null, null, false]);
+    expect(render.preview(shown).at(-1)).toBe("text alone: this is the whole email, with no HTML part");
   });
 });

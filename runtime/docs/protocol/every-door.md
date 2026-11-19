@@ -335,10 +335,10 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `GET` | `/v1/org/erasures` | team | The org's erasures, newest first: what went, when, and who asked. |
 | `GET` | `/v1/org/policy` | team | The org's compliance settings: retention, calling hours, calls a day per number, and who set them. |
 | `PUT` | `/v1/org/policy` | team | The org's compliance settings replaced whole, from the next nightly run. |
-| `GET` | `/v1/org/email/layout` | numbers | The HTML the org's agents' emails are set in: its own, or the plain one while it wrote none. |
-| `PUT` | `/v1/org/email/layout` | numbers | Keep the org's layout: its agents' next emails are set in it. |
-| `DELETE` | `/v1/org/email/layout` | numbers | Forget the org's layout, back to the plain one. |
-| `POST` | `/v1/org/email/layout/preview` | numbers | Words set in the layout as a reply would be: its subject, its HTML, its plain part. |
+| `GET` | `/v1/org/email/layout` | numbers | How the org's agents' emails are set: its own HTML, the plain one while it chose nothing, or text alone. |
+| `PUT` | `/v1/org/email/layout` | numbers | Keep how the org's emails are set: in its layout, or as text alone with no HTML. |
+| `DELETE` | `/v1/org/email/layout` | numbers | Forget how the org set its emails, back to the plain layout. |
+| `POST` | `/v1/org/email/layout/preview` | numbers | Words as a reply would be: its subject, its HTML in the layout (none as text alone), its plain part. |
 | `GET` | `/v1/org/export` | team | The org's data in the key's environment as JSON Lines: its calls with their logs, then everything it wrote or configured, a line a row, each saying its kind. |
 | `GET` | `/v1/org/judging` | calls | Whether hang-up judging is on, the model it runs on, and its ceiling per call. |
 | `PUT` | `/v1/org/judging` | usage | Hang-up judging on or off, and the model it runs on, from the next call. |

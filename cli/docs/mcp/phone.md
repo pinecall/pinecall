@@ -167,16 +167,17 @@ Have an agent send a contact one SMS first, from a number it answers SMS at. The
 
 ## `email`
 
-The HTML the org's agents' emails are set in: shown, kept, tried on words (nothing sent), or cleared back to the plain one.
+How the org's agents' emails are set: an HTML layout shown, kept, tried on words (nothing sent) or cleared back to the plain one, or text alone with no template.
 
-`email` keeps the org's email layout: an agent answers an email in its own words and they are set in it, `{{content}}` where the reply goes, `{{subject}}` where the subject shows; with none, a plain one. `preview` answers the subject, the HTML and the plain part a contact would read, and sends nothing: try a layout on it before `set`. A mailbox is a carrier account (`carriers`), and its address is given to an agent with `numbers import` on the channel `email`.
+`email` keeps the org's email layout: an agent answers an email in its own words and they are set in it, `{{content}}` where the reply goes, `{{subject}}` where the subject shows; with none, a plain one. `text` is for an org that wants no template: its emails go as their words alone, one text part and no HTML, until a layout is `set` or it is `clear`ed. `preview` answers the subject, the HTML and the plain part a contact would read, and sends nothing: try a layout on it before `set`. A mailbox is a carrier account (`carriers`), and its address is given to an agent with `numbers import` on the channel `email`.
 
 | parameter | takes | | what it is |
 |---|---|---|---|
-| `action` | `show` · `set` · `preview` · `clear` | required | show the layout; set keeps html as the org's; preview sets words in it as a reply would be, sending nothing; clear goes back to the plain one |
+| `action` | `show` · `set` · `text` · `preview` · `clear` | required | show how the emails are set; set keeps html as the org's layout; text sends them as text alone, no template and no HTML; preview sets words as a reply would be, sending nothing; clear goes back to the plain layout |
 | `html` | text |  | `set`, `preview`: an HTML page that says {{content}} once, where the reply goes, and {{subject}} where the subject should show |
 | `text` | text |  | `preview`: the words an agent would write: paragraphs, - lists, **bold**, *italics*, links |
 | `subject` | text |  | `preview`: the subject the reply answers |
+| `text_only` | true or false |  | `preview`: the email as text alone, with no HTML, whatever the org keeps |
 | `prod` | true or false |  | true acts in production; left out or false, in the sandbox |
 
 ## `callbacks`

@@ -129,10 +129,10 @@ class BySms:
 
 @dataclass(frozen=True, slots=True)
 class ByEmail:
-    """The org's own mailbox: the reply set in the org's layout, threaded under what it answers, sent by SMTP."""
+    """The org's own mailbox: the reply set as the org sets its emails, threaded under what it answers, sent by SMTP."""
 
     account: telephony.EmailAccount
-    layout: str
+    layout: telephony.Layout
 
     async def send(self, to: whatsapp.Inbound, text: str) -> None:
         """Answer the email `to` from the address it was written to."""
@@ -151,7 +151,7 @@ async def way_to(session_: AsyncSession, live: LiveParts, route: RouteRow, inbou
     if inbound.channel is Channel.email:
         mailbox = await telephony.email_account_of(session_, live.vault, route.org, route.account)
         layout = await telephony.layout_of(session_, route.org)
-        return None if mailbox is None else ByEmail(mailbox, layout.html)
+        return None if mailbox is None else ByEmail(mailbox, layout)
     if inbound.channel is Channel.sms:
         account = await telephony.sms_account_of(session_, live.vault, route)
         status_to = telephony.sms_status_url(live.vault, live.settings.base_url, inbound.number)

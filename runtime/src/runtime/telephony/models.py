@@ -13,6 +13,7 @@ from sqlalchemy import (
     Index,
     Text,
     UniqueConstraint,
+    false,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, CIDR
 from sqlalchemy.orm import Mapped, mapped_column
@@ -143,12 +144,14 @@ class EmailInbox(Model):
 
 
 class EmailLayout(Model):
-    """The org's HTML an agent's email is set in: `{{content}}` is where the reply goes."""
+    """How the org's agents' emails are set: in its HTML, where `{{content}}` is the reply, or as text alone."""
 
     __tablename__ = "email_layouts"
-    __kept__ = Kept(exported=("html", "set_at"))
+    __kept__ = Kept(exported=("html", "text_only", "set_at"))
 
     org: Mapped[str] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), primary_key=True)
+    # Empty for an org that sends text alone.
     html: Mapped[str] = mapped_column(Text, nullable=False)
+    text_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
     set_by: Mapped[str | None] = mapped_column(Text)
     set_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, default=utc_now)

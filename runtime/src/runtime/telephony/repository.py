@@ -317,12 +317,12 @@ class EmailLayoutRepository(Repository[EmailLayout]):
         """The org's layout, or None while it keeps the plain one."""
         return await self.one_or_none(self.statement().where(EmailLayout.org == org))
 
-    async def put(self, org: str, html: str, *, by: str | None, at: datetime) -> EmailLayout:
-        """Keep the org's layout, replacing the one it had."""
+    async def put(self, org: str, html: str, *, text_only: bool, by: str | None, at: datetime) -> EmailLayout:
+        """Keep how the org's emails are set, replacing what it had: its HTML, or text alone."""
         row = await self.find(org)
         if row is None:
-            return await self.add(EmailLayout(org=org, html=html, set_by=by, set_at=at))
-        return await self.update(row, html=html, set_by=by, set_at=at)
+            return await self.add(EmailLayout(org=org, html=html, text_only=text_only, set_by=by, set_at=at))
+        return await self.update(row, html=html, text_only=text_only, set_by=by, set_at=at)
 
     async def delete_of(self, org: str) -> bool:
         """Forget the org's layout; whether it had one."""

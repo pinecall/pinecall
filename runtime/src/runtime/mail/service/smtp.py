@@ -22,7 +22,8 @@ async def deliver(mailbox: Mailbox, email: Email, *, within_s: float = TIMEOUT_S
     for name, value in email.headers.items():
         message[name] = value
     message.set_content(email.text)
-    message.add_alternative(email.html, subtype="html")
+    if email.html is not None:
+        message.add_alternative(email.html, subtype="html")
     try:
         await asyncio.wait_for(asyncio.to_thread(_hand_over, mailbox, message, within_s), within_s)
     except TimeoutError:

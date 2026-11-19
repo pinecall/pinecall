@@ -1,4 +1,4 @@
-/** The org's email template: made from a brand, a colour, a logo and a footer, or written as HTML; tried on a reply before it is kept. */
+/** How the org's emails are set: with no template (text alone, or simple HTML), or in a template made from a brand, a colour, a logo and a footer, or written as HTML; tried on a reply before it is kept. */
 
 import { useEffect, useState, type ReactNode } from "react";
 
@@ -9,6 +9,15 @@ import "../calls/email.css";
 
 const DOOR = "/v1/org/email/layout";
 const SAMPLE = "Hola Ana,\n\nGracias por escribirnos. Te confirmo los horarios:\n\n- **Sábado** de 10 a 14\n- Domingo cerrado\n\nPodés reservar en [nuestra web](https://example.com).\n\nUn saludo,\nEl equipo";
+
+/** `text`: one text part and no HTML. `none`: no template, the words as simple HTML. `simple` and `html`: a template. */
+type Mode = "text" | "none" | "simple" | "html";
+const MODES: readonly { mode: Mode; name: string; says: string }[] = [
+  { mode: "text", name: "Text only", says: "No template and no HTML: the email is its words, as plain text. Links are written out." },
+  { mode: "none", name: "No template", says: "No brand: the words as simple HTML on white, with their bold, lists, links and images." },
+  { mode: "simple", name: "Simple", says: "A template made from your brand, a colour, a logo and a footer. No HTML to write." },
+  { mode: "html", name: "HTML", says: "A template you write: {{content}} once, where the reply goes; {{subject}} wherever the subject shows." },
+];
 
 interface Simple {
   brand: string;
@@ -54,81 +63,82 @@ function simpleOf(html: string): Simple | null {
 
 export function EmailTemplate(): ReactNode {
   const credentials = useCredentials();
-  const [own, setOwn] = useState(false);
-  const [mode, setMode] = useState<"simple" | "html">("simple");
+  const [kept, setKept] = useState<Mode>("none");
+  const [mode, setMode] = useState<Mode>("none");
   const [simple, setSimple] = useState<Simple>(PLAINLY);
   const [html, setHtml] = useState("");
   const [sample, setSample] = useState(SAMPLE);
-  const [preview, setPreview] = useState("");
+  const [preview, setPreview] = useState<{ html: string | null; text: string }>({ html: "", text: "" });
   const [said, setSaid] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const written = mode === "simple" ? templateOf(simple) : html;
+  const templated = mode === "simple" || mode === "html";
+  const ready = !templated || written.includes("{{content}}");
 
   useEffect(() => {
     void read(credentials, DOOR).then((answer) => {
-      const kept = String(Reflect.get(Object(answer), "html") ?? "");
+      const page = String(Reflect.get(Object(answer), "html") ?? "");
       const isOwn = Reflect.get(Object(answer), "own") === true;
-      setOwn(isOwn);
-      setHtml(kept);
-      const made = isOwn ? simpleOf(kept) : PLAINLY;
+      const made = isOwn ? simpleOf(page) : null;
+      const now: Mode = Reflect.get(Object(answer), "text_only") === true ? "text" : !isOwn ? "none" : made === null ? "html" : "simple";
+      if (now === "html") setHtml(page);
       if (made !== null) setSimple(made);
-      setMode(made === null ? "html" : "simple");
+      setKept(now);
+      setMode(now);
     });
   }, [credentials]);
 
   // The preview follows the typing, a moment after it stops: the gateway sets the sample in the template as a reply.
   useEffect(() => {
-    if (!written.includes("{{content}}") || sample.trim() === "") return;
+    if (!ready || sample.trim() === "") return;
+    const how = mode === "text" ? { text_only: true } : mode === "none" ? { plain: true, text_only: false } : { html: written, text_only: false };
     const later = setTimeout(() => {
-      void post(credentials, `${DOOR}/preview`, { text: sample, subject: "Horarios", html: written })
-        .then((answer) => setPreview(String(Reflect.get(Object(answer), "html") ?? "")))
-        .catch(() => setPreview(""));
+      void post(credentials, `${DOOR}/preview`, { text: sample, subject: "Horarios", ...how })
+        .then((answer) => {
+          const page: unknown = Reflect.get(Object(answer), "html");
+          setPreview({ html: typeof page === "string" ? page : null, text: String(Reflect.get(Object(answer), "text") ?? "") });
+        })
+        .catch(() => setPreview({ html: "", text: "" }));
     }, 400);
     return () => clearTimeout(later);
-  }, [credentials, written, sample]);
+  }, [credentials, written, sample, mode, ready]);
 
   const keep = async (): Promise<void> => {
     setBusy(true);
     try {
-      await put(credentials, DOOR, { html: written });
-      setOwn(true);
-      setSaid("Kept: the agents' next emails are set in it.");
+      if (mode === "text") await put(credentials, DOOR, { text_only: true });
+      else if (mode === "none") await drop(credentials, DOOR).catch(() => undefined);
+      else await put(credentials, DOOR, { html: written });
+      setKept(mode);
+      setSaid(mode === "text" ? "Saved: the agents' next emails go as text alone." : mode === "none" ? "Saved: no template, the words as simple HTML." : "Saved: the agents' next emails are set in it.");
     } catch (failed) {
-      setSaid(failed instanceof Error ? failed.message : "The template was not kept.");
+      setSaid(failed instanceof Error ? failed.message : "It was not saved.");
     } finally {
       setBusy(false);
     }
   };
-  const forget = async (): Promise<void> => {
-    setBusy(true);
-    try {
-      await drop(credentials, DOOR);
-      setOwn(false);
-      setSimple(PLAINLY);
-      setMode("simple");
-      setSaid("Back to the plain template.");
-    } finally {
-      setBusy(false);
-    }
-  };
+  const chosen = MODES.find((one) => one.mode === mode);
 
   return (
-    <section className="dash-card mail-template" aria-label="Email template">
+    <section className="dash-card mail-template" aria-label="How the org's emails look">
       <header className="mail-template-head">
-        <span className="dash-eyebrow">Email template</span>
-        <span className="dash-quiet">{own ? "The org's own, for every agent's emails." : "The plain one: white, nobody's brand. Make it yours."}</span>
-        <div className="dash-switch" role="group" aria-label="How the template is made">
-          <button type="button" className={mode === "simple" ? "dash-switch-on" : ""} aria-pressed={mode === "simple"} onClick={() => setMode("simple")}>
-            Simple
-          </button>
-          <button type="button" className={mode === "html" ? "dash-switch-on" : ""} aria-pressed={mode === "html"} onClick={() => (setHtml(written), setMode("html"))}>
-            HTML
-          </button>
+        <span className="dash-eyebrow">How the emails look</span>
+        <span className="dash-quiet">One choice for the org: every agent's emails are sent this way.</span>
+        <div className="dash-switch" role="group" aria-label="How the org's emails are set">
+          {MODES.map((one) => (
+            <button key={one.mode} type="button" className={mode === one.mode ? "dash-switch-on" : ""} aria-pressed={mode === one.mode} title={one.says} onClick={() => (one.mode === "html" && (mode === "simple" || html.trim() === "") && setHtml(templateOf(simple)), setMode(one.mode), setSaid(null))}>
+              {one.name}
+              {kept === one.mode ? " ·" : ""}
+            </button>
+          ))}
         </div>
       </header>
+      <p className="num-hint mail-template-says">
+        {chosen?.says} {kept === mode ? "This is how they are sent now." : "Not saved yet."}
+      </p>
       <div className="mail-template-body">
         <div className="mail-template-form">
-          {mode === "simple" ? (
+          {mode === "simple" && (
             <>
               <Field label="Brand">
                 <input className="cfg-input" aria-label="Brand" placeholder="Your Company" value={simple.brand} onChange={(event) => setSimple({ ...simple, brand: event.target.value })} />
@@ -146,7 +156,8 @@ export function EmailTemplate(): ReactNode {
                 <textarea className="cfg-input cfg-area" rows={2} aria-label="Footer" placeholder="Optional: Your Company · Calle 1, Madrid · Reply to this email to reach us" value={simple.footer} onChange={(event) => setSimple({ ...simple, footer: event.target.value })} />
               </Field>
             </>
-          ) : (
+          )}
+          {mode === "html" && (
             <Field label="HTML">
               <textarea className="cfg-input cfg-area mail-code" rows={14} spellCheck={false} aria-label="HTML" value={html} onChange={(event) => setHtml(event.target.value)} />
               <span className="num-hint">{"{{content}}"} once, where the reply goes; {"{{subject}}"} wherever the subject shows.</span>
@@ -157,17 +168,16 @@ export function EmailTemplate(): ReactNode {
           </Field>
           <div className="cfg-dialog-foot mail-template-foot">
             {said !== null && <span className="dash-quiet">{said}</span>}
-            {own && (
-              <button type="button" className="app-button" disabled={busy} onClick={() => void forget()}>
-                Use the plain one
-              </button>
-            )}
-            <button type="button" className="cfg-save" disabled={busy || !written.includes("{{content}}")} onClick={() => void keep()}>
-              {busy ? "Saving…" : "Save the template"}
+            <button type="button" className="cfg-save" disabled={busy || !ready || (kept === mode && !templated)} onClick={() => void keep()}>
+              {busy ? "Saving…" : "Save"}
             </button>
           </div>
         </div>
-        <iframe className="mail-frame mail-template-preview" title="The reply as a contact would read it" sandbox="" srcDoc={preview} />
+        {preview.html === null ? (
+          <pre className="mail-template-preview mail-text-preview" aria-label="The reply as a contact would read it">{preview.text}</pre>
+        ) : (
+          <iframe className="mail-frame mail-template-preview" title="The reply as a contact would read it" sandbox="" srcDoc={preview.html} />
+        )}
       </div>
     </section>
   );

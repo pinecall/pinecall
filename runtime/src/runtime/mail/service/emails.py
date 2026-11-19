@@ -17,12 +17,12 @@ LOGO_HEIGHT = 28
 
 @dataclass(frozen=True, slots=True)
 class Email:
-    """An email ready to go: to whom, its subject, and the same words as text and as HTML."""
+    """An email ready to go: to whom, its subject, and the same words as text and as HTML; text alone with no HTML."""
 
     to: str
     subject: str
     text: str
-    html: str
+    html: str | None
     # What threads it in the reader's mail client and says it was written by no person: `Message-ID`,
     # `In-Reply-To`, `References`, `Auto-Submitted`. The box's own emails carry none.
     headers: Mapping[str, str] = field(default_factory=dict[str, str])
