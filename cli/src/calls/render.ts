@@ -51,10 +51,8 @@ export function sessions({ agent, calls }: { agent: string; calls: SessionLine[]
 export function call(shown: CallShown): string[] {
   const lines = [shown.call];
   const facts: [string, string][] = [];
-  // A call that has not ended has no summary or score yet; say where it stands rather than "not judged".
-  // A conversation written message by message is open between two of them, with nobody on it.
-  if (shown.live) facts.push(["live", "still running"]);
-  else if (shown.open) facts.push(["open", "waiting for the contact's next message"]);
+  // Not ended, so no summary or score yet: say it is live, or open (a written conversation, nobody on it), not "not judged".
+  if (shown.live || shown.open) facts.push(shown.live ? ["live", "still running"] : ["open", "waiting for the contact's next message"]);
   const summary = shown.summary;
   if (summary !== undefined) {
     facts.push(["outcome", String(summary["outcome"] ?? "—")]);
@@ -261,10 +259,8 @@ function lasted(one: SessionLine): string {
 }
 
 function endedOf(one: SessionLine): string {
-  if (one.live === true) return "live";
-  // A WhatsApp, SMS or email conversation waiting for its contact: open, with nobody on it.
-  if (one.status !== "ended" && (one.ended_at === null || one.ended_at === undefined)) return "open";
-  return words(one.end_reason ?? one.status ?? "—");
+  const open = one.status !== "ended" && (one.ended_at ?? null) === null; // a written conversation waiting for its contact
+  return one.live === true ? "live" : open ? "open" : words(one.end_reason ?? one.status ?? "—");
 }
 
 // `caller_hung_up` as a person says it: `caller hung up`.
