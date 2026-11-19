@@ -15,8 +15,12 @@ other port (587); it logs in as `smtp_username` and `smtp_password` when the rep
 relay with a login of its own (Amazon SES's SMTP credentials, say), and as IMAP does otherwise.
 `sender_name` is the name the contact reads beside the address. Both logins are tried as the account
 is kept, and a refusal is `400` in the server's words. Each host must resolve to public addresses
-alone. Bringing the mailbox again with no `smtp_password`, for the same `smtp_username`, keeps the
-one it had. The secrets are sealed and never read back.
+alone. Bringing the mailbox again with no `password` keeps the one it had, and with no
+`smtp_password`, for the same `smtp_username`, the relay's: a server is changed without its
+passwords typed again, and what is kept is tried with the rest. The secrets are sealed and never
+read back; `GET /v1/carrier` and `/v1/carriers` answer a mailbox's `settings` (`imap_host`,
+`imap_port`, `username`, `smtp_host`, `smtp_port`, `smtp_username`, `sender_name`) for a form to
+show again.
 
 ## The address — `POST /v1/numbers`
 

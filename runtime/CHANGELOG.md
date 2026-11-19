@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- **A mailbox's server is changed without its passwords.** Brought again with no `password`, a mailbox keeps the one
+  it had (as with no `smtp_password` it keeps the relay's), what it keeps is verified with the rest, and `GET
+  /v1/carrier` answers its `settings` (hosts, ports, logins, name; never a password) for a form to show again.
+- **The console's Emails page** holds the email threads, apart from Messages (WhatsApp and SMS). An agent's Channels
+  tab shows each mailbox with its server and **Server settings** to change it, and an **Email template** editor: made
+  from a brand, a colour, a logo and a footer, or written as HTML, tried live on a reply before it is kept.
+
 ## 0.11.50 — an agent answers email, each thread its own conversation, its replies set in the org's layout (2026-11-19)
 
 - **An agent answers email.** An org brings a mailbox of its own as an account of kind `email` (`PUT /v1/carrier`:

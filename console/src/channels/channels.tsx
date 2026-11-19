@@ -1,4 +1,4 @@
-/** An agent's Channels tab: the phone numbers and the WhatsApp numbers that reach it, each with how it rings, and the way to give it another. */
+/** An agent's Channels tab: its phone, WhatsApp and SMS numbers and its mailboxes, each with how it is reached, the way to add another, and the email template. */
 
 import { useCallback, useState, type ReactNode } from "react";
 import { Link } from "react-router";
@@ -11,6 +11,8 @@ import { AddNumberPanel } from "../numbers/add-number";
 import type { NumberRow } from "../numbers/door";
 import { useNumbers } from "../numbers/numbers";
 import { TestLine } from "../numbers/test-line";
+import { EmailTemplate } from "./email-template";
+import { MailboxCard } from "./mailbox";
 import { comesThrough, RINGS, shown } from "../numbers/words";
 import "../dashboard/dashboard.css";
 import "../configure/configure.css";
@@ -78,9 +80,13 @@ export function ChannelsTab({ agent }: { agent: string }): ReactNode {
         {of("sms").map(row)}
         {read && of("sms").length === 0 && <p className="dash-quiet num-none">No number answers SMS yet.</p>}
       </Section>
-      <Section tone="green" icon="chat" title="Email" about={`The mailboxes whose emails ${agent} answers, set in the org's layout.`} action="Connect a mailbox" onAdd={() => setAdding("email")}>
+      <Section tone="green" icon="mail" title="Email" about={`The mailboxes whose emails ${agent} answers, each reply set in the org's template.`} action="Connect a mailbox" onAdd={() => setAdding("email")}>
         {of("email").map(row)}
-        {read && of("email").length === 0 && <p className="dash-quiet num-none">No mailbox yet.</p>}
+        {of("email").flatMap((one) => carriers.filter((carrier) => carrier.kind === "email" && carrier.account === one.route.account)).map((carrier) => (
+          <MailboxCard key={carrier.account} carrier={carrier} onSaved={async () => reread()} />
+        ))}
+        {read && of("email").length === 0 && <p className="dash-quiet num-none">No mailbox yet. Connect one and every email written to it is answered.</p>}
+        {read && of("email").length > 0 && <EmailTemplate />}
       </Section>
       {adding !== null && <AddNumberPanel key={adding} agents={[agent]} agent={agent} channel={adding} onAdded={reread} onClose={stopAdding} />}
     </div>

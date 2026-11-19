@@ -74,7 +74,8 @@ class EmailAccount(Schema):
 
     kind: Literal["email"] = "email"
     address: Annotated[str, Field(min_length=3, max_length=254)]
-    password: Annotated[str, Field(min_length=1)]
+    # Left out when the mailbox is brought again: it keeps the one it had.
+    password: str = ""
     imap_host: Annotated[str, Field(min_length=1, max_length=253)]
     smtp_host: Annotated[str, Field(min_length=1, max_length=253)]
     # The IMAP login when it is not the address.
@@ -109,6 +110,8 @@ class CarrierRow(Row):
     label: str = ""
     # A SIP peer's networks, each waiting, approved or refused; none for an account with an API.
     networks: list[NetworkRow] = Field(default_factory=list[NetworkRow])
+    # A mailbox's hosts, ports, logins and name, never its passwords; empty for any other kind.
+    settings: dict[str, str | int] = Field(default_factory=dict[str, str | int])
 
 
 class CarrierList(Row):

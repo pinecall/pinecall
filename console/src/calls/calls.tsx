@@ -13,7 +13,7 @@ import { OpenCall } from "./open-call";
 import { keeps } from "./status";
 import { CallsTable } from "./table";
 import { threadsOf, titleOf, type Thread } from "./threads";
-import { CALLS, isWritten, MESSAGES, useCallsUrl } from "./url";
+import { baseOf, EMAILS, MESSAGES, useCallsUrl } from "./url";
 import "../dashboard/dashboard.css";
 import "../apps/apps.css";
 import "./calls.css";
@@ -40,12 +40,12 @@ export function CallsPage(): ReactNode {
   const lines = useMemo(() => (erased.size === 0 ? read : read.filter((line) => !erased.has(line.call))), [read, erased]);
   const [details, setDetails] = useState(() => window.innerWidth > DETAILS_OPEN_FROM);
   const { agent, status } = url;
-  // Messages holds the threads a contact writes on (WhatsApp, SMS); Calls everything else. A thread's
-  // channel is picked there too, so nothing is listed twice and nothing is listed nowhere.
-  const { written, channel } = url;
+  // Emails holds the email threads, Messages the ones a contact writes on a number (WhatsApp, SMS), Calls
+  // everything else: nothing is listed twice and nothing is listed nowhere. Messages picks a channel too.
+  const { base, channel } = url;
   const mine = useMemo(
-    () => lines.filter((line) => (agent === "" || line.agent === agent) && isWritten(line) === written && (!written || channel === "" || line.channel === channel)),
-    [lines, agent, written, channel],
+    () => lines.filter((line) => (agent === "" || line.agent === agent) && baseOf(line) === base && (base !== MESSAGES || channel === "" || line.channel === channel)),
+    [lines, agent, base, channel],
   );
   const threads = useMemo(() => threadsOf(mine.filter((line) => keeps(status, line)), grouped), [mine, status, grouped]);
   // Who the person is does not depend on the status picked: their other conversations are all of them.
@@ -79,13 +79,13 @@ export function CallsPage(): ReactNode {
   // The menu's row names the page, and the page opens on the first of its list, in the address like any other.
   // A link to a call opens it on the page it belongs to: a thread on Messages, anything else on Calls.
   const opened = chosen === undefined ? undefined : lines.find((line) => line.call === chosen);
-  if (opened !== undefined && isWritten(opened) !== written) return <Navigate to={`${written ? CALLS : MESSAGES}/${encodeURIComponent(opened.call)}`} replace />;
+  if (opened !== undefined && baseOf(opened) !== base) return <Navigate to={`${baseOf(opened)}/${encodeURIComponent(opened.call)}`} replace />;
   if (!phone && chosen === undefined && first !== undefined) return <Navigate to={`${url.base}/${encodeURIComponent(first.latest.call)}${url.search}`} replace />;
 
   const person = holding(everyone, chosen);
   return (
     <>
-      <PageHead open={chosen === undefined ? undefined : person === undefined ? (written ? "A conversation" : "A call") : titleOf(person)} back={`${url.base}${url.search}`}>
+      <PageHead open={chosen === undefined ? undefined : person === undefined ? (base === EMAILS ? "An email" : base === MESSAGES ? "A conversation" : "A call") : titleOf(person)} back={`${url.base}${url.search}`}>
         {views}
         {chosen !== undefined && (
           <button type="button" className={details ? "app-button calls-toggle calls-toggle-on" : "app-button calls-toggle"} aria-pressed={details} onClick={() => setDetails(!details)}>

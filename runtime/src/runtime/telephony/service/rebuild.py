@@ -168,8 +168,10 @@ async def bring_carrier(
     calling = brought.calling_networks()
     for network in calling or ():
         networks.check_network(network)
-    await brought.verify(http)
-    kept = await accounts.put_carrier(session, vault, brought)
+    # What is kept from the account the org had (a secret brought again empty) is verified with the rest.
+    whole = await accounts.complete_carrier(session, vault, brought)
+    await whole.verify(http)
+    kept = await accounts.put_carrier(session, vault, whole)
     if calling is not None:
         await networks.ask(session, kept.org, kept.id, calling)
         await readmit(session, vault, servers, kept.org)

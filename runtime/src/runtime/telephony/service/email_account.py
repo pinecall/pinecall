@@ -100,6 +100,18 @@ class EmailAccount(Carrier):
             sender=formataddr((self.sender_name, self.address)) if self.sender_name else self.address,
         )
 
+    def describe(self) -> dict[str, str | int]:
+        """What the mailbox is set to, as a form shows it again: everything but its passwords."""
+        return {
+            "imap_host": self.imap_host,
+            "imap_port": self.imap_port,
+            "username": self.username,
+            "smtp_host": self.smtp_host,
+            "smtp_port": self.smtp_port,
+            "smtp_username": self.smtp_username,
+            "sender_name": self.sender_name,
+        }
+
     @classmethod
     @override
     def read(cls, org: str, account: Mapping[str, object], outbound: Mapping[str, object] | None) -> Self:
@@ -111,7 +123,7 @@ class EmailAccount(Carrier):
         return cls(
             org=org,
             address=address,
-            password=read_text(account, "password"),
+            password=read_optional_text(account, "password") or "",
             imap_host=read_text(account, "imap_host"),
             smtp_host=read_text(account, "smtp_host"),
             username=read_optional_text(account, "username") or "",
@@ -129,14 +141,17 @@ class EmailAccount(Carrier):
         account = {"kind": KIND, **{name: getattr(self, name) for name in _FIELDS}}
         return {"account": account, "outbound": None}
 
-    # A password is changed far more often than a relay: bringing the mailbox again with no SMTP password
-    # keeps the one it had for the same SMTP login.
+    # A server is changed without its passwords being typed again: bringing the mailbox again with none
+    # keeps the one it had, and with no SMTP password keeps the relay's for the same SMTP login.
     @override
     def keep_from(self, was: object) -> Self:
-        """The mailbox as brought, with the SMTP password it had when it brings none for the same login."""
-        if self.smtp_password or not isinstance(was, EmailAccount) or was.smtp_username != self.smtp_username:
+        """The mailbox as brought, with the passwords it had where it brings none."""
+        if not isinstance(was, EmailAccount):
             return self
-        return dataclasses.replace(self, smtp_password=was.smtp_password)
+        kept = self if self.password else dataclasses.replace(self, password=was.password)
+        if kept.smtp_password or was.smtp_username != kept.smtp_username:
+            return kept
+        return dataclasses.replace(kept, smtp_password=was.smtp_password)
 
     # Both doors are tried as the inbox and the replies will use them: a login either refuses is said
     # here, in the server's words, and not on the first email.

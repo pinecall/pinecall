@@ -3,7 +3,7 @@
 import json
 import logging
 from collections.abc import Collection, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
@@ -54,6 +54,8 @@ class CarrierListed:
     label: str
     # A SIP peer's networks, each waiting, approved or refused; none for an account that names none.
     networks: Sequence[networks.NetworkListed]
+    # What a mailbox is set to, never its passwords, so a form can show it again; none for any other kind.
+    settings: Mapping[str, str | int] = field(default_factory=dict[str, str | int])
 
 
 # ── an org's accounts ──
@@ -112,7 +114,10 @@ async def get_carrier(session: AsyncSession, vault: Vault, org: str, account: st
 async def describe_carrier(session: AsyncSession, carrier: Carrier) -> CarrierListed:
     """The account as the org's list shows it, with the networks it asked for."""
     asked = await networks.list_of_source(session, carrier.org, carrier.id)
-    return CarrierListed(kind=carrier.kind.value, account=carrier.id, label=carrier.label, networks=asked)
+    settings = carrier.describe() if isinstance(carrier, EmailAccount) else {}
+    return CarrierListed(
+        kind=carrier.kind.value, account=carrier.id, label=carrier.label, networks=asked, settings=settings
+    )
 
 
 async def describe_carriers(session: AsyncSession, vault: Vault, org: str) -> list[CarrierListed]:
@@ -120,11 +125,16 @@ async def describe_carriers(session: AsyncSession, vault: Vault, org: str) -> li
     return [await describe_carrier(session, carrier) for carrier in await list_carriers(session, vault, org)]
 
 
-async def put_carrier(session: AsyncSession, vault: Vault, brought: Carrier) -> Carrier:
-    """Keep the account; bringing it again replaces its secret and keeps what the box made on it."""
+async def complete_carrier(session: AsyncSession, vault: Vault, brought: Carrier) -> Carrier:
+    """The account as brought, with what it keeps of the one the org had under its id: what the box made, a secret."""
     carriers = await list_carriers(session, vault, brought.org)
     was = next((carrier for carrier in carriers if carrier.id == brought.id), None)
-    kept = brought if was is None else brought.keep_from(was)
+    return brought if was is None else brought.keep_from(was)
+
+
+async def put_carrier(session: AsyncSession, vault: Vault, brought: Carrier) -> Carrier:
+    """Keep the account; bringing it again replaces its secret and keeps what the box made on it."""
+    kept = await complete_carrier(session, vault, brought)
     await seal_carrier(session, vault, kept)
     return kept
 

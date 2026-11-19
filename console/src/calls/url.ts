@@ -6,20 +6,30 @@ import { useLocation, useSearchParams } from "react-router";
 import { statusOf, type Status } from "./status";
 import { isWritten } from "./threads";
 
-/** Where each of the two pages lives: spoken calls and web chats, and the threads a contact writes on. */
+/** Where each of the three pages lives: spoken calls and web chats, the threads a contact writes on a number, the emails. */
 export const CALLS = "/calls";
 export const MESSAGES = "/messages";
+export const EMAILS = "/emails";
+export type CallsBase = typeof CALLS | typeof MESSAGES | typeof EMAILS;
 export { isWritten };
 
-/** The page this address is on: Messages under /messages, Calls anywhere else. */
-export function useCallsBase(): typeof CALLS | typeof MESSAGES {
-  return useLocation().pathname.startsWith(MESSAGES) ? MESSAGES : CALLS;
+/** The page a conversation is read on: an email on Emails, a WhatsApp or SMS thread on Messages, anything else on Calls. */
+export function baseOf(line: { channel: string | null }): CallsBase {
+  if (line.channel === "email") return EMAILS;
+  return isWritten(line) ? MESSAGES : CALLS;
+}
+
+/** The page this address is on: Emails under /emails, Messages under /messages, Calls anywhere else. */
+export function useCallsBase(): CallsBase {
+  const path = useLocation().pathname;
+  if (path.startsWith(EMAILS)) return EMAILS;
+  return path.startsWith(MESSAGES) ? MESSAGES : CALLS;
 }
 
 export interface CallsUrl {
-  /** `/calls` or `/messages`: where this page's links go. */
-  base: typeof CALLS | typeof MESSAGES;
-  /** Whether this is Messages: the WhatsApp and SMS threads, and nothing spoken. */
+  /** `/calls`, `/messages` or `/emails`: where this page's links go. */
+  base: CallsBase;
+  /** Whether the page lists written conversations: Messages or Emails, nothing spoken. */
   written: boolean;
   table: boolean;
   status: Status;
@@ -52,7 +62,7 @@ export function useCallsUrl(): CallsUrl {
   const written = params.toString();
   return {
     base,
-    written: base === MESSAGES,
+    written: base !== CALLS,
     table: params.get("view") === "table",
     status: statusOf(params.get("status")),
     query: params.get("q") ?? "",

@@ -30,6 +30,7 @@ export const MENU: readonly Group[] = [
     rows: [
       { path: "/calls", name: "Calls", icon: "calls" },
       { path: "/messages", name: "Messages", icon: "chat" },
+      { path: "/emails", name: "Emails", icon: "mail" },
       { path: "/quality", name: "Quality", icon: "quality" },
       { path: "/observability", name: "Observability", icon: "observability" },
       { path: "/monitors", name: "Monitors", icon: "monitors" },

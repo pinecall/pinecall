@@ -31,6 +31,11 @@ def test_a_mailbox_reads_as_it_is_brought_and_seals_what_it_read() -> None:
         "Acme Help <help@acme.example>",
     )
     assert EmailAccount.read("org_1", account.dump()["account"], None) == account
+    shown = account.describe()
+    assert shown["smtp_host"] == "email-smtp.us-east-1.amazonaws.com" and shown["smtp_username"] == "AKIAEXAMPLE"
+    assert "imap-secret" not in shown.values() and "ses-secret" not in shown.values(), (
+        "a form is never shown a password"
+    )
 
 
 def test_smtp_logs_in_as_imap_when_no_relay_is_named_and_a_password_brought_again_keeps_the_relays() -> None:
@@ -44,6 +49,10 @@ def test_smtp_logs_in_as_imap_when_no_relay_is_named_and_a_password_brought_agai
     was = EmailAccount.read("org_1", BROUGHT, None)
     again = EmailAccount.read("org_1", {**BROUGHT, "password": "new", "smtp_password": ""}, None).keep_from(was)
     assert (again.password, again.smtp_password) == ("new", "ses-secret")
+    moved = EmailAccount.read("org_1", {**BROUGHT, "password": "", "smtp_host": "smtp.acme.example"}, None).keep_from(
+        was
+    )
+    assert (moved.password, moved.smtp_password, moved.smtp_host) == ("imap-secret", "ses-secret", "smtp.acme.example")
 
 
 async def test_a_mailbox_answers_email_at_its_own_address_and_nothing_else() -> None:

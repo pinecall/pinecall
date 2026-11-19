@@ -53,6 +53,8 @@ const CarrierSchema = z.looseObject({
   account: z.string(),
   label: z.string().default(""),
   networks: z.array(z.looseObject({ network: z.string(), state: z.enum(["waiting", "approved", "refused"]) })).default([]),
+  /** A mailbox's hosts, ports, logins and name, never its passwords. */
+  settings: z.record(z.string(), z.union([z.string(), z.number()])).default({}),
 });
 export type Carrier = z.infer<typeof CarrierSchema>;
 
@@ -72,7 +74,8 @@ export type WantedCarrier =
   | {
       kind: "email";
       address: string;
-      password: string;
+      /** Left out when the mailbox is brought again: it keeps the one it had. */
+      password?: string;
       imap_host: string;
       smtp_host: string;
       username?: string;
