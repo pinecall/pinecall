@@ -10,6 +10,7 @@ import { whoami, type Whose } from "@pinecall/core/whoami";
 import { type SessionLine } from "@pinecall/core/wire/rest";
 import { type HeldAgent } from "@pinecall/core/wire/rest-org";
 import { readHosted, type Hosted } from "../apps/door";
+import { isOnTheLine } from "../calls/threads";
 import { useOperator } from "./operator";
 
 export interface Org {
@@ -23,6 +24,7 @@ export interface Org {
   /** What the box hosts for the org; null until read, and for a key that may not read it. */
   hosted: readonly Hosted[] | null;
   lines: SessionLine[];
+  /** The calls with somebody on the line now. A WhatsApp, SMS or email conversation stays open for hours with nobody on it, and is never one. */
   live: SessionLine[];
   /** Whether the person runs the box; null while asking. */
   operator: boolean | null;
@@ -83,7 +85,7 @@ export function OrgProvider({ children }: { children: ReactNode }): ReactNode {
   }, [credentials, floor.agentsChanged]);
 
   const studio = useMemo(() => new Set([...(hosted ?? []).filter((one) => one.kind === "studio").map((one) => one.name), ...agents.filter((one) => one.kind === "studio").map((one) => one.slug)]), [hosted, agents]);
-  const value = useMemo<Org>(() => ({ whose, orgs, agents, agentsRead, studio, hosted, lines: floor.lines, live: floor.lines.filter((line) => line.live), operator, rereadWhose }), [whose, orgs, agents, agentsRead, studio, hosted, floor.lines, operator, rereadWhose]);
+  const value = useMemo<Org>(() => ({ whose, orgs, agents, agentsRead, studio, hosted, lines: floor.lines, live: floor.lines.filter(isOnTheLine), operator, rereadWhose }), [whose, orgs, agents, agentsRead, studio, hosted, floor.lines, operator, rereadWhose]);
   return <Held value={value}>{children}</Held>;
 }
 
