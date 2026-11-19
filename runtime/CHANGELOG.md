@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- **One Calls page lists every conversation.** Messages and Emails are no pages of their own any more: a phone call,
+  a web call, a website's chat, WhatsApp, SMS and an email are one list, each row saying its kind, and **Showing**
+  narrows it to one. Simulated callers and golden runs are tests and stay hidden until **Tests** is on. What has not
+  ended comes first in two groups: the calls with somebody on the line, then the written conversations open and
+  waiting for a reply; the Live chip counts the first alone. A link kept to `/messages/…` or `/emails/…` opens the
+  conversation on Calls.
+- **A list says, when asked, whether a call is spoken.** `GET /v1/sessions` and an agent's sessions take `spoken=true`:
+  each row then carries `spoken`, which tells a web call by voice from a website's chat (both `web`). Left out, the row
+  is the one an app built before reads.
+
 ## 0.11.51 — live is somebody on the line and never a written conversation; Emails is a page of its own, with a mailbox's server and the org's template in an agent's channels (2026-11-19)
 
 - **A mailbox's server is changed without its passwords.** Brought again with no `password`, a mailbox keeps the one

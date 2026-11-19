@@ -14,6 +14,7 @@ import { alertOf } from "../monitors/words";
 import { spendTotal } from "../observability/fold";
 import { Icon } from "../shell/icons";
 import { leftAt, useFleet } from "./fleet";
+import { kindSaid } from "../calls/kind";
 
 const SHOWN = 6;
 const LISTED = 8;
@@ -159,7 +160,7 @@ function LatestCalls({ lines }: { lines: readonly SessionLine[] }): ReactNode {
               <AvatarOf name={line.agent} size={24} />
               <span className="dash-look-words dash-look-fill">
                 <span className="dash-clip">{callerOf(line)}</span>
-                <span className="dash-look-why dash-quiet dash-clip">{[line.agent, line.channel].filter((part) => part != null).join(", ")}</span>
+                <span className="dash-look-why dash-quiet dash-clip">{[line.agent, kindSaid(line)].join(", ")}</span>
               </span>
               <span className="dash-num dash-quiet">{line.live ? <span className="dash-mood-good">Live, {elapsed(line.started_at)}</span> : ago(line.started_at)}</span>
             </Link>

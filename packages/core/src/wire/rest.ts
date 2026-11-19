@@ -64,6 +64,8 @@ export const SessionLineSchema = z.strictObject({
   holder_name: z.string().nullish(),
   /** The test run the call is one of, on a list asked with `runs`: a golden's call, never a person's. */
   run: z.string().nullish(),
+  /** Whether it is had by voice, on a list asked with `spoken`: a web call by voice and a website's chat are both `web`. */
+  spoken: z.boolean().nullish(),
 });
 
 export type SessionLine = z.infer<typeof SessionLineSchema>;

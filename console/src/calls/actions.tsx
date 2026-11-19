@@ -10,15 +10,13 @@ import { type CallScore } from "@pinecall/core/wire/events-call";
 import { useOrg } from "../lib/org";
 import { RunAgain } from "../simulations/again";
 import { eraseCall, judgeAgain, keepCall, optOut, promoteCall, type Promoted } from "./door";
-import { thingOn, useCallsBase } from "./url";
+import { CALLS } from "./url";
 
 type Busy = "" | "judge" | "keep" | "promote" | "erase" | "list";
 
-export function Actions({ agent, call, number, onJudged }: { agent: string; call: string; number: string | null; onJudged: (score: CallScore) => void }): ReactNode {
+export function Actions({ agent, call, number, thing, onJudged }: { agent: string; call: string; number: string | null; /** What it is, in its own word: a call, a conversation, an email thread. */ thing: string; onJudged: (score: CallScore) => void }): ReactNode {
   const credentials = useCredentials();
   const navigate = useNavigate();
-  const base = useCallsBase();
-  const thing = thingOn(base);
   const scopes = useOrg().whose?.scopes ?? null;
   const [busy, setBusy] = useState<Busy>("");
   const [sure, setSure] = useState(false);
@@ -116,7 +114,7 @@ export function Actions({ agent, call, number, onJudged }: { agent: string; call
               onClick={() =>
                 void doing("erase", async () => {
                   await eraseCall(credentials, call);
-                  void navigate(base);
+                  void navigate(CALLS);
                 })
               }
             >

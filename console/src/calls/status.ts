@@ -6,7 +6,6 @@ import { type SessionLine } from "@pinecall/core/wire/rest";
 /** The chips, in the order they are drawn; `""` is every call. `?status=` in the address. */
 export const STATUSES = [
   { value: "", name: "All" },
-  // On Messages and Emails the chip reads "Open": a written conversation waits for its contact with nobody on it.
   { value: "live", name: "Live" },
   { value: "asking", name: "Asking" },
   { value: "broke", name: "Broke" },
@@ -25,7 +24,8 @@ export function keeps(status: Status, line: SessionLine): boolean {
     case "":
       return true;
     case "live":
-      return isLive(line);
+      // Somebody on the line: a written conversation waiting for its contact is open, in the list's own group, never live.
+      return line.live && isLive(line);
     case "asking":
       return wantsAPerson(line);
     case "broke":

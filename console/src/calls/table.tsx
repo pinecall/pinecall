@@ -9,27 +9,18 @@ import { type SessionLine } from "@pinecall/core/wire/rest";
 import { AvatarOf } from "../apps/avatar";
 import { lengthOf, utcDay } from "../lib/format";
 import { useOrg } from "../lib/org";
-import { Select } from "../ui/select";
 import { useCallMenu } from "./call-menu";
 import { Face } from "./face";
-import { AgentPick, StatusChips } from "./filters";
+import { AgentPick, StatusChips, TypePick } from "./filters";
 import { copyOf, goldenOf, hourOf, lettersFor, liveFirst, simulationOf, standingOf, webVisitor } from "./format";
 import { keeps } from "./status";
 import { dayName, isWritten } from "./threads";
-import type { CallsUrl } from "./url";
+import { goingSaid, isATest, kindSaid, typeOf } from "./kind";
+import { channelOf, type CallsUrl } from "./url";
 import { useNow } from "./use-now";
 
 // A call id as the log names one: pasted whole, Enter opens it even when it is not on the page.
 const A_CALL = /^call[_-][\w+-]{6,}$/;
-
-const CHANNELS = [
-  { value: "", label: "Every channel" },
-  { value: "web", label: "Web" },
-  { value: "phone", label: "Phone" },
-  { value: "whatsapp", label: "WhatsApp" },
-  { value: "sms", label: "SMS" },
-  { value: "email", label: "Email" },
-];
 
 /** A row opens the call beside its thread; the status picked goes with it. */
 function hrefOf(call: string, url: CallsUrl): string {
@@ -48,14 +39,14 @@ function Row({ line, to, now, onErased }: { line: SessionLine; to: string; now: 
       <Face name={who} letters={isARun(line) ? "G" : isSimulated(line) ? "S" : lettersFor(line.caller?.name, line.direction === "outbound" ? line.to : line.from)} on={live && (!isWritten(line) || standing.mood === "warn") ? (standing.mood === "warn" ? "asking" : "live") : null} />
       <span className="calls-td-who">
         <span className="calls-td-name dash-clip">{who}</span>
-        <span className="dash-quiet dash-clip">{line.outcome ?? (live ? (isARun(line) ? "A golden, running now" : isWritten(line) ? "Conversation open" : "On a call now") : "Nothing was said")}</span>
+        <span className="dash-quiet dash-clip">{line.outcome ?? (live ? (isARun(line) ? "A golden, running now" : goingSaid(line)) : "Nothing was said")}</span>
       </span>
       <span className="calls-td calls-td-agent calls-td-worn">
         <AvatarOf name={line.agent} size={20} />
         <span className="dash-clip">{line.agent}</span>
       </span>
       <span className="calls-td calls-td-channel dash-clip">
-        <span className="dash-first">{line.channel ?? "—"}</span>
+        <span className="dash-first">{kindSaid(line)}</span>
         {line.direction === "outbound" && ", out"}
         {copy !== undefined && `, ${copy}`}
       </span>
@@ -80,14 +71,16 @@ function Row({ line, to, now, onErased }: { line: SessionLine; to: string; now: 
 export function CallsTable({ lines, url, onErased }: { /** What the page follows, through the agent picked. */ lines: readonly SessionLine[]; url: CallsUrl; onErased: (call: string) => void }): ReactNode {
   const navigate = useNavigate();
   const [pages, setPages] = useState(1);
-  const filter: Filter = { query: url.query, agent: url.agent, channel: url.channel };
+  // The gateway searches by channel; a web call is told from a website's chat, and a test from a person, on the rows it answers.
+  const filter: Filter = { query: url.query, agent: url.agent, channel: channelOf(url.type) };
+  const wanted = (line: SessionLine): boolean => (url.type === "" || typeOf(line) === url.type) && (url.tests || !isATest(line));
   // Asked again whenever the followed list moves: a call that rang shows up in the searched page too.
   const searched = useServerSearch("", filter, pages, floorMoved(lines)).found;
-  const found = searched !== null ? searched.rows : lines.filter((line) => matches(line, filter.query) && (filter.channel === "" || line.channel === filter.channel));
+  const found = searched !== null ? searched.rows.filter(wanted) : lines.filter((line) => matches(line, filter.query));
   const ordered = liveFirst(found.filter((line) => keeps(url.status, line)));
   const now = useNow(ordered.some(isLive));
   const typed = url.query.trim();
-  const filtering = url.query !== "" || url.agent !== "" || url.channel !== "" || url.status !== "";
+  const filtering = url.query !== "" || url.agent !== "" || url.type !== "" || url.status !== "";
 
   const open = (event: KeyboardEvent<HTMLInputElement>): void => {
     if (event.key === "Enter" && A_CALL.test(typed)) void navigate(`${url.base}/${encodeURIComponent(typed)}`);
@@ -100,9 +93,7 @@ export function CallsTable({ lines, url, onErased }: { /** What the page follows
         <StatusChips lines={lines} url={url} />
         <span className="calls-grow" />
         <AgentPick url={url} />
-        <div className="calls-pick">
-          <Select label="Filter by channel" value={url.channel} items={CHANNELS} onChange={(value) => url.ask("channel", value)} />
-        </div>
+        <TypePick url={url} />
       </div>
       <section className="dash-card" aria-label="Calls">
         {ordered.length === 0 ? (

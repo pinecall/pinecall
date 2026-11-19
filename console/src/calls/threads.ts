@@ -4,6 +4,7 @@ import { byDay, isARun, isLive, isSimulated, prettyNumber, wantsAPerson, type Ca
 import { type SessionLine } from "@pinecall/core/wire/rest";
 import { lengthOf, utcDay } from "../lib/format";
 import { dayOf, goldenOf, lettersFor, simulationOf, visitorOf } from "./format";
+import { goingSaid, kindNamed } from "./kind";
 
 const A_SIMULATED_CALL = "simulated caller";
 // A golden opens its call as a visitor of a page would, from an address of its own: read by its
@@ -77,12 +78,23 @@ export function threadsOf(lines: readonly SessionLine[], grouped = true): Thread
 }
 
 /** The threads under "live" and then their newest call's day, in the order given. */
-export function threadDays(threads: readonly Thread[]): CallDay<Thread>[] {
+/** A day of the list: the days the calls are grouped under, and the written conversations still open, which are no day's. */
+export type ThreadDay = CallDay<Thread> | { key: "open"; name: "open"; lines: Thread[] };
+
+// What has not ended comes first, in two groups: the calls with somebody on the line, then the written
+// conversations waiting for their contact, which stay open for hours and are never live.
+export function threadDays(threads: readonly Thread[]): ThreadDay[] {
   const of = new Map(threads.map((thread) => [thread.latest.call, thread]));
-  return byDay(
+  const days: ThreadDay[] = byDay(
     threads.map((thread) => thread.latest),
     utcDay,
   ).map((day) => ({ ...day, lines: day.lines.flatMap((line) => of.get(line.call) ?? []) }));
+  return days.flatMap((day): ThreadDay[] => {
+    if (day.name !== "live") return [day];
+    const open = day.lines.filter((thread) => !isOnTheLine(thread.latest));
+    const going = { ...day, lines: day.lines.filter((thread) => isOnTheLine(thread.latest)) };
+    return [...(going.lines.length > 0 ? [going] : []), ...(open.length > 0 ? [{ key: "open" as const, name: "open" as const, lines: open }] : [])];
+  });
 }
 
 /** What a thread is called: its name, its number, or the web visitor as the list names them. */
@@ -118,15 +130,17 @@ export function isOnTheLine(line: SessionLine): boolean {
 export function lastOf(thread: Thread): string {
   const line = thread.latest;
   if (line.outcome !== null && line.outcome !== "") return line.outcome;
-  if (line.status !== "ended") return thread.handle === A_GOLDEN_RUN ? "A golden, running now" : isWritten(line) ? "Conversation open" : "On a call now";
-  return `${line.channel ?? "A"} ${isWritten(line) ? "conversation" : "call"}, ${lengthOf(line.started_at, line.ended_at)}`;
+  if (line.status !== "ended") return thread.handle === A_GOLDEN_RUN ? "A golden, running now" : goingSaid(line);
+  return `${kindNamed(line)}, ${lengthOf(line.started_at, line.ended_at)}`;
 }
 
 /** A group's title: who is on the line now (the conversations still open, of written ones), then Today, Yesterday and every day before by its date. */
-export function dayName(day: Pick<CallDay<unknown>, "name"> & { at?: number }, written = false): string {
+export function dayName(day: { name: ThreadDay["name"]; at?: number }): string {
   switch (day.name) {
     case "live":
-      return written ? "Open" : "On the line";
+      return "On the line";
+    case "open":
+      return "Open, waiting for a reply";
     case "unstarted":
       return "Not started";
     case "today":

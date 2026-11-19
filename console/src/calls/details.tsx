@@ -19,7 +19,8 @@ import { TraceStep } from "./trace";
 import type { TraceBar } from "./trace-bars";
 import type { WatchedCall } from "./use-watched-call";
 import { isWritten } from "./threads";
-import { baseOf } from "./url";
+import { kindSaid } from "./kind";
+import { CALLS } from "./url";
 
 function Tile({ label, value, sub }: { label: string; value: string; sub: string }): ReactNode {
   return (
@@ -101,11 +102,11 @@ function OtherCalls({ person, shown, search }: { person: Thread; shown: string; 
       <span className="dash-eyebrow">Their other conversations</span>
       <div className="calls-others">
         {others.map((line) => (
-          <Link key={line.call} to={`${baseOf(line)}/${encodeURIComponent(line.call)}${search}`} className="calls-other">
+          <Link key={line.call} to={`${CALLS}/${encodeURIComponent(line.call)}${search}`} className="calls-other">
             <span className="calls-other-top">
               <span>{line.started_at === null ? line.call : dayOf(line.started_at)}</span>
               <span className="dash-quiet dash-clip">
-                {line.agent}, {line.channel ?? "—"}, {line.status === "ended" ? lengthOf(line.started_at, line.ended_at) : isWritten(line) ? "open" : "on the line now"}
+                {line.agent}, {kindSaid(line)}, {line.status === "ended" ? lengthOf(line.started_at, line.ended_at) : isWritten(line) ? "open" : "now"}
               </span>
             </span>
             {line.outcome !== null && line.outcome !== "" && <span className="dash-quiet dash-clip">{line.outcome}</span>}
@@ -169,7 +170,7 @@ export function DetailsPanel({
       <Models call={call} state={state} entries={entries} />
       {person !== undefined && <OtherCalls person={person} shown={call} search={search} />}
       {over && <Proofs state={state} entries={entries} />}
-      {over && <Actions agent={state.agent || person?.latest.agent || ""} call={call} number={number} onJudged={onJudged} />}
+      {over && <Actions agent={state.agent || person?.latest.agent || ""} call={call} number={number} thing={state.channel === "email" ? "email thread" : state.channel === "phone" || spoken ? "call" : "conversation"} onJudged={onJudged} />}
     </SidePanel>
   );
 }

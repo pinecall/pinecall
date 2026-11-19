@@ -29,6 +29,7 @@ async def list_agent_calls(
         limit=query.limit,
         holders=query.holders,
         runs=query.runs,
+        spoken=query.spoken,
     )
     return schemas.CallList.of(found)
 
@@ -49,5 +50,6 @@ async def list_calls(
         limit=query.limit,
         holders=query.holders,
         runs=query.runs,
+        spoken=query.spoken,
     )
     return schemas.CallList.of(found)

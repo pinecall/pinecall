@@ -128,6 +128,8 @@ class CallRow(Row):
     holder_name: str | None = None
     # The test run the call is one of, to a list asked with runs: a golden's call, never a person's.
     run: str | None = None
+    # Whether it is had by voice, to a list asked with spoken: a phone call, or a web call once its room opened.
+    spoken: bool | None = None
 
 
 class CallList(Row):
@@ -151,6 +153,8 @@ class ListQuery(Schema):
     holders: bool = False
     # Each row also says the test run it is one of (run), null for a call no run opened.
     runs: bool = False
+    # Each row also says whether the call is spoken (spoken): a web call by voice reads as a website's chat without it.
+    spoken: bool = False
 
 
 # ── the inbox ──

@@ -65,6 +65,7 @@ async def list_calls(
     limit: int,
     holders: bool = False,
     runs: bool = False,
+    spoken: bool = False,
 ) -> CallPage:
     """One page of the calls of the key's scope the filter matches, newest first, one row each."""
     wanted = ListFilters(agent=agent or None, q=q or None, channel=channel, before=before, holders=list_copies(actor))
@@ -72,7 +73,7 @@ async def list_calls(
     by_agent: dict[str, Declaration | None] = {}
     if wanted.agent:
         by_agent[wanted.agent] = (await agents.agent_of(session, actor.scope, wanted.agent)).declaration
-    rows = await list_rows(session, logs, found.calls, by_agent, holders=holders, runs=runs)
+    rows = await list_rows(session, logs, found.calls, by_agent, holders=holders, runs=runs, spoken=spoken)
     return CallPage(calls=rows, total=found.total, next=found.next)
 
 
@@ -100,8 +101,9 @@ async def list_rows(
     *,
     holders: bool = False,
     runs: bool = False,
+    spoken: bool = False,
 ) -> list[JsonObject]:
-    """The calls as a list shows them, none nothing was written to; whose copy took each, and its run, when asked."""
+    """The calls as a list shows them, none nothing was written to; whose copy, its run, whether spoken, when asked."""
     heads = await HeadRepository(session).heads_of(calls)
     facts = await FactsRepository(session).list_with_agent(calls)
     names = await _name_holders(session, heads.values()) if holders else None
@@ -118,7 +120,8 @@ async def list_rows(
             continue
         row = _row(call, head, line, fact, names)
         # Said only to a reader who asked, as a holder is: an app built before strict-parses the row it knew.
-        rows.append({**row, "run": head.run} if runs else row)
+        row = {**row, "run": head.run} if runs else row
+        rows.append({**row, "spoken": _is_spoken(line, fact)} if spoken else row)
     return rows
 
 
@@ -310,6 +313,11 @@ def _row(
         "flags": [] if folded is None else folded.flags,
         **({} if names is None else {"holder": head.holder or "", "holder_name": names.get(head.holder or "")}),
     }
+
+
+# A web call and a website's chat are both `web`: what tells them apart is the room a spoken one opened.
+def _is_spoken(line: JsonObject, fact: AgentFacts | None) -> bool:
+    return line.get("channel") == Channel.phone.value or (fact is not None and fact.row.spoken)
 
 
 def is_live(channel: object, *, sealed: bool) -> bool:

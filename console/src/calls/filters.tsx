@@ -1,4 +1,4 @@
-/** The filters the list and the table share: the four status chips with their counts, and the agent when the org has several. */
+/** The filters the list and the table share: the kind of conversation, the tests switch, the four status chips with their counts, and the agent when the org has several. */
 
 import type { ReactNode } from "react";
 
@@ -6,7 +6,7 @@ import { type SessionLine } from "@pinecall/core/wire/rest";
 import { useOrg } from "../lib/org";
 import { Select } from "../ui/select";
 import { keeps, STATUSES } from "./status";
-import type { CallsUrl } from "./url";
+import { TYPES, type CallsUrl } from "./url";
 
 /** `lines` are the calls in view, before the status: each chip counts what it would keep. */
 export function StatusChips({ lines, url }: { lines: readonly SessionLine[]; url: CallsUrl }): ReactNode {
@@ -17,11 +17,27 @@ export function StatusChips({ lines, url }: { lines: readonly SessionLine[]; url
         const on = url.status === one.value;
         return (
           <button key={one.value} type="button" className={on ? "calls-chip calls-chip-on" : "calls-chip"} aria-pressed={on} onClick={() => url.ask("status", one.value)}>
-            {one.value === "live" && url.written ? "Open" : one.name}
+            {one.name}
             <span className={one.value === "asking" && count > 0 ? "calls-chip-count calls-chip-count-warm" : "calls-chip-count"}>{count}</span>
           </button>
         );
       })}
+    </div>
+  );
+}
+
+// One picker, always showing what is picked: the kinds do not fit as chips, and a panel would hide the choice.
+/** Which kind of conversation is listed, and whether simulations and golden runs are listed with the real ones. */
+export function TypePick({ url }: { url: CallsUrl }): ReactNode {
+  return (
+    <div className="calls-types">
+      <div className="calls-pick">
+        <Select label="Showing" value={url.type} items={TYPES.map((one) => ({ value: one.value, label: one.value === "" ? "Showing: everything" : one.label }))} onChange={(value) => url.ask("type", value)} />
+      </div>
+      <label className="calls-tests" title="Simulated callers and golden runs are tests, not people: they are listed only when this is on">
+        <input type="checkbox" checked={url.tests} onChange={(event) => url.ask("tests", event.target.checked ? "1" : "")} />
+        Tests
+      </label>
     </div>
   );
 }

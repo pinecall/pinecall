@@ -116,3 +116,9 @@ button.calls-tab { border-inline: 0; background: transparent; font: inherit; fon
   .calls-filters > .calls-chips { flex: 1 1 100%; }
   .calls-filters .ui-agent-pick, .calls-filters .calls-pick { flex: 1 1 0; min-width: 0; }
 }
+
+/* The kind of conversation listed, always in view, and the switch that lists the tests with the real ones. */
+.calls-types { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.calls-types .calls-pick { flex: 1; }
+.calls-tests { display: inline-flex; align-items: center; gap: 6px; flex: none; color: var(--quiet); font-size: 12.5px; cursor: pointer; user-select: none; }
+.calls-tests input { accent-color: var(--accent); cursor: pointer; }

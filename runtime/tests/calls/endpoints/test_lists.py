@@ -14,7 +14,8 @@ from runtime.calls.log.store import Store
 from runtime.calls.repository.heads import Claim
 from runtime.calls.service import simulated
 from runtime.enums import Env, Role
-from tests.calls.factories import a_call_with_tools, claim_call, logs_on
+from runtime.kit.text import JsonObject
+from tests.calls.factories import CALLER, LINE, ROOM, a_call_with_tools, claim_call, logs_on
 from tests.conftest import Gateway, Tenant, needs_the_services
 
 pytestmark = needs_the_services
@@ -103,6 +104,27 @@ async def test_a_runs_call_says_its_run_to_a_list_asked_with_runs(
     assert {row["call"]: row["run"] for row in every} == {a_persons: None, a_goldens: "run_1"}
     # A list not asked for it is the row an app built before strict-parses.
     assert all("run" not in row for row in await listed(gateway, tenant.person))
+
+
+# A web call by voice and a website's chat are both `web`: a list asked with `spoken` tells them apart.
+async def test_a_list_asked_with_spoken_says_which_calls_are_had_by_voice(
+    gateway: Gateway, tenant: Tenant, agent: str, store: Store
+) -> None:
+    began: JsonObject = {
+        **LINE,
+        "channel": "web",
+        "direction": "inbound",
+        "caller": CALLER,
+        "started_at": 1_790_000_000.0,
+    }
+    written, by_voice, by_phone = new_call_id(), new_call_id(), await a_call_on(store, tenant, agent, tenant.member)
+    for call in (written, by_voice):
+        await claim_call(store, call, agent, Claim(Scope(tenant.org, Env.sandbox, tenant.member), Versions(settings=1)))
+        await logs_on(store).logs.writing(call, agent).append("call.started", began)
+    await logs_on(store).logs.writing(by_voice, agent).append("room.opened", {**ROOM, "channel": "web"})
+    every = await listed(gateway, tenant.person, spoken="true")
+    assert {row["call"]: row["spoken"] for row in every} == {written: False, by_voice: True, by_phone: True}
+    assert all("spoken" not in row for row in await listed(gateway, tenant.person))
 
 
 async def test_an_admin_opens_a_colleagues_call_and_a_developer_does_not(

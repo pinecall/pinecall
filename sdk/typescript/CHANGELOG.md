@@ -5,6 +5,11 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
+## Unreleased
+
+- A row of a list of calls may carry `spoken`, said by a gateway asked with `spoken=true`: a web call by voice is told
+  from a website's chat.
+
 ## 0.11.51 — live is somebody on the line and never a written conversation; Emails is a page of its own, with a mailbox's server and the org's template in an agent's channels (2026-11-19)
 
 - Released with the runtime: nothing of this package changed.

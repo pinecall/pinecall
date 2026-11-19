@@ -3,26 +3,25 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode, type Ref } from "react";
 import { Link, useNavigate } from "react-router";
 
-import { elapsed, isLive, wantsAPerson, type CallDay } from "@pinecall/core/calls";
+import { elapsed, isLive, wantsAPerson } from "@pinecall/core/calls";
 import { type SessionLine } from "@pinecall/core/wire/rest";
 import { useCallMenu } from "./call-menu";
 import { useOrg } from "../lib/org";
 import { Face } from "./face";
-import { AgentPick, StatusChips } from "./filters";
+import { AgentPick, StatusChips, TypePick } from "./filters";
 import { lengthOf } from "../lib/format";
 import { copyOf, dayOf, hourOf } from "./format";
 import { useSubject } from "./subject";
-import { dayName, isOnTheLine, lastOf, lettersOf, threadDays, titleOf, type Thread } from "./threads";
-import { EMAILS, MESSAGES, useCallsBase, type CallsBase, type CallsUrl } from "./url";
-
-const TITLES: Record<CallsBase, string> = { "/calls": "Calls", "/messages": "Messages", "/emails": "Emails" };
+import { dayName, isOnTheLine, lastOf, lettersOf, threadDays, titleOf, type Thread, type ThreadDay } from "./threads";
+import { kindSaid, thingOf } from "./kind";
+import { CALLS, TYPES, type CallsUrl } from "./url";
 import { useNow } from "./use-now";
 
 // A busy day shows this many threads and a button for the next as many.
 const A_PAGE = 5;
 
 /** The threads a day shows: a page, or as many as "Show more" asked for; always down to the one open, and every one on the line. */
-function shownOf(day: CallDay<Thread>, open: Thread | undefined, more: ReadonlyMap<string, number>): Thread[] {
+function shownOf(day: ThreadDay, open: Thread | undefined, more: ReadonlyMap<string, number>): Thread[] {
   if (day.name === "live") return day.lines;
   const reaching = open === undefined ? 0 : day.lines.indexOf(open) + 1;
   return day.lines.slice(0, Math.max(more.get(day.key) ?? A_PAGE, reaching));
@@ -62,7 +61,7 @@ function ThreadRow({ thread, to, on, now, held, onErased }: { thread: Thread; to
   const name = titleOf(thread);
   // An email thread is listed by its subject, as a mailbox lists it; any other by how it went.
   const subject = useSubject(line.call, line.channel === "email");
-  const where = [line.agent, line.channel, copyOf(line, whose?.subject ?? null)].filter((one) => one !== undefined && one !== null).join(" · ");
+  const where = [line.agent, kindSaid(line), copyOf(line, whose?.subject ?? null)].filter((one) => one !== undefined && one !== null).join(" · ");
   return (
     <Link ref={held} to={to} className={on ? "app-row app-row-on calls-row" : "app-row calls-row"} aria-current={on ? "true" : undefined} onContextMenu={(event) => menu(event, line, name)}>
       <Face name={name} letters={lettersOf(thread)} on={asking ? "asking" : live ? "live" : null} />
@@ -75,7 +74,7 @@ function ThreadRow({ thread, to, on, now, held, onErased }: { thread: Thread; to
         <span className="app-row-under dash-clip">{subject ?? lastOf(thread)}</span>
         <span className="calls-row-foot">
           <span className="calls-row-where dash-clip">{where}</span>
-          {thread.lines.length > 1 && <span className="calls-count">{thread.lines.length} calls</span>}
+          {thread.lines.length > 1 && <span className="calls-count">{thread.lines.length} {thread.lines.every((one) => thingOf(one) === "call") ? "calls" : "conversations"}</span>}
           <Mark line={line} />
         </span>
       </span>
@@ -89,12 +88,11 @@ function ThreadRow({ thread, to, on, now, held, onErased }: { thread: Thread; to
 /** Every call of the open thread, newest first, the one shown marked. */
 function ThreadCalls({ thread, shown, search, now, onErased }: { thread: Thread; shown: string | undefined; search: string; now: number; onErased: (call: string) => void }): ReactNode {
   const menu = useCallMenu(onErased);
-  const base = useCallsBase();
   if (thread.lines.length < 2) return null;
   return (
     <div className="calls-theirs" aria-label="Their calls">
       {thread.lines.map((line) => (
-        <Link key={line.call} to={`${base}/${encodeURIComponent(line.call)}${search}`} className={line.call === shown ? "calls-their calls-their-on" : "calls-their"} aria-current={line.call === shown ? "true" : undefined} onContextMenu={(event) => menu(event, line, titleOf(thread))}>
+        <Link key={line.call} to={`${CALLS}/${encodeURIComponent(line.call)}${search}`} className={line.call === shown ? "calls-their calls-their-on" : "calls-their"} aria-current={line.call === shown ? "true" : undefined} onContextMenu={(event) => menu(event, line, titleOf(thread))}>
           <span className="calls-their-when">{line.started_at === null ? "—" : `${dayOf(line.started_at)}, ${hourOf(line.started_at)}`}</span>
           <span className={isOnTheLine(line) ? "calls-their-how dash-mood-good" : "calls-their-how"}>{isOnTheLine(line) ? elapsed(line.started_at, now) : isLive(line) ? "open" : lengthOf(line.started_at, line.ended_at)}</span>
           <Mark line={line} />
@@ -104,11 +102,12 @@ function ThreadCalls({ thread, shown, search, now, onErased }: { thread: Thread;
   );
 }
 
-const THREAD_CHANNELS: readonly { value: string; name: string }[] = [
-  { value: "", name: "All" },
-  { value: "whatsapp", name: "WhatsApp" },
-  { value: "sms", name: "SMS" },
-];
+// What an empty list says: of the kind picked when one is, and where the tests went when they are hidden.
+function nothingYet(url: CallsUrl): string {
+  if (url.type === "email") return "No email yet. Connect a mailbox on Mailboxes, or in an agent's Channels tab, and every email written to it shows up here.";
+  if (url.type !== "") return `Nothing in ${TYPES.find((one) => one.value === url.type)?.label ?? "this kind"} yet. Pick another kind above, or everything.`;
+  return url.tests ? "Nothing yet. The first call, chat, message or email shows up here the moment it starts." : "Nothing yet. The first call, chat, message or email shows up here the moment it starts. Simulations and golden runs are hidden: Tests shows them.";
+}
 
 export function ThreadList({ threads, lines, open, shown: shownCall, url, grouped, onGroup, onErased }: { threads: readonly Thread[]; /** The calls in view, before the status: what the chips count. */ lines: readonly SessionLine[]; open: Thread | undefined; /** The call on screen, one of the open thread's. */ shown: string | undefined; /** One row per person, their calls under it; else one row per call. */ grouped: boolean; onGroup: () => void; /** A call erased from a row's menu: out of the list. */ onErased: (call: string) => void; url: CallsUrl }): ReactNode {
   const navigate = useNavigate();
@@ -138,22 +137,14 @@ export function ThreadList({ threads, lines, open, shown: shownCall, url, groupe
   }, [contact]);
 
   return (
-    <aside className="app-list" aria-label={TITLES[url.base]}>
+    <aside className="app-list" aria-label="Calls">
       <div className="app-list-head">
-        <span className="app-list-title">{TITLES[url.base]}</span>
+        <span className="app-list-title">Calls</span>
         <span className="dash-quiet">{threads.length}</span>
       </div>
-      <input className="app-input" aria-label="Search a caller or number" placeholder="Search a caller or number" value={url.query} onChange={(event) => url.ask("q", event.target.value)} />
+      <input className="app-input" aria-label="Search a name, a number or an address" placeholder="Search a name, a number or an address" value={url.query} onChange={(event) => url.ask("q", event.target.value)} />
       <AgentPick url={url} />
-      {url.base === MESSAGES && (
-        <div className="calls-chips" role="group" aria-label="Which channel">
-          {THREAD_CHANNELS.map((one) => (
-            <button key={one.value} type="button" className={url.channel === one.value ? "calls-chip calls-chip-on" : "calls-chip"} aria-pressed={url.channel === one.value} onClick={() => url.ask("channel", one.value)}>
-              {one.name}
-            </button>
-          ))}
-        </div>
-      )}
+      <TypePick url={url} />
       <div className="calls-filters">
         <StatusChips lines={lines} url={url} />
         {/* One row per call, or one per person: theirs to choose, kept in this browser. */}
@@ -162,13 +153,13 @@ export function ThreadList({ threads, lines, open, shown: shownCall, url, groupe
         </button>
       </div>
       <div className="app-rows">
-        {threads.length === 0 && <p className="dash-quiet app-none">{lines.length === 0 ? (url.base === EMAILS ? "No email yet. Connect a mailbox on Mailboxes, or in an agent's Channels tab, and every email written to it shows up here." : url.written ? "No message yet. A WhatsApp or SMS conversation shows up here the moment a contact writes." : "No call yet. The first one shows up here the moment it starts.") : url.written ? "No conversation here right now." : "No call here right now."}</p>}
+        {threads.length === 0 && <p className="dash-quiet app-none">{lines.length === 0 ? nothingYet(url) : "Nothing here right now."}</p>}
         {threads.length > 0 && shown.length === 0 && <p className="dash-quiet app-none">Nobody here matches “{url.query}”.</p>}
         {days.map(({ day, rows }) => {
           const left = day.lines.length - rows.length;
           return (
             <Fragment key={day.key}>
-              <div className="calls-day">{dayName(day, url.written)}</div>
+              <div className="calls-day">{dayName(day)}</div>
               {rows.map((thread) => (
                 <Fragment key={thread.key}>
                   <ThreadRow thread={thread} to={hrefOf(thread)} on={thread === open} now={now} held={thread === open ? openRow : undefined} onErased={onErased} />
