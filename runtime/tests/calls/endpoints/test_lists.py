@@ -15,6 +15,7 @@ from runtime.calls.repository.heads import Claim
 from runtime.calls.service import simulated
 from runtime.enums import Env, Role
 from runtime.kit.text import JsonObject
+from runtime.wire.room import A_SIMULATED_CALLER
 from tests.calls.factories import CALLER, LINE, ROOM, a_call_with_tools, claim_call, logs_on
 from tests.conftest import Gateway, Tenant, needs_the_services
 
@@ -125,6 +126,33 @@ async def test_a_list_asked_with_spoken_says_which_calls_are_had_by_voice(
     every = await listed(gateway, tenant.person, spoken="true")
     assert {row["call"]: row["spoken"] for row in every} == {written: False, by_voice: True, by_phone: True}
     assert all("spoken" not in row for row in await listed(gateway, tenant.person))
+    # A kind is asked of the gateway, whatever its age: a list of the newest calls filtered after is a window.
+    by_medium = {
+        medium: {row["call"] for row in await listed(gateway, tenant.person, medium=medium)}
+        for medium in ("voice", "text")
+    }
+    assert by_medium == {"voice": {by_voice, by_phone}, "text": {written}}
+    web_calls = await listed(gateway, tenant.person, channel="web", medium="voice")
+    assert [row["call"] for row in web_calls] == [by_voice]
+
+
+# A golden's run and a simulated caller's call are tests, not people: a list leaves them out, or lists them alone.
+async def test_a_list_leaves_the_tests_out_or_lists_them_alone(
+    gateway: Gateway, tenant: Tenant, agent: str, store: Store
+) -> None:
+    a_persons = await a_call_on(store, tenant, agent, tenant.member)
+    a_goldens, simulated = new_call_id(), new_call_id()
+    mine = Scope(tenant.org, Env.sandbox, tenant.member)
+    await claim_call(store, a_goldens, agent, Claim(mine, Versions(settings=1), run="run_1"))
+    await claim_call(store, simulated, agent, Claim(mine, Versions(settings=1)))
+    for written in a_call_with_tools(a_goldens, agent):
+        await logs_on(store).logs.writing(a_goldens, agent).append(written.type, written.data)
+    began: JsonObject = {**LINE, "channel": "web", "from": A_SIMULATED_CALLER, "direction": "inbound", "caller": CALLER}
+    began = {**began, "started_at": 1_790_000_000.0}
+    await logs_on(store).logs.writing(simulated, agent).append("call.started", began)
+    assert {row["call"] for row in await listed(gateway, tenant.person, tests="false")} == {a_persons}
+    assert {row["call"] for row in await listed(gateway, tenant.person, tests="true")} == {a_goldens, simulated}
+    assert {row["call"] for row in await listed(gateway, tenant.person)} == {a_persons, a_goldens, simulated}
 
 
 async def test_an_admin_opens_a_colleagues_call_and_a_developer_does_not(

@@ -24,7 +24,7 @@ from runtime.calls.repository.heads import CallHead, Claim, HeadRepository
 from runtime.calls.repository.search import ListFilters, PersonaRunFilters, PersonaRuns, SearchRepository
 from runtime.calls.repository.taught import Taught, TaughtRepository
 from runtime.calls.repository.unsealed import Unsealed, UnsealedRepository
-from runtime.enums import Channel
+from runtime.enums import Channel, Medium
 from runtime.exceptions import NotFound
 from runtime.kit.text import JsonObject
 from runtime.scoping import box_wide
@@ -53,27 +53,43 @@ def list_copies(actor: Actor) -> tuple[str, ...] | None:
 
 # One use case where the endpoint held four steps: the copies the key lists, the page, what the
 # agent named declares (a live call's line is masked by it), the rows.
-async def list_calls(
-    session: AsyncSession,
-    logs: Logs,
-    actor: Actor,
-    *,
-    agent: str | None,
-    q: str | None,
-    channel: str | None,
-    before: str | None,
-    limit: int,
-    holders: bool = False,
-    runs: bool = False,
-    spoken: bool = False,
-) -> CallPage:
+@dataclass(frozen=True, slots=True)
+class Asked:
+    """What a list of calls is asked for: which calls, which page of them, and what each row also says."""
+
+    limit: int
+    agent: str | None = None
+    q: str | None = None
+    channel: str | None = None
+    before: str | None = None
+    # Had by voice alone, or written alone; None is either.
+    medium: Medium | None = None
+    # False leaves the tests out (a golden's run, a simulated caller's call); True lists them alone.
+    tests: bool | None = None
+    # What each row also says, to a reader who asks: whose copy took it, its run, whether it is spoken.
+    holders: bool = False
+    runs: bool = False
+    spoken: bool = False
+
+
+async def list_calls(session: AsyncSession, logs: Logs, actor: Actor, asked: Asked) -> CallPage:
     """One page of the calls of the key's scope the filter matches, newest first, one row each."""
-    wanted = ListFilters(agent=agent or None, q=q or None, channel=channel, before=before, holders=list_copies(actor))
-    found = await SearchRepository(session).list_calls(actor.scope, wanted, limit=limit)
+    wanted = ListFilters(
+        agent=asked.agent or None,
+        q=asked.q or None,
+        channel=asked.channel,
+        before=asked.before,
+        holders=list_copies(actor),
+        spoken=None if asked.medium is None else asked.medium is Medium.voice,
+        tests=asked.tests,
+    )
+    found = await SearchRepository(session).list_calls(actor.scope, wanted, limit=asked.limit)
     by_agent: dict[str, Declaration | None] = {}
     if wanted.agent:
         by_agent[wanted.agent] = (await agents.agent_of(session, actor.scope, wanted.agent)).declaration
-    rows = await list_rows(session, logs, found.calls, by_agent, holders=holders, runs=runs, spoken=spoken)
+    rows = await list_rows(
+        session, logs, found.calls, by_agent, holders=asked.holders, runs=asked.runs, spoken=asked.spoken
+    )
     return CallPage(calls=rows, total=found.total, next=found.next)
 
 

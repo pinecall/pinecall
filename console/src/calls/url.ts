@@ -33,6 +33,14 @@ export function channelOf(type: CallType): string {
   return type === "" ? "" : type.startsWith("web") ? "web" : type;
 }
 
+// A kind is asked of the gateway, never filtered out of the newest calls the page holds: on 2026-11-19 picking
+// "Phone calls" listed nothing in an org with thirteen, because two of its fifty newest conversations were by phone.
+/** What the gateway is asked for, for the kind picked and with the tests or without them. */
+export function askedOf(url: Pick<CallsUrl, "type" | "tests" | "agent">, query: string): { query: string; agent: string; channel: string; medium?: "voice" | "text"; tests?: boolean } {
+  const medium = url.type === "web-call" ? { medium: "voice" as const } : url.type === "web-chat" ? { medium: "text" as const } : {};
+  return { query, agent: url.agent, channel: channelOf(url.type), ...medium, ...(url.tests ? {} : { tests: false }) };
+}
+
 export interface CallsUrl {
   /** Where this page's links go. */
   base: typeof CALLS;

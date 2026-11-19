@@ -12,6 +12,10 @@ export interface Filter {
   query: string;
   agent: string;
   channel: string;
+  /** Only the calls had by voice, or only the written ones; left out, either. */
+  medium?: "voice" | "text" | undefined;
+  /** false leaves the tests out (a golden's run, a simulated caller's call), true lists them alone; left out, both. */
+  tests?: boolean | undefined;
 }
 
 /** Search results: rows, total matches and the next-page cursor. */
@@ -54,6 +58,8 @@ export function useServerSearch(scope: string, filter: Filter, pages: number, re
         if (filter.query.trim() !== "") params["q"] = filter.query.trim();
         if (filter.agent !== "") params["agent"] = filter.agent;
         if (filter.channel !== "") params["channel"] = filter.channel;
+        if (filter.medium !== undefined) params["medium"] = filter.medium;
+        if (filter.tests !== undefined) params["tests"] = String(filter.tests);
         try {
           // Page with `before`: the endpoint caps `limit` at 200.
           const rows: SessionLine[] = [];
@@ -82,7 +88,7 @@ export function useServerSearch(scope: string, filter: Filter, pages: number, re
       gone = true;
       window.clearTimeout(timer);
     };
-  }, [credentials, scope, filter.query, filter.agent, filter.channel, pages, unsupported, refresh, wanted]);
+  }, [credentials, scope, filter.query, filter.agent, filter.channel, filter.medium, filter.tests, pages, unsupported, refresh, wanted]);
 
   return { found: unsupported || !wanted ? null : searched, searches: !unsupported };
 }

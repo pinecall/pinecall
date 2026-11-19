@@ -8,6 +8,11 @@
   ended comes first in two groups: the calls with somebody on the line, then the written conversations open and
   waiting for a reply; the Live chip counts the first alone. A link kept to `/messages/…` or `/emails/…` opens the
   conversation on Calls.
+- **A kind of conversation is asked of the gateway, whatever its age.** The console narrowed the fifty newest
+  conversations it held: picking "Phone calls" listed nothing in an org with thirteen, two of them among its newest
+  fifty. `GET /v1/sessions` and an agent's sessions take `medium` (`voice` or `text`) and `tests` (`false` leaves out a
+  golden's runs and a simulated caller's calls, `true` lists them alone); the console asks with the kind picked, the
+  tests switch and the words searched, lays the rows it follows live over the answer, and has **Load older**.
 - **A list says, when asked, whether a call is spoken.** `GET /v1/sessions` and an agent's sessions take `spoken=true`:
   each row then carries `spoken`, which tells a web call by voice from a website's chat (both `web`). Left out, the row
   is the one an app built before reads.

@@ -8,6 +8,7 @@ from sqlalchemy import Row, text
 from runtime.actor import Scope
 from runtime.calls.models import CallFact
 from runtime.kit.repository import Repository
+from runtime.wire.room import A_SIMULATED_CALLER
 
 # The columns of call_facts, as a row that selected them all names them.
 COLUMNS = tuple(CallFact.__mapper__.columns.keys())
@@ -25,6 +26,10 @@ class ListFilters:
     before: str | None = None
     # The copies listed: the scope's own alone when empty, every copy of the env when None.
     holders: tuple[str, ...] | None = ()
+    # Had by voice (a phone call, a web call whose room opened) or written; None is either.
+    spoken: bool | None = None
+    # A test's calls (a golden's run, a simulated caller's) alone, or every call but those; None is both.
+    tests: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,6 +84,9 @@ where head.org = :org and head.call is not null
   and (cast(:holders as text[]) is null or head.holder = any(cast(:holders as text[])))
   and (cast(:agent as text) is null or head.agent = :agent)
   and (cast(:channel as text) is null or f.channel = :channel)
+  and (cast(:spoken as boolean) is null or coalesce(f.spoken, false) = :spoken)
+  and (cast(:tests as boolean) is null
+       or (head.run is not null or f.persona is not null or coalesce(f.from_number, '') = :simulated) = :tests)
   and (cast(:words as text) is null
        or lower(head.log) like lower(:words) || '%'
        or (cast(:digits as text) <> '' and (regexp_replace(coalesce(f.from_number, ''), '\\D', '', 'g')
@@ -138,6 +146,9 @@ class SearchRepository(Repository[CallFact]):
             "holders": _holders(scope, wanted.holders),
             "agent": wanted.agent,
             "channel": wanted.channel,
+            "spoken": wanted.spoken,
+            "tests": wanted.tests,
+            "simulated": A_SIMULATED_CALLER,
             "words": None if wanted.q is None else _escape_like(wanted.q),
             "digits": "".join(item for item in (wanted.q or "") if item.isdigit()),
         }

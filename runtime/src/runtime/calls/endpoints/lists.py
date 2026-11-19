@@ -1,5 +1,6 @@
 """The lists of calls: an agent's newest and the org's, one row each, as the console draws them."""
 
+import dataclasses
 from typing import Annotated
 
 from fastapi import APIRouter, Query
@@ -18,19 +19,8 @@ async def list_agent_calls(
     slug: KnownAgent, actor: ListingKey, logs: TheLogs, session: Session, query: Annotated[schemas.ListQuery, Query()]
 ) -> schemas.CallList:
     """The agent's newest calls, one row each."""
-    found = await lists.list_calls(
-        session,
-        logs,
-        actor,
-        agent=slug,
-        q=query.q,
-        channel=query.channel,
-        before=query.before,
-        limit=query.limit,
-        holders=query.holders,
-        runs=query.runs,
-        spoken=query.spoken,
-    )
+    asked = dataclasses.replace(lists.Asked(**query.model_dump()), agent=slug)
+    found = await lists.list_calls(session, logs, actor, asked)
     return schemas.CallList.of(found)
 
 
@@ -39,17 +29,5 @@ async def list_calls(
     actor: ListingKey, logs: TheLogs, session: Session, query: Annotated[schemas.ListQuery, Query()]
 ) -> schemas.CallList:
     """The org's newest calls across its agents, one row each."""
-    found = await lists.list_calls(
-        session,
-        logs,
-        actor,
-        agent=query.agent,
-        q=query.q,
-        channel=query.channel,
-        before=query.before,
-        limit=query.limit,
-        holders=query.holders,
-        runs=query.runs,
-        spoken=query.spoken,
-    )
+    found = await lists.list_calls(session, logs, actor, lists.Asked(**query.model_dump()))
     return schemas.CallList.of(found)

@@ -104,18 +104,20 @@ function ThreadCalls({ thread, shown, search, now, onErased }: { thread: Thread;
 
 // What an empty list says: of the kind picked when one is, and where the tests went when they are hidden.
 function nothingYet(url: CallsUrl): string {
-  if (url.type === "email") return "No email yet. Connect a mailbox on Mailboxes, or in an agent's Channels tab, and every email written to it shows up here.";
-  if (url.type !== "") return `Nothing in ${TYPES.find((one) => one.value === url.type)?.label ?? "this kind"} yet. Pick another kind above, or everything.`;
-  return url.tests ? "Nothing yet. The first call, chat, message or email shows up here the moment it starts." : "Nothing yet. The first call, chat, message or email shows up here the moment it starts. Simulations and golden runs are hidden: Tests shows them.";
+  const hidden = url.tests ? "" : " Simulated callers and golden runs are tests and are hidden: turn Tests on to list them.";
+  if (url.query.trim() !== "") return `Nothing matches “${url.query.trim()}”.${hidden}`;
+  if (url.type === "email") return `No email yet. Connect a mailbox on Mailboxes, or in an agent's Channels tab, and every email written to it shows up here.${hidden}`;
+  if (url.type !== "") return `Nothing in ${TYPES.find((one) => one.value === url.type)?.label ?? "this kind"}.${hidden || " Pick another kind above, or everything."}`;
+  return `Nothing yet. The first call, chat, message or email shows up here the moment it starts.${hidden}`;
 }
 
-export function ThreadList({ threads, lines, open, shown: shownCall, url, grouped, onGroup, onErased }: { threads: readonly Thread[]; /** The calls in view, before the status: what the chips count. */ lines: readonly SessionLine[]; open: Thread | undefined; /** The call on screen, one of the open thread's. */ shown: string | undefined; /** One row per person, their calls under it; else one row per call. */ grouped: boolean; onGroup: () => void; /** A call erased from a row's menu: out of the list. */ onErased: (call: string) => void; url: CallsUrl }): ReactNode {
+export function ThreadList({ threads, lines, open, shown: shownCall, url, grouped, onGroup, onErased, searched, onOlder }: { threads: readonly Thread[]; /** The calls in view, before the status: what the chips count. */ lines: readonly SessionLine[]; open: Thread | undefined; /** The call on screen, one of the open thread's. */ shown: string | undefined; /** One row per person, their calls under it; else one row per call. */ grouped: boolean; onGroup: () => void; /** A call erased from a row's menu: out of the list. */ onErased: (call: string) => void; url: CallsUrl; /** The gateway searched the words: the rows are its answer, and are not narrowed again here. */ searched: boolean; /** Asks the gateway for the page before these; none when these are all. */ onOlder: (() => void) | undefined }): ReactNode {
   const navigate = useNavigate();
   const [more, setMore] = useState<ReadonlyMap<string, number>>(new Map());
   const now = useNow(threads.some((thread) => isOnTheLine(thread.latest)));
   const openRow = useRef<HTMLAnchorElement>(null);
   const words = url.query.trim().toLowerCase();
-  const shown = threads.filter((thread) => words === "" || `${titleOf(thread)} ${thread.handle} ${lastOf(thread)}`.toLowerCase().includes(words));
+  const shown = searched ? threads : threads.filter((thread) => words === "" || `${titleOf(thread)} ${thread.handle} ${lastOf(thread)}`.toLowerCase().includes(words));
   const days = threadDays(shown).map((day) => ({ day, rows: shownOf(day, open, more) }));
   const order = days.flatMap(({ rows }) => rows);
   const hrefOf = (thread: Thread): string => `${url.base}/${encodeURIComponent(thread.latest.call)}${url.search}`;
@@ -174,6 +176,11 @@ export function ThreadList({ threads, lines, open, shown: shownCall, url, groupe
             </Fragment>
           );
         })}
+        {onOlder !== undefined && (
+          <button type="button" className="calls-more" onClick={onOlder}>
+            Load older
+          </button>
+        )}
       </div>
     </aside>
   );

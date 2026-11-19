@@ -16,7 +16,7 @@ import { copyOf, goldenOf, hourOf, lettersFor, liveFirst, simulationOf, standing
 import { keeps } from "./status";
 import { dayName, isWritten } from "./threads";
 import { goingSaid, isATest, kindSaid, typeOf } from "./kind";
-import { channelOf, type CallsUrl } from "./url";
+import { askedOf, type CallsUrl } from "./url";
 import { useNow } from "./use-now";
 
 // A call id as the log names one: pasted whole, Enter opens it even when it is not on the page.
@@ -71,8 +71,8 @@ function Row({ line, to, now, onErased }: { line: SessionLine; to: string; now: 
 export function CallsTable({ lines, url, onErased }: { /** What the page follows, through the agent picked. */ lines: readonly SessionLine[]; url: CallsUrl; onErased: (call: string) => void }): ReactNode {
   const navigate = useNavigate();
   const [pages, setPages] = useState(1);
-  // The gateway searches by channel; a web call is told from a website's chat, and a test from a person, on the rows it answers.
-  const filter: Filter = { query: url.query, agent: url.agent, channel: channelOf(url.type) };
+  // The kind, the tests and the words are asked of the gateway, never filtered out of the newest calls the page holds.
+  const filter: Filter = askedOf(url, url.query);
   const wanted = (line: SessionLine): boolean => (url.type === "" || typeOf(line) === url.type) && (url.tests || !isATest(line));
   // Asked again whenever the followed list moves: a call that rang shows up in the searched page too.
   const searched = useServerSearch("", filter, pages, floorMoved(lines)).found;

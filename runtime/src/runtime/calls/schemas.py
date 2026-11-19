@@ -4,7 +4,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import AliasPath, BeforeValidator, Field
 
-from runtime.enums import Channel, Direction, Env
+from runtime.enums import Channel, Direction, Env, Medium
 from runtime.kit.schemas import Epoch, Row, Schema
 from runtime.kit.text import JsonObject
 from runtime.wire.base import Entry, WireModel
@@ -148,6 +148,10 @@ class ListQuery(Schema):
     agent: str | None = None
     # Compared as text: a channel nobody has lists nothing, it is not refused.
     channel: str | None = None
+    # Only the calls had by voice, or only the written ones: a web call and a website's chat are both `web`.
+    medium: Medium | None = None
+    # false leaves the tests out (a golden's run, a simulated caller's call); true lists them alone.
+    tests: bool | None = None
     before: str | None = None
     # Each row also says whose copy of the agent took it (holder, holder_name).
     holders: bool = False
