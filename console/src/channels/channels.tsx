@@ -13,7 +13,7 @@ import { useNumbers } from "../numbers/numbers";
 import { TestLine } from "../numbers/test-line";
 import { EmailTemplate } from "./email-template";
 import { MailboxCard } from "./mailbox";
-import { comesThrough, RINGS, shown } from "../numbers/words";
+import { arrivingOn, comesThrough, RINGS, ringsSaid, shown } from "../numbers/words";
 import "../dashboard/dashboard.css";
 import "../configure/configure.css";
 import "../numbers/numbers.css";
@@ -53,8 +53,8 @@ export function ChannelsTab({ agent }: { agent: string }): ReactNode {
     <Link key={`${one.route.number}:${one.route.channel}`} to={`/numbers/${encodeURIComponent(one.route.number ?? "")}${one.route.channel === "phone" ? "" : `/${one.route.channel}`}`} className="num-row">
       <span className="num-row-number">{shown(one.route.number)}</span>
       <span className="num-row-through dash-clip">{comesThrough(one, carriers, catalog)}</span>
-      <span className="num-row-when">{one.last_call_at == null ? "No call yet" : `Last call ${ago(one.last_call_at)}`}</span>
-      <span className={`num-rings num-rings-${RINGS[one.rings].mood}`}>{RINGS[one.rings].said}</span>
+      <span className="num-row-when">{one.last_call_at == null ? `No ${arrivingOn(one.route.channel)} yet` : `Last ${arrivingOn(one.route.channel)} ${ago(one.last_call_at)}`}</span>
+      <span className={`num-rings num-rings-${RINGS[one.rings].mood}`}>{ringsSaid(one.rings, one.route.channel)}</span>
     </Link>
   );
   const of = (channel: Channel): NumberRow[] => mine.filter((one) => one.route.channel === channel);

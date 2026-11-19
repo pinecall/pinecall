@@ -11,7 +11,7 @@ import { WORLD } from "../lib/world";
 import { Select } from "../ui/select";
 import { addNumber, moveNumber, releaseNumber, type Carrier, type Catalog, type NumberRow, type WantedNumber, type Wired } from "./door";
 import { Path, Plan, useMove } from "./parts";
-import { CHANNEL_NAMES, comesThrough, RINGS, shown } from "./words";
+import { arrivingOn, CHANNEL_NAMES, comesThrough, RINGS, ringsSaid, shown } from "./words";
 
 const OTHER = WORLD === "production" ? "sandbox" : "production";
 
@@ -54,7 +54,7 @@ export function NumberView({ row, carriers, catalog, agents, onChanged, onGone }
       <section className="dash-card num-card">
         <div className="num-card-top">
           <span className="num-big">{shown(row.route.number)}</span>
-          <span className={`num-rings num-rings-${rings.mood}`}>{rings.said}</span>
+          <span className={`num-rings num-rings-${rings.mood}`}>{ringsSaid(row.rings, row.route.channel)}</span>
         </div>
         <dl className="num-facts">
           <Fact name="Answered by">
@@ -64,7 +64,7 @@ export function NumberView({ row, carriers, catalog, agents, onChanged, onGone }
           </Fact>
           <Fact name="Channel">{CHANNEL_NAMES[row.route.channel]}</Fact>
           <Fact name="Comes through">{comesThrough(row, carriers, catalog)}</Fact>
-          <Fact name="Last call">{row.last_call_at == null ? "None yet" : ago(row.last_call_at)}</Fact>
+          <Fact name={`Last ${arrivingOn(row.route.channel)}`}>{row.last_call_at == null ? "None yet" : ago(row.last_call_at)}</Fact>
         </dl>
       </section>
 

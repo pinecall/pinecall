@@ -200,14 +200,14 @@ class RouteRepository(Repository[Route]):
             return await self.add(Route(org=written.org, number=written.number, channel=written.channel, **values))
         return await self.update(row, **values)
 
-    async def note_call(self, org: str, number: str, *, at: datetime, unless_since: datetime) -> None:
-        """Note that a call to the org's number reached the box at the moment, unless one was noted since the other."""
+    async def note_call(self, org: str, number: str, channel: Channel, *, at: datetime, unless_since: datetime) -> None:
+        """Note that a call or a message to the org's number reached the box, unless one was noted since the other."""
         await self.session.execute(
             update(Route)
             .where(
                 Route.org == org,
                 Route.number == number,
-                Route.channel == Channel.phone,
+                Route.channel == channel,
                 (Route.last_call_at.is_(None)) | (Route.last_call_at < unless_since),
             )
             .values(last_call_at=at)

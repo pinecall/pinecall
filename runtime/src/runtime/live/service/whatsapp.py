@@ -150,6 +150,8 @@ class Threads:
                 inbound.number,
             )
             return True
+        async with self._live.sessions.begin() as session_:
+            await telephony.note_call(session_, route.org, route.number, route.channel)
 
         async def read() -> None:
             await self._read(route, inbound)

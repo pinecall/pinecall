@@ -15,7 +15,7 @@ import { readCarriers, readCatalog, readNumbers, type Carrier, type Catalog, typ
 import { NumberView } from "./number-view";
 import { OutboundCard } from "./outbound";
 import { TestLine } from "./test-line";
-import { CHANNEL_NAMES, RINGS, shown } from "./words";
+import { CHANNEL_NAMES, RINGS, ringsSaid, shown } from "./words";
 import "../dashboard/dashboard.css";
 import "../apps/apps.css";
 import "../configure/configure.css";
@@ -88,7 +88,7 @@ export function NumbersPage(): ReactNode {
               <NavLink key={`${one.route.number}:${one.route.channel}`} end to={`${HOME}/${encodeURIComponent(one.route.number ?? "")}${one.route.channel === "phone" ? "" : `/${one.route.channel}`}`} className={({ isActive }) => (isActive ? "app-row app-row-on" : "app-row")}>
                 <span className="app-row-top">
                   <span className="dash-clip">{shown(one.route.number)}</span>
-                  <span className={`app-dot app-dot-${RINGS[one.rings].mood}`} title={RINGS[one.rings].said} aria-hidden="true" />
+                  <span className={`app-dot app-dot-${RINGS[one.rings].mood}`} title={ringsSaid(one.rings, one.route.channel)} aria-hidden="true" />
                 </span>
                 <span className="app-row-under dash-clip">
                   {one.route.agent}

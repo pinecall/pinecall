@@ -10,6 +10,20 @@ export const RINGS: Record<Rings, { mood: "good" | "warn" | "bad"; said: string 
   broken: { mood: "bad", said: "Not answered" },
 };
 
+// What reaches a number on each channel, said in the page's own word: a call, a message, an email.
+const ARRIVING: Record<string, string> = { whatsapp: "message", sms: "text", email: "email" };
+
+/** What arrives on the channel, in one word. */
+export function arrivingOn(channel: string | null): string {
+  return ARRIVING[channel ?? ""] ?? "call";
+}
+
+/** What a number does now; a mailbox the box reads itself is said as that, never as a number ringing. */
+export function ringsSaid(rings: Rings, channel: string | null): string {
+  if (rings !== "ok" || channel === "phone" || channel === null) return RINGS[rings].said;
+  return channel === "email" ? "Read and answered" : "Answered by the agent";
+}
+
 /** A number as a person reads it; a WhatsApp or odd one as it is. */
 export function shown(number: string | null): string {
   return number === null ? "No number" : prettyNumber(number);

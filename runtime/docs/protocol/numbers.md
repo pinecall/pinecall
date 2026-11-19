@@ -137,9 +137,11 @@ number at the platform itself) or `typed` (by the operator, who can route a numb
 A row the org did not write is how it learns the operator did; importing the number again makes it
 the org's. `via` is the catalog carrier a hooked number comes through, `account` the org's account it
 lives in. `last_call_at` is when a
-call to the number last reached the platform (kept at most once a minute), null when none ever did.
+call to the number last reached the platform, or on a written channel a message to it (kept at most
+once a minute), null when none ever did.
 
-`rings` is what a call to it does now: `ok`, `waiting` (on its first call, or on the operator's
+`rings` is what a call to it does now: `ok`, `waiting` (on its first call or message, though never a
+mailbox, which the platform reads itself; or on the operator's
 approval of a network, or of a number the org hooked where the platform asks for that) or `broken`
 (nobody runs its agent),
 read off the tables without asking any carrier. `GET /v1/numbers/{number}/path` says why: four

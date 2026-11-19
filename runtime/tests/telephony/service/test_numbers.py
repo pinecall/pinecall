@@ -7,7 +7,7 @@ import pytest
 from runtime.enums import Channel, Env, RouteOrigin
 from runtime.exceptions import Conflict, NotFound
 from runtime.telephony.repository import RouteRepository, RouteToWrite
-from runtime.telephony.service import accounts, number_hook, numbers
+from runtime.telephony.service import accounts, number_hook, number_path, numbers, routes
 from runtime.telephony.service.number_hook import NumberImport, Plan
 from runtime.telephony.service.whatsapp_number import WhatsappNumber
 from tests.conftest import make_tenant, needs_the_database
@@ -120,6 +120,39 @@ async def test_a_number_answers_the_phone_and_whatsapp_at_once_and_each_is_let_g
 
 
 # ── what the accounts own ──
+
+
+async def rings(line: Line, number: str, channel: Channel) -> tuple[str, bool]:
+    """What the number does on the channel, its agent running, and whether anything is noted to have reached it."""
+    async with line.sessions() as session:
+        route = await numbers.get_number(session, line.org, number, channel=channel)
+        (state,) = await number_path.rings_of(session, line.vault, [route], lambda _: True)
+        return state, route.last_call_at is not None
+
+
+async def test_a_message_is_noted_on_its_own_channel_and_the_number_stops_waiting(line: Line) -> None:
+    """Until 2026-11-19 a call alone was noted: a number written to waited for its first message for ever."""
+    number = a_number()
+    await imported(line, NumberImport(line.scope(), "front-desk", number, channel=Channel.whatsapp, hooked=True))
+    assert await rings(line, number, Channel.whatsapp) == ("waiting", False)
+    async with line.sessions.begin() as session:
+        await routes.note_call(session, line.org, number)
+    assert await rings(line, number, Channel.whatsapp) == ("waiting", False), "a call is not a message to it"
+    async with line.sessions.begin() as session:
+        await routes.note_call(session, line.org, number, Channel.whatsapp)
+    assert await rings(line, number, Channel.whatsapp) == ("ok", True)
+
+
+async def test_a_mailbox_is_read_by_the_box_and_waits_for_nothing(line: Line) -> None:
+    """The box reads the mailbox itself, with the login it checked: it reaches us before its first email."""
+    address = f"help-{a_number()[1:]}@acme.example"
+    mailbox = RouteToWrite(org=line.org, number=address, agent="front-desk", channel=Channel.email, env=Env.production)
+    async with line.sessions.begin() as session:
+        await RouteRepository(session).put(mailbox)
+    assert await rings(line, address, Channel.email) == ("ok", False)
+    async with line.sessions.begin() as session:
+        await routes.note_call(session, line.org, address, Channel.email)
+    assert await rings(line, address, Channel.email) == ("ok", True)
 
 
 async def test_what_the_account_owns_is_every_page_and_says_which_this_env_imported(line: Line) -> None:

@@ -67,10 +67,12 @@ async def count_managed(session: AsyncSession, org: str, env: Env) -> int:
     return await RouteRepository(session).count_managed(org, env)
 
 
-async def note_call(session: AsyncSession, org: str, number: str) -> None:
-    """Note that a call to the org's number reached the box now."""
+# Until 2026-11-19 a call alone was noted: a number written to (WhatsApp, SMS, an email address) said
+# it waited for its first message however many it had answered.
+async def note_call(session: AsyncSession, org: str, number: str, channel: Channel = Channel.phone) -> None:
+    """Note that a call to the org's number, or a message on the channel, reached the box now."""
     at = now()
-    await RouteRepository(session).note_call(org, number, at=at, unless_since=at - CALLED_EVERY)
+    await RouteRepository(session).note_call(org, number, channel, at=at, unless_since=at - CALLED_EVERY)
 
 
 # A route the operator adds answers the next job: nothing is cached. A fleet's key acts in the scope

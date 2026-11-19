@@ -87,10 +87,16 @@ def _worst(states: Iterable[StepState]) -> StepState:
     return found
 
 
+_ARRIVING = {Channel.phone: "Calls", Channel.whatsapp: "Messages", Channel.sms: "Texts", Channel.email: "Emails"}
+
+
 # A number the box pointed here through an API is taken as pointed until a look says otherwise.
 def _carrier_step(route: Route, *, pointed_by_the_box: bool) -> PathStep:
     if route.last_call_at is not None:
-        return PathStep("carrier", "ok", "Calls to it reach this box")
+        return PathStep("carrier", "ok", f"{_ARRIVING.get(route.channel, 'Calls')} to it reach this box")
+    # A mailbox is read by the box itself, with the login it checked as the mailbox was connected.
+    if route.channel is Channel.email:
+        return PathStep("carrier", "ok", "Its mailbox is read by this box since it was connected")
     if route.channel.is_a_thread:
         return PathStep("carrier", "waiting", "Waiting for the first message")
     if pointed_by_the_box:
