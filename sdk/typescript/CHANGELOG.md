@@ -5,7 +5,7 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
-## Unreleased
+## 0.11.52 — the callers an agent is tested with live in its test folder, beside its goldens; one Calls page lists every conversation (2026-11-19)
 
 - The callers an agent is tested with live in `agents/<name>/test/personas.ts`, beside its goldens: every `ownPersona`
   the file exports is one of the agent's own, and its `on` names Pinecall's. The class no longer names them or imports

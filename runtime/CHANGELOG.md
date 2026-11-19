@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.52 — the callers an agent is tested with live in its test folder, beside its goldens; one Calls page lists every conversation (2026-11-19)
 
 - **One Calls page lists every conversation.** Messages and Emails are no pages of their own any more: a phone call,
   a web call, a website's chat, WhatsApp, SMS and an email are one list, each row saying its kind, and **Showing**

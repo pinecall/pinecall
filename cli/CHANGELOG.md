@@ -4,7 +4,7 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## 0.11.52 — the callers an agent is tested with live in its test folder, beside its goldens; one Calls page lists every conversation (2026-11-19)
 
 - **The callers an agent is tested with live in `agents/<agent>/test/personas.ts`** (`.py`, `.rb`), beside its
   goldens, and the class no longer names them: every `ownPersona` the file holds is one of the agent's own, and its

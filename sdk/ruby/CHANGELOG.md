@@ -4,7 +4,7 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
-## Unreleased
+## [0.11.52] — the callers an agent is tested with live in its test folder, beside its goldens; one Calls page lists every conversation (2026-11-19)
 
 - **An agent's test callers are held in `agents/<slug>/test/personas.rb`, beside its goldens, and no longer in the class.**
   Every constant there made by `Pinecall.own_persona` is the agent's own and `ON` names Pinecall's; the file is read in
