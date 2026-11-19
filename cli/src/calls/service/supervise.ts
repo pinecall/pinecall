@@ -29,18 +29,19 @@ export type Seen =
   | { seq: number; desk: string; said: string | null }
   | { seq: number; ended: string };
 
-/** What `watch` answered: the lines since the cursor, whether the call still goes, where to read on from. */
+/** What `watch` answered: the lines since the cursor, whether the call still goes (`open`) and has somebody on it (`live`), where to read on from. */
 export interface Watched {
   call: string;
   live: boolean;
+  open: boolean;
   lines: Seen[];
   next: number;
 }
 
-/** The call, live; one that ended is refused by name. */
+/** The call, still going: a conversation written message by message is one while it is open. One that ended is refused by name. */
 export async function liveCall(ctx: Context, call: string): Promise<void> {
   const state = await callState(ctx, call);
-  if (!state.live) throw new UsageError(ALREADY_ENDED(call));
+  if (!state.open) throw new UsageError(ALREADY_ENDED(call));
 }
 
 /** A typed line as a verb, `leave` for q, or null when it is not a move. */
@@ -76,7 +77,7 @@ export async function watchCall(ctx: Context, call: string, after: number, waitS
   const state = await callState(ctx, call);
   let cursor = after;
   const lines: Seen[] = [];
-  let ended = !state.live;
+  let ended = !state.open;
   const take = (entry: api.Entry): void => {
     cursor = entry.seq;
     if (entry.type === "call.ended") ended = true;
@@ -97,7 +98,7 @@ export async function watchCall(ctx: Context, call: string, after: number, waitS
       stop.abort();
     }
   }
-  return { call, live: !ended, lines, next: cursor };
+  return { call, live: state.live && !ended, open: !ended, lines, next: cursor };
 }
 
 /** One log entry as the desk reads it; undefined for the entries a desk does not (metrics, state, scores). */

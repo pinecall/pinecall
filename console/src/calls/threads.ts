@@ -109,9 +109,9 @@ export function isWritten(line: { channel: string | null }): boolean {
   return line.channel !== null && WRITTEN.has(line.channel);
 }
 
-/** Whether somebody is on the line now: a written conversation stays open for hours with nobody on it. */
+/** Whether somebody is on the line now, as the gateway says it: a written conversation stays open for hours with nobody on it, and is never live. */
 export function isOnTheLine(line: SessionLine): boolean {
-  return isLive(line) && !isWritten(line);
+  return line.live && isLive(line);
 }
 
 /** What a thread's row says under its name: the newest call's outcome, or how it went. */

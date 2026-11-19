@@ -303,6 +303,32 @@ async def test_a_verdict_is_the_one_entry_a_sealed_log_still_takes(store: Store,
         await store.write("score", f"{call}-nobody", agent, "call.score", {})
 
 
+# Until 2026-11-19 every call nobody had sealed was said live: an email waiting for its answer counted as a
+# call going on, and the console said "1 live" over a Calls page that listed nothing.
+@pytest.mark.parametrize(
+    ("channel", "on_the_line"), [("phone", True), ("web", True), ("whatsapp", False), ("email", False)]
+)
+async def test_a_list_says_live_of_a_call_with_somebody_on_it_and_never_of_a_written_conversation(
+    sessions: async_sessionmaker[AsyncSession], call: str, channel: str, on_the_line: bool
+) -> None:
+    """A conversation written message by message is open, its status says so, with nobody on the line."""
+    opening = GOLDEN[: next(at for at, entry in enumerate(GOLDEN) if entry.type == "call.started") + 1]
+    ticks = iter(entry.ts for entry in opening)
+    store = Store(sessions, Writer(sessions), clock=lambda: next(ticks))
+    for entry in opening:
+        data = {**entry.data, "channel": channel} if entry.type in ("call.ringing", "call.started") else entry.data
+        await store.write("entry", call, entry.agent, entry.type, data)
+    await store.writer.drain()
+    async with sessions() as session:
+        (row,) = await lists.list_rows(session, logs_on(store).logs, [call], {})
+    assert (row["channel"], row["live"]) == (channel, on_the_line)
+    assert row["status"] != "ended" and row["ended_at"] is None, "open either way"
+    await store.seal(call)
+    async with sessions() as session:
+        (kept,) = await lists.list_rows(session, logs_on(store).logs, [call], {})
+    assert not kept["live"]
+
+
 # The line is what a list shows: written at the seal, so the list of a sealed call folds no log.
 async def test_the_seal_writes_the_line_a_list_shows_and_the_list_reads_it_instead_of_folding(
     sessions: async_sessionmaker[AsyncSession], call: str

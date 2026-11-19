@@ -35,20 +35,22 @@ export const ReadLogInput = z.object({
 });
 export type ReadLogInput = z.infer<typeof ReadLogInput>;
 
-/** One call whole: whether it is live, its summary and its score as the log holds them. */
+/** One call whole: whether somebody is on it (`live`), whether it has not ended (`open`), its summary and its score as the log holds them. */
 export interface CallShown {
   call: string;
   live: boolean;
+  open: boolean;
   summary: Record<string, unknown> | undefined;
   score: Record<string, unknown> | undefined;
 }
 
-/** One page of a call's log: the entries, the seq to read on from (null once there is nothing after it), whether the call is live. */
+/** One page of a call's log: the entries, the seq to read on from (null once there is nothing after it), whether somebody is on the call (`live`) and whether it has not ended (`open`). */
 export interface LogPage {
   call: string;
   entries: api.Entry[];
   next: number | null;
   live: boolean;
+  open: boolean;
 }
 
 export async function listSessions(ctx: Context, input: ListSessionsInput): Promise<{ agent: string; calls: api.SessionLine[] }> {
@@ -78,7 +80,7 @@ export async function showCall(ctx: Context, call: string): Promise<CallShown> {
     if (read.next === null || read.next <= after) break;
     after = read.next;
   }
-  return { call, live: state.live, summary: found["call.summary"], score: found["call.score"] };
+  return { call, live: state.live, open: state.open, summary: found["call.summary"], score: found["call.score"] };
 }
 
 /**
@@ -89,10 +91,10 @@ export async function showCall(ctx: Context, call: string): Promise<CallShown> {
 export async function readLog(ctx: Context, input: ReadLogInput): Promise<LogPage> {
   const state = await callState(ctx, input.call);
   const page = await api.listCallEntries(ctx.gateway(), input.call, { after: input.after, limit: input.limit, types: input.types });
-  const next = page.next !== null && (state.live || page.next < state.lastSeq) ? page.next : null;
-  // The gateway sends a call's end whatever a reader filters, so a live one learns it ended; a page
+  const next = page.next !== null && (state.open || page.next < state.lastSeq) ? page.next : null;
+  // The gateway sends a call's end whatever a reader filters, so an open one learns it ended; a page
   // asked for by type shows those types alone.
   const types = input.types;
   const wanted = types === undefined ? page.entries : page.entries.filter((entry) => types.includes(entry.type));
-  return { call: input.call, entries: wanted, next, live: state.live };
+  return { call: input.call, entries: wanted, next, live: state.live, open: state.open };
 }

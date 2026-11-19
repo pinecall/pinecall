@@ -70,6 +70,14 @@ describe("a log page read whole", () => {
 describe("the sessions", () => {
   const one = { call: "call_7211bd743634463eb744fc9c89a89c3e", channel: "web", direction: "inbound", started_at: 100, ended_at: 103.1, end_reason: "caller_hung_up", cost: { usd: 0.0015 }, outcome: "Hello Ana! For Tuesday, I have 9:00 and 10:30 available." };
 
+  it("says a written conversation waiting for its contact is open, and only a call with somebody on it live", () => {
+    const waiting = { ...one, channel: "email", status: "active", live: false, ended_at: null, end_reason: null };
+    const [, , written, spoken] = sessions({ agent: "front-desk", calls: [waiting, { ...waiting, channel: "phone", live: true }] as never });
+    expect(written).toContain(" open ");
+    expect(written).not.toContain("live");
+    expect(spoken).toContain(" live ");
+  });
+
   it("cuts a row at the terminal's width, so no row wraps and pushes the header away; a pipe gets it whole", () => {
     const whole = sessions({ agent: "front-desk", calls: [one] as never });
     expect(whole[2]).toBe("call_7211bd743634463eb744fc9c89a89c3e  web inbound  3.1s    caller hung up  $0.0015  Hello Ana! For Tuesday, I have 9:00 and 10:30 available.");

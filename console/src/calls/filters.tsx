@@ -17,7 +17,7 @@ export function StatusChips({ lines, url }: { lines: readonly SessionLine[]; url
         const on = url.status === one.value;
         return (
           <button key={one.value} type="button" className={on ? "calls-chip calls-chip-on" : "calls-chip"} aria-pressed={on} onClick={() => url.ask("status", one.value)}>
-            {one.name}
+            {one.value === "live" && url.written ? "Open" : one.name}
             <span className={one.value === "asking" && count > 0 ? "calls-chip-count calls-chip-count-warm" : "calls-chip-count"}>{count}</span>
           </button>
         );

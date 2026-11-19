@@ -39,7 +39,7 @@ describe("one call", () => {
         : { entries: [{ seq: 880, type: "call.summary", data: { outcome: "booked" } }, { seq: 881, type: "call.score", data: { passed: true } }], next: null },
     );
     const { ctx } = testContext();
-    expect(await service.showCall(ctx, "call_1")).toEqual({ call: "call_1", live: false, summary: { outcome: "booked" }, score: { passed: true } });
+    expect(await service.showCall(ctx, "call_1")).toEqual({ call: "call_1", live: false, open: false, summary: { outcome: "booked" }, score: { passed: true } });
     expect(pages.map((one) => one.query)).toEqual([
       { after: "0", limit: "500", types: "call.summary,call.score" },
       { after: "500", limit: "500", types: "call.summary,call.score" },
@@ -60,7 +60,14 @@ describe("a page of the log", () => {
     answer("get", "/v1/calls/:call/state", { live: true, last_seq: 40 });
     answer("get", "/v1/calls/:call/events", { entries: [], next: 40 });
     const { ctx } = testContext();
-    expect(await service.readLog(ctx, service.ReadLogInput.parse({ call: "call_1", after: 40 }))).toEqual({ call: "call_1", entries: [], next: 40, live: true });
+    expect(await service.readLog(ctx, service.ReadLogInput.parse({ call: "call_1", after: 40 }))).toEqual({ call: "call_1", entries: [], next: 40, live: true, open: true });
+  });
+
+  it("of a conversation open with nobody on it says where to read on, as a live call's does", async () => {
+    answer("get", "/v1/calls/:call/state", { live: false, last_seq: 40, state: { status: "active" } });
+    answer("get", "/v1/calls/:call/events", { entries: [], next: 40 });
+    const { ctx } = testContext();
+    expect(await service.readLog(ctx, service.ReadLogInput.parse({ call: "call_1", after: 40 }))).toEqual({ call: "call_1", entries: [], next: 40, live: false, open: true });
   });
 
   it("sends the types kept, and an empty page past the end reads as none", async () => {

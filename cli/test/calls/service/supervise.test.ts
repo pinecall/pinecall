@@ -50,8 +50,16 @@ describe("the call", () => {
       next: 12,
     });
     const { ctx } = testContext();
-    expect(await service.watchCall(ctx, "call_1", 10, 1)).toEqual({ call: "call_1", live: true, lines: [{ seq: 12, agent: "Thursday at ten?" }], next: 12 });
+    expect(await service.watchCall(ctx, "call_1", 10, 1)).toEqual({ call: "call_1", live: true, open: true, lines: [{ seq: 12, agent: "Thursday at ten?" }], next: 12 });
     expect(sent[0]!.query).toMatchObject({ after: "10", limit: "200" });
+  });
+
+  it("written message by message is open with nobody on it: watched and moved on, never said live", async () => {
+    answer("get", "/v1/calls/:call/state", { live: false, last_seq: 12, state: { status: "active" } });
+    answer("get", "/v1/calls/:call/events", { entries: [{ seq: 12, type: "turn.user", data: { text: "Any news?" } }], next: 12 });
+    const { ctx } = testContext();
+    await expect(service.liveCall(ctx, "call_1")).resolves.toBeUndefined();
+    expect(await service.watchCall(ctx, "call_1", 10, 1)).toEqual({ call: "call_1", live: false, open: true, lines: [{ seq: 12, caller: "Any news?" }], next: 12 });
   });
 
   it("a move is posted to the call's verbs", async () => {

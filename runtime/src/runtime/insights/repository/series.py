@@ -8,6 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import TextClause
 
+from runtime.enums import Channel
 from runtime.insights.repository.drift import Days
 from runtime.kit.time import A_DAY_S, day_of
 
@@ -42,6 +43,9 @@ def _count(selected: str, *, by_day: bool = False, rest: str = "") -> TextClause
 
 # "before" is the window of the same length right before it. A call is judged once a judge
 # settled, and passed unless a judge said it did not.
+# Somebody on the line now: a conversation written message by message is open for hours with nobody on it.
+THREADS = ", ".join(f"'{channel.value}'" for channel in Channel if channel.is_a_thread)
+
 WINDOW = text(f"""
 select
     count(*) filter (where {WINDOWED}) as calls,
@@ -58,7 +62,7 @@ select
     count(*) filter (where {WINDOWED} and f.channel = 'whatsapp') as whatsapp,
     count(*) filter (where {WINDOWED} and f.channel = 'sms') as sms,
     count(*) as total,
-    count(*) filter (where not head.sealed) as live
+    count(*) filter (where not head.sealed and coalesce(f.channel, '') not in ({THREADS})) as live
 {CALLS}
 """)
 

@@ -24,6 +24,7 @@ from runtime.calls.repository.heads import CallHead, Claim, HeadRepository
 from runtime.calls.repository.search import ListFilters, PersonaRunFilters, PersonaRuns, SearchRepository
 from runtime.calls.repository.taught import Taught, TaughtRepository
 from runtime.calls.repository.unsealed import Unsealed, UnsealedRepository
+from runtime.enums import Channel
 from runtime.exceptions import NotFound
 from runtime.kit.text import JsonObject
 from runtime.scoping import box_wide
@@ -304,11 +305,18 @@ def _row(
         "call": call,
         "agent": head.agent or "",
         "last_seq": line["seq"],
-        "live": not head.sealed,
+        "live": is_live(line.get("channel"), sealed=head.sealed),
         "score": score,
         "flags": [] if folded is None else folded.flags,
         **({} if names is None else {"holder": head.holder or "", "holder_name": names.get(head.holder or "")}),
     }
+
+
+def is_live(channel: object, *, sealed: bool) -> bool:
+    """Whether somebody is on the call now: its log open, and its channel not one written message by message."""
+    if not isinstance(channel, str):
+        return not sealed
+    return Channel(channel).is_live(sealed=sealed)
 
 
 # A live call's line is read through the tenant's projection, as every reader of its state is.

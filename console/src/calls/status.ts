@@ -6,6 +6,7 @@ import { type SessionLine } from "@pinecall/core/wire/rest";
 /** The chips, in the order they are drawn; `""` is every call. `?status=` in the address. */
 export const STATUSES = [
   { value: "", name: "All" },
+  // On Messages and Emails the chip reads "Open": a written conversation waits for its contact with nobody on it.
   { value: "live", name: "Live" },
   { value: "asking", name: "Asking" },
   { value: "broke", name: "Broke" },

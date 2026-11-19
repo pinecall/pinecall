@@ -35,6 +35,13 @@ class Channel(StrEnum):
         """Whether a contact writes to an address on it, message by message, and is answered there."""
         return self in (Channel.whatsapp, Channel.sms, Channel.email)
 
+    # A conversation written message by message stays open for hours between two of them, with nobody
+    # on it: it is open (its status says so), never live. Until 2026-11-19 every call nobody had sealed
+    # was said live, and an email waiting for its answer counted as a call going on.
+    def is_live(self, *, sealed: bool) -> bool:
+        """Whether a call on the channel has somebody on the line now: never one written message by message."""
+        return not sealed and not self.is_a_thread
+
     @property
     def is_by_email(self) -> bool:
         """Whether its address is an email address, where every other channel's is a phone number."""

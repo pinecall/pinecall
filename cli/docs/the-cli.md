@@ -1359,7 +1359,9 @@ call_29d7c7b6cdd643de9c659984a0125c8c  web inbound  3s       caller hung up  $0.
 ```
 
 On a terminal each row is cut at the terminal's width, so a call's last words never wrap a row in two; a
-pipe or a file gets every row whole.
+pipe or a file gets every row whole. A row says `live` while somebody is on the call. A WhatsApp, SMS
+or email conversation waiting for its contact says `open`: it stays so for hours between two messages,
+with nobody on it, and is never live.
 
 With a call id (`sessions <call>`): that call's **outcome**, how long it ran and why it ended, what it cost in US dollars with a
 line per priced row under it (the model, the ears, the voice, the memory model at hang-up, each
@@ -1367,7 +1369,8 @@ phone leg in minutes begun) and a line for anything the platform has no rate for
 how many judges broke of how many held or broke, then the ones that broke with their reason, the
 ones that held by name, a classification with what it answered, and the ones that did not apply on
 one line. The judging happens at hang-up, in the gateway; this verb reads it back and runs
-nothing. A call still running says so instead of reporting itself unjudged, and an id this gateway
+nothing. A call still running says so instead of reporting itself unjudged (`live`, or `open` for a
+written conversation waiting for its contact), and an id this gateway
 has no log for is refused by name: it does not print a summary of nothing.
 
 ```console
@@ -1407,7 +1410,7 @@ gateway read, so `--types turn.user,tool.call,tool.result`, which keeps only tho
 reading early — a page it narrowed to a few entries, or to none, still says where to go on (`<call> · nothing
 of these types in this page, after seq 40; the log goes on`, then the `→ … --after <seq> reads on` line); `nothing kept after seq <n>`
 is the end of a sealed log.
-`--json` prints the page whole, `{call, entries, next, live}`, as the MCP's `call` tool answers
+`--json` prints the page whole, `{call, entries, next, live, open}`, as the MCP's `call` tool answers
 it. What the agent declared `pii` is in the log as `***`, and so it is here: the tool's argument
 and the same value wherever the agent wrote it down — the state that took it, what a tool answered,
 a line it logged. What was said (`turn.user`, `turn.agent`) is not touched.

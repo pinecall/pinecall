@@ -51,8 +51,10 @@ export function sessions({ agent, calls }: { agent: string; calls: SessionLine[]
 export function call(shown: CallShown): string[] {
   const lines = [shown.call];
   const facts: [string, string][] = [];
-  // A live call has no summary or score yet; say it is live rather than "not judged".
+  // A call that has not ended has no summary or score yet; say where it stands rather than "not judged".
+  // A conversation written message by message is open between two of them, with nobody on it.
   if (shown.live) facts.push(["live", "still running"]);
+  else if (shown.open) facts.push(["open", "waiting for the contact's next message"]);
   const summary = shown.summary;
   if (summary !== undefined) {
     facts.push(["outcome", String(summary["outcome"] ?? "—")]);
@@ -68,7 +70,7 @@ export function call(shown: CallShown): string[] {
     if (label === "cost") lines.push(...costLines(summary?.["cost"] as Cost | null | undefined).map((row) => `  ${"".padEnd(width)}  ${row}`));
   }
   if (judged.judges.length > 0) lines.push("", ...judged.judges);
-  lines.push(formatHint(shown.live ? `pinecall supervise ${shown.call} is the desk for it` : `pinecall sessions log ${shown.call} reads every entry`));
+  lines.push(formatHint(shown.open ? `pinecall supervise ${shown.call} is the desk for it` : `pinecall sessions log ${shown.call} reads every entry`));
   return lines;
 }
 
@@ -259,7 +261,10 @@ function lasted(one: SessionLine): string {
 }
 
 function endedOf(one: SessionLine): string {
-  return one.live === true ? "live" : words(one.end_reason ?? one.status ?? "—");
+  if (one.live === true) return "live";
+  // A WhatsApp, SMS or email conversation waiting for its contact: open, with nobody on it.
+  if (one.status !== "ended" && (one.ended_at === null || one.ended_at === undefined)) return "open";
+  return words(one.end_reason ?? one.status ?? "—");
 }
 
 // `caller_hung_up` as a person says it: `caller hung up`.

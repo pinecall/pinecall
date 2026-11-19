@@ -30,9 +30,14 @@ export interface EntryQuery {
   types?: readonly string[] | undefined;
 }
 
-/** `GET /v1/calls/{call}/state`: whether the call is live, and its log's length. */
+/**
+ * `GET /v1/calls/{call}/state`: whether somebody is on the call now (`live`), whether it has not ended
+ * (`open`), and its log's length. A WhatsApp, SMS or email conversation is open for hours between two
+ * messages and never live.
+ */
 export interface CallState {
   live: boolean;
+  open: boolean;
   lastSeq: number;
 }
 
@@ -68,8 +73,10 @@ export async function listSessions(gw: GatewayClient, agent: string, limit?: num
 
 /** The only endpoint that answers 404 for an unknown call; the events one returns an empty page. */
 export async function getCallState(gw: GatewayClient, call: string): Promise<CallState> {
-  const said = await gw.get<{ live?: boolean; last_seq?: number }>(`/v1/calls/${seg(call)}/state`);
-  return { live: said.live === true, lastSeq: said.last_seq ?? 0 };
+  const said = await gw.get<{ live?: boolean; last_seq?: number; state?: { status?: string } }>(`/v1/calls/${seg(call)}/state`);
+  const status = said.state?.status;
+  // A gateway that says no status is asked what it said before: a call is open while it is live.
+  return { live: said.live === true, open: status === undefined ? said.live === true : status !== "ended", lastSeq: said.last_seq ?? 0 };
 }
 
 /** One page of a call's log; 204 (null) once the cursor is past the end of a call that is over. */

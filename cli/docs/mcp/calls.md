@@ -7,7 +7,7 @@ tool's own schema, as the assistant sees it — and one real call, answered by P
 
 The agent's newest calls: each one's id, channel, length, how it ended, its cost and its verdicts.
 
-`calls` lists the agent's newest calls with their ids; `call` reads one whole.
+`calls` lists the agent's newest calls with their ids; `call` reads one whole. A row's `live` says somebody is on the call now; a WhatsApp, SMS or email conversation waiting for its contact is never live: its `status` is not `ended` and it has no `ended_at`.
 
 | parameter | takes | | what it is |
 |---|---|---|---|
@@ -54,7 +54,7 @@ The agent's newest calls: each one's id, channel, length, how it ended, its cost
 
 One call's log, entry by entry — every turn, tool call, result, state change, metric and verdict — a page at a time.
 
-`call` reads one call's log the way the runtime keeps it: every entry with its seq, quiet ones included — the turns, each tool call and its result, the state after it, the latency of each turn, the cost, and the verdicts at hang-up (`call.score`). Page with `after` set to the `next` the page before answered, until `next` is null; `types` narrows a page and never ends the reading early. `live` says the call is still going.
+`call` reads one call's log the way the runtime keeps it: every entry with its seq, quiet ones included — the turns, each tool call and its result, the state after it, the latency of each turn, the cost, and the verdicts at hang-up (`call.score`). Page with `after` set to the `next` the page before answered, until `next` is null; `types` narrows a page and never ends the reading early. `open` says the call has not ended, and `live` that somebody is on it now: a WhatsApp, SMS or email conversation is open between two messages and never live.
 
 | parameter | takes | | what it is |
 |---|---|---|---|
@@ -128,7 +128,8 @@ One call's log, entry by entry — every turn, tool call, result, state change, 
     "… 2 more"
   ],
   "next": null,
-  "live": false
+  "live": false,
+  "open": false
 }
 ```
 

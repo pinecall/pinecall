@@ -101,6 +101,15 @@ Six endpoints, and two of them are the same URL twice — `Accept` decides:
 | `GET /v1/agents` | which agents this key's fleet is holding right now: `{agents: [{slug, channels, holder?}]}` (`holder` for a reader of every scope), in the order their sockets claimed them. An agent no socket holds answers no call, so it is not listed; its log is still readable by slug |
 | `POST /v1/calls/{id}/verbs` | one supervise verb onto a live call, with a `supervise` token or a key that opens `supervise` and `calls` (or `fleet`). `202`; its effect is read off the log above |
 
+**`live` is somebody on the line.** On a row of a list and in `/v1/calls/{id}/state`, `live` says the
+call's log is open *and* its channel is one somebody stays on: a phone call ringing or connected, a
+web call or chat with its visitor there. A conversation written message by message (`whatsapp`, `sms`,
+`email`) is open for hours between two messages with nobody on it, and is never live: its `status` is
+not `ended` and it has no `ended_at`, and that is what says it is open. A supervise verb, a stream and
+a page of its log work on it while it is open. The `live` of a page of entries is the log's own: more
+may be written to it. Until 2026-11-19 every call nobody had sealed was said live, and an email
+waiting for its answer counted as a call going on.
+
 A reader that only wants the app's state subscribes with `types=state.changed`: one entry per
 change instead of every transcript and every metric, on the same cursor, and `GET .../state`
 is the snapshot it starts from.

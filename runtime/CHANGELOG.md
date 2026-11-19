@@ -8,9 +8,14 @@
 - **A number written to stops saying it waits for its first message.** A call alone was noted on its number: a
   WhatsApp number, an SMS number and a mailbox said "Waiting for the first message" however many they had answered.
   A message is noted on its own channel's route now, and a mailbox, which the box reads itself, waits for nothing.
-- **The console's "live" count is the calls with somebody on the line.** The menu's badge and the home's "Live now"
-  counted every open conversation, so a WhatsApp, SMS or email thread, open for hours with nobody on it, said "1 live"
-  over a Calls page that lists none of them.
+- **`live` is somebody on the line, never a written conversation.** Every call nobody had sealed was said live, so a
+  WhatsApp, SMS or email conversation, open for hours between two messages, counted as a call going on: "1 live" in the
+  console over a Calls page that lists none of them, `live` in `pinecall sessions`, in the MCP and in the insights.
+  A row of a list, `GET /v1/calls/{call}/state` and the insights' `live` say it now only of a channel somebody stays
+  on (a phone call, a web call or chat). A written conversation is open while its `status` is not `ended`; a
+  supervise verb, a stream and its log work on it as before. The console's counts follow the gateway, its status chip
+  reads "Open" on Messages and Emails. The CLI before 0.11.51 refuses `supervise` on an open written conversation as
+  ended: update it.
 - **The console's Emails page** holds the email threads, apart from Messages (WhatsApp and SMS). An agent's Channels
   tab shows each mailbox with its server and **Server settings** to change it, and an **Email template** editor: made
   from a brand, a colour, a logo and a footer, or written as HTML, tried live on a reply before it is kept.

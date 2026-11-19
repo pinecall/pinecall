@@ -211,7 +211,7 @@ async def declaration_at_opening(sessions: async_sessionmaker[AsyncSession], cal
 
 @dataclass(frozen=True, slots=True)
 class CallState:
-    """A call's folded state as its reader may see it, the seq a stream resumes from, and whether it is live."""
+    """A call's folded state as its reader may see it, the seq a stream resumes from, and whether somebody is on it."""
 
     state: JsonObject
     last_seq: int
@@ -223,10 +223,11 @@ async def state_of(session: AsyncSession, logs: Logs, readable: Readable) -> Cal
     state = await logs.reading(readable.call).snapshot(session)
     if state.seq == 0:
         raise NotFound(f"no call {readable.call} in this key's org and env")
+    sealed = await HeadRepository(session).is_sealed(readable.call)
     return CallState(
         state=project_state(state, readable.reader.audience, readable.declaration),
         last_seq=state.seq,
-        live=not await HeadRepository(session).is_sealed(readable.call),
+        live=not sealed if state.channel is None else state.channel.is_live(sealed=sealed),
     )
 
 

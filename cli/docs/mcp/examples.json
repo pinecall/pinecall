@@ -281,7 +281,8 @@
           "… 2 more"
         ],
         "next": null,
-        "live": false
+        "live": false,
+        "open": false
       }
     }
   ],
@@ -1379,6 +1380,7 @@
       "answer": {
         "call": "call_bf4f00ba21b3410ca6bbedcd6c963269",
         "live": true,
+        "open": true,
         "lines": [
           {
             "seq": 43,

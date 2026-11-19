@@ -14,7 +14,7 @@ export const calls = tool({
   reads: true,
   description: "The agent's newest calls: each one's id, channel, length, how it ended, its cost and its verdicts.",
   schema: { agent: AGENT, limit: z.number().int().min(1).max(100).optional().describe("how many, newest first; 20 when left out") },
-  manual: "`calls` lists the agent's newest calls with their ids; `call` reads one whole.",
+  manual: "`calls` lists the agent's newest calls with their ids; `call` reads one whole. A row's `live` says somebody is on the call now; a WhatsApp, SMS or email conversation waiting for its contact is never live: its `status` is not `ended` and it has no `ended_at`.",
   handler: async (args, ctx) => await service.listSessions(ctx, { agent: args.agent, limit: args.limit ?? 20 }),
 });
 
@@ -30,7 +30,7 @@ export const call = tool({
     types: z.array(z.string()).optional().describe("only these entry types, such as turn.agent or call.score"),
   },
   manual:
-    "`call` reads one call's log the way the runtime keeps it: every entry with its seq, quiet ones included — the turns, each tool call and its result, the state after it, the latency of each turn, the cost, and the verdicts at hang-up (`call.score`). Page with `after` set to the `next` the page before answered, until `next` is null; `types` narrows a page and never ends the reading early. `live` says the call is still going.",
+    "`call` reads one call's log the way the runtime keeps it: every entry with its seq, quiet ones included — the turns, each tool call and its result, the state after it, the latency of each turn, the cost, and the verdicts at hang-up (`call.score`). Page with `after` set to the `next` the page before answered, until `next` is null; `types` narrows a page and never ends the reading early. `open` says the call has not ended, and `live` that somebody is on it now: a WhatsApp, SMS or email conversation is open between two messages and never live.",
   handler: async (args, ctx) => await service.readLog(ctx, service.ReadLogInput.parse(args)),
 });
 
@@ -125,11 +125,11 @@ export const supervise = tool({
     wait_s: WAIT,
   },
   manual:
-    "`supervise` is the desk `pinecall supervise` is in a terminal, for a call that is happening. `watch` answers the call's lines since `after` — the caller's, the agent's, its tool calls, every move of a desk, the end — and waits up to `wait_s` for more while the call is live; pass the `next` it answers to keep reading. `whisper` reaches the agent as an instruction for its next reply and the caller never hears it; `say` puts words in the agent's voice; `takeover` silences the agent until `release`; `transfer` and `end` act on the caller, at once. Every move lands in the caller's own log as a `supervisor.*` entry. On a call that has ended `watch` answers what it was, `live: false`, and every move is refused: `call` reads it whole. The audio of a live call is the console's Live screen (`console_url`).",
+    "`supervise` is the desk `pinecall supervise` is in a terminal, for a call that is happening. `watch` answers the call's lines since `after` — the caller's, the agent's, its tool calls, every move of a desk, the end — and waits up to `wait_s` for more while the call is open; pass the `next` it answers to keep reading. `whisper` reaches the agent as an instruction for its next reply and the caller never hears it; `say` puts words in the agent's voice; `takeover` silences the agent until `release`; `transfer` and `end` act on the caller, at once. Every move lands in the caller's own log as a `supervisor.*` entry. On a call that has ended `watch` answers what it was, `open: false`, and every move is refused; a WhatsApp, SMS or email conversation is `open` and never `live`, and a desk moves on it all the same: `call` reads it whole. The audio of a live call is the console's Live screen (`console_url`).",
   handler: async (args, ctx) => {
     if (args.action === "watch") return await service.watchCall(ctx, args.call, args.after ?? 0, args.wait_s ?? WAIT_S);
     const state = await service.callState(ctx, args.call);
-    if (!state.live) throw new ToolRefused(ENDED(args.call));
+    if (!state.open) throw new ToolRefused(ENDED(args.call));
     return await service.sendMove(ctx, args.call, verbOf(args));
   },
 });

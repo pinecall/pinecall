@@ -1,10 +1,13 @@
 """The insights endpoints a console draws from: tools, the slowest turns and the series' vendors."""
 
+import time
 from typing import Any
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from runtime.calls.models import CallFact, CallLogHead
+from runtime.enums import Env
 from runtime.wire.base import Entry
 from tests.calls.factories import a_call_with_tools, a_tool_result, entry
 from tests.conftest import Gateway, Tenant, needs_the_services
@@ -130,3 +133,22 @@ async def test_the_window_counts_the_copies_a_list_of_calls_reads(
     assert person.status_code == 200, person.text
     assert (person.json()["conversations"]["now"], person.json()["channels"]["web"]) == (2, 0)
     assert (await asked(gateway, tenant, "/v1/insights", **asked_as))["conversations"]["now"] == 1
+
+
+# Until 2026-11-19 the window's `live` counted every call nobody had sealed, an email waiting for its answer too.
+async def test_the_window_counts_as_live_the_calls_with_somebody_on_them(
+    gateway: Gateway, tenant: Tenant, sessions: async_sessionmaker[AsyncSession], call: str, agent: str
+) -> None:
+    """A phone call going on is live; a WhatsApp or an email conversation open for hours is not."""
+    going = {f"{call}_phone": "phone", f"{call}_whatsapp": "whatsapp", f"{call}_email": "email"}
+    async with sessions.begin() as session:
+        for one, channel in going.items():
+            session.add(
+                CallLogHead(
+                    log=one, call=one, agent=agent, org=tenant.org, env=Env.sandbox, holder="", started_at=time.time()
+                )
+            )
+            await session.flush()
+            session.add(CallFact(call=one, channel=channel))
+    window = await asked(gateway, tenant, "/v1/insights", days=7, agent=agent)
+    assert (window["conversations"]["now"], window["live"]) == (3, 1)
