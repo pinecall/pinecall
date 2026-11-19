@@ -8,6 +8,7 @@ import { type Entry } from "@pinecall/core/wire/envelope";
 import { type State } from "@pinecall/core/wire/state";
 import { readSimulation, type PersonaRun } from "./door";
 import { usd } from "./format";
+import { isWritten } from "./threads";
 
 /** A model as livekit named it on its metrics; null before the stage first ran. */
 interface Ran {
@@ -78,9 +79,10 @@ export function Models({ call, state, entries }: { call: string; state: State; e
       <section className="calls-part" aria-label="The models on the line">
         <span className="dash-eyebrow">Models</span>
         <div className="calls-models">
-          <Line role="Hears" ran={agent.hears} />
+          {/* A conversation written message by message has no ears and no voice: the model that thinks is all of it. */}
+          {!isWritten(state) && <Line role="Hears" ran={agent.hears} />}
           <Line role="Thinks" ran={agent.thinks} />
-          <Line role="Speaks" ran={agent.speaks} />
+          {!isWritten(state) && <Line role="Speaks" ran={agent.speaks} />}
         </div>
       </section>
       {persona !== null && (

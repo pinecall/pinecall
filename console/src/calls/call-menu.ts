@@ -8,6 +8,7 @@ import { type SessionLine } from "@pinecall/core/wire/rest";
 import { copy, linkItems, useRowMenu } from "../ui/row-menu";
 import { eraseCall, judgeAgain } from "./door";
 import { isWritten } from "./threads";
+import { baseOf, thingOn } from "./url";
 
 const ON_THE_LINE = "It is on the line: end the call first";
 const STILL_OPEN = "It is still open: end the conversation first";
@@ -17,15 +18,16 @@ export function useCallMenu(onErased: (call: string) => void): (event: MouseEven
   const menu = useRowMenu();
   const credentials = useCredentials();
   return (event, line, who) => {
+    const thing = thingOn(baseOf(line));
     const going = !isLive(line) ? undefined : isWritten(line) ? STILL_OPEN : ON_THE_LINE;
     menu(event, [
       ...linkItems(event.currentTarget.href, who),
-      { name: "Copy call id", pick: () => copy(line.call) },
+      { name: `Copy ${thing} id`, pick: () => copy(line.call) },
       "rule",
       { name: "Judge it again", off: going, pick: async () => void (await judgeAgain(credentials, line.call)) },
       "rule",
       {
-        name: "Erase this call…",
+        name: `Erase this ${thing}…`,
         sure: "Erase for good: nothing brings it back",
         danger: true,
         off: going,

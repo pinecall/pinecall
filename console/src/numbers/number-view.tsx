@@ -11,7 +11,9 @@ import { WORLD } from "../lib/world";
 import { Select } from "../ui/select";
 import { addNumber, moveNumber, releaseNumber, type Carrier, type Catalog, type NumberRow, type WantedNumber, type Wired } from "./door";
 import { Path, Plan, useMove } from "./parts";
-import { arrivingOn, CHANNEL_NAMES, comesThrough, RINGS, ringsSaid, shown } from "./words";
+import { EmailTemplate } from "../channels/email-template";
+import { MailboxCard } from "../channels/mailbox";
+import { anArriving, arrivingMany, arrivingOn, CHANNEL_NAMES, comesThrough, RINGS, ringsSaid, shown } from "./words";
 
 const OTHER = WORLD === "production" ? "sandbox" : "production";
 
@@ -39,6 +41,9 @@ export function NumberView({ row, carriers, catalog, agents, onChanged, onGone }
   const [next, setNext] = useState<string | null>(null);
   const [plan, setPlan] = useState<Wired | null>(null);
   const rings = RINGS[row.rings];
+  const byEmail = row.route.channel === "email";
+  const many = arrivingMany(row.route.channel);
+  const mailbox = byEmail ? carriers.find((one) => one.kind === "email" && one.account === (row.account ?? number)) : undefined;
   // A number is sent to another agent the way it was added; only one imported from an account says enough here to do it again.
   const movable = row.origin === "imported" && row.account != null && row.route.channel !== "web";
   const wanted = (agent: string) => ({ number, agent, channel: row.route.channel as WantedNumber["channel"], ...(row.account == null ? {} : { account: row.account }) });
@@ -63,15 +68,23 @@ export function NumberView({ row, carriers, catalog, agents, onChanged, onGone }
             </Link>
           </Fact>
           <Fact name="Channel">{CHANNEL_NAMES[row.route.channel]}</Fact>
-          <Fact name="Comes through">{comesThrough(row, carriers, catalog)}</Fact>
+          {mailbox === undefined ? <Fact name="Comes through">{comesThrough(row, carriers, catalog)}</Fact> : <Fact name="Read from">{String(mailbox.settings["imap_host"] ?? "its server")}</Fact>}
           <Fact name={`Last ${arrivingOn(row.route.channel)}`}>{row.last_call_at == null ? "None yet" : ago(row.last_call_at)}</Fact>
         </dl>
       </section>
 
       <section className="dash-card num-card">
-        <span className="dash-eyebrow dash-eyebrow-head">What a call to it goes through</span>
+        <span className="dash-eyebrow dash-eyebrow-head">What {anArriving(row.route.channel)} to it goes through</span>
         <Path number={number} channel={row.route.channel} round={round} />
       </section>
+
+      {mailbox !== undefined && (
+        <section className="dash-card num-card">
+          <span className="dash-eyebrow dash-eyebrow-head">Its server</span>
+          <MailboxCard carrier={mailbox} onSaved={async () => onChanged()} />
+        </section>
+      )}
+      {byEmail && <EmailTemplate />}
 
       <section className="dash-card num-card">
         <span className="dash-eyebrow dash-eyebrow-head">Change it</span>
@@ -87,21 +100,21 @@ export function NumberView({ row, carriers, catalog, agents, onChanged, onGone }
             <div className="num-change">
               <span className="num-change-words">
                 <span className="num-change-title">Another agent answers</span>
-                <span className="dash-quiet">{movable ? "Pick the agent, then read what will change before it does." : "This number was not imported from one of your accounts: add it again for the other agent."}</span>
+                <span className="dash-quiet">{movable ? "Pick the agent, then read what will change before it does." : byEmail ? "Connect the mailbox again for the other agent." : "This number was not imported from one of your accounts: add it again for the other agent."}</span>
               </span>
               {movable && <Select label="Agent that picks up" items={agents.map((one) => ({ value: one, label: one }))} value={row.route.agent} disabled={mover.busy} onChange={(agent) => agent !== row.route.agent && void mover.move(() => addNumber(credentials, wanted(agent), true)).then((read) => (setNext(agent), setPlan(read)), () => undefined)} />}
             </div>
             <div className="num-change">
               <span className="num-change-words">
                 <span className="num-change-title">Move it to {OTHER}</span>
-                <span className="dash-quiet">{OTHER === "production" ? "Calls to it reach the agent as it is deployed, and count as real calls." : "Calls to it reach the agent as you are building it."}</span>
+                <span className="dash-quiet">{OTHER === "production" ? `${many} to it reach the agent as it is deployed, and count as real ${row.route.channel === "phone" ? "calls" : "conversations"}.` : `${many} to it reach the agent as you are building it.`}</span>
               </span>
               <ConfirmButton label={`Move to ${OTHER}`} asks={`Move it to ${OTHER}?`} onConfirm={() => void mover.move(() => moveNumber(credentials, number, OTHER, row.route.channel)).then(onGone, () => undefined)} />
             </div>
             <div className="num-change">
               <span className="num-change-words">
                 <span className="num-change-title">Let it go</span>
-                <span className="dash-quiet">It stops reaching Pinecall. The account that owns it keeps it.</span>
+                <span className="dash-quiet">{byEmail ? "It stops being read and answered. The mailbox keeps its emails, and its server keeps running." : "It stops reaching Pinecall. The account that owns it keeps it."}</span>
               </span>
               <ConfirmButton label="Let it go" asks="Stop answering it?" danger onConfirm={() => void mover.move(() => releaseNumber(credentials, number, row.route.channel)).then(onGone, () => undefined)} />
             </div>

@@ -13,6 +13,18 @@ export const RINGS: Record<Rings, { mood: "good" | "warn" | "bad"; said: string 
 // What reaches a number on each channel, said in the page's own word: a call, a message, an email.
 const ARRIVING: Record<string, string> = { whatsapp: "message", sms: "text", email: "email" };
 
+const MANY: Record<string, string> = { whatsapp: "Messages", sms: "Texts", email: "Emails" };
+
+/** What arrives on the channel, several of them: Calls, Messages, Texts, Emails. */
+export function arrivingMany(channel: string | null): string {
+  return MANY[channel ?? ""] ?? "Calls";
+}
+
+/** What arrives on the channel, with its article: a call, a message, an email. */
+export function anArriving(channel: string | null): string {
+  return channel === "email" ? "an email" : `a ${arrivingOn(channel)}`;
+}
+
 /** What arrives on the channel, in one word. */
 export function arrivingOn(channel: string | null): string {
   return ARRIVING[channel ?? ""] ?? "call";
@@ -77,5 +89,6 @@ export function waysOffered(catalog: Catalog, channel: "phone" | "whatsapp" | "s
   if (channel === "whatsapp") return [whatsapp];
   if (channel === "sms") return [sms];
   if (channel === "email") return [email];
-  return channel === "phone" ? phone : [...phone, whatsapp, sms, email];
+  // A mailbox is no number: it is connected on Mailboxes, or in an agent's Channels.
+  return channel === "phone" ? phone : [...phone, whatsapp, sms];
 }

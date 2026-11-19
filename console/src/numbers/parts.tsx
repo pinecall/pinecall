@@ -128,7 +128,7 @@ export function Path({ number, channel, round = 0 }: { number: string; channel?:
         <li key={step.step} className={`num-path-step num-path-${step.state}`}>
           <span className="num-path-dot" aria-hidden="true" />
           <span className="num-path-words">
-            <span className="num-path-name">{STEP_NAMES[step.step]}</span>
+            <span className="num-path-name">{step.step === "carrier" && channel === "email" ? "Mailbox" : STEP_NAMES[step.step]}</span>
             <span className="num-path-says">{step.says}</span>
             {step.fix != null && step.fix !== "" && <span className="num-path-fix">{step.fix}</span>}
           </span>

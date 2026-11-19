@@ -122,8 +122,8 @@ export function Desk({ line, spoken, asked }: { line: OnTheLine; spoken: boolean
           <Listen ear={ear} />
         </div>
       )}
-      <Field verb="Whisper" asks={`Whisper to the agent. The caller never ${spoken ? "hears" : "reads"} it.`} send={(text) => desk.whisper(text)} />
-      <Field verb="Say" asks={`Say it to the caller, ${spoken ? "in the agent's voice" : "as the agent"}, word for word.`} send={(text) => desk.say(text)} loud />
+      <Field verb="Whisper" asks={`Whisper to the agent. The ${spoken ? "caller never hears" : "contact never reads"} it.`} send={(text) => desk.whisper(text)} />
+      <Field verb="Say" asks={`Say it to the ${spoken ? "caller, in the agent's voice" : "contact, as the agent"}, word for word.`} send={(text) => desk.say(text)} loud />
       <div className="calls-desk-row">
         <button
           type="button"

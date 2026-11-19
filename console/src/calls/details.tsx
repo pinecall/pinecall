@@ -18,6 +18,7 @@ import type { Thread } from "./threads";
 import { TraceStep } from "./trace";
 import type { TraceBar } from "./trace-bars";
 import type { WatchedCall } from "./use-watched-call";
+import { isWritten } from "./threads";
 import { baseOf } from "./url";
 
 function Tile({ label, value, sub }: { label: string; value: string; sub: string }): ReactNode {
@@ -79,12 +80,14 @@ const ENDED_BY: Record<string, [string, string]> = {
 
 function Tiles({ state, latencies }: { state: State; latencies: readonly Median[] }): ReactNode {
   const over = state.status === "ended";
-  const [who, did] = ENDED_BY[state.end_reason ?? ""] ?? ["—", (state.end_reason ?? "").replace(/_/g, " ")];
+  // A conversation written message by message has no caller and no voice to time: it closes when nobody writes.
+  const written = isWritten(state);
+  const [who, did] = written && state.end_reason === "timeout" ? ["Silence", "nobody wrote"] : (ENDED_BY[state.end_reason ?? ""] ?? ["—", (state.end_reason ?? "").replace(/_/g, " ")]);
   return (
-    <section className="calls-tiles" aria-label="The call, in numbers">
-      <Response latencies={latencies} />
+    <section className="calls-tiles" aria-label="In numbers">
+      {!written && <Response latencies={latencies} />}
       {state.cost !== null && state.cost.rows.length > 0 && <Tile label="Cost" value={usd(state.cost.usd)} sub={sharesOf(state.cost.rows)} />}
-      <Tile label="Turns" value={String(state.turns.length)} sub={`Caller ${state.turns.filter((turn) => turn.role === "user").length}, agent ${state.turns.filter((turn) => turn.role === "agent").length}`} />
+      <Tile label="Turns" value={String(state.turns.length)} sub={`${written ? "Contact" : "Caller"} ${state.turns.filter((turn) => turn.role === "user").length}, agent ${state.turns.filter((turn) => turn.role === "agent").length}`} />
       {over && state.end_reason !== null && <Tile label="Ended by" value={who} sub={`${did}, after ${lengthOf(state.started_at, state.ended_at)}`} />}
     </section>
   );
@@ -102,7 +105,7 @@ function OtherCalls({ person, shown, search }: { person: Thread; shown: string; 
             <span className="calls-other-top">
               <span>{line.started_at === null ? line.call : dayOf(line.started_at)}</span>
               <span className="dash-quiet dash-clip">
-                {line.agent}, {line.channel ?? "—"}, {line.status === "ended" ? lengthOf(line.started_at, line.ended_at) : "on the line now"}
+                {line.agent}, {line.channel ?? "—"}, {line.status === "ended" ? lengthOf(line.started_at, line.ended_at) : isWritten(line) ? "open" : "on the line now"}
               </span>
             </span>
             {line.outcome !== null && line.outcome !== "" && <span className="dash-quiet dash-clip">{line.outcome}</span>}

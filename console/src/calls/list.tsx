@@ -162,7 +162,7 @@ export function ThreadList({ threads, lines, open, shown: shownCall, url, groupe
         </button>
       </div>
       <div className="app-rows">
-        {threads.length === 0 && <p className="dash-quiet app-none">{lines.length === 0 ? (url.base === EMAILS ? "No email yet. Connect a mailbox in an agent's Channels tab, and every email written to it shows up here." : url.written ? "No message yet. A WhatsApp or SMS conversation shows up here the moment a contact writes." : "No call yet. The first one shows up here the moment it starts.") : url.written ? "No conversation here right now." : "No call here right now."}</p>}
+        {threads.length === 0 && <p className="dash-quiet app-none">{lines.length === 0 ? (url.base === EMAILS ? "No email yet. Connect a mailbox on Mailboxes, or in an agent's Channels tab, and every email written to it shows up here." : url.written ? "No message yet. A WhatsApp or SMS conversation shows up here the moment a contact writes." : "No call yet. The first one shows up here the moment it starts.") : url.written ? "No conversation here right now." : "No call here right now."}</p>}
         {threads.length > 0 && shown.length === 0 && <p className="dash-quiet app-none">Nobody here matches “{url.query}”.</p>}
         {days.map(({ day, rows }) => {
           const left = day.lines.length - rows.length;

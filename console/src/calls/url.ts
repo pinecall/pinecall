@@ -19,6 +19,13 @@ export function baseOf(line: { channel: string | null }): CallsBase {
   return isWritten(line) ? MESSAGES : CALLS;
 }
 
+const THINGS: Record<CallsBase, string> = { "/calls": "call", "/messages": "conversation", "/emails": "email thread" };
+
+/** What one row of the page is, in its own word: a call, a conversation, an email thread. */
+export function thingOn(base: CallsBase): string {
+  return THINGS[base];
+}
+
 /** The page this address is on: Emails under /emails, Messages under /messages, Calls anywhere else. */
 export function useCallsBase(): CallsBase {
   const path = useLocation().pathname;

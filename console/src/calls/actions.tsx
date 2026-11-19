@@ -10,7 +10,7 @@ import { type CallScore } from "@pinecall/core/wire/events-call";
 import { useOrg } from "../lib/org";
 import { RunAgain } from "../simulations/again";
 import { eraseCall, judgeAgain, keepCall, optOut, promoteCall, type Promoted } from "./door";
-import { useCallsBase } from "./url";
+import { thingOn, useCallsBase } from "./url";
 
 type Busy = "" | "judge" | "keep" | "promote" | "erase" | "list";
 
@@ -18,6 +18,7 @@ export function Actions({ agent, call, number, onJudged }: { agent: string; call
   const credentials = useCredentials();
   const navigate = useNavigate();
   const base = useCallsBase();
+  const thing = thingOn(base);
   const scopes = useOrg().whose?.scopes ?? null;
   const [busy, setBusy] = useState<Busy>("");
   const [sure, setSure] = useState(false);
@@ -44,8 +45,8 @@ export function Actions({ agent, call, number, onJudged }: { agent: string; call
   const mayJudge = scopes === null || scopes.includes("evals");
 
   return (
-    <section className="calls-part" aria-label="What to do with this call">
-      <span className="dash-eyebrow">This call</span>
+    <section className="calls-part" aria-label={`What to do with this ${thing}`}>
+      <span className="dash-eyebrow">This {thing}</span>
       <div className="calls-acts">
         {/* Named by the call it came from, so a second keep of the same call is refused by name. */}
         <button type="button" className="app-button" disabled={busy !== "" || agent === "" || kept !== null} title="Goes to the org's Cases, where the nightly plays it" onClick={() => void doing("keep", async () => setKept(await keepCall(credentials, call, `kept-${call.slice(-6).toLowerCase()}`)))}>
@@ -59,7 +60,7 @@ export function Actions({ agent, call, number, onJudged }: { agent: string; call
             type="button"
             className="app-button"
             disabled={busy !== ""}
-            title="Runs the judges over this call again. It is billed again, as the first judging was."
+            title={`Runs the judges over this ${thing} again. It is billed again, as the first judging was.`}
             onClick={() =>
               void doing("judge", async () => {
                 onJudged(await judgeAgain(credentials, call));
@@ -73,7 +74,7 @@ export function Actions({ agent, call, number, onJudged }: { agent: string; call
         {/* A simulated call is watched where simulations are: the new one opens there. */}
         {mayJudge && number === A_SIMULATED_CALLER && <RunAgain call={call} onStarted={(again) => void navigate(`/simulations/${again}`)} />}
       </div>
-      {judged && <p className="dash-quiet">Judged again. The verdict above is the new one, written on the call's log.</p>}
+      {judged && <p className="dash-quiet">Judged again. The verdict above is the new one, written on its log.</p>}
       {kept !== null && <p className="dash-quiet">Kept as {kept}, in Cases.</p>}
       {promoted !== null && (
         <div className="calls-written">
@@ -128,7 +129,7 @@ export function Actions({ agent, call, number, onJudged }: { agent: string; call
         </div>
       ) : (
         <button type="button" className="app-button app-button-danger calls-erase-ask" disabled={busy !== ""} onClick={() => setSure(true)}>
-          Erase this call
+          Erase this {thing}
         </button>
       )}
       {refused !== null && <p className="app-refused">{refused}</p>}

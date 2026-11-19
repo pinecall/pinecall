@@ -18,6 +18,11 @@
   ended: update it.
 - **The insights' `live` counts calls.** A head claimed for a call that never wrote an entry was counted with the
   written conversations: an org with nothing going on read `live: 4`.
+- **Mailboxes are their own page in the console**, never listed under Numbers. A mailbox's page says what an email to
+  it goes through in an email's words, and holds its **Server settings** and the org's **Email template**; the
+  sandbox's test line ("Call from your mobile") shows under phone numbers alone. The pages of a conversation say
+  what it is (a call, a conversation, an email thread) in their actions, their menu and their numbers, and a written
+  conversation shows the one model that thinks, with no ears and no voice.
 - **The console's Emails page** holds the email threads, apart from Messages (WhatsApp and SMS). An agent's Channels
   tab shows each mailbox with its server and **Server settings** to change it, and an **Email template** editor: made
   from a brand, a colour, a logo and a footer, or written as HTML, tried live on a reply before it is kept.

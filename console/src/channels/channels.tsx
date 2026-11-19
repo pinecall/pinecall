@@ -50,7 +50,7 @@ export function ChannelsTab({ agent }: { agent: string }): ReactNode {
   const read = rows !== null;
 
   const row = (one: NumberRow): ReactNode => (
-    <Link key={`${one.route.number}:${one.route.channel}`} to={`/numbers/${encodeURIComponent(one.route.number ?? "")}${one.route.channel === "phone" ? "" : `/${one.route.channel}`}`} className="num-row">
+    <Link key={`${one.route.number}:${one.route.channel}`} to={one.route.channel === "email" ? `/mailboxes/${encodeURIComponent(one.route.number ?? "")}` : `/numbers/${encodeURIComponent(one.route.number ?? "")}${one.route.channel === "phone" ? "" : `/${one.route.channel}`}`} className="num-row">
       <span className="num-row-number">{shown(one.route.number)}</span>
       <span className="num-row-through dash-clip">{comesThrough(one, carriers, catalog)}</span>
       <span className="num-row-when">{one.last_call_at == null ? `No ${arrivingOn(one.route.channel)} yet` : `Last ${arrivingOn(one.route.channel)} ${ago(one.last_call_at)}`}</span>
