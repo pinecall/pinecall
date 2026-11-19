@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.51 — live is somebody on the line and never a written conversation; Emails is a page of its own, with a mailbox's server and the org's template in an agent's channels (2026-11-19)
 
 - **A mailbox's server is changed without its passwords.** Brought again with no `password`, a mailbox keeps the one
   it had (as with no `smtp_password` it keeps the relay's), what it keeps is verified with the rest, and `GET
@@ -16,6 +16,8 @@
   supervise verb, a stream and its log work on it as before. The console's counts follow the gateway, its status chip
   reads "Open" on Messages and Emails. The CLI before 0.11.51 refuses `supervise` on an open written conversation as
   ended: update it.
+- **The insights' `live` counts calls.** A head claimed for a call that never wrote an entry was counted with the
+  written conversations: an org with nothing going on read `live: 4`.
 - **The console's Emails page** holds the email threads, apart from Messages (WhatsApp and SMS). An agent's Channels
   tab shows each mailbox with its server and **Server settings** to change it, and an **Email template** editor: made
   from a brand, a colour, a logo and a footer, or written as HTML, tried live on a reply before it is kept.
