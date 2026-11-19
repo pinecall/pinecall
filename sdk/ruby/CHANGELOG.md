@@ -4,6 +4,13 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## Unreleased
+
+- **An agent's test callers are held in `agents/<slug>/test/personas.rb`, beside its goldens, and no longer in the class.**
+  Every constant there made by `Pinecall.own_persona` is the agent's own and `ON` names Pinecall's; the file is read in
+  a module of its own as the class loads. `personas on:, own:` in the class still works for an agent with no such file,
+  and `pinecall start` says once where their place is; a class that names them beside the file is refused.
+
 ## [0.11.51] — live is somebody on the line and never a written conversation; Emails is a page of its own, with a mailbox's server and the org's template in an agent's channels (2026-11-19)
 
 - Released with the runtime: nothing of this package changed.

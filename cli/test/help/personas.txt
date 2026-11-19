@@ -2,14 +2,14 @@ $ pinecall personas --help
 Usage: pinecall personas [options] [command]
 
 an agent's synthetic callers: Pinecall's switched on or off, its own written,
-generated, tried, or the class's
+generated, tried, or its code's
 
 Options:
   -h, --help              display help for command
 
 Commands:
   list [options]          the agent's callers: Pinecall's, on or off, and its
-                          own (the class's, when it owns them)
+                          own (its code's, when the code owns them)
   show [options] <name>   one caller whole: goal, style, facts, what they
                           expect, how they act
   add [options] <name>    write one: --goal and --style are needed
@@ -22,9 +22,8 @@ Commands:
                           judge
   generate [options] [n]  callers written by the judge model from the agent;
                           printed, and kept with --save
-  pull [options]          the agent's own callers the gateway keeps, written as
-                          code into the harness file for a class about to
-                          declare them
+  pull [options]          the agent's callers as the gateway keeps them, written
+                          as code into agents/<agent>/test/personas.*
   help [command]          display help for command
 
 A persona is a caller a model plays: a goal, a style, the facts they may state about themselves,
@@ -42,8 +41,8 @@ Examples
 $ pinecall personas list --help
 Usage: pinecall personas list [options]
 
-the agent's callers: Pinecall's, on or off, and its own (the class's, when it
-owns them)
+the agent's callers: Pinecall's, on or off, and its own (its code's, when the
+code owns them)
 
 Options:
   --agent <name>
@@ -168,14 +167,14 @@ Options:
   --from-call <call>  callers like this call's caller
   --template <name>   callers like one of Pinecall's
   --save              keep every one: as the agent's own, or as code in
-                      agents/<agent>/harness.* when the class owns them
+                      agents/<agent>/test/personas.* when its code owns them
   -h, --help          display help for command
 
 $ pinecall personas pull --help
 Usage: pinecall personas pull [options]
 
-the agent's own callers the gateway keeps, written as code into the harness file
-for a class about to declare them
+the agent's callers as the gateway keeps them, written as code into
+agents/<agent>/test/personas.*
 
 Options:
   --agent <name>

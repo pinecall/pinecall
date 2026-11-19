@@ -5,9 +5,9 @@ from typing import ClassVar
 from lib.clinic import Slot, Visit, clinic
 from typing_extensions import override
 
-from pinecall import Agent, CallWorld, judges, llm, personas, stt, tool, voice
+from pinecall import Agent, CallWorld, judges, llm, stt, tool, voice
 
-from .harness import CHARGED_TWICE, HURRIED, OFFERS_A_REAL_TIME
+from .harness import OFFERS_A_REAL_TIME
 
 
 @stt("deepgram/flux-general-en")
@@ -21,7 +21,6 @@ class FrontDesk(Agent):
 
     takes = "booking, moving or asking about a visit"
     judges: ClassVar = judges(on=["consent", "grounded"], own=[OFFERS_A_REAL_TIME])
-    personas: ClassVar = personas(own=[HURRIED, CHARGED_TWICE])
 
     # The times last read from the agenda: the only ones the agent may offer.
     slots: list[Slot] = []  # noqa: RUF012 - the value each call opens with, copied for each one

@@ -45,7 +45,7 @@ lib/pinecall/
   agent/tools.rb             the `tool` macro, the registry, what this state shows
   agent/spec.rb              one tool as the gateway receives it, and what is refused at load
   agent/config.rb            the four a class may still declare, and the world's twelve, refused at load by name
-  agent/harness.rb           `Pinecall.own_judge` and `Pinecall.own_persona`, each refused by sentence when wrong; what `judges on:, own:` and `personas on:, own:` declare, as the declaration sends it
+  agent/harness.rb           `Pinecall.own_judge` and `Pinecall.own_persona`, each refused by sentence when wrong; what `judges on:, own:` declares and the roster a `test/personas.rb` holds (`roster_in`, `tested_with`), as the declaration sends it; `personas on:, own:` in the class for an agent with no such file
   agent/melody.rb            the hold melody a class declares: the file beside it, named on the wire by its sha256
   view.rb                    the ERB template and what it is rendered in
   rules.rb                   the framework's own words: the rules, the protocols, and the channel's
@@ -67,7 +67,7 @@ lib/pinecall/
   flows.rb                   `Pinecall.flow`: a block that outlives a call, its steps against the run's journal
   flow_loop.rb               the loop an app keeps: events to their handlers and flows, runs a stretch further
   serve.rb                   `Pinecall::Serve.main`: the entry the one CLI starts — `start`, `prompt` — and `Pinecall.serve`
-  serve/loading.rb           its flags, the class in a file, a state field by field
+  serve/loading.rb           its flags, the class in a file and the callers in `test/personas.rb` beside it, a state field by field
   serve/declared_docs.rb     the `docs/` folder beside a class that declares its base, pushed once the agent registers
   serve/declared_hold.rb     the melody a class ships, uploaded once the agent registers unless the gateway holds that file
   serve/held.rb              the agents a process holds, and leaving: a drain, then the socket, once
@@ -145,7 +145,7 @@ diffed, and no view renders it. The class is the contract; what it runs on is th
 |---|---|
 | `channel_rules false` | the `identity` block without its `<channel>` part: how to write for a voice, a website's chat, or WhatsApp |
 | `phone`, `whatsapp`, `web` | nothing: accepted, so an old class still loads, and read by nobody. A door is a row the org keeps (`pinecall numbers import`) |
-| `voice`, `llm`, `stt`, `judge`, `language`, `greeting`, `hangup`, `turn`, `says`, `hears`, `memory`, `record`, `knowledge`, `docs`, `judges`, `personas` | the environment the class declares, sent on `agent.configure` in the wire's shape; each one declared wins over the agent's settings, which may not set it while the class does. `builds:` and `options:` on `voice`, `llm`, `stt` and `judge` reach the vendor's plugin, on the org's own key alone; `greeting` takes words or `:improvise` / `improvise("…")` (`Config::Improvised`), `hangup` words or `true`, and `stt` an `end_of_turn:` |
+| `voice`, `llm`, `stt`, `judge`, `language`, `greeting`, `hangup`, `turn`, `says`, `hears`, `memory`, `record`, `knowledge`, `docs`, `judges`, `personas` | the environment the class declares, sent on `agent.configure` in the wire's shape; each one declared wins over the agent's settings, which may not set it while the class does. `builds:` and `options:` on `voice`, `llm`, `stt` and `judge` reach the vendor's plugin, on the org's own key alone; `greeting` takes words or `:improvise` / `improvise("…")` (`Config::Improvised`), `hangup` words or `true`, and `stt` an `end_of_turn:`. `personas` is the place the test callers had before: they are held in `agents/<slug>/test/personas.rb` (§10), and the macro still declares them for an agent with no such file |
 
 **State** is declared with `state`, and the rules are enforced in code:
 
@@ -316,6 +316,16 @@ ruby -r pinecall -e 'exit Pinecall::Serve.main(ARGV)' -- prompt --file agents/x/
   `PINECALL_HOST`, when set, is the machine it registers as, this one's hostname otherwise: a
   hosted app's runner names its host, and the gateway knows the release by it.
 - **The slug is the folder's**, `--slug`; a class whose `slug "…"` says another is refused.
+- **The test callers are the folder's too:** `test/personas.rb` beside `agent.rb`, read by every
+  verb as it loads the class (`Loading.callers_of`). The file is loaded in a module of its own
+  (`load(file, Module.new)`), so its constants are never the process's and two agents may each write
+  an `ON`. Every constant `Pinecall.own_persona` made (a `Harness::OwnPersona`, a `Hash` the wire
+  carries as any other) is the agent's own, in the order written, and `ON` names Pinecall's
+  (`Harness.roster_in`); the class keeps that roster (`tested_with`) and `Harness.declared` sends it
+  as `personas`. A class that still declares `personas on:, own:` and has no file is held as before,
+  and `start` says once on stderr, `<slug>  its personas are declared in the class, which still
+  works: their place is now test/personas.rb …`; one that declares them beside the file is refused.
+  `Pinecall.serve` loads no file: it sends what the class names.
 - **`--events`:** one line per wire entry, `{"type","agent","call","data"}` with `data` as the
   gateway wrote it, `agent.registered` first (the listener is in place before the socket opens). A
   value the agent declared private is not printed: the arguments its tools list under `pii` and the

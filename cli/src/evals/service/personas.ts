@@ -1,11 +1,13 @@
-/** An agent's simulated callers: Pinecall's switched on or off, its own written, generated, dropped, or the class's, pulled into its code. */
+/** An agent's simulated callers: Pinecall's switched on or off, its own written, generated, dropped, or pulled into the code of its test folder. */
 
 import { z } from "zod";
 
 import * as api from "../../api/cases.js";
 import type { Context } from "../../context.js";
 import { UsageError } from "../../errors.js";
-import { appendPersona, type Appended } from "../../project/harness.js";
+import { existsSync } from "node:fs";
+
+import { appendPersona, startPersonas, type Appended } from "../../project/harness.js";
 import type { AgentHome } from "../../project/layout.js";
 import * as providers from "../../providers/service.js";
 import { AMBIENCES } from "./suite.js";
@@ -22,7 +24,7 @@ const A_SPEED = "--speed is a multiple of the caller's usual pace, 0.5 to 2";
 export const NOBODY = (name: string, agent: string): string => `no persona called ${name} for ${agent}: \`pinecall personas add ${name} --goal '…' --style '…'\`, or the console's Personas`;
 export const PINECALLS = (name: string): string => `${name} is one of Pinecall's personas: \`pinecall personas on|off ${name}\` switches it; write your own under another name`;
 export const SET_BY_THE_CLASS = (agent: string): string =>
-  `${agent}'s personas are code beside the class, and nothing is written here: \`agents/${agent}/harness.*\` holds its own (ownPersona) · the class's personas name the ones of Pinecall's it plays`;
+  `${agent}'s personas are code, and nothing is written here: \`agents/${agent}/test/personas.*\` holds its own (ownPersona) and names the ones of Pinecall's it plays (on)`;
 
 /** What `add` and `edit` take; on `edit` only the fields named change. */
 export const WritePersonaInput = z.object({
@@ -58,7 +60,7 @@ export type GenerateInput = z.infer<typeof GenerateInput>;
 /** Whether a persona of the list is the library's. */
 export const isPinecalls = (persona: api.Persona): boolean => persona.owner === "pinecall";
 
-/** Whether the agent's class owns its roster: every row of the list is then fixed, and no door writes one. */
+/** Whether the agent's code owns its roster: every row of the list is then fixed, and no door writes one. */
 export const ownedByTheClass = (listed: api.Persona[]): boolean => listed.some((one) => one.fixed === true);
 
 /** The agent's callers: Pinecall's first, then its own. */
@@ -66,7 +68,7 @@ export async function listPersonas(ctx: Context, agent: string): Promise<api.Per
   return api.listPersonas(ctx.gateway(), agent);
 }
 
-/** The agent's list, refused with where to write when its class owns it. */
+/** The agent's list, refused with where to write when its code owns it. */
 async function writable(ctx: Context, agent: string): Promise<api.Persona[]> {
   const listed = await listPersonas(ctx, agent);
   if (ownedByTheClass(listed)) throw new UsageError(SET_BY_THE_CLASS(agent));
@@ -134,16 +136,16 @@ export async function switchPersona(ctx: Context, agent: string, name: string, o
   return { name, on, personas: await api.putPersona(ctx.gateway(), agent, name, { on }) };
 }
 
-/** What `generate --save` did with the callers: rows written, or code appended to the harness file the class imports. */
+/** What `generate --save` did with the callers: rows written, or code appended to the agent's personas file. */
 export interface Saved {
   saved: boolean;
-  /** What was written as code, when the class owns the roster; empty when rows were written or nothing was kept. */
+  /** What was written as code, when the code owns the roster; empty when rows were written or nothing was kept. */
   written: Appended[];
 }
 
 /**
- * Callers written by the judge model from the agent; kept with `save`: as the agent's rows, or, when the
- * class owns its roster, as code appended to the agent's harness file, for the class to import into `own`.
+ * Callers written by the judge model from the agent; kept with `save`: as the agent's rows, or, when its
+ * code owns the roster, as code appended to `test/personas.*`, where each plays from the next start.
  */
 export async function generatePersonas(ctx: Context, agent: string, input: GenerateInput, home?: AgentHome): Promise<api.GeneratedPersonas & Saved> {
   const gw = ctx.gateway();
@@ -165,11 +167,16 @@ export async function generatePersonas(ctx: Context, agent: string, input: Gener
 }
 
 /**
- * The agent's own callers the gateway keeps, appended once as code to the agent's harness file for a class that
- * is about to declare them; the rows stay, and `pinecall personas rm` drops them once the class owns the roster.
+ * The agent's roster as the gateway keeps it, written as code into `test/personas.*`: a file that is not there is
+ * started naming the ones of Pinecall's that are on, and then holds the agent's own, the ones its class still names
+ * among them — how a class that names its callers moves them. Into a file that is there go the rows the gateway
+ * keeps and the code does not; they stay on the gateway, and `pinecall personas rm` drops them.
  */
 export async function pullPersonas(ctx: Context, agent: string, home: AgentHome): Promise<{ written: Appended[] }> {
-  const own = (await listPersonas(ctx, agent)).filter((one) => !isPinecalls(one) && one.owner !== "class");
+  const listed = await listPersonas(ctx, agent);
+  const held = existsSync(home.personas);
+  if (!held) startPersonas(home, listed.filter((one) => isPinecalls(one) && one.on).map((one) => one.name));
+  const own = listed.filter((one) => !isPinecalls(one) && (!held || one.owner !== "class"));
   return { written: own.map(({ name, about, goal, style, facts, state, llm, tts, voice, expects, tags, behavior }) => appendPersona(home, { name, about, goal, style, facts, state, llm, tts, voice, expects, tags, behavior })) };
 }
 

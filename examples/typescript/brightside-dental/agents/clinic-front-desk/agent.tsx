@@ -2,7 +2,6 @@ import { Agent, agent, tool, type Call } from "@pinecall/agents";
 
 import { clinic, type Slot } from "../../lib/clinic.js";
 import { offersARealTime } from "./judges.js";
-import { chargedTwice, hurried } from "./personas.js";
 
 /**
  * You are the front desk of Brightside Dental. You book, move and explain visits.
@@ -15,7 +14,6 @@ import { chargedTwice, hurried } from "./personas.js";
   voice: "cartesia/f786b574-daa5-4673-aa0c-cbe3e8534c02", // Katie
   takes: "booking, moving or asking about a visit",
   judges: ["consent", "grounded", offersARealTime],
-  personas: [hurried, chargedTwice],
 })
 export default class FrontDesk extends Agent {
   /** The times last read from the agenda: the only ones the agent may offer. */

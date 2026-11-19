@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
-# What the serve entry is told and loads: its flags, the class in a file, and a state field by field.
+# What the serve entry is told and loads: its flags, the class in a file with the callers of its test folder, and
+# a state field by field.
 
 module Pinecall
   module Serve
@@ -14,6 +15,9 @@ module Pinecall
     Flags = Data.define(:served, :console, :events, :prod, :state, :channel, :medium, :show_machine, :app)
 
     module Loading
+      # The file an agent's test callers are held in, beside its goldens: `agents/<slug>/test/personas.rb`.
+      CALLERS = File.join("test", "personas.rb")
+
       module_function
 
       # `--file` and `--slug` paired by place; the rest by name. A flag nobody declared is refused.
@@ -60,7 +64,25 @@ module Pinecall
         # Until 0.11.36 a class named otherwise than its folder looked for a view by its own name,
         # found none and answered every call with no view.
         klass.slug(served.slug)
+        callers_of(klass, served.file)
         klass
+      end
+
+      # The agent's test callers are the ones its test folder holds: read once the class is, so the declaration
+      # carries them. The file loads in a module of its own, since two agents' files may each write an ON.
+      def callers_of(klass, agent_file)
+        file = File.join(File.dirname(File.expand_path(agent_file)), CALLERS)
+        return unless File.exist?(file)
+
+        held = Module.new
+        begin
+          load(file, held)
+        rescue ScriptError, StandardError => e
+          raise if e.is_a?(DeclarationRefused)
+
+          raise CannotServe, "#{file} did not load: #{e.message}"
+        end
+        Agent::Harness.tested_with(klass, Agent::Harness.roster_in(held, file), file)
       end
 
       # The last `Pinecall::Agent` the file defines.

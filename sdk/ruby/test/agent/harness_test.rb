@@ -2,7 +2,8 @@
 
 require "test_helper"
 
-# The judges and the personas a class owns: each built or refused by sentence, and the class's `own` sent as declared.
+# The judges a class owns and the callers its test folder holds: each built or refused by sentence, the roster a
+# `test/personas.rb` holds, and the class's own for one that still names its callers.
 class HarnessTest < Minitest::Test
   Harness = Pinecall::Agent::Harness
 
@@ -20,6 +21,15 @@ class HarnessTest < Minitest::Test
 
   # Declares neither.
   class Silent < Pinecall::Agent
+  end
+
+  # Its callers are its test folder's.
+  class Tested < Pinecall::Agent
+  end
+
+  # What a `test/personas.rb` leaves in the module it was loaded in.
+  def held(source)
+    Module.new.tap { |held| held.module_eval(source, "/agents/front-desk/test/personas.rb", 1) }
   end
 
   # None but Pinecall's.
@@ -97,6 +107,76 @@ class HarnessTest < Minitest::Test
 
     assert_equal({ on: [], own: [] }, sent[:judges])
     refute sent.key?(:personas)
+  end
+
+  def test_a_persona_is_told_as_one_own_persona_made_and_is_sent_as_the_plain_object_it_was
+    plain = { name: "in-a-rush", goal: "book today", style: "short, interrupts" }
+    made = Pinecall.own_persona(**plain)
+
+    assert_kind_of Harness::OwnPersona, made
+    assert_equal plain, made
+    assert_equal JSON.generate(plain), JSON.generate(made)
+    assert_instance_of Hash, Pinecall::Wire::Codec.plain(made)
+  end
+
+  def test_the_roster_of_a_file_is_every_own_persona_it_defines_in_the_order_written_and_on_for_pinecalls
+    file = held(<<~RUBY)
+      ZEALOUS = Pinecall.own_persona(name: "zealous", goal: "book today", style: "short")
+      ON = %w[in-a-hurry wrong-number].freeze
+      NOT_A_CALLER = { name: "plain", goal: "g", style: "s" }.freeze
+      HOW_MANY = 2
+      ANGRY = Pinecall.own_persona(name: "angry", goal: "one charge back", style: "annoyed")
+    RUBY
+    roster = Harness.roster_in(file, "test/personas.rb")
+
+    assert_equal %w[in-a-hurry wrong-number], roster[:on]
+    assert_equal %w[zealous angry], roster[:own].map { |one| one[:name] }
+    Pinecall::Wire::Validate.call!("PersonasDeclared", roster, where: "personas")
+  end
+
+  def test_a_file_with_no_on_plays_none_of_pinecalls_and_one_with_no_caller_owns_none
+    assert_equal({ on: [], own: [RUSH] }, Harness.roster_in(Module.new.tap { |held| held.const_set(:RUSH, RUSH) }, "test/personas.rb"))
+    assert_equal({ on: ["in-a-hurry"], own: [] }, Harness.roster_in(held("ON = %w[in-a-hurry]\n"), "test/personas.rb"))
+    assert_equal({ on: [], own: [] }, Harness.roster_in(Module.new, "test/personas.rb"))
+  end
+
+  def test_an_on_that_is_not_an_array_of_strings_and_two_callers_of_one_name_are_refused_by_sentence
+    ["ON = \"in-a-hurry\"\n", "ON = [:in_a_hurry]\n", "ON = nil\n"].each do |source|
+      error = assert_raises(Pinecall::DeclarationRefused, source) { Harness.roster_in(held(source), "/agents/x/test/personas.rb") }
+      assert_equal "/agents/x/test/personas.rb: ON is the names of Pinecall's callers the agent is tested with, an array of strings", error.message
+    end
+    twice = held(<<~RUBY)
+      ONE = Pinecall.own_persona(name: "hurried", goal: "g", style: "s")
+      OTHER = Pinecall.own_persona(name: "hurried", goal: "another", style: "s")
+    RUBY
+    error = assert_raises(Pinecall::DeclarationRefused) { Harness.roster_in(twice, "test/personas.rb") }
+    assert_includes error.message, "two personas called hurried: a name is declared once"
+  end
+
+  def test_the_roster_of_its_file_is_what_the_class_sends_as_its_personas
+    roster = Harness.roster_in(held("ON = %w[in-a-hurry]\nRUSH = Pinecall.own_persona(name: \"in-a-rush\", goal: \"book today\", style: \"short\")\n"),
+                               "test/personas.rb")
+    Harness.tested_with(Tested, roster, "test/personas.rb")
+    sent = Tested.wire_config(tools: [])
+
+    assert_equal({ on: ["in-a-hurry"], own: [{ name: "in-a-rush", goal: "book today", style: "short" }] }, sent[:personas])
+    assert_equal sent[:personas], Harness.declared(Tested)[:personas]
+    refute Harness.names_its_callers?(Tested)
+    refute sent.key?(:judges)
+    Pinecall::Wire::Validate.call!("AgentConfig", sent, where: "configure")
+    assert_nil Class.new(Tested).tested_with, "a roster is one class's, never its subclass's"
+  end
+
+  def test_a_class_that_names_its_personas_and_has_the_file_too_is_refused_and_keeps_its_own
+    assert Harness.names_its_callers?(Owns)
+    error = assert_raises(Pinecall::DeclarationRefused) do
+      Harness.tested_with(Owns, { on: [], own: [] }, "/agents/owns/test/personas.rb")
+    end
+
+    assert_equal "HarnessTest::Owns declares personas in the class and /agents/owns/test/personas.rb holds them too: " \
+                 "the file is their place — take personas out of the class", error.message
+    assert_nil Owns.tested_with
+    assert_equal({ on: ["in-a-hurry"], own: [RUSH] }, Harness.declared(Owns)[:personas])
   end
 
   def test_two_of_one_name_and_an_own_written_as_a_plain_hash_that_is_wrong_are_refused

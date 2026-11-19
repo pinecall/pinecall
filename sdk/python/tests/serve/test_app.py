@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from pinecall import DeclarationRefused
+from pinecall._harness import harness_of
 from pinecall.serve._app import described, load_app, loaded
 from pinecall.serve._loading import CannotServe, Flags, Served
 
@@ -58,6 +59,15 @@ def test_an_app_that_names_its_agents_by_slug_imports_none_of_their_folders(tmp_
     assert app.lines[0].answers is classes[0][1]
     with pytest.raises(DeclarationRefused, match="no agent here is served as back-office"):
         loaded(project(tmp_path / "other", by_slug.replace("front-desk", "back-office")))
+
+
+def test_an_agent_loaded_for_the_app_has_the_personas_its_file_holds(tmp_path: Path) -> None:
+    flags = project(tmp_path)
+    callers = tmp_path / "agents" / "front-desk" / "test" / "personas.py"
+    callers.parent.mkdir()
+    callers.write_text('"""The callers."""\n\nON = ["in-a-hurry"]\n', encoding="utf-8")
+    classes, _ = loaded(flags)
+    assert harness_of(classes[0][1])["personas"] == {"on": ["in-a-hurry"], "own": []}
 
 
 def test_a_file_with_no_voice_app_or_an_app_naming_a_class_not_served_is_refused(

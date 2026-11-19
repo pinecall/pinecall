@@ -7,6 +7,10 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 
 ## Unreleased
 
+- The callers an agent is tested with live in `agents/<name>/test/personas.ts`, beside its goldens: every `ownPersona`
+  the file exports is one of the agent's own, and its `on` names Pinecall's. The class no longer names them or imports
+  them. `personas: [...]` in `@agent({ … })` still plays for an agent with no such file, and `pinecall start` says once
+  where they moved; the two together are refused.
 - A row of a list of calls may carry `spoken`, said by a gateway asked with `spoken=true`: a web call by voice is told
   from a website's chat.
 

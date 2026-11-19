@@ -15,7 +15,6 @@ class FrontDesk < Pinecall::Agent
   voice "cartesia", "f786b574-daa5-4673-aa0c-cbe3e8534c02" # Katie
   takes "booking, moving or asking about a visit"
   judges on: %w[consent grounded], own: [OFFERS_A_REAL_TIME]
-  personas own: [HURRIED, CHARGED_TWICE]
 
   # The times last read from the agenda: the only ones the agent may offer.
   state :slots, []

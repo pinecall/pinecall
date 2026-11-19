@@ -16,8 +16,11 @@ export type Language = "typescript" | "ruby" | "python";
 /** The templates `pinecall new` writes a project and an agent from: one folder per language, `common/` for every one. */
 export const TEMPLATE_ROOT = fileURLToPath(new URL("../../templates/", import.meta.url));
 
-/** The file beside the class that holds its own judges and callers as code, by language. */
+/** The file beside the class that holds its own judges as code, by language. */
 export const HARNESS_FILES: Record<Language, string> = { typescript: "harness.ts", python: "harness.py", ruby: "harness.rb" };
+
+/** The file in the agent's test folder that holds the callers it is tested with as code, by language. */
+export const PERSONAS_FILES: Record<Language, string> = { typescript: "personas.ts", python: "personas.py", ruby: "personas.rb" };
 
 /** The serve entry's two verbs. */
 export type ServeVerb = "start" | "prompt" | "app";

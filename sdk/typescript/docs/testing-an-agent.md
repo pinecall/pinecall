@@ -108,7 +108,7 @@ a test can watch the agent dial back.
 
 The verbs are the one `pinecall` CLI's, the same for a TypeScript project as for a Ruby or a Python
 one, in the same layout: `agents/<slug>/agent.tsx`, `agents/<slug>/harness.ts`, `agents/<slug>/test/goldens/`,
-`agents/<slug>/test/memory/`, `agents/<slug>/docs/`.
+`agents/<slug>/test/personas.ts`, `agents/<slug>/test/memory/`, `agents/<slug>/docs/`.
 
 | ring | what it asks | how |
 |---|---|---|
@@ -117,13 +117,14 @@ one, in the same layout: `agents/<slug>/agent.tsx`, `agents/<slug>/harness.ts`, 
 | 3 | what does one real call score? | `pinecall eval <call-id>` |
 | 4 | what did every call score? | `call.score`, written by the runtime at hang-up |
 
-**The callers and the judges can be the class's, as code.** `@agent({ personas: ["in-a-hurry", hurried] })`
-names which of Pinecall's callers `pinecall simulate` offers and holds the agent's own, each an
-`ownPersona({ name, goal, style, … })`; `judges: ["consent", offersNextSlot]` names which of
-Pinecall's judges score every call at hang-up (ring 4) and holds the agent's own, each an `ownJudge({
-name, asks, … })`. `pinecall new` writes both in `agents/<slug>/harness.ts`. They travel with the
-code, are reviewed in a pull request and deploy with it; the console shows them locked. A class
-that declares neither leaves them to the console and the CLI ([Writing an
+**The callers and the judges can be the agent's, as code.** `agents/<slug>/test/personas.ts`, beside
+the goldens, holds the callers: every `ownPersona({ name, goal, style, … })` it exports is one of the
+agent's own, and its `on` names which of Pinecall's callers `pinecall simulate` offers. The class
+neither names them nor imports the file. `judges: ["consent", offersNextSlot]` in `@agent({ … })`
+names which of Pinecall's judges score every call at hang-up (ring 4) and holds the agent's own, each
+an `ownJudge({ name, asks, … })` written in `agents/<slug>/harness.ts`. `pinecall new` writes both
+files. They travel with the code, are reviewed in a pull request and deploy with it; the console
+shows them locked. An agent with neither leaves them to the console and the CLI ([Writing an
 agent](writing-an-agent.md), the environment).
 
 The index and memory have goldens of their own — whether retrieval returns the chunk a question

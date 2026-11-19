@@ -94,7 +94,6 @@ import { Agent, agent, tool, type Call } from "@pinecall/agents";
   voice: "cartesia/f786b574-daa5-4673-aa0c-cbe3e8534c02",  // Katie
   takes: "booking, moving or asking about a visit",   // what a teammate may pass it
   judges: ["consent", "grounded", offersARealTime],   // who reads every call: Pinecall's, and its own
-  personas: [hurried, chargedTwice],                  // the test callers that phone it
 })
 export default class FrontDesk extends Agent {
   slots: Slot[] = [];                                 // state: plain fields, kept per call

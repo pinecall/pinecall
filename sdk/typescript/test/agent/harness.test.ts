@@ -1,9 +1,9 @@
-// The judges and the personas a class owns: each built by sentence or refused by one, and the class's `own` sent as declared.
+// The judges a class owns and the callers its test folder holds: each built by sentence or refused by one, and sent as declared.
 
 import { describe, expect, it } from "vitest";
 
 import { Agent, DeclarationRefused, agent, optionsFor, ownJudge, ownPersona } from "../../src/index.js";
-import { harnessOf, judges, personas } from "../../src/agent/harness.js";
+import { CALLERS_MOVED, harnessOf, judges, namesItsCallers, personas, rosterIn, testedWith } from "../../src/agent/harness.js";
 
 const OFFERS = ownJudge({ name: "offers-next-slot", asks: "Did the agent offer the next free slot before the caller asked twice?", reads: ["facts"] });
 
@@ -91,5 +91,43 @@ describe("what the class owns", () => {
     expect(() => judges({ own: [OFFERS, OFFERS] })).toThrow("two judges called offers-next-slot: a name is declared once");
     expect(() => personas({ own: [RUSH, { ...RUSH }] })).toThrow("two personas called in-a-rush: a name is declared once");
     expect(() => judges({ own: [{ ...OFFERS, answer: "maybe" as never }] })).toThrow('offers-next-slot: answer is "maybe", not one of verdict, choice, score');
+  });
+});
+
+describe("the callers a test folder holds", () => {
+  const FILE = "agents/front-desk/test/personas.ts";
+
+  it("are every ownPersona the file exports, with Pinecall's it names in on; whatever else it exports is no caller", () => {
+    const rush = ownPersona(RUSH);
+    expect(rosterIn({ on: ["in-a-hurry"], rush, NOTE: "a line", plain: { ...RUSH, name: "plain" } }, FILE)).toEqual({ on: ["in-a-hurry"], own: [RUSH] });
+    expect(rosterIn({}, FILE)).toEqual({ on: [], own: [] });
+  });
+
+  it("refuse an on that is no list of names, and two of one name", () => {
+    expect(() => rosterIn({ on: "in-a-hurry" }, FILE)).toThrow(`${FILE}: on is the names of Pinecall's callers the agent is tested with, a list of strings`);
+    expect(() => rosterIn({ on: [1] }, FILE)).toThrow(DeclarationRefused);
+    expect(() => rosterIn({ one: ownPersona(RUSH), two: ownPersona(RUSH) }, FILE)).toThrow("two personas called in-a-rush: a name is declared once");
+  });
+
+  it("are what the declaration sends for the class they are read beside", () => {
+    @agent({ judges: ["consent"] })
+    class Tested extends Agent {}
+    testedWith(Tested, rosterIn({ on: ["in-a-hurry"], rush: ownPersona(RUSH) }, FILE), FILE);
+    expect(namesItsCallers(Tested)).toBe(false);
+    expect(harnessOf(Tested)).toEqual({ judges: { on: ["consent"], own: [] }, personas: { on: ["in-a-hurry"], own: [RUSH] } });
+  });
+
+  it("still play from a class that names them and has no file, which is told where they moved", () => {
+    @agent({ personas: ["in-a-hurry", RUSH] })
+    class Names extends Agent {}
+    expect(namesItsCallers(Names)).toBe(true);
+    expect(harnessOf(Names).personas).toEqual({ on: ["in-a-hurry"], own: [RUSH] });
+    expect(CALLERS_MOVED).toContain("their place is now test/personas.ts beside the goldens");
+  });
+
+  it("are refused beside a class that names them too", () => {
+    @agent({ personas: ["in-a-hurry"] })
+    class Both extends Agent {}
+    expect(() => testedWith(Both, { on: [], own: [] }, FILE)).toThrow(`Both declares personas in @agent({ … }) and ${FILE} holds them too: the file is their place — take personas out of the class`);
   });
 });

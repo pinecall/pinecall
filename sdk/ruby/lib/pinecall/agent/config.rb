@@ -208,14 +208,22 @@ module Pinecall
         end
 
         # `turn endpointing_ms: 300`, `docs base: "…", k: 4`, `memory remember: […], forget: […]`,
-        # `knowledge path: "…", text: "…"`, `judges on: [...], own: [...]` and `personas on: [...], own: [...]`
-        # (which of Pinecall's, and the class's own: `Pinecall.own_judge`, `Pinecall.own_persona`).
+        # `knowledge path: "…", text: "…"` and `judges on: [...], own: [...]` (which of Pinecall's, and the class's
+        # own: `Pinecall.own_judge`). `personas on: [...], own: [...]` still works for a class with no
+        # `test/personas.rb`, the file its callers are held in.
         AS_KEYWORDS.each do |field|
           define_method(field) do |**given|
             return environment[field] if given.empty?
 
             environment[field] = given
           end
+        end
+
+        # The callers its `test/personas.rb` holds, as whoever loaded the class read them; nil with no such file.
+        def tested_with(roster = NOTHING)
+          return @tested_with if roster.equal?(NOTHING)
+
+          @tested_with = roster
         end
 
         # What a teammate passes it, as a model reads it: `takes "a question about a bill"`.
@@ -285,8 +293,8 @@ module Pinecall
           @slug = name
         end
 
-        # The AgentConfig sent to the gateway: the contract, and the environment the class declares,
-        # the judges and the personas it owns checked once more.
+        # The AgentConfig sent to the gateway: the contract, and the environment the class declares, its judges
+        # and the personas of its `test/personas.rb` (or the class's own, with no such file) checked once more.
         def wire_config(tools: nil)
           here = source_file
           {

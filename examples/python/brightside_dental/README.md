@@ -12,9 +12,10 @@ brightside_dental/
   agents/
     clinic-front-desk/
       agent.py                             answers the line: reads the agenda, books, passes a charge on
-      harness.py                           its own judge, and two test callers `pinecall simulate` plays
+      harness.py                           its own judge
       views/clinic-front-desk.jinja        what the model reads each turn: the times on the table
       test/goldens/                        three written calls a model must get right
+      test/personas.py                     two test callers `pinecall simulate` plays
     clinic-billing/
       agent.py                             takes the call the front desk passes: invoices, refund requests
       views/clinic-billing.jinja           the invoices of the patient on the call
@@ -33,7 +34,7 @@ brightside_dental/
 - **The view is a template beside the class**, `views/<slug>.jinja`, where the TypeScript class has a
   `render()`.
 - **The model, the ears and the voice are decorators** (`@stt`, `@llm`, `@voice`); what the agent
-  takes, its judges and its test callers are fields of the class.
+  takes and its judges are fields of the class.
 - **What the agents of a call share is JSON**: billing reads the patient the front desk found with a
   `match` on its shape.
 

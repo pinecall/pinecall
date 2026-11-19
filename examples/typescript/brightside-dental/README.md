@@ -13,8 +13,8 @@ brightside-dental/
     clinic-front-desk/
       agent.tsx                   answers the line: reads the agenda, books, passes a charge on
       judges.ts                   its own judge, beside two of Pinecall's
-      personas.ts                 two test callers `pinecall simulate` plays
       test/goldens/               three written calls a model must get right
+      test/personas.ts            two test callers `pinecall simulate` plays
     clinic-billing/
       agent.tsx                   takes the call the front desk passes: invoices, refund requests
   flows/remind-visit.ts           the day before a visit, the front desk calls the patient

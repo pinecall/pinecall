@@ -4,7 +4,7 @@ import { existsSync, readdirSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 
 import { UsageError } from "../errors.js";
-import { AGENT_FILES, HARNESS_FILES, type Language, languageOf } from "./language.js";
+import { AGENT_FILES, HARNESS_FILES, type Language, languageOf, PERSONAS_FILES } from "./language.js";
 
 /** Project folder holding one subfolder per agent. */
 export const PROJECT_AGENTS = "agents";
@@ -28,10 +28,11 @@ export const MEMORY_GOLDEN = "memory.json";
  * paths themselves. Everything an agent is lives in its folder: copied, it is copied whole.
  *
  *     agents/<name>/agent.ts              the class and its private helpers
- *     agents/<name>/harness.ts            the agent's own judges and callers as code (harness.py, harness.rb), when the class declares them
+ *     agents/<name>/harness.ts            the agent's own judges as code (harness.py, harness.rb), when the class declares them
  *     agents/<name>/docs/                 what `docs push` sends when no folder is named
  *     agents/<name>/test/agent.test.ts    ring 0
  *     agents/<name>/test/goldens/         ring 1, plus the `docs.json` and `memory.json` goldens
+ *     agents/<name>/test/personas.ts      the callers it is tested with as code (personas.py, personas.rb): the file is the agent's roster
  *     agents/<name>/test/memory/          extraction cases, one written call each
  *     agents/<name>/test/candidates/      real calls `runs promote` wrote, before a person keeps them
  *     lib/                                code shared by two or more agents
@@ -44,8 +45,10 @@ export interface AgentHome {
   /** Project root, where verbs run. */
   root: string;
   goldens: string;
-  /** The agent's own judges and callers as code, named by its language. */
+  /** The agent's own judges as code, named by its language. */
   harness: string;
+  /** The callers the agent is tested with as code, in its test folder, named by its language. */
+  personas: string;
   candidates: string;
   docs: string;
   docsGolden: string;
@@ -66,6 +69,7 @@ export function homeOf(file: string): AgentHome {
     root,
     goldens: join(tests, "goldens"),
     harness: join(folder, HARNESS_FILES[languageOf(path)]),
+    personas: join(tests, PERSONAS_FILES[languageOf(path)]),
     candidates: join(tests, "candidates"),
     docs: join(folder, AGENT_DOCS),
     docsGolden: join(tests, "goldens", DOCS_GOLDEN),

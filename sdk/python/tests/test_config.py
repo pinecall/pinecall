@@ -208,6 +208,14 @@ def test_an_environment_field_annotated_as_state_is_refused_with_how_to_declare_
     assert "@voice(" in declared_on_the_instance("voice")
 
 
+def test_personas_annotated_as_state_are_sent_to_their_file_first() -> None:
+    assert declared_on_the_instance("personas") == (
+        "`personas` is the class's, not a call's state: declare it as own_persona(…) values and ON"
+        " in test/personas.py beside the goldens; a class attribute,"
+        " `personas = personas(on=[…])`, still works"
+    )
+
+
 def test_knowledge_written_as_an_attribute_is_refused_for_the_decorator() -> None:
     with pytest.raises(DeclarationRefused) as refused:
         type("Clinica", (Agent,), {"__doc__": "Una clínica.", "knowledge": {"path": "k.md"}})

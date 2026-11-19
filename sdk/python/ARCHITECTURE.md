@@ -35,7 +35,7 @@ src/pinecall/
   _author.py                 who is writing right now — a `ContextVar`, per task, never a global
   _state.py                  the fields a class declares, `state(...)`, the stage, every write and who made it
   _config.py                 the world's twelve settings, refused at creation with the verb that sets each; the slug
-  _harness.py                `own_judge(...)`, `own_persona(...)`, each refused by sentence when wrong; `judges(on=…, own=…)`, `personas(on=…, own=…)`
+  _harness.py                `own_judge(...)`, `own_persona(...)`, each refused by sentence when wrong; `judges(on=…, own=…)` on the class; the personas a `test/personas.py` holds, kept on its class (`file_personas`), `personas(on=…, own=…)` on the class where there is no file
   _beside.py                 the folder beside a class: its file's, for the `docs/` and the melody it ships from there
   _docs.py                   the `docs/` folder beside a class that declares its base, pushed once the agent registers
   _melody.py                 the hold melody a class declares: the file beside it, by hash on the wire, shipped once registered
@@ -75,7 +75,7 @@ src/pinecall/
   _flow_loop.py              the loop an app keeps: events to their handlers and flows, runs a stretch further
   testing.py                 `Gateway`: a gateway that is not there, for ring 0, from a plain `def test_…`
   serve/                     `python -m pinecall.serve`: the entry the one CLI starts — `start`, `prompt` — and `hold`
-    _loading.py              its flags, the class in a file (its folder a package), a state field by field
+    _loading.py              its flags, the class in a file (its folder a package) and the `test/personas.py` beside it, a state field by field
     _starting.py             `start`: hold the agents named, the console's `view.render`, leaving
     _prompting.py            `prompt`: the page offline, and `--show-machine`
     _viewing.py              `view.render`, the one console verb an agent's own process answers
@@ -92,7 +92,7 @@ docs/                        the pages a person writing an agent reads: README �
     frames.py                `WireModel`, `Entry`, `Command`: closed models, read and written by wire key
     parts.py                 the shapes shared by events and commands: ToolSpec, ToolResult, Cost, the literals
     config.py                what a class declares of its environment: `AgentConfig` and every setting's shape, the hold and the look
-    judging.py               the judges and the personas a class declares, what `AgentConfig.judges` and `.personas` carry
+    judging.py               the judges and the personas an agent declares, what `AgentConfig.judges` and `.personas` carry
     commands.py              every command, `COMMANDS` and `command_of`
     events.py                the agent's and the control's events, `EVENTS` and `event_of`
     events_call.py           a call's life: ringing to summary, a confirm, a supervisor
@@ -159,6 +159,7 @@ translation; the rows land with the code they describe.
 | `FakeGateway` for ring 0 | `Pinecall::Testing::Gateway`, threads it waits on | `pinecall.testing.Gateway`, a `Client` with no socket and a loop of its own it runs until the agent settles | A tenant's test is a plain `def test_…`: no pytest plugin, no `async`. |
 | the wire's `ZodError` | `Wire::WireError` | `WireError`, a `PinecallError` | A frame that does not fit is the package's error like any other; its message says what did not fit. |
 | `app.ts` default-exports `voiceApp(…)`, importing classes by path | none yet | `app.py` holds one `voice_app(…)` and imports each class from `pinecall_agents.<folder>.agent`, the module the serve entry loaded it as | A folder named with a dash is no Python module: the agents are loaded first under a package of their own, and the app imports the same class objects from there. |
+| `agents/<slug>/test/personas.ts` | `agents/<slug>/test/personas.rb` | `agents/<slug>/test/personas.py`, run by the serve entry as `pinecall_agents.<folder>.test.personas` when it loads the class: every `own_persona(...)` at its top level is the agent's own, and `ON` names Pinecall's | A module's top level is read by what each value is, not by what it is called: `own_persona` returns a `dict` of a type of its own, and the declaration still carries plain dicts. The file is a module of the agent's package, never one named `personas`, so two agents' files are two modules. |
 | `flow(name, async (input, step) => …)` | none yet | `@flow(name)` on an `async def (input, step)` | A decorator names a function where Python names one; a flow's steps await the gateway, so the body is async. |
 | `await this.ask(GetEmail)` | none yet | `await self.ask(GetEmail)`, or `.result()` in a `def` tool | `ask` answers an `Answer`, so a tool on a thread waits for the caller as a coroutine does. |
 | `screen()` returns JSX of `part`s | none yet | `screen()` returns `part("agenda")(…)` calls, words and lists | No JSX in Python: a part is a callable that makes a node, and nesting is its positional arguments. |
@@ -278,6 +279,11 @@ python -m pinecall.serve prompt --file agents/x/agent.py --slug x [--state field
   never holds the loop that answers the calls.
 - **The file is a module of a package that is its folder** (`pinecall_agents.<folder>.agent`),
   and the folder is on `sys.path`: a module beside the class is imported relatively or by name.
+- **`test/personas.py` beside the file is the agent's personas**, loaded with the class by every
+  verb as `pinecall_agents.<folder>.test.personas` and kept on it, where `harness_of` reads them
+  into the declaration. A class that declares `personas` too is refused; one that declares them
+  with no such file is served as before, and `start` says once on stderr
+  `<slug>  its personas are declared in the class, which still works: …`.
 - **The slug is the folder's**, `--slug`; a class whose `slug = "…"` says another is refused, and
   one that says none is served as it, so its view is `views/<slug>.jinja`.
 - **`--events`:** one line per wire entry, `{"type","agent","call","data"}` with `data` as the

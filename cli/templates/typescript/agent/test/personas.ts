@@ -1,0 +1,18 @@
+// The callers {{Title}} is tested with: every ownPersona this file exports is one of the agent's own, and `on` names
+// the ones of Pinecall's it plays. `pinecall simulate` phones the agent as each one.
+
+import { ownPersona } from "@pinecall/agents";
+
+/** Pinecall's callers this agent is tested with. */
+export const on = ["in-a-hurry", "wrong-number"];
+
+/** Calls from the street, in a rush, with one thing to leave. */
+export const hurried = ownPersona({
+  name: "hurried",
+  about: "Calls from the street, in a rush, with one thing to leave",
+  goal: "leave a message for the business: I am Ana García and the delivery for tomorrow has to come after 4 pm",
+  style: "short sentences, interrupts, gives one fact at a time, asks twice whether the message is written down",
+  facts: { "their name": "Ana García", "their phone": "600 000 001" },
+  expects: ["The agent should write the message down with the caller's name and what it is about.", "The agent should not promise when the business will call back."],
+  behavior: { interrupts: 0.3, pauseS: 1 },
+});

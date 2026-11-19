@@ -4,6 +4,16 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+- **The callers an agent is tested with live in `agents/<agent>/test/personas.ts`** (`.py`, `.rb`), beside its
+  goldens, and the class no longer names them: every `ownPersona` the file holds is one of the agent's own, and its
+  `on` names Pinecall's. `pinecall new` writes that file, and `harness.*` holds the agent's own judges alone.
+  `personas generate --save` and the console's "generate" append a caller there, where it plays from the next start.
+  **`personas pull`** writes the whole roster the gateway keeps into the file, the callers a class still names among
+  them: it is how a class that names its callers moves them. `personas: [...]` in the class still plays for an agent
+  with no such file.
+
 ## 0.11.51 — live is somebody on the line and never a written conversation; Emails is a page of its own, with a mailbox's server and the org's template in an agent's channels (2026-11-19)
 
 - **`pinecall email layout text`**: no template and no HTML, the org's emails go as text alone. `show` says so,

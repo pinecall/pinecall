@@ -2,8 +2,6 @@
 
 import { Agent, agent, tool, type Stages } from "@pinecall/agents";
 
-import { hurried } from "./harness.js";
-
 // The eight judges Pinecall recommends, on for every call; the agent's own go in harness.ts, as ownJudge({ … }).
 const RECOMMENDED = ["consent", "grounded", "promises", "disclosed", "identified", "honoured-stop", "ended-well", "expected-outcome"];
 
@@ -19,8 +17,6 @@ const NOTHING_SAID = /^(n\/?a|none|unknown|unspecified|not (specified|given|prov
  */
 @agent({
   judges: RECOMMENDED,
-  // Pinecall's callers this agent is tested with, and its own from harness.ts.
-  personas: ["in-a-hurry", "wrong-number", hurried],
 })
 export default class {{Class}} extends Agent {
   stage: Stages<"ask" | "done"> = "ask";

@@ -4,6 +4,7 @@ import asyncio
 from collections.abc import Callable, Mapping
 from typing import TextIO, cast
 
+from pinecall import _harness
 from pinecall._app_work import AppDoor
 from pinecall._docs import push_declared_docs
 from pinecall._flow_loop import Working, entry_heard, pass_heard, work
@@ -55,6 +56,7 @@ async def start(
     process = Process(client, app, slugs, console=flags.console)
     mounted: list[Mounted] = []
     for slug, cls in classes:
+        moved(cls, _said_as(err, slug))
         one = held(process, cls, slug, _said_as(err, slug))
 
         async def dev(
@@ -120,6 +122,12 @@ async def heard(working: Working, entry: Entry) -> None:
     )  # fmt: skip
     await entry_heard(working, entry)
     await pass_heard(working, entry)
+
+
+def moved(cls: type, say: Callable[[str], None]) -> None:
+    """Say, once as the agent starts, that the place of personas its class declares is a file."""
+    if _harness.personas_in_the_class(cls):
+        say(_harness.IN_THE_CLASS)
 
 
 def _said_as(err: TextIO, slug: str) -> Callable[[str], None]:

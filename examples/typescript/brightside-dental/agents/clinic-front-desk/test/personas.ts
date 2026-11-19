@@ -1,7 +1,7 @@
 import { ownPersona } from "@pinecall/agents";
 
-// A test caller: who they are, what they want and how they talk. `pinecall simulate` phones the
-// agent as each one, and the judges read the call.
+// The callers the front desk is tested with: who each one is, what they want and how they talk.
+// `pinecall simulate` phones the agent as each one this file exports, and the judges read the call.
 
 export const hurried = ownPersona({
   name: "hurried",

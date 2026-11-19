@@ -16,8 +16,6 @@ class {{Class}} < Pinecall::Agent
 
   # The eight judges Pinecall recommends, on for every call; the agent's own go in harness.rb, as Pinecall.own_judge(...).
   judges on: %w[consent grounded promises disclosed identified honoured-stop ended-well expected-outcome]
-  # Pinecall's callers this agent is tested with, and its own from harness.rb.
-  personas on: %w[in-a-hurry wrong-number], own: [HURRIED]
 
   stage :ask, :done
 

@@ -12,9 +12,10 @@ brightside_dental/
   agents/
     clinic-front-desk/
       agent.rb                             answers the line: reads the agenda, books, passes a charge on
-      harness.rb                           its own judge, and two test callers `pinecall simulate` plays
+      harness.rb                           its own judge
       views/clinic-front-desk.erb          what the model reads each turn: the times on the table
       test/goldens/                        three written calls a model must get right
+      test/personas.rb                     two test callers `pinecall simulate` plays
     clinic-billing/
       agent.rb                             takes the call the front desk passes: invoices, refund requests
       views/clinic-billing.erb             the invoices of the patient on the call
@@ -28,8 +29,10 @@ brightside_dental/
   `FrontDesk` and `Billing` as they are; the flow and the clinic are `require_relative`.
 - **The view is a template beside the class**, `views/<slug>.erb`, named by the folder whatever the
   class is called, where the TypeScript class has a `render()`.
-- **What a class declares is a macro**: `stt`, `llm`, `voice`, `takes`, `judges`, `personas`, `state`;
+- **What a class declares is a macro**: `stt`, `llm`, `voice`, `takes`, `judges`, `state`;
   a tool is `tool` above a method, and the comment above it is what the model reads.
+- **The test callers are constants of `test/personas.rb`**, beside the goldens: every
+  `Pinecall.own_persona` there is the agent's own, and an `ON` would name Pinecall's.
 
 ## Run it
 

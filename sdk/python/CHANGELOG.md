@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **An agent's test callers live in `agents/<slug>/test/personas.py`, beside its goldens.** Every `own_persona(…)` at the file's top level is the agent's own, whatever its name, and `ON = ["in-a-hurry", …]` names Pinecall's that are on; the serve entry loads the file with the class. `personas = personas(…)` on the class still works where there is no such file, and `pinecall start` says once that their place is the file; a class with both is refused. `judges` stay on the class.
+
 ## 0.11.51 — live is somebody on the line and never a written conversation; Emails is a page of its own, with a mailbox's server and the org's template in an agent's channels (2026-11-19)
 
 - Released with the runtime: nothing of this package changed.

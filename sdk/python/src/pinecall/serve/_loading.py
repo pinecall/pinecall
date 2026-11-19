@@ -1,4 +1,4 @@
-"""What the serve entry is told and loads: its flags, the class in a file, a state by field."""
+"""What the serve entry is told and loads: its flags, a class and its personas, a state by field."""
 
 import importlib.util
 import json
@@ -9,7 +9,7 @@ import typing
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from pinecall import _config
+from pinecall import _config, _harness
 from pinecall.agent import Agent
 from pinecall.errors import DeclarationRefused, PinecallError
 from pinecall.wire._names import Channel, JsonObject, Medium
@@ -103,6 +103,7 @@ def load_served(served: Served) -> type[Agent]:
     # The folder names it: its view is `views/<slug>.jinja` beside it, whatever the class is called.
     cls.slug = served.slug
     _config.keep_served(served.slug, cls)
+    load_personas(cls, served.file)
     return cls
 
 
@@ -115,6 +116,39 @@ def load_agent(file: Path) -> type[Agent]:
     package = f"{ROOT}.{folder}"
     named = f"{package}.{path.stem}"
     packaged(package, path.parent)
+    module = module_at(named, path)
+    written = [
+        one
+        for one in vars(module).values()
+        if isinstance(one, type) and issubclass(one, Agent) and one.__module__ == named
+    ]
+    if not written:
+        raise CannotServe(f"{path} declares no pinecall.Agent")
+    return written[-1]
+
+
+def load_personas(cls: type[Agent], file: Path) -> None:
+    """The agent's `test/personas.py`, when it has one, run and kept as the class's personas."""
+    beside = file.parent / "test" / "personas.py"
+    if not beside.is_file():
+        return
+    # A module of the agent's own package, so no two agents' files are one module, none is the
+    # module `personas`, and it imports the agent's modules as the class does.
+    package = cls.__module__.rpartition(".")[0]
+    module = module_at(f"{package}.test.personas", beside.resolve())
+    _harness.file_personas(cls, vars(module), under_here(beside))
+
+
+def under_here(path: Path) -> Path:
+    """The path as a sentence names it: from the folder the entry runs in, when it is under it."""
+    try:
+        return path.resolve().relative_to(Path.cwd())
+    except ValueError:
+        return path
+
+
+def module_at(named: str, path: Path) -> types.ModuleType:
+    """The file run as the module of that name; one that does not load is refused by its path."""
     spec = importlib.util.spec_from_file_location(named, path)
     if spec is None or spec.loader is None:
         raise CannotServe(f"{path} is not a Python file")
@@ -126,14 +160,7 @@ def load_agent(file: Path) -> type[Agent]:
         raise
     except Exception as failed:
         raise CannotServe(f"{path} did not load: {type(failed).__name__}: {failed}") from failed
-    written = [
-        one
-        for one in vars(module).values()
-        if isinstance(one, type) and issubclass(one, Agent) and one.__module__ == named
-    ]
-    if not written:
-        raise CannotServe(f"{path} declares no pinecall.Agent")
-    return written[-1]
+    return module
 
 
 def packaged(package: str, folder: Path) -> None:

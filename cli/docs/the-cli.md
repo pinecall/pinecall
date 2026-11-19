@@ -208,7 +208,8 @@ agents/<name>/test/goldens/           goldens: the conversations `test` runs; be
                                       the questions `docs eval` asks the base, and `memory.json`,
                                       the questions `memory eval` asks recall
 agents/<name>/test/memory/            the extraction cases `remember` runs
-agents/<name>/harness.ts              its own judges and callers, as code (harness.py, harness.rb)
+agents/<name>/test/personas.ts        the callers it is tested with, as code (personas.py, personas.rb)
+agents/<name>/harness.ts              its own judges, as code (harness.py, harness.rb)
 agents/<name>/test/candidates/        real calls `runs promote` wrote, before a person keeps them
 lib/                                  what two or more agents share
 app.ts                                the voice app: its lines, its team, its rules (app.py, app.rb)
@@ -470,7 +471,7 @@ clinica-norte · clinica · sandbox · cloud.pinecall.io · 4 tools · key from 
 **It answers the console for this directory.** What a screen needs of the agent's directory — a
 written call to the agent here, a simulation, the goldens and a suite, the
 documents pushed and their golden asked, the memory goldens, a call promoted to a candidate, a
-generated persona kept as a file for a class that owns its roster,
+generated persona kept as code for an agent whose code owns its roster,
 the drift, a reproduction a broken run left — the console asks the gateway, and the gateway asks
 THIS process over its companion socket (`dev.request` → `dev.answer`; the runtime's
 `docs/protocol/dev-verbs.md`), which reaches the agent's process by its app id when a call is
@@ -925,16 +926,22 @@ pinecall personas rm <name> · pinecall personas pull
 **The callers are the AGENT's, kept by the gateway** — one list per agent, the same in both environments:
 the patient who cancels is the clinic's, and another agent of the org has callers of its own, even
 under the same name. So the console shows the same ones this verb does, and a caller written here
-needs no deploy. **Or the class's**: a class that declares `personas` (`@agent({ personas: ["in-a-hurry", hurried] })`
-in TypeScript, a name for one of Pinecall's and an object for its own; `personas = personas(on=…, own=…)` in Python, `personas on:, own:` in Ruby) owns the
-roster — which of Pinecall's its runs play is the class's `on`, its own callers are code, each an
-`ownPersona({ name, goal, style, … })` (`own_persona(...)`, `Pinecall.own_persona(...)`) in
-`agents/<agent>/harness.ts` (`.py`, `.rb`), listed in `own`, sent when `pinecall start` or the
-deploy registers it. The list then marks each of the class's rows `class`, and its last line names the file and the switch
-or `pinecall on|off`; `add`, `edit`, `rm`, `on` and `off` are refused here with **exit 2**, naming
-the code and the switch, and the console shows the roster locked. `pull` is the way across: it
-appends the agent's own rows to that file as code, once, for the class to add to `own`; the rows
-stay until `rm` drops them, which is done before the class declares `personas`, or in the console.
+needs no deploy. **Or the code's**: an agent with a `agents/<agent>/test/personas.ts` (`.py`, `.rb`),
+beside its goldens, owns the roster. Every `ownPersona({ name, goal, style, … })` the file exports
+(`own_persona(...)`, `Pinecall.own_persona(...)` it defines) is one of the agent's own, and its `on`
+(`ON` in Python and Ruby) names which of Pinecall's its runs play; the class neither names them nor
+imports the file, and the roster is sent when `pinecall start` or the deploy registers the agent.
+The list then marks each of the code's rows `class`, and its last line names the file;
+`add`, `edit`, `rm`, `on` and `off` are refused here with **exit 2**, naming the file, and the
+console shows the roster locked. `pull` is the way across: it writes the roster the gateway keeps
+into that file as code, once; the rows stay until `rm` drops them, which is done before the file
+is written, or in the console.
+
+A class that names its callers itself (`@agent({ personas: ["in-a-hurry", hurried] })` in TypeScript,
+`personas = personas(on=…, own=…)` in Python, `personas on:, own:` in Ruby) is the place they had
+before, and it still owns the roster for an agent with no personas file: `pinecall start` says once
+where they moved, `pull` writes them into the file, and then `personas` comes out of the class. The
+two together are refused when the agent starts.
 
 **Pinecall's library comes first**, each one `off` until `pinecall personas on <name>` switches it
 on for the agent (the nightly plays what is on): realism — `in-a-hurry`, `wrong-number`,
@@ -997,18 +1004,21 @@ flag with exit 2.
 up to 10) — from its prompt, its tools and its knowledge; `--about` steers them, `--from-call` makes
 them like a real call's caller, `--template` writes one of the library's again for this agent, `N` times
 with `N` (say `1` for one). Each comes with what it expects. They are printed and saved nowhere; `--save` keeps every one as the
-agent's own — as rows, or, when the class owns the roster, as code appended to
-`agents/<agent>/harness.*`, an `ownPersona` each, for the class to add to `own`; a `written` line names each file and name.
+agent's own — as rows, or, when its code owns the roster, as code appended to
+`agents/<agent>/test/personas.*`, an `ownPersona` each, which plays from the next start; a `written` line names each file and name.
+A class that still names its callers is refused here with **exit 2**, saying that `pull` moves them first.
 The code written holds what the caller is, never a default: a `behavior` field at the runtime's own
 value (`interrupts: 0`, `speed: 1`, no ambience) is left out, as `pull` leaves it out.
 Each caller written is one eval, none when your judges run on your own key. The console's
 "generate" keeps one the same way, through the `pinecall start` in the agent's directory.
 
-**`pull`** appends the agent's own callers the gateway keeps to `agents/<agent>/harness.*` as code,
-an `ownPersona` each (the file written as `pinecall new` writes it when it is not there), what `add`
-sends: the step before a class declares `personas`, each then added to `own`. Pinecall's and the
-class's own are not written, a name the file declares already is refused, and the rows stay. (The
-`push` of earlier versions, which sent files to the gateway once, is gone: the code is the class's.)
+**`pull`** writes the agent's roster as the gateway keeps it to `agents/<agent>/test/personas.*` as
+code. A file that is not there is started with `on`, naming the ones of Pinecall's that are on, and
+then holds every one of the agent's own, an `ownPersona` each, what `add` sends — the ones its class
+still names among them, which is how a class that names its callers moves them: `pull`, then
+`personas` out of the class. Into a file that is there go the rows the gateway keeps and the code
+does not. A name the file declares already is refused, and the rows stay. (The `push` of earlier
+versions, which sent files to the gateway once, is gone: the code is the agent's.)
 
 ## `judges`
 

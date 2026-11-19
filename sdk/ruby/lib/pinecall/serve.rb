@@ -50,6 +50,7 @@ module Pinecall
       classes, app = App.loaded(flags)
       slugs = classes.to_h { |served, klass| [klass, served.slug] }
       mounted = classes.map do |served, klass|
+        err.puts("#{served.slug}  #{Agent::Harness::CALLERS_MOVED}") if Agent::Harness.names_its_callers?(klass)
         held = App.held(client, klass, served.slug, app, slugs, console: flags.console, err:)
         held.agent.on_dev { |verb, data| Viewing.answer(klass, served.slug, verb, data) }
         held

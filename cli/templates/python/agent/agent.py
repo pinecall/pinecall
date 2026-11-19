@@ -3,8 +3,7 @@
 import re
 from typing import Literal
 
-from harness import HURRIED
-from pinecall import Agent, judges, personas, tool
+from pinecall import Agent, judges, tool
 
 # The eight judges Pinecall recommends, on for every call; the agent's own go in harness.py, as own_judge(...).
 RECOMMENDED = ["consent", "grounded", "promises", "disclosed", "identified", "honoured-stop", "ended-well", "expected-outcome"]
@@ -22,8 +21,6 @@ class {{Class}}(Agent):
     """
 
     judges = judges(on=RECOMMENDED)
-    # Pinecall's callers this agent is tested with, and its own from harness.py.
-    personas = personas(on=["in-a-hurry", "wrong-number"], own=[HURRIED])
 
     stage: Literal["ask", "done"] = "ask"
     message: dict[str, str] | None = None

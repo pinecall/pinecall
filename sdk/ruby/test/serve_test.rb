@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "fileutils"
 require "stringio"
 require "tmpdir"
 require "test_helper"
@@ -216,6 +217,69 @@ class ServeTest < Minitest::Test
       panel = { tag: "panel", title: "Paciente", children: [{ tag: "row", label: "Teléfono", value: "+34600" }] }
       assert_includes answers, { id: "dev_1", result: { name: "Ficha", nodes: [panel] } }
       assert_includes answers, { id: "dev_2", refused: { status: 404, detail: Pinecall::Serve::Viewing::ONLY_THE_VIEW } }
+    end
+  end
+
+  def test_a_class_that_still_names_its_personas_is_held_as_before_and_told_once_where_their_place_is
+    Dir.mktmpdir do |folder|
+      file = File.join(folder, "agent.rb")
+      File.write(file, <<~RUBY)
+        # Toma recados.
+        class NombraSusLlamantes < Pinecall::Agent
+          personas on: %w[in-a-hurry], own: [Pinecall.own_persona(name: "hurried", goal: "book today", style: "short")]
+        end
+      RUBY
+      reading, @writing = IO.pipe
+      running = Thread.new do
+        Pinecall::Serve.main(["start", "--file", file, "--slug", "nombra"], out: @out, err: @err, env:, input: reading,
+                                                                             signals: Thread::Queue.new)
+      end
+      configured = @gateway.next_frame("agent.configure")
+      sleep(0.05)
+      @writing.close
+      running.value
+
+      assert_equal({ on: ["in-a-hurry"], own: [{ name: "hurried", goal: "book today", style: "short" }] }, configured[:data][:config][:personas])
+      assert_equal 1, @err.string.scan("nombra  #{Pinecall::Agent::Harness::CALLERS_MOVED}\n").size
+      assert_equal "its personas are declared in the class, which still works: their place is now test/personas.rb beside the goldens — " \
+                   "every Pinecall.own_persona it defines is the agent's own, and ON names Pinecall's", Pinecall::Agent::Harness::CALLERS_MOVED
+    end
+  end
+
+  def test_a_class_tested_with_its_folders_callers_declares_them_and_is_told_nothing
+    Dir.mktmpdir do |folder|
+      file = File.join(folder, "agent.rb")
+      File.write(file, "# Toma recados.\nclass LlamantesEnSuCarpeta < Pinecall::Agent\nend\n")
+      FileUtils.mkdir_p(File.join(folder, "test"))
+      File.write(File.join(folder, "test", "personas.rb"), <<~RUBY)
+        ON = %w[in-a-hurry].freeze
+        HURRIED = Pinecall.own_persona(name: "hurried", goal: "book today", style: "short")
+      RUBY
+      reading, @writing = IO.pipe
+      running = Thread.new do
+        Pinecall::Serve.main(["start", "--file", file, "--slug", "en-carpeta"], out: @out, err: @err, env:, input: reading,
+                                                                                 signals: Thread::Queue.new)
+      end
+      configured = @gateway.next_frame("agent.configure")
+      sleep(0.05)
+      @writing.close
+      running.value
+
+      assert_equal({ on: ["in-a-hurry"], own: [{ name: "hurried", goal: "book today", style: "short" }] }, configured[:data][:config][:personas])
+      refute_includes @err.string, "personas"
+    end
+  end
+
+  def test_a_class_that_names_its_personas_beside_the_file_is_a_sentence_and_exit_two
+    Dir.mktmpdir do |folder|
+      file = File.join(folder, "agent.rb")
+      File.write(file, "# Toma recados.\nclass LlamantesEnLosDosSitios < Pinecall::Agent\n  personas on: %w[in-a-hurry]\nend\n")
+      FileUtils.mkdir_p(File.join(folder, "test"))
+      File.write(File.join(folder, "test", "personas.rb"), "ON = %w[in-a-hurry].freeze\n")
+
+      assert_equal 2, Pinecall::Serve.main(["prompt", "--file", file, "--slug", "en-dos"], out: @out, err: @err)
+      assert_equal "LlamantesEnLosDosSitios declares personas in the class and #{File.join(folder, "test", "personas.rb")} holds them too: " \
+                   "the file is their place — take personas out of the class\n", @err.string
     end
   end
 

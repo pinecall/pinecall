@@ -100,9 +100,9 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `project/credentials.ts` | 118 | Where the key and gateway URL come from: the environment, else the nearest `.env`, else the project's `pinecall.json` and this machine's sign-in. |
 | `project/config.ts` | 54 | `pinecall.json`: where a project runs — the gateway and the org — committed beside its agents, with no secret in it. |
 | `project/session.ts` | 110 | `~/.pinecall/session.json`: who this machine is at each gateway — the sign-in, the keys in the person's orgs — and the phone it calls from. |
-| `project/language.ts` | 93 | Which language an agent is written in, and the command that starts its serve entry. |
-| `project/layout.ts` | 151 | The tenant's project: one folder per agent under `agents/`, holding its class, its documents and its tests. |
-| `project/harness.ts` | 156 | The agent's harness file: its own judges and callers as code, in its language, one more appended by `pull`, `generate --save` and the console. |
+| `project/language.ts` | 96 | Which language an agent is written in, and the command that starts its serve entry. |
+| `project/layout.ts` | 175 | The tenant's project: one folder per agent under `agents/`, holding its class, its documents and its tests. |
+| `project/harness.ts` | 193 | The agent's judges and callers as code, in its language: a judge appended to its harness file, a caller to its test folder's personas file. |
 
 ### `billing/`
 
@@ -204,7 +204,7 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `evals/service/dataset.ts` | 203 | The org's dataset: real calls kept as cases — read, decided, pulled into the repository, kept, forgotten — a golden written by hand added, and the groups they fall into. |
 | `evals/service/goldens.ts` | 103 | Golden files on the tenant's disk and the schema the runner accepts. |
 | `evals/service/index.ts` | 83 | Evals: goldens run through the agent, the runs kept, the org's dataset, the simulated callers, a call checked again by code. |
-| `evals/service/personas.ts` | 185 | An agent's simulated callers: Pinecall's switched on or off, its own written, generated, dropped, or the class's, pulled into its code. |
+| `evals/service/personas.ts` | 192 | An agent's simulated callers: Pinecall's switched on or off, its own written, generated, dropped, or pulled into the code of its test folder. |
 | `evals/service/replay.ts` | 17 | Ring 3: one finished call rebuilt from its log and answered by the runtime's code checks; nothing re-run, no model asked. |
 | `evals/service/runs.ts` | 261 | The runs the gateway kept: listed, one shown, two diffed, a real call promoted to a candidate, each judge's drift. |
 | `evals/service/comparison.ts` | 125 | A simulation the gateway plays with the agent on other voices and models, and a comparison of several, followed through their logs. |

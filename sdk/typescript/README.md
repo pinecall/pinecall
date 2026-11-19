@@ -87,7 +87,7 @@ and `PINECALL_URL` from the environment or the project's `.env`. Full reference:
 [docs/the-cli.md](https://github.com/pinecall/pinecall/blob/main/cli/docs/the-cli.md).
 
 A project holds one or more agents: `agents/<name>/agent.tsx`, their tests in
-`agents/<name>/test/` (goldens, memory), and their own judges and callers as code in `agents/<name>/harness.ts`. Voice, model, language, greeting, knowledge and the documents an agent searches
+`agents/<name>/test/` (goldens, memory, and the callers it is tested with as code in `personas.ts`), and their own judges as code in `agents/<name>/harness.ts`. Voice, model, language, greeting, knowledge and the documents an agent searches
 are the class's, declared once above it in `@agent({ … })`: an app written as
 code is set by its code and nothing else, and the console shows what it runs on, read-only. Running in production on your own server:
 [Run it on your own server](https://docs.pinecall.io/guides/own-server/).

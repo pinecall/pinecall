@@ -4,7 +4,7 @@ import io
 from pathlib import Path
 
 from pinecall.serve import main
-from tests.fakes.project import written
+from tests.fakes.project import with_personas, with_personas_in_the_class, written
 
 
 def ran(argv: list[str], env: dict[str, str] | None = None) -> tuple[int, str, str]:
@@ -44,3 +44,13 @@ def test_a_class_the_gateway_would_refuse_is_refused_before_anything_is_dialled(
     status, _, err = ran(["prompt", "--file", str(file), "--slug", "recepcion"])
     assert status == 2
     assert "`language` is the class's, not a call's state" in err
+
+
+def test_personas_in_the_class_and_in_the_file_are_refused_by_sentence_before_the_prompt(
+    tmp_path: Path,
+) -> None:
+    file = with_personas_in_the_class(with_personas(written(tmp_path)))
+    status, out, err = ran(["prompt", "--file", str(file), "--slug", "recepcion"])
+    assert (status, out) == (2, "")
+    assert err.startswith("Recepcion declares personas in the class and ")
+    assert err.endswith("the file is their place — take personas out of the class\n")

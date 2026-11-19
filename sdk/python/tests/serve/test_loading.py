@@ -1,12 +1,15 @@
-"""What serve is told and loads: flags by place, a state by field, the class from its folder."""
+"""What serve is told and loads: flags by place, a state by field, a class and its personas."""
 
+import sys
 from pathlib import Path
 
 import pytest
 
-from pinecall import _config
+from pinecall import DeclarationRefused, _config
+from pinecall._harness import harness_of
 from pinecall.serve._loading import CannotServe, Served, as_state, load_served, parse
-from tests.fakes.project import written
+from pinecall.wire.judging import PersonasDeclared
+from tests.fakes.project import with_personas, with_personas_in_the_class, written
 
 
 def test_each_file_is_served_as_the_slug_beside_it_and_the_rest_are_by_name() -> None:
@@ -86,3 +89,93 @@ def test_a_file_that_is_not_there_does_not_load_or_declares_no_agent_says_so(
     empty.write_text('"""Vacía."""\n', encoding="utf-8")
     with pytest.raises(CannotServe, match=r"declares no pinecall\.Agent"):
         load_served(Served(empty, "vacia"))
+
+
+def test_the_personas_file_beside_the_class_is_its_personas_and_imports_its_folder_as_it_does(
+    tmp_path: Path,
+) -> None:
+    cls = load_served(Served(with_personas(written(tmp_path)), "recepcion"))
+
+    callers = PersonasDeclared.model_validate(harness_of(cls)["personas"])
+
+    assert callers.on == ["in-a-hurry"]
+    assert [(one.name, one.goal) for one in callers.own] == [
+        ("ana", "pedir hora"),
+        ("con-prisa", "reservado: hoy"),
+    ]
+    assert callers.own[0].facts == {"su nombre": "Ana García"}
+
+
+def test_a_class_with_no_personas_file_declares_none(tmp_path: Path) -> None:
+    cls = load_served(Served(written(tmp_path), "recepcion"))
+    assert harness_of(cls) == {}
+
+
+def test_each_agents_personas_file_is_a_module_of_its_own_and_none_is_the_module_personas(
+    tmp_path: Path,
+) -> None:
+    before = sys.modules.get("personas")
+    front = with_personas(written(tmp_path, "front-desk"))
+    back = with_personas(
+        written(tmp_path, "back-office"), '"""Nobody of its own."""\n\nON = ["wrong-number"]\n'
+    )
+
+    first = load_served(Served(front, "front-desk"))
+    second = load_served(Served(back, "back-office"))
+
+    assert harness_of(second)["personas"] == {"on": ["wrong-number"], "own": []}
+    assert PersonasDeclared.model_validate(harness_of(first)["personas"]).on == ["in-a-hurry"]
+    one = sys.modules["pinecall_agents.front_desk.test.personas"]
+    other = sys.modules["pinecall_agents.back_office.test.personas"]
+    assert (one.ON, other.ON) == (["in-a-hurry"], ["wrong-number"])
+    assert sys.modules.get("personas") is before
+
+
+def test_personas_in_the_class_and_in_the_file_are_refused_naming_the_class_and_the_file(
+    tmp_path: Path,
+) -> None:
+    file = with_personas_in_the_class(with_personas(written(tmp_path)))
+
+    with pytest.raises(DeclarationRefused) as refused:
+        load_served(Served(file, "recepcion"))
+
+    assert str(refused.value) == (
+        f"Recepcion declares personas in the class and {file.parent / 'test' / 'personas.py'}"
+        " holds them too: the file is their place — take personas out of the class"
+    )
+
+
+def test_a_refusal_names_the_personas_file_from_the_projects_folder_when_it_runs_there(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    file = with_personas_in_the_class(with_personas(written(tmp_path)))
+    monkeypatch.chdir(tmp_path)
+
+    with pytest.raises(DeclarationRefused) as refused:
+        load_served(Served(file, "recepcion"))
+
+    assert str(refused.value).startswith(
+        f"Recepcion declares personas in the class and {Path('agents/recepcion/test/personas.py')}"
+        " holds them too"
+    )
+
+
+def test_personas_in_the_class_with_no_file_load_as_they_did(tmp_path: Path) -> None:
+    cls = load_served(Served(with_personas_in_the_class(written(tmp_path)), "recepcion"))
+    assert harness_of(cls)["personas"] == {"on": ["interrupts"], "own": []}
+
+
+def test_a_personas_file_that_does_not_load_or_holds_a_wrong_one_says_so(tmp_path: Path) -> None:
+    broken = with_personas(written(tmp_path / "a"), '"""Rota."""\nimport no_such_module\n')
+    with pytest.raises(CannotServe, match=r"personas\.py did not load: ModuleNotFoundError"):
+        load_served(Served(broken, "recepcion"))
+    wrong = with_personas(
+        written(tmp_path / "b"),
+        '"""Mal."""\nfrom pinecall import own_persona\n\n'
+        'X = own_persona(name="x", goal=" ", style="s")\n',
+    )
+    with pytest.raises(DeclarationRefused, match="x: a persona wants something"):
+        load_served(Served(wrong, "recepcion"))
+    names = with_personas(written(tmp_path / "c"), '"""Mal."""\n\nON = "in-a-hurry"\n')
+    with pytest.raises(DeclarationRefused, match="ON names Pinecall's callers that are on"):
+        load_served(Served(names, "recepcion"))

@@ -5,13 +5,15 @@ import io
 import json
 import socket
 from pathlib import Path
+from typing import cast
 
 import pytest
 
+from pinecall._harness import IN_THE_CLASS
 from pinecall.serve._loading import CannotServe, parse
 from pinecall.serve._starting import NO_DOOR, SIGNALLED, STOPPED, client_from, start
 from tests.fakes.gateway import KEY, FakeGateway
-from tests.fakes.project import written
+from tests.fakes.project import with_personas, with_personas_in_the_class, written
 
 
 def flags_of(tmp_path: Path, *more: str) -> list[str]:
@@ -26,6 +28,11 @@ async def started(
     running = asyncio.ensure_future(start(parse(argv), out, err, env, asked))
     await gateway.until(lambda: bool(gateway.commands_of("agent.configure")))
     return running, asked, out, err
+
+
+def personas_sent(gateway: FakeGateway) -> object:
+    data = cast("dict[str, object]", gateway.commands_of("agent.configure")[0]["data"])
+    return cast("dict[str, object]", data["config"]).get("personas")
 
 
 def test_the_door_is_the_environments_alone_and_a_world_it_does_not_know_is_refused() -> None:
@@ -125,3 +132,42 @@ async def test_a_second_signal_while_draining_leaves_at_once(tmp_path: Path) -> 
     assert await asyncio.wait_for(running, 2) == 0
     assert "draining" not in err.getvalue()
     await gateway.close()
+
+
+async def test_the_personas_file_is_what_the_agent_declares_and_nothing_is_said_of_it(
+    gateway: FakeGateway, tmp_path: Path
+) -> None:
+    file = with_personas(written(tmp_path))
+    running, asked, _, err = await started(gateway, ["--file", str(file), "--slug", "recepcion"])
+    sent = cast("dict[str, list[dict[str, object]]]", personas_sent(gateway))
+    assert sent["on"] == ["in-a-hurry"]
+    assert [one["name"] for one in sent["own"]] == ["ana", "con-prisa"]
+    asked.put_nowait(STOPPED)
+    assert await running == 0
+    assert IN_THE_CLASS not in err.getvalue()
+
+
+async def test_personas_still_in_the_class_are_declared_and_said_once_to_have_a_file_now(
+    gateway: FakeGateway, tmp_path: Path
+) -> None:
+    file = with_personas_in_the_class(written(tmp_path))
+    running, asked, _, err = await started(gateway, ["--file", str(file), "--slug", "recepcion"])
+    assert personas_sent(gateway) == {"on": ["interrupts"], "own": []}
+    asked.put_nowait(STOPPED)
+    assert await running == 0
+    assert err.getvalue().count(IN_THE_CLASS) == 1
+    assert err.getvalue().startswith(
+        "recepcion  its personas are declared in the class, which still works: their place is now"
+        " test/personas.py beside the goldens — every own_persona it defines is the agent's own,"
+        " and ON names Pinecall's\n"
+    )
+
+
+async def test_an_agent_that_declares_no_personas_is_told_nothing(
+    gateway: FakeGateway, tmp_path: Path
+) -> None:
+    running, asked, _, err = await started(gateway, flags_of(tmp_path))
+    assert personas_sent(gateway) is None
+    asked.put_nowait(STOPPED)
+    assert await running == 0
+    assert IN_THE_CLASS not in err.getvalue()

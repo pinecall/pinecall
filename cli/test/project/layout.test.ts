@@ -39,12 +39,15 @@ describe("the layout", () => {
       memoryGolden: join(own, "test/goldens/memory.json"),
       memoryCases: join(own, "test/memory"),
       harness: join(own, "harness.ts"),
+      personas: join(own, "test/personas.ts"),
       candidates: join(own, "test/candidates"),
     });
     write(root, "agents/sales/agent.py", "");
     write(root, "agents/notes/agent.rb", "");
     expect(homeOf(join(root, "agents/sales/agent.py")).harness).toBe(join(root, "agents/sales/harness.py"));
     expect(homeOf(join(root, "agents/notes/agent.rb")).harness).toBe(join(root, "agents/notes/harness.rb"));
+    expect(homeOf(join(root, "agents/sales/agent.py")).personas).toBe(join(root, "agents/sales/test/personas.py"));
+    expect(homeOf(join(root, "agents/notes/agent.rb")).personas).toBe(join(root, "agents/notes/test/personas.rb"));
   });
 
   it("every agent of the project, or the one named", () => {

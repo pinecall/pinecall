@@ -6,6 +6,7 @@ import { parseArgs } from "node:util";
 
 import { aLostSocket, DevRefused, Pinecall, type World } from "../client/index.js";
 
+import { CALLERS_MOVED, namesItsCallers } from "../agent/harness.js";
 import type { VoiceApp } from "../runtime/app.js";
 import { mount, type Mounted } from "../runtime/connect.js";
 import { entryHeard, passHeard, work, type Working } from "../runtime/flow-loop.js";
@@ -144,6 +145,7 @@ function clientFrom(env: Io["env"]): Pinecall {
 // A console's own process takes only the calls that name it; the class draws the panel.
 function held(pc: Pinecall, one: Served, loaded: Loaded, app: VoiceApp | undefined, slugs: Map<Loaded["ctor"], string>, console: boolean, io: Io): Mounted {
   const report = (line: string): void => void io.err.write(`${one.slug}  ${line}\n`);
+  if (namesItsCallers(loaded.ctor)) report(CALLERS_MOVED);
   const declares = app?.declares(loaded.ctor) ?? {};
   const mates = app?.teamOf(loaded.ctor) ?? [];
   const chooses = app?.choosing(loaded.ctor);

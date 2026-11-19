@@ -122,34 +122,47 @@ judge is asked for a forced tool call, so a local model must call tools.
 | `hold` | the hold melody: a file beside the class and the wait before it, or silence | `hold file: "hold.mp3", after_s: 1.5` · `hold :off` |
 | `widget` | how the widget presents the agent | `widget title: "…", tagline: "…", accent: "#0f766e", theme: "auto"` |
 | `judges` | which of Pinecall's judges its calls meet, and its own | `judges on: %w[consent grounded], own: [OFFERS_NEXT_SLOT]` |
-| `personas` | which of Pinecall's callers its simulations play, and its own | `personas on: %w[in-a-hurry], own: [HURRIED]` |
 
 Called with no argument, each macro reads what the class (or its parent) declared.
 
-**The judges and the callers are the class's the same way, and they are code.** `judges on:, own:`
-names which of Pinecall's judges the agent's calls meet (`on`, every other off) and the agent's
-own (`own`), each a `Pinecall.own_judge(name:, asks:, answer:, choices:, when:, trigger:, reads:)`:
-the question the judge model answers about a finished call, and how and when. `personas on:, own:`
-is the same for the callers `pinecall simulate` plays, each of its own a `Pinecall.own_persona(name:,
-goal:, style:, about:, facts:, expects:, behavior:)`, what `PUT …/personas/{name}` takes.
-`pinecall new` writes them in `agents/<slug>/harness.rb`, one file for both, required by the class:
+**The judges are the class's the same way, and they are code.** `judges on:, own:` names which of
+Pinecall's judges the agent's calls meet (`on`, every other off) and the agent's own (`own`), each a
+`Pinecall.own_judge(name:, asks:, answer:, choices:, when:, trigger:, reads:)`: the question the
+judge model answers about a finished call, and how and when. `pinecall new` writes them in
+`agents/<slug>/harness.rb`, required by the class:
 
 ```ruby
 # agents/front-desk/harness.rb
 require "pinecall"
-
 OFFERS_NEXT_SLOT = Pinecall.own_judge(name: "offers-next-slot", asks: "Did the agent offer the next free slot before the caller asked twice?", reads: ["facts"])
-HURRIED = Pinecall.own_persona(name: "hurried", goal: "leave a message: the delivery has to come after 4 pm", style: "short sentences, interrupts",
-                               expects: ["The agent should write the message down."], behavior: { interrupts: 0.3, pause_s: 1 })
 ```
 
-A wrong one is refused when the class loads, by a sentence that names it (`offers-next-slot: a
-judge that answers one of several needs at least two choices`), and so are two of one name.
-Declared, the class is the agent's list: the console shows both locked, "set by the class", and
-`pinecall judges add` or `personas add` is refused naming the class; `pinecall judges pull`,
-`personas pull` and `personas generate --save` write code into that file instead. A class that
-declares neither leaves both to the console and the CLI, as before. The org's own judges (`pinecall judges add --org`) meet
-every agent's calls either way.
+**The callers it is tested with are a file of its test folder**, `agents/<slug>/test/personas.rb`,
+beside its goldens, and no part of the class. Every constant there made by
+`Pinecall.own_persona(name:, goal:, style:, about:, facts:, expects:, behavior:)`, what
+`PUT …/personas/{name}` takes, is one of the agent's own, in the order written; `ON` names the ones
+of Pinecall's that are on, none with no `ON`. Any other constant is not a caller.
+
+```ruby
+# agents/front-desk/test/personas.rb
+ON = %w[in-a-hurry wrong-number].freeze
+HURRIED = Pinecall.own_persona(name: "hurried", goal: "leave a message: the delivery has to come after 4 pm", style: "short sentences, interrupts", expects: ["The agent should write the message down."])
+```
+
+`pinecall start` and `pinecall prompt` read the file as they load `agent.rb`, in a module of its
+own, so two agents may each write an `ON` and a `HURRIED`. A class you serve yourself with
+`Pinecall.serve` is loaded from no file, and sends the callers it names, if any. `personas on:
+%w[in-a-hurry], own: [HURRIED]` in the class, the place they had before, still works for an agent
+with no `test/personas.rb`: `pinecall start` says once where they moved, and `pinecall personas pull`
+writes them into the file. The two together are refused.
+
+A wrong judge or caller is refused when the class loads, by a sentence that names it
+(`offers-next-slot: a judge that answers one of several needs at least two choices`), and so are two
+of one name. Declared, they are the agent's list: the console shows both locked, and `pinecall
+judges add` or `personas add` is refused saying where they are written; `pinecall judges pull`
+writes code into `harness.rb`, and `personas pull` and `personas generate --save` into
+`test/personas.rb`. An agent with neither leaves both to the console and the CLI, as before. The
+org's own judges (`pinecall judges add --org`) meet every agent's calls either way.
 
 Mid-call, `say "..."` and `reply "..."` are still methods of the class, for when something happens
 that the caller should hear now; how the call *opens* is `greeting`, the class's or the settings'.
@@ -266,7 +279,9 @@ call, and never as a gateway's refusal of the socket:
 | `greeting 42`, `hangup 42`, `stage` with no names, a tool named `open?`, a tool taking `**anything` | a sentence naming what it takes |
 | an `own_judge` with no `asks`, a bad `answer`, a `choice` with one choice, a `trigger` with no question | `offers: a judge asks a question of a call: write it as asks`, `offers: a judge that answers one of several needs at least two choices`, … |
 | an `own_persona` with no `goal` or `style`, or a key the wire does not know | `in-a-rush: a persona wants something: write its goal, in the first person` |
-| two judges or two personas of one name in `own` | `two judges called offers-next-slot: a name is declared once` |
+| two judges of one name in `own`, or two personas of one name in `test/personas.rb` | `two judges called offers-next-slot: a name is declared once` |
+| an `ON` in `test/personas.rb` that is not an array of strings | `…/test/personas.rb: ON is the names of Pinecall's callers the agent is tested with, an array of strings` |
+| `personas on: …` in a class whose folder has a `test/personas.rb` | `FrontDesk declares personas in the class and …/test/personas.rb holds them too: the file is their place — take personas out of the class` |
 
 Through `pinecall start` or `pinecall prompt` the sentence is printed alone, and the verb exits 2.
 

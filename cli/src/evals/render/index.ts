@@ -167,13 +167,13 @@ export function nextForGroup(one: CaseGroup): string[] {
   return fix;
 }
 
-/** Pinecall's first, then the agent's own (the class's, when it owns the roster); and a line when it has none of its own. */
+/** Pinecall's first, then the agent's own (the code's, when it owns the roster); and a line when it has none of its own. */
 export function personas(agent: string, found: Persona[]): string[] {
   const whose = (one: Persona): string => (one.owner === "pinecall" || one.owner === "class" ? one.owner : "yours");
   const about = (one: Persona): string => (one.owner === "pinecall" ? (one.summary ?? one.goal) : one.about || one.goal);
   const rows = table(["name", "owner", "on", "about"], found.map((one) => [one.name, whose(one), one.on ? "on" : "off", clipped(about(one), ABOUT)]));
   const lines = found.some((one) => one.owner !== "pinecall") ? rows : [...rows, ...formatNotice(NO_PERSONAS_YET(agent))];
-  const steps = ["pinecall personas show <name> reads one", ...(found.some((one) => one.fixed === true) ? [`set in agents/${agent}/harness.* · the class's personas name Pinecall's and hold its own`] : [])];
+  const steps = ["pinecall personas show <name> reads one", ...(found.some((one) => one.fixed === true) ? [`set in agents/${agent}/test/personas.* · its \`on\` names Pinecall's and the file holds its own`] : [])];
   return [...lines, formatHint(...steps)];
 }
 
@@ -224,14 +224,15 @@ export function generated(written: GeneratedPersonas & Saved): string[] {
   const bill = written.evals === 0 ? "on your own judge key: not billed" : `${count(written.evals, "eval")} · $${written.cost_usd.toFixed(4)}`;
   const callers = written.personas.flatMap((one) => [`${one.name} · ${one.goal}`, `  ${one.style}`, ...one.expects.map((line, at) => `  ${at === 0 ? "expects" : "       "}  ${line}`)]);
   const head = `${count(written.personas.length, "caller")} · ${bill}`;
-  if (written.written.length > 0) return [...callers, head, ...written.written.map((one) => `  written  ${one.path} · ${one.symbol}`), formatHint("add each to the class's personas")];
+  if (written.written.length > 0) return [...callers, head, ...written.written.map((one) => `  written  ${one.path} · ${one.symbol}`), formatHint("each plays from the next start")];
   return [...callers, head, ...(written.saved ? ["  saved"] : [formatHint("--save keeps them")])];
 }
 
-/** The rows written as code, one line each: the file and the name the class imports. */
+/** The rows written as code, one line each: the file and the name the code declares; a judge is the class's to import, a caller plays from its file. */
 export function pulled(what: string, done: { written: { path: string; symbol: string }[] }): string[] {
   if (done.written.length === 0) return [`nothing to pull: the agent has no ${what} of its own as rows`];
-  return [...done.written.map((one) => `${one.path}  ${one.symbol}`), `${done.written.length} ${what} written as code`, formatHint(`add them to ${what}({ own })`, `the rows stay until pinecall ${what} rm`)];
+  const next = what === "personas" ? "they play from the next start, with personas out of the class" : `add them to ${what}({ own })`;
+  return [...done.written.map((one) => `${one.path}  ${one.symbol}`), `${done.written.length} ${what} written as code`, formatHint(next, `the rows stay until pinecall ${what} rm`)];
 }
 /** The end of a simulation: its call, the turns and the worst latency, and every judge when judged. */
 export function simulated(said: Simulated): string[] {

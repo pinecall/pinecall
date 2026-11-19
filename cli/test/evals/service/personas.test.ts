@@ -1,6 +1,6 @@
 /** An agent's callers against the gateway: one written whole or merged, Pinecall's switched and never dropped, callers generated and kept. */
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
@@ -112,34 +112,57 @@ describe("a class that owns the roster", () => {
     await expect(personas.switchPersona(ctx, "front-desk", "confused-elder", true)).rejects.toThrow(refused);
   });
 
-  it("keeps what generate --save wrote as code the class imports, not as rows", async () => {
+  it("keeps what generate --save wrote as code in the agent's personas file, not as rows", async () => {
     answer("get", "/v1/agents/:slug/personas", { personas: [CLASSS] });
     const proposed = { name: "price-shopper", about: "", goal: "get a price", style: "blunt", facts: {}, expects: ["The agent should give the price."], tags: [], behavior: A_PERSONA.behavior };
     answer("post", "/v1/agents/:slug/personas/generate", { personas: [proposed], evals: 1, cost_usd: 0.002 });
     const kept = answer("put", "/v1/agents/:slug/personas/:name", { personas: [] });
-    const root = project(["front-desk"]);
+    const root = project(["front-desk"], { "agents/front-desk/test/personas.ts": 'import { ownPersona } from "@pinecall/agents";\n\nexport const on = ["in-a-hurry"];\n' });
     const { ctx } = testContext();
     const saved = await personas.generatePersonas(ctx, "front-desk", personas.GenerateInput.parse({ n: 1, save: true }), homeOf(`${root}/agents/front-desk/agent.ts`));
-    expect(saved.written).toEqual([{ path: "agents/front-desk/harness.ts", symbol: "priceShopper" }]);
+    expect(saved.written).toEqual([{ path: "agents/front-desk/test/personas.ts", symbol: "priceShopper" }]);
     expect(kept).toEqual([]);
-    const code = readFileSync(`${root}/agents/front-desk/harness.ts`, "utf8");
-    expect(code).toContain('import { ownPersona } from "@pinecall/agents";');
-    expect(code).toContain("export const hurried = ownPersona({");
-    expect(code).toContain('export const priceShopper = ownPersona({\n  name: "price-shopper",\n  goal: "get a price",\n  style: "blunt",\n  expects: ["The agent should give the price."],');
+    const code = readFileSync(`${root}/agents/front-desk/test/personas.ts`, "utf8");
+    expect(code.startsWith('import { ownPersona } from "@pinecall/agents";\n\nexport const on = ["in-a-hurry"];\n\nexport const priceShopper = ownPersona({\n  name: "price-shopper",\n  goal: "get a price",\n  style: "blunt",\n  expects: ["The agent should give the price."],')).toBe(true);
+    expect(existsSync(`${root}/agents/front-desk/harness.ts`)).toBe(false);
+  });
+
+  it("refuses generate --save for a class that still names its callers, saying how they move", async () => {
+    answer("get", "/v1/agents/:slug/personas", { personas: [CLASSS] });
+    answer("post", "/v1/agents/:slug/personas/generate", { personas: [{ name: "price-shopper", about: "", goal: "get a price", style: "blunt", facts: {}, expects: [], tags: [], behavior: A_PERSONA.behavior }], evals: 1, cost_usd: 0.002 });
+    const root = project(["front-desk"]);
+    const { ctx } = testContext();
+    const saving = personas.generatePersonas(ctx, "front-desk", personas.GenerateInput.parse({ n: 1, save: true }), homeOf(`${root}/agents/front-desk/agent.ts`));
+    await expect(saving).rejects.toThrow("front-desk's personas are still named in its class, and their place is agents/front-desk/test/personas.ts: `pinecall personas pull` writes them there, then take personas out of the class");
+    expect(existsSync(`${root}/agents/front-desk/test/personas.ts`)).toBe(false);
   });
 });
 
 describe("pull", () => {
-  it("writes the agent's own rows as code, named by the caller, and neither Pinecall's nor the class's", async () => {
-    answer("get", "/v1/agents/:slug/personas", { personas: [LIBRARY, A_PERSONA, { ...A_PERSONA, name: "in-a-rush", owner: "class", fixed: true }] });
+  it("starts the personas file with Pinecall's that are on and writes every one of the agent's own, the ones its class still names too", async () => {
+    answer("get", "/v1/agents/:slug/personas", { personas: [LIBRARY, { ...LIBRARY, name: "in-a-hurry", on: true }, A_PERSONA, { ...A_PERSONA, name: "in-a-rush", owner: "class", fixed: true }] });
     const root = project(["front-desk"]);
     const { ctx } = testContext();
     const pulled = await personas.pullPersonas(ctx, "front-desk", homeOf(`${root}/agents/front-desk/agent.ts`));
-    expect(pulled.written).toEqual([{ path: "agents/front-desk/harness.ts", symbol: "apurado" }]);
-    const code = readFileSync(`${root}/agents/front-desk/harness.ts`, "utf8");
+    expect(pulled.written).toEqual([{ path: "agents/front-desk/test/personas.ts", symbol: "apurado" }, { path: "agents/front-desk/test/personas.ts", symbol: "inARush" }]);
+    const code = readFileSync(`${root}/agents/front-desk/test/personas.ts`, "utf8");
+    expect(code).toContain('import { ownPersona } from "@pinecall/agents";\n\nexport const on = ["in-a-hurry"];\n');
     expect(code).toContain(`export const apurado = ownPersona({\n  name: "apurado",\n  goal: ${JSON.stringify(A_PERSONA.goal)},\n  style: ${JSON.stringify(A_PERSONA.style)},`);
     expect(code).toContain('facts: {\n    name: "Luis",\n  },');
+    expect(code).toContain('export const inARush = ownPersona({\n  name: "in-a-rush",');
     expect(code).not.toContain("owner");
-    expect(code).not.toContain("in-a-rush");
+    expect(code).not.toContain("confused-elder");
+  });
+
+  it("into a file that is there writes the rows the gateway keeps and the code does not", async () => {
+    answer("get", "/v1/agents/:slug/personas", { personas: [{ ...LIBRARY, on: true }, A_PERSONA, { ...A_PERSONA, name: "in-a-rush", owner: "class", fixed: true }] });
+    const held = 'import { ownPersona } from "@pinecall/agents";\n\nexport const on = ["wrong-number"];\n\nexport const inARush = ownPersona({ name: "in-a-rush", goal: "g", style: "s" });\n';
+    const root = project(["front-desk"], { "agents/front-desk/test/personas.ts": held });
+    const { ctx } = testContext();
+    const pulled = await personas.pullPersonas(ctx, "front-desk", homeOf(`${root}/agents/front-desk/agent.ts`));
+    expect(pulled.written).toEqual([{ path: "agents/front-desk/test/personas.ts", symbol: "apurado" }]);
+    const code = readFileSync(`${root}/agents/front-desk/test/personas.ts`, "utf8");
+    expect(code.startsWith(held)).toBe(true);
+    expect(code).toContain('export const apurado = ownPersona({\n  name: "apurado",');
   });
 });

@@ -121,26 +121,37 @@ judge is asked for a forced tool call, so a local model must call tools.
 | `hold` | the hold melody: a file beside the class and the wait before it, or silence | `hold = {"file": "hold.mp3", "after_s": 1.5}` · `"off"` |
 | `widget` | how the widget presents the agent | `widget: ClassVar = {"title": …, "tagline": …, "accent": …, "theme": "auto"}` |
 | `judges` | which of Pinecall's judges its calls meet, and its own | `judges = judges(on=["consent", …], own=[OFFERS_NEXT_SLOT])` |
-| `personas` | which of Pinecall's callers its simulations play, and its own | `personas = personas(on=["in-a-hurry", …], own=[HURRIED])` |
+| `personas` | which of Pinecall's callers its simulations play, and its own | not on the class: `agents/<slug>/test/personas.py`, below |
 
-**The judges and the callers are the class's the same way, and they are code.** `judges(on=…,
-own=…)` names which of Pinecall's judges the agent's calls meet (`on`, every other off) and the
-agent's own (`own`), each an `own_judge(name=…, asks=…, answer=…, choices=…, when=…, trigger=…,
-reads=…)`: the question the judge model answers about a finished call, and how and when.
-`personas(on=…, own=…)` is the same for the callers `pinecall simulate` plays, each of its own an
-`own_persona(name=…, goal=…, style=…, about=…, facts=…, expects=…, behavior=…)`, what
-`PUT …/personas/{name}` takes. `pinecall new` writes them in `agents/<slug>/harness.py`, one file
-for both, imported by the class:
+**The judges are the class's the same way, and they are code.** `judges(on=…, own=…)` names
+which of Pinecall's judges the agent's calls meet (`on`, every other off) and the agent's own
+(`own`), each an `own_judge(name=…, asks=…, answer=…, choices=…, when=…, trigger=…, reads=…)`:
+the question the judge model answers about a finished call, and how and when. `pinecall new`
+writes them in `agents/<slug>/harness.py`, imported by the class:
 
 ```python
 # agents/front_desk/harness.py
-from pinecall import own_judge, own_persona
+from pinecall import own_judge
 
 OFFERS_NEXT_SLOT = own_judge(
     name="offers-next-slot",
     asks="Did the agent offer the next free slot before the caller asked twice?",
     reads=["facts"],
 )
+```
+
+**The callers `pinecall simulate` plays are code too, in the agent's test folder.** They test the
+agent and are no part of it, so their place is `agents/<slug>/test/personas.py`, beside the
+goldens, and the class says nothing of them:
+
+```python
+# agents/front_desk/test/personas.py
+"""The callers Front Desk is tested with: `pinecall simulate` phones the agent as each one."""
+
+from pinecall import own_persona
+
+ON = ["in-a-hurry", "wrong-number"]  # Pinecall's callers this agent is tested with
+
 HURRIED = own_persona(
     name="hurried",
     goal="leave a message: the delivery has to come after 4 pm",
@@ -150,11 +161,24 @@ HURRIED = own_persona(
 )
 ```
 
+Every `own_persona(name=…, goal=…, style=…, about=…, facts=…, expects=…, behavior=…)` at the
+file's top level is one of the agent's own, what `PUT …/personas/{name}` takes, whatever its
+variable is called (a `_name` and an imported one too); one inside a list or a function is not
+read. `ON` lists Pinecall's callers that are on, every other off, and none when it is absent.
+Nothing else in the file is read. It is loaded with the class by `pinecall start`, `pinecall
+prompt` and `pinecall.testing.load`, as a module of the agent's own package, so it imports the
+agent's modules as the class does: `from ..harness import …`, or by name. A class you hold from
+your own process with `pinecall.hold` is loaded from no file, and none is read for it.
+
+`personas = personas(on=…, own=…)` on the class still works for an agent with no
+`test/personas.py`: `pinecall start` says once where they moved, and `pinecall personas pull`
+writes them into the file. An agent with both is refused: the file is their place.
+
 A wrong one is refused when the class loads, by a sentence that names it (`offers-next-slot: a
 judge that answers one of several needs at least two choices`), and so are two of one name.
-Declared, the class is the agent's list: the console shows both locked, "set by the class", and
-`pinecall judges add` or `personas add` is refused naming the class; `pinecall judges pull`,
-`personas pull` and `personas generate --save` write code into that file instead. A class that
+Declared, the code is the agent's list: the console shows both locked, and `pinecall judges add`
+or `personas add` is refused saying where they are written; `pinecall judges pull` writes code into
+`harness.py`, and `personas pull` and `personas generate --save` into `test/personas.py`. An agent that
 declares neither leaves both to the console and the CLI, as before. The org's own judges
 (`pinecall judges add --org`) meet every agent's calls either way.
 
@@ -370,4 +394,6 @@ call, and never as a refusal from a gateway:
 | both `@llm(…)` and an `llm` attribute | `ClinicaNorte declares both @llm(…) and a llm attribute; keep one` |
 | an `own_judge` with no `asks`, a bad `answer`, a `choice` with one choice, a `trigger` with no question | `offers: a judge asks a question of a call: write it as asks`, `offers: a judge that answers one of several needs at least two choices`, … |
 | an `own_persona` with no `goal` or `style`, or a `behavior` out of range | `in-a-rush: a persona wants something: write its goal, in the first person`, `in-a-rush: behavior.interrupts: …` |
-| two judges or two personas of one name in `own` | `two judges called offers-next-slot: a name is declared once` |
+| two judges of one name in `own`, or two personas of one name in `test/personas.py` | `two judges called offers-next-slot: a name is declared once` |
+| `ON` in `test/personas.py` that is not a list of names (`ON = "in-a-hurry"`) | `agents/front-desk/test/personas.py: ON names Pinecall's callers that are on, as a list of their names: ON = ["in-a-hurry"]` |
+| `personas = personas(…)` on a class whose folder has a `test/personas.py` | `FrontDesk declares personas in the class and agents/front-desk/test/personas.py holds them too: the file is their place — take personas out of the class` |

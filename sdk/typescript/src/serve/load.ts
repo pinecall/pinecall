@@ -1,13 +1,14 @@
 /** Load a tenant's agent file: register the TypeScript loader, import the class, read its source. */
 
 import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { type Medium } from "../wire/defs.js";
 
 import { Agent, setCall } from "../agent/agent.js";
 import { describe } from "../agent/docstrings.js";
+import { rosterIn, testedWith } from "../agent/harness.js";
 import { CallWorld } from "../call/call.js";
 import { isVoiceApp, type VoiceApp } from "../runtime/app.js";
 import { refuseTheEnvironment } from "../runtime/environment.js";
@@ -16,6 +17,9 @@ import { refuseTheEnvironment } from "../runtime/environment.js";
 export class CannotServe extends Error {
   override readonly name = "CannotServe";
 }
+
+/** The file an agent's test callers live in, beside its goldens: `agents/<name>/test/personas.ts`. */
+const CALLERS = join("test", "personas.ts");
 
 /** A loaded agent class with its file path and source text. */
 export interface Loaded {
@@ -47,9 +51,18 @@ export async function loadAgent(file: string): Promise<Loaded> {
   if (typeof ctor !== "function") throw new CannotServe(`${path} has no default-exported Agent class`);
   const source = readFileSync(path, "utf8");
   describe(ctor, source, path);
+  await callersOf(ctor, path);
   // Refuse environment fields on the instance here, since `prompt` never mounts.
   refuseTheEnvironment(new (ctor as new () => Agent)());
   return { ctor: ctor as new () => Agent, file: path, source };
+}
+
+// The agent's test callers are the ones its test folder holds: read once the class is, so the declaration carries them.
+async function callersOf(ctor: Function, agentFile: string): Promise<void> {
+  const file = join(dirname(agentFile), CALLERS);
+  if (!existsSync(file)) return;
+  const exported = (await import(pathToFileURL(file).href)) as Record<string, unknown>;
+  testedWith(ctor, rosterIn(exported, file), file);
 }
 
 /** Load the file served as `slug`; a class that declares another slug is refused. */

@@ -42,6 +42,19 @@ AGENDA = {"ana": "Ana García"}
 BOOKED = "reservado: "
 '''
 
+PERSONAS = '''"""Quienes llaman a la recepción en sus pruebas."""
+
+from pinecall import own_persona
+
+from ..agenda import AGENDA
+import agenda as by_name
+
+ON = ["in-a-hurry"]
+
+ANA = own_persona(name="ana", goal="pedir hora", style="breve", facts={"su nombre": AGENDA["ana"]})
+_CON_PRISA = own_persona(name="con-prisa", goal=by_name.BOOKED + "hoy", style="corta")
+'''
+
 VIEW = """{% if patient %}Hablas con {{ patient }}.{% else %}Pide el nombre.{% endif %}
 """
 
@@ -54,3 +67,21 @@ def written(root: Path, slug: str = "recepcion") -> Path:
     (folder / "agenda.py").write_text(AGENDA, encoding="utf-8")
     (folder / "views" / f"{slug}.jinja").write_text(VIEW, encoding="utf-8")
     return folder / "agent.py"
+
+
+def with_personas(file: Path, text: str = PERSONAS) -> Path:
+    """Write `test/personas.py` beside the class's file, which is returned."""
+    folder = file.parent / "test"
+    folder.mkdir(exist_ok=True)
+    (folder / "personas.py").write_text(text, encoding="utf-8")
+    return file
+
+
+def with_personas_in_the_class(file: Path) -> Path:
+    """Rewrite the class to declare `personas` as an attribute; its file, returned."""
+    text = file.read_text(encoding="utf-8")
+    text = text.replace("import Agent, Drawing,", "import Agent, Drawing, personas,")
+    opening = '    """Eres la recepción de la clínica."""\n'
+    text = text.replace(opening, opening + '\n    personas = personas(on=["interrupts"])\n')
+    file.write_text(text, encoding="utf-8")
+    return file

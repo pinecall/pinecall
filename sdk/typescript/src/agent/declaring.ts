@@ -69,7 +69,10 @@ export interface AgentDeclaration {
   ttsFallbacks?: Declared["ttsFallbacks"];
   /** The judges its calls meet: a name is one of Pinecall's, an `ownJudge({ … })` its own. */
   judges?: (string | OwnJudge)[];
-  /** The test callers its runs play: a name is one of Pinecall's, an `ownPersona({ … })` its own. */
+  /**
+   * @deprecated The test callers live in `test/personas.ts`, beside the goldens: every `ownPersona` it exports is the
+   * agent's own, and its `on` names Pinecall's. This still plays for a class with no such file.
+   */
   personas?: (string | OwnPersona)[];
   /** The hold melody: a file beside the class and the wait before it (`{ file: "hold.mp3", afterS: 1.5 }`), or `"off"`. */
   hold?: HoldDeclaration | "off";

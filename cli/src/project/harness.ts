@@ -1,4 +1,4 @@
-/** The agent's harness file: its own judges and callers as code, in its language, one more appended by `pull`, `generate --save` and the console. */
+/** The agent's judges and callers as code, in its language: a judge appended to its harness file, a caller to its test folder's personas file. */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
@@ -48,6 +48,9 @@ const BEHAVIOR_DEFAULTS: Record<string, unknown> = { interrupts: 0, pause_s: 0, 
 
 export const NOT_A_NAME = (name: string): string => `${name} is no name for one of the agent's own: lower-case letters and digits joined by hyphens — apurado, price-shopper`;
 export const DECLARED_ALREADY = (path: string, symbol: string): string => `${path} declares ${symbol} already: nothing is written over code; write it by hand, or under another name`;
+/** Said of an agent whose callers are code and whose personas file is not there: its class still names them. */
+export const NAMED_IN_THE_CLASS = (agent: string, path: string): string =>
+  `${agent}'s personas are still named in its class, and their place is ${path}: \`pinecall personas pull\` writes them there, then take personas out of the class`;
 
 /** A judge of the agent's own appended to the harness file as code; the name the class imports it by. */
 export function appendJudge(home: AgentHome, judge: JudgeWritten): Appended {
@@ -60,8 +63,24 @@ export function appendJudge(home: AgentHome, judge: JudgeWritten): Appended {
   return append(home, "judge", judge.name, given);
 }
 
-/** A caller of the agent's own appended to the harness file as code; the name the class imports it by. */
+/**
+ * The personas file written for an agent that has none, naming the ones of Pinecall's it plays: from then on the
+ * file is the agent's roster. One that is there is left as it is; whether it was written is the answer.
+ */
+export function startPersonas(home: AgentHome, on: string[]): boolean {
+  if (existsSync(home.personas)) return false;
+  const language = languageOf(home.file);
+  mkdirSync(dirname(home.personas), { recursive: true });
+  writeFileSync(home.personas, starting(language, titleOf(home.name), on), "utf8");
+  return true;
+}
+
+/**
+ * A caller of the agent's own appended to its personas file as code, where it plays from the next start; the name
+ * the code declares it under. An agent with no such file names its callers in the class, and is told how to move them.
+ */
 export function appendPersona(home: AgentHome, persona: PersonaWritten): Appended {
+  if (!existsSync(home.personas)) throw new UsageError(NAMED_IN_THE_CLASS(home.name, relative(home.root, home.personas)));
   const given: Record<string, unknown> = { name: persona.name, goal: persona.goal, style: persona.style };
   if (persona.about !== undefined && persona.about !== "") given["about"] = persona.about;
   if (persona.facts !== undefined && Object.keys(persona.facts).length > 0) given["facts"] = persona.facts;
@@ -78,12 +97,13 @@ function append(home: AgentHome, kind: "judge" | "persona", name: string, given:
   if (!A_NAME.test(name)) throw new UsageError(NOT_A_NAME(name));
   const language = languageOf(home.file);
   const symbol = symbolOf(language, name);
-  const path = relative(home.root, home.harness);
-  const before = existsSync(home.harness) ? readFileSync(home.harness, "utf8") : templateOf(language, home.name);
+  const file = kind === "judge" ? home.harness : home.personas;
+  const path = relative(home.root, file);
+  const before = existsSync(file) ? readFileSync(file, "utf8") : templateOf(language, home.name);
   if (new RegExp(`(^|[^A-Za-z0-9_])${symbol}\\s*=`, "m").test(before)) throw new UsageError(DECLARED_ALREADY(path, symbol));
-  mkdirSync(dirname(home.harness), { recursive: true });
+  mkdirSync(dirname(file), { recursive: true });
   const text = importing(language, before, language === "typescript" ? (kind === "judge" ? "ownJudge" : "ownPersona") : kind === "judge" ? "own_judge" : "own_persona");
-  writeFileSync(home.harness, `${text.replace(/\n*$/, "\n")}\n${declaration(language, kind, symbol, given)}\n`, "utf8");
+  writeFileSync(file, `${text.replace(/\n*$/, "\n")}\n${declaration(language, kind, symbol, given)}\n`, "utf8");
   return { path, symbol };
 }
 
@@ -92,13 +112,30 @@ function templateOf(language: Language, slug: string): string {
   return readFileSync(join(TEMPLATE_ROOT, language, "agent", HARNESS_FILES[language]), "utf8").replaceAll("{{Title}}", titleOf(slug));
 }
 
-// A file that imports the package but not this constructor gets it on that line; Ruby's `Pinecall.` needs no import.
+// A personas file as it starts: what it is, the constructor its callers are written with, and Pinecall's it plays.
+function starting(language: Language, title: string, on: string[]): string {
+  const names = literal(language, on, "");
+  if (language === "typescript") {
+    return `// The callers ${title} is tested with: every ownPersona this file exports is one of the agent's own, and \`on\` names\n// the ones of Pinecall's it plays. \`pinecall simulate\` phones the agent as each one.\n\nimport { ownPersona } from "${FRAMEWORK}";\n\nexport const on = ${names};\n`;
+  }
+  if (language === "python") {
+    return `"""The callers ${title} is tested with: every own_persona this file defines is one of the agent's own, and ON names Pinecall's."""\n\nfrom pinecall import own_persona\n\nON = ${names}\n`;
+  }
+  return `# frozen_string_literal: true\n\n# The callers ${title} is tested with: every Pinecall.own_persona this file defines is one of the agent's own, and ON\n# names the ones of Pinecall's it plays.\n\nrequire "pinecall"\n\nON = ${names}.freeze\n`;
+}
+
+// A file that imports the package but not this constructor gets it on that line, and one that imports nothing gets the
+// import under the lines it opens by saying what it is; Ruby's `Pinecall.` needs no import.
 function importing(language: Language, text: string, ctor: string): string {
   if (language === "ruby") return text;
   const line = language === "typescript" ? new RegExp(`import \\{([^}]*)\\} from "${FRAMEWORK}";`) : /^from pinecall import (.+)$/m;
   const found = line.exec(text);
   const opening = language === "typescript" ? `import { ${ctor} } from "${FRAMEWORK}";` : `from pinecall import ${ctor}`;
-  if (found === null) return `${opening}\n\n${text}`;
+  if (found === null) {
+    const ends = text.indexOf("\n\n");
+    const opens = /^(\/\/|\/\*|#|""")/.test(text) && ends !== -1;
+    return opens ? `${text.slice(0, ends)}\n\n${opening}\n\n${text.slice(ends + 2)}` : `${opening}\n\n${text}`;
+  }
   const names = found[1]!.split(",").map((name) => name.trim()).filter((name) => name !== "");
   if (names.includes(ctor)) return text;
   const listed = [...names, ctor].sort().join(", ");

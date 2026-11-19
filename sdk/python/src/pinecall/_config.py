@@ -50,7 +50,10 @@ DECORATED: Mapping[str, str] = {
     "judge": '@judge("<vendor>/<model>")',
     "knowledge": '@knowledge(path="…", text="…")',
     "judges": "judges(on=[…], own=[…]) as a class attribute, `judges = judges(on=[…])`",
-    "personas": "personas(on=[…], own=[…]) as a class attribute, `personas = personas(on=[…])`",
+    "personas": (
+        "own_persona(…) values and ON in test/personas.py beside the goldens; a class attribute,"
+        " `personas = personas(on=[…])`, still works"
+    ),
 }
 
 # Where `@knowledge` keeps what it declares, beside the class's other attributes.

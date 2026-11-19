@@ -137,35 +137,52 @@ are refused too. A class that leaves the stage out runs it on the org's default 
 | `hold` | the hold melody: a file beside the class and the wait before it, or silence | `hold: { file: "hold.mp3", afterS: 1.5 }` · `"off"` |
 | `widget` | how the widget presents the agent | `widget: { title, tagline, greeting, accent, autostart, theme }` |
 | `judges` | which of Pinecall's judges its calls meet, and its own | `judges: ["consent", …, offersNextSlot]` |
-| `personas` | which of Pinecall's callers its simulations play, and its own | `personas: ["in-a-hurry", …, hurried]` |
 | `takes` | what it takes when a teammate passes it a call, in words the model reads | `takes: "a question about a charge"` |
 | `tasks` | what a tool may stop to ask the caller for | `tasks: [GetEmail]` |
 | `scenes` | the scenes of the caller's screen, each with what it shows | `scenes: { agenda: "the open times you last read" }` |
 | `events` | the outside events the agent takes, and from whom: `app` is your backend, `participant` a browser in the call | `events: { "slot.released": { from: ["app"] } }` |
 
-**The judges and the callers are the class's the same way, and they are code.** `judges` is a list:
-a name is one of Pinecall's judges the agent's calls meet (every other off), an object is one of
-the agent's own, an `ownJudge({ name, asks, answer, choices, when, trigger, reads })`: the question
-the judge model answers about a finished call, and how and when. `personas` is the
-same for the callers `pinecall simulate` plays, each of its own an `ownPersona({ name, goal, style,
-about, facts, expects, behavior, … })`, what `PUT …/personas/{name}` takes. `pinecall new` writes
-them in `agents/<slug>/harness.ts`, one file for both, imported by the class:
+**The judges are the class's the same way, and they are code.** `judges` is a list: a name is one
+of Pinecall's judges the agent's calls meet (every other off), an object is one of the agent's own,
+an `ownJudge({ name, asks, answer, choices, when, trigger, reads })`: the question the judge model
+answers about a finished call, and how and when. `pinecall new` writes the agent's own in
+`agents/<slug>/harness.ts`, imported by the class:
 
 ```ts
 // agents/front-desk/harness.ts
-import { ownJudge, ownPersona } from "@pinecall/agents";
+import { ownJudge } from "@pinecall/agents";
 
 export const offersNextSlot = ownJudge({ name: "offers-next-slot", asks: "Did the agent offer the next free slot before the caller asked twice?", reads: ["facts"] });
+```
+
+**The callers the agent is tested with are code too, and they live with its tests**, in
+`agents/<slug>/test/personas.ts`, beside the goldens. The class does not name them and does not
+import the file: the serve entry reads it when it loads the class. Every `ownPersona({ name, goal,
+style, about, facts, expects, behavior, … })` the file exports is one of the agent's own, what
+`PUT …/personas/{name}` takes, and its `on` names the ones of Pinecall's that `pinecall simulate`
+plays (every other off):
+
+```ts
+// agents/front-desk/test/personas.ts
+import { ownPersona } from "@pinecall/agents";
+
+export const on = ["in-a-hurry", "wrong-number"];
+
 export const hurried = ownPersona({ name: "hurried", goal: "leave a message: the delivery has to come after 4 pm", style: "short sentences, interrupts", expects: ["The agent should write the message down."], behavior: { interrupts: 0.3, pauseS: 1 } });
 ```
 
 A wrong one is refused when the class loads, by a sentence that names it (`offers-next-slot: a
 judge that answers one of several needs at least two choices`), and so are two of one name.
-Declared, the class is the agent's list: the console shows both locked, "set by the class", and
-`pinecall judges add` or `personas add` is refused naming the class; `pinecall judges pull`,
-`personas pull` and `personas generate --save` write code into that file instead. A class that
-declares neither leaves both to the console and the CLI, as before. The org's own judges
+Declared, the code is the agent's list: the console shows both locked, and `pinecall judges add`
+or `personas add` is refused saying where they are written; `pinecall judges pull` writes code into
+`harness.ts`, and `personas pull` and `personas generate --save` into `test/personas.ts`, where a
+caller plays from the moment it is written. A class that declares no judges, and an agent with no
+`test/personas.ts`, leave each to the console and the CLI, as before. The org's own judges
 (`pinecall judges add --org`) meet every agent's calls either way.
+
+`personas: [...]` in `@agent({ … })` was the callers' place before, and it still plays for an agent
+with no `test/personas.ts`: `pinecall start` says once where they moved. The two together are
+refused (`FrontDesk declares personas in @agent({ … }) and …/test/personas.ts holds them too`).
 
 **Neither a fact the agent remembers nor a chunk of a base ever reaches the prompt.** Both arrive
 as a tool result, in the history, where a model reads them as information rather than as an

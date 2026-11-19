@@ -42,14 +42,14 @@ export function promoteHandlers(here: Here): Screen {
   };
 }
 
-/** A persona the console generated and kept, for a class that owns its roster: appended as code to the agent's harness file, for the class to import into `own`. */
+/** A persona the console generated and kept, for an agent whose code owns its roster: appended as code to its personas file, where it plays from the next start. */
 export function personaHandlers(here: Here): Screen {
   return {
     verbs: {
       "personas.write": async (asked) => {
         const persona = PersonaWrite.parse(asked) as PersonaWritten;
         const { path, symbol } = appendPersona(here.home, persona);
-        here.ctx.io.print(`${path}  ${symbol} written from the console: add it to the class's personas`);
+        here.ctx.io.print(`${path}  ${symbol} written from the console`);
         return { path, symbol, name: persona.name };
       },
     },

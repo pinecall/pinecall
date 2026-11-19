@@ -2,8 +2,9 @@
 
 module Pinecall
   class Agent
-    # The judges and the personas a class owns: `Pinecall.own_judge`, `Pinecall.own_persona`, each refused by
-    # sentence when wrong, and what `judges on:, own:` and `personas on:, own:` declare, as the declaration sends it.
+    # The judges a class owns and the callers its test folder holds: `Pinecall.own_judge`, `Pinecall.own_persona`,
+    # each refused by sentence when wrong; what `judges on:, own:` declares and what `test/personas.rb` holds, as
+    # the declaration sends it.
     module Harness
       # The name a judge or a persona is called by: lower-case words joined by hyphens.
       A_NAME = /\A[a-z0-9]+(?:-[a-z0-9]+)*\z/
@@ -20,7 +21,18 @@ module Pinecall
       NO_TRIGGER = "a judge that runs on a trigger needs the trigger's question"
       NO_GOAL = "a persona wants something: write its goal, in the first person"
       NO_STYLE = "a persona talks some way: write its style"
-      NOT_DECLARED_SO = "judges and personas are declared with judges on: [...], own: [...] and personas on: [...], own: [...]"
+      NOT_DECLARED_SO = "personas are held in test/personas.rb beside the goldens, ON for Pinecall's and each Pinecall.own_persona " \
+                        "the agent's own, and judges are declared in the class with judges on: [...], own: [...]; " \
+                        "a class that still names its personas writes personas on: [...], own: [...]"
+      NOT_NAMES = "ON is the names of Pinecall's callers the agent is tested with, an array of strings"
+      # What a served agent is told once when its class still names its callers: they play, and their place is the file.
+      CALLERS_MOVED = "its personas are declared in the class, which still works: their place is now test/personas.rb beside the " \
+                      "goldens — every Pinecall.own_persona it defines is the agent's own, and ON names Pinecall's"
+
+      # What `own_persona` makes: a persona as the wire carries it, told by its class from whatever else a
+      # `test/personas.rb` defines.
+      class OwnPersona < Hash
+      end
 
       module_function
 
@@ -55,18 +67,53 @@ module Pinecall
         rescue Wire::WireError => e
           refuse(name, e.message)
         end
-        persona
+        OwnPersona[persona]
       end
 
-      # What `judges` and `personas` declare, as the declaration sends it; nothing for a class that declares neither.
+      # The judges a class declares and the callers it is tested with, as the declaration sends them; nothing for a
+      # class with neither.
       def declared(klass)
         found = {}
         switches = klass.environment[:judges]
         found[:judges] = roster("judge", switches) { |one| own_judge(**judge_input_of(one)) } if switches
-        switches = klass.environment[:personas]
-        found[:personas] = roster("persona", switches) { |one| own_persona(**one) } if switches
+        callers = personas_of(klass)
+        found[:personas] = callers unless callers.nil?
         found
       end
+
+      # The roster its `test/personas.rb` holds, or the class's own for one that still names its callers and has no file.
+      def personas_of(klass)
+        return klass.tested_with unless klass.tested_with.nil?
+
+        switches = klass.environment[:personas]
+        roster("persona", switches) { |one| own_persona(**one) } if switches
+      end
+
+      # The roster a `test/personas.rb` holds, read off the module it was loaded in: every `Pinecall.own_persona`
+      # among its constants is the agent's own, in the order written, and `ON` names Pinecall's. Any other
+      # constant is not a caller.
+      def roster_in(held, file)
+        on = held.const_defined?(:ON, false) ? held.const_get(:ON, false) : []
+        raise DeclarationRefused, "#{file}: #{NOT_NAMES}" unless on.is_a?(Array) && on.all?(String)
+
+        # `constants` answers in no order of its own.
+        written = held.constants(false).sort_by { |name| held.const_source_location(name, false) }
+        own = written.map { |name| held.const_get(name, false) }.grep(OwnPersona)
+        roster("persona", { on:, own: }) { |one| own_persona(**one) }
+      end
+
+      # The class is tested with the roster its `test/personas.rb` holds; one that names its callers too is refused.
+      def tested_with(klass, roster, file)
+        if names_its_callers?(klass)
+          raise DeclarationRefused, "#{klass} declares personas in the class and #{file} holds them too: " \
+                                    "the file is their place — take personas out of the class"
+        end
+
+        klass.tested_with(roster)
+      end
+
+      # Whether the class names its callers itself, the old place for them.
+      def names_its_callers?(klass) = !klass.environment[:personas].nil?
 
       # `on` as given, each of `own` checked once more and two of one name refused.
       def roster(what, switches)
@@ -105,7 +152,7 @@ module Pinecall
     # A judge of the agent's own, for `judges own: [...]`: `Pinecall.own_judge(name: "offers-next-slot", asks: "…")`.
     def own_judge(**) = Agent::Harness.own_judge(**)
 
-    # A caller of the agent's own, for `personas own: [...]`: `Pinecall.own_persona(name:, goal:, style:, …)`.
+    # A caller of the agent's own, a constant of its `test/personas.rb`: `HURRIED = Pinecall.own_persona(name:, goal:, style:, …)`.
     def own_persona(**) = Agent::Harness.own_persona(**)
   end
 end
