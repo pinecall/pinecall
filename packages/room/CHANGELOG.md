@@ -4,7 +4,7 @@ All notable changes to `@pinecall/room`. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
-## Unreleased
+## 0.11.50 — an agent answers email, each thread its own conversation, its replies set in the org's layout (2026-11-19)
 
 - **The wire knows the channel `email`**: a call's `channel` may say it.
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.50 — an agent answers email, each thread its own conversation, its replies set in the org's layout (2026-11-19)
 
 - **An agent answers email.** An org brings a mailbox of its own as an account of kind `email` (`PUT /v1/carrier`:
   IMAP to read it, SMTP to answer from it, each with its login, SMTP's possibly a relay's such as Amazon SES), and
@@ -13,6 +13,13 @@
   links, everything else escaped, and set in the org's HTML layout (`/v1/org/email/layout`: its own, or a plain one,
   with a preview that sends nothing). The framework's channel rule `email` tells the model to write a whole email in
   one message. `docs/protocol/email.md`.
+- **A new written conversation carries on the contact's newest one that is over**, and an email thread its own
+  call: two email threads at once stay apart (one carried the other's turns as its own past), and an email
+  answered after a restart, or after the thread went quiet, goes on its own thread's call, found among the
+  contact's newest email calls by the thread its `call.started` names (`live/service/resuming.py`).
+- **The console reads an email call as a mailbox does**: the thread's subject, a card an email, the agent's
+  set in the org's layout as the contact received it; Messages lists each email thread on a row of its own,
+  by its subject.
 
 ## 0.11.49 — a flow writes to somebody by SMS, and an open written conversation reads as open (2026-11-18)
 

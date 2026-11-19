@@ -4,7 +4,7 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
-## Unreleased
+## [0.11.50] — an agent answers email, each thread its own conversation, its replies set in the org's layout (2026-11-19)
 
 - **The channel `email`**: a call's `channel` may say it, it is written (`medium: text`), and the built-in rules tell
   the model to write a whole email in one message; `channelRules` (`channel_rules`) takes `email` for the agent's own.
