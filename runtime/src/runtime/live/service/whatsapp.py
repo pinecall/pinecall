@@ -6,14 +6,12 @@ import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from functools import partial
-from typing import cast
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from runtime.actor import Scope
 from runtime.agents.declaration import STOP_MESSAGES
-from runtime.calls import service as calls
 from runtime.calls.context import CallContext, Contact, Route, new_call_id
 from runtime.enums import Direction
 from runtime.exceptions import PinecallError, QuotaExceeded, UpstreamError
@@ -22,10 +20,11 @@ from runtime.kit.time import today_in
 from runtime.live.holders import Registration
 from runtime.live.parts import LiveParts
 from runtime.live.peers import THREADS, ThreadKey
-from runtime.live.service import written
+from runtime.live.service import resuming, written
 from runtime.live.service.handed import hand, hand_receipt, message_of, receipt_of
 from runtime.live.service.opt_outs import Stop, refuses_messages, take_off, take_word
 from runtime.live.service.replies import Reaches, way_to
+from runtime.live.service.resuming import OVER, find_earlier
 from runtime.live.service.waiting import Waiting, keep_waiting, list_waiting, mark_taken
 from runtime.scoping import box_task
 from runtime.session import service as session
@@ -38,9 +37,6 @@ from runtime.wire.signal import HandedMessage
 
 logger = logging.getLogger(__name__)
 
-# What an email call's metadata names its thread by.
-EMAIL_THREAD = "email_thread"
-
 # The error a reply the channel refused is said with: `whatsapp_not_sent`, `sms_not_sent`, `email_not_sent`.
 NOT_SENT = "{channel}_not_sent"
 
@@ -50,11 +46,6 @@ IDLE_S = 2 * 60 * 60
 # Meta lets a business write freely only this long after the contact's last message
 # (developers.facebook.com/docs/whatsapp/cloud-api/guides/send-messages).
 WINDOW_S = 24 * 60 * 60
-
-
-# However the call ends, the conversation is over with it: a written call a supervisor ends
-# only says so, and its session is closed here.
-OVER = {"call.ended", "supervisor.ended"}
 
 
 # What a conversation's own task takes off its queue: a message, the call over, the contact stopping.
@@ -173,7 +164,8 @@ class Threads:
         if here is not None:
             return here.session.call.context.call
         async with self._live.sessions.begin() as session_:
-            return await self._find_resumable(session_, scope, agent, contact)
+            clock = self._live.store.clock()
+            return (await find_earlier(session_, scope, agent, contact, now=clock, idle_s=self.idle_s)).going
 
     async def open_to(self, registration: Registration, route: RouteRow, contact: whatsapp.Inbound, first: str) -> str:
         """The call the agent writes on: the conversation going, here or on another gateway, or a new one, `first`."""
@@ -332,13 +324,11 @@ class Threads:
                 )
                 return None
             try:
-                taken = await self._take_up(session_, registration, inbound)
-                # A new conversation carries on what this contact and the agent last said, on any channel,
-                # once it is over: a thread that runs beside it (an email on another subject) is its own.
-                earlier = await calls.find_newest_call_with(
-                    session_, registration.scope, registration.slug, inbound.caller, ended=True
-                )
-                context = self._context(registration, route, inbound, earlier)
+                scope, clock = registration.scope, live.store.clock()
+                earlier = await find_earlier(session_, scope, registration.slug, inbound, now=clock, idle_s=self.idle_s)
+                going = earlier.going
+                taken = None if going is None else await written.resume_written(session_, live, registration, going)
+                context = self._context(registration, route, inbound, earlier.carried)
                 if first is not None:
                     context = dataclasses.replace(context, call=first, direction=Direction.outbound)
                 running = taken or await written.open_written(session_, live, registration, context)
@@ -371,23 +361,6 @@ class Threads:
             await self._read(route, inbound, handed=True)
 
     # A conversation this process never saw is taken up from its log while it has idle time left.
-    async def _take_up(
-        self, session_: AsyncSession, registration: Registration, inbound: whatsapp.Inbound
-    ) -> session.Session | None:
-        going = await self._find_resumable(session_, registration.scope, registration.slug, inbound)
-        return None if going is None else await written.resume_written(session_, self._live, registration, going)
-
-    async def _find_resumable(
-        self, session_: AsyncSession, scope: Scope, agent: str, inbound: whatsapp.Inbound
-    ) -> str | None:
-        newest = await calls.find_newest_call_with(session_, scope, agent, inbound.caller, inbound.channel)
-        entries = [] if newest is None else await calls.list_entries(session_, newest)
-        over = any(entry.type in OVER for entry in entries)
-        if not entries or over or self._live.store.clock() - entries[-1].ts > self.idle_s:
-            return None
-        # One contact writes on several email threads: only the call of this one is taken up.
-        return newest if not inbound.channel.is_by_email or _thread_of(entries[0]) == inbound.thread else None
-
     def _context(
         self, registration: Registration, route: RouteRow, inbound: whatsapp.Inbound, earlier: str | None
     ) -> CallContext:
@@ -396,7 +369,7 @@ class Threads:
         )
         by_email = inbound.channel.is_by_email
         # An email's call says its thread and subject, which the agent reads and a restart takes it up by.
-        thread = {EMAIL_THREAD: inbound.thread, "subject": inbound.subject or ""} if by_email else {}
+        thread = {resuming.EMAIL_THREAD: inbound.thread, "subject": inbound.subject or ""} if by_email else {}
         return CallContext(
             call=new_call_id(),
             channel=inbound.channel,
@@ -457,12 +430,6 @@ async def take_up(live: LiveParts, thread: OpenThread, heard: whatsapp.Inbound) 
     except (UpstreamError, httpx.HTTPError):
         logger.warning("%s: a message to %s was not marked read", heard.channel.value, heard.number, exc_info=True)
     return None if not text else await written.hear(live, running, text)
-
-
-# The email thread a call was opened on, as its `call.started` says it.
-def _thread_of(started: Entry) -> object:
-    opened = started.data.get("metadata") if started.type == "call.started" else None
-    return cast("dict[str, object]", opened).get(EMAIL_THREAD) if isinstance(opened, dict) else None
 
 
 def _thread_key(scope: Scope, inbound: whatsapp.Inbound | whatsapp.Receipt) -> ThreadKey:
