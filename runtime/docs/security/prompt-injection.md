@@ -52,7 +52,12 @@ distrusts, and say in the tool's own description where its output comes from.
   second time. Until 2026-11-06 it went as a trailing assistant message, the agent's own words: a
   vendor reads that as a prefill, and a model that takes none refused the whole request (Claude
   Haiku 5.5, 400 "does not support assistant message prefill"), so every call of that model that
-  spoke over a tool ended in an error.
+  spoke over a tool ended in an error. A line that has played by the time the tool answers is in the
+  history already, after the call it was said over, and a formatter sends it after the tool's result:
+  the same prefill. The request tells it as the same note and the history keeps it where it was
+  said; until 2026-11-20 it went as it was, and Anthropic refused the request for the space the line
+  ends with (400 "final assistant content cannot end with trailing whitespace") whenever no lookup
+  of the turn happened to follow it.
 - **The knowledge text is the operator's**, set in the org's settings by a person with `pipeline` or
   `words`, and stays in the static region.
 - **Memory is admitted when it is written.** A fact is extracted at hang-up by one model call,

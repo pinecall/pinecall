@@ -7,6 +7,7 @@ from pathlib import Path
 from livekit.agents import (
     AgentStateChangedEvent,
     SpeechCreatedEvent,
+    llm,
     stt,
 )
 from livekit.agents.utils import http_context
@@ -22,6 +23,7 @@ from runtime.session.agent import LLM_TIMEOUT, MODEL_LATE
 from runtime.session.call import Call, ToolUse
 from runtime.session.commands import CallCommand, apply
 from runtime.session.hold import HoldMusic
+from runtime.session.prompt import ALREADY_SAID
 from runtime.session.session import Place, Session
 from runtime.session.taking_the_floor import FloorModel
 from runtime.session.text import text_session
@@ -229,8 +231,10 @@ async def test_a_confirm_tool_reads_back_what_was_done_before_the_model_answers(
     await session.end("caller_hung_up", "caller")
     agent = [entry.data["text"] for entry in await store.whole_of(call) if entry.type == "turn.agent"]
     assert agent[0] == "Reservado para el lunes, mesa 4 {{result.missing}}."
-    history = [getattr(item, "text_content", "") for item in model_of(session).requests[1].items]
-    assert agent[0] in history
+    # Told as said, after the tool's result: as the agent's own trailing words it would be a prefill.
+    last = model_of(session).requests[1].items[-1]
+    assert isinstance(last, llm.ChatMessage) and last.role == "system"
+    assert last.text_content == ALREADY_SAID.format(line=agent[0])
 
 
 @needs_the_database

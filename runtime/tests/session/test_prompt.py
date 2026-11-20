@@ -183,6 +183,35 @@ def test_a_line_the_agent_is_still_saying_ends_the_request_as_a_note_never_as_a_
     assert not any(isinstance(item, llm.ChatMessage) and item.role == "assistant" for item in params[-2:])
 
 
+def _over_a_tool(said: str) -> llm.ChatContext:
+    history = _history()
+    history.add_message(role="assistant", content="Let me put you through now. ", id="reply")
+    history.items.append(llm.FunctionCall(id="reply/fnc_0", call_id="t1", name="transfer", arguments="{}"))
+    history.add_message(role="assistant", content=said)
+    history.items.append(llm.FunctionCallOutput(call_id="t1", name="transfer", output="it failed", is_error=False))
+    return history
+
+
+@pytest.mark.parametrize("format", ["anthropic", "openai", "google"])
+def test_an_announcement_that_has_played_is_told_as_a_note_and_never_ends_the_request(format: str) -> None:
+    """Anthropic refused the request whole for the space such a line ends with, and the call ended (2026-11-20)."""
+    history = _over_a_tool("One moment, I am putting you through. ")
+    sent = request(history, _written(view="Turnos libres"))
+    last = sent.items[-1]
+    assert isinstance(last, llm.ChatMessage) and last.role == "system"
+    assert last.text_content == ALREADY_SAID.format(line="One moment, I am putting you through.")
+    assert [item.type for item in sent.items][-3:] == ["function_call", "function_call_output", "message"]
+    messages, _ = sent.to_provider_format(format)
+    assert messages[-1]["role"] not in ("assistant", "model")
+    assert len(history.items) == 6
+
+
+def test_a_line_said_before_the_callers_words_stays_where_it_was_said() -> None:
+    history = _over_a_tool("One moment. ")
+    history.add_message(role="user", content="gracias")
+    assert [item.id for item in request(history, _written()).items] == [item.id for item in history.items]
+
+
 def test_the_tools_the_app_closed_are_named_after_the_view_in_this_request_alone() -> None:
     """A model holds every tool for the whole call: not told, the front desk passed the call to itself (2026-11-16)."""
     history = _history()

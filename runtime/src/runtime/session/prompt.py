@@ -89,7 +89,8 @@ class Request(llm.ChatContext):
 # A line the agent is still saying (a tool's announcement, playing while the tool ran) reaches the history only
 # once it has played; the reply is asked for before that. Told as a note, the model goes on from it instead of
 # saying it again. Never as a trailing assistant message: that is a prefill, and a model that takes none refuses
-# the whole request (Claude Haiku 5.5, 400 "does not support assistant message prefill", 2026-11-06).
+# the whole request (Claude Haiku 5.5, 400 "does not support assistant message prefill", 2026-11-06). One that
+# has played by then is told the same way (`_lift_lines_over_the_tools`).
 ALREADY_SAID = (
     "You have already said this to the caller, and they heard it: {line} Go on from there, and never say it again."
 )
@@ -139,7 +140,8 @@ def request(
     has_tools: bool = True,
 ) -> Request:
     """One request: the history and its lookups, the view and the tools closed now after the caller, what is said."""
-    items = _ahead_of_the_caller(history.items, lookups)
+    kept, played = _lift_lines_over_the_tools(history.items)
+    items = _ahead_of_the_caller(kept, lookups)
     dynamic = [llm.ChatMessage(role="system", content=[text]) for text in blocks.of("dynamic")]
     if closed:
         dynamic.append(llm.ChatMessage(role="system", content=[CLOSED_NOW.format(names=", ".join(closed))]))
@@ -147,7 +149,7 @@ def request(
         items, clock = _clock_in_words(items)
         # Ahead of the view, which stays the last thing the model reads.
         dynamic = [*clock, llm.ChatMessage(role="system", content=[NO_TOOLS]), *dynamic]
-    said = [llm.ChatMessage(role="system", content=[ALREADY_SAID.format(line=line)]) for line in saying]
+    said = [llm.ChatMessage(role="system", content=[ALREADY_SAID.format(line=line)]) for line in (*played, *saying)]
     return Request([*_after_the_caller(items, dynamic), *said], blocks.of("static"))
 
 
@@ -212,3 +214,25 @@ def _after_the_caller(items: Sequence[llm.ChatItem], dynamic: Sequence[llm.ChatI
     if not said:
         return [*items, *dynamic]
     return [*items[: said[-1] + 1], *dynamic, *items[said[-1] + 1 :]]
+
+
+# An announcement that has played by the time its tool answers is in the history livekit hands in (it
+# merges what was said while the tool ran), after the call it was said over. A formatter sends a call
+# and its result as one exchange and the line after them: the request ended on the agent's own words,
+# the prefill `ALREADY_SAID` is there to avoid, and Anthropic refused it whole for the space the line
+# ends with (400 "final assistant content cannot end with trailing whitespace", a call ended in an
+# error, 2026-11-20). Taken out of this request alone; the history keeps the line where it was said.
+def _lift_lines_over_the_tools(items: Sequence[llm.ChatItem]) -> tuple[list[llm.ChatItem], list[str]]:
+    """The items without the agent's lines that follow this step's last tool call, and those lines."""
+    start = len(items)
+    while start and (isinstance(items[start - 1], llm.FunctionCallOutput) or _is_the_agents(items[start - 1])):
+        start -= 1
+    if not start or not isinstance(items[start - 1], llm.FunctionCall):
+        return list(items), []
+    head, tail = items[:start], items[start:]
+    lines = [(item.text_content or "").strip() for item in tail if isinstance(item, llm.ChatMessage)]
+    return [*head, *(item for item in tail if not _is_the_agents(item))], [line for line in lines if line]
+
+
+def _is_the_agents(item: llm.ChatItem) -> bool:
+    return isinstance(item, llm.ChatMessage) and item.role == "assistant"

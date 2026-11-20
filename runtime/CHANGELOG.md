@@ -7,6 +7,11 @@
   the REFER to the number's `tel:` URI; the app still writes the number in E.164 form and `call.transferred` still
   says it that way. A Twilio trunk takes a REFER once **Call Transfer (SIP REFER)** and **Enable PSTN Transfer** are
   on in its settings.
+- **A tool's announcement that has played no longer ends the request.** A line a tool said while it ran, played to
+  the end before the tool answered, reached the model as the request's last turn, in the agent's own voice: Anthropic
+  refused it (`final assistant content cannot end with trailing whitespace`) and the call ended in an error, unless a
+  lookup of the turn happened to follow it. The model is now told the line was said, as it already was for a line
+  still playing, and answers the tool's result.
 
 ## 0.11.52 — the callers an agent is tested with live in its test folder, beside its goldens; one Calls page lists every conversation (2026-11-19)
 

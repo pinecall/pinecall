@@ -155,7 +155,8 @@ class CallAgent(Agent):
         self, chat_ctx: llm.ChatContext, tools: list[llm.Tool], model_settings: ModelSettings
     ) -> Thought:
         """The model run on the history, this turn's lookups, and the dynamic blocks."""
-        # What is still playing is not in the history yet: it is sent as said, once; played, livekit keeps it.
+        # What is still playing is not in the history yet: it is sent as said, once; played, livekit keeps it
+        # and the request tells it as said from there (`prompt.request`).
         self.saying = [(speech, line) for speech, line in self.saying if not speech.chat_items]
         spliced = self.lookups.items
         # The platform ran these calls, not the model: a model that checks who wrote a call takes them signed.
