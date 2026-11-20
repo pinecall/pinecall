@@ -118,7 +118,7 @@ export const supervise = tool({
     action: z.enum(["watch", "whisper", "say", "takeover", "release", "transfer", "end"]).describe("watch reads what was said since `after`, waiting up to wait_s for more; whisper tells the agent something the caller never hears; say makes the agent say `text` verbatim; takeover silences the agent and puts a person on the line; release gives the line back; transfer sends the caller to `to`; end hangs up"),
     call: z.string().describe("the live call's id: `calls` lists the agent's newest, a live one marked live"),
     text: z.string().optional().describe("`whisper` and `say`: the words"),
-    to: z.string().optional().describe("`transfer`: the number in +E.164, or the SIP address, the caller is sent to"),
+    to: z.string().optional().describe("`transfer`: the number in +E.164 the caller is sent to"),
     mode: z.enum(["cold", "warm"]).optional().describe("`transfer`: cold sends the caller at once; warm lets the agent introduce them first"),
     reason: z.string().optional().describe("`end`: why, kept in the call's log"),
     after: z.number().int().min(0).optional().describe("`watch`: the `next` the answer before ended at; the call's beginning when left out"),
@@ -141,7 +141,7 @@ function verbOf(args: { action: string; text?: string | undefined; to?: string |
       if (args.text === undefined || args.text.trim() === "") throw new ToolRefused(`${args.action} takes the words: text`);
       return { verb: args.action, text: args.text.trim() };
     case "transfer":
-      if (args.to === undefined || args.to.trim() === "") throw new ToolRefused("transfer takes where the caller goes: to, a number in +E.164 or a SIP address");
+      if (args.to === undefined || args.to.trim() === "") throw new ToolRefused("transfer takes where the caller goes: to, a number in +E.164");
       return { verb: "transfer", to: args.to.trim(), ...(args.mode === undefined ? {} : { mode: args.mode }) };
     case "end":
       return { verb: "end", ...(args.reason === undefined ? {} : { reason: args.reason }) };

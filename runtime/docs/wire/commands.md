@@ -223,7 +223,7 @@ Lands in the log as: `call.transferred`.
 
 | field | type | required | meaning |
 |---|---|---|---|
-| `to` | `string` | yes | The destination number in E.164 form, or a SIP URI. |
+| `to` | `string` | yes | The destination number in E.164 form, like `+14155550142`. |
 | `mode` | `TransferMode` | no | Absent, the runtime picks: cold when the caller is on a SIP leg, warm when they are in a browser. A written conversation has no line: `call.transferred` comes back `ok: false` with `mode` null, and the conversation goes on. |
 
 ### `call.unhold`
@@ -418,7 +418,7 @@ Send the caller to another number. Logged as supervisor.transferred, then call.t
 | field | type | required | meaning |
 |---|---|---|---|
 | `verb` | `"transfer"` | yes | The verb. |
-| `to` | `string` | yes | The destination number in E.164 form, or a SIP URI. |
+| `to` | `string` | yes | The destination number in E.164 form, like `+14155550142`. |
 | `mode` | `TransferMode` | no | Absent, the runtime picks, as call.transfer does. |
 
 ### `EndVerb`

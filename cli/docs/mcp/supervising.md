@@ -14,7 +14,7 @@ A live call, as a supervisor's desk sees it: its transcript as it happens (`watc
 | `action` | `watch` · `whisper` · `say` · `takeover` · `release` · `transfer` · `end` | required | watch reads what was said since `after`, waiting up to wait_s for more; whisper tells the agent something the caller never hears; say makes the agent say `text` verbatim; takeover silences the agent and puts a person on the line; release gives the line back; transfer sends the caller to `to`; end hangs up |
 | `call` | text | required | the live call's id: `calls` lists the agent's newest, a live one marked live |
 | `text` | text |  | `whisper` and `say`: the words |
-| `to` | text |  | `transfer`: the number in +E.164, or the SIP address, the caller is sent to |
+| `to` | text |  | `transfer`: the number in +E.164 the caller is sent to |
 | `mode` | `cold` · `warm` |  | `transfer`: cold sends the caller at once; warm lets the agent introduce them first |
 | `reason` | text |  | `end`: why, kept in the call's log |
 | `after` | a whole number 0 or more |  | `watch`: the `next` the answer before ended at; the call's beginning when left out |
