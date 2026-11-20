@@ -14,6 +14,8 @@ class TwilioTrunkHeld:
     sid: str
     friendly_name: str
     domain_name: str | None = None
+    # As Twilio makes a trunk when nothing is said.
+    transfer_mode: str = "disable-all"
     origination: list[str] = field(default_factory=list[str])
     credential_lists: list[str] = field(default_factory=list[str])
 
@@ -136,6 +138,7 @@ class Twilio:
         if parts == ["Trunks"]:
             if request.method == "POST":
                 sid = self.trunk(form["FriendlyName"])
+                self.trunks[sid].transfer_mode = form.get("TransferMode", "disable-all")
                 return httpx.Response(201, json=_trunk_row(self.trunks[sid]))
             rows = [_trunk_row(value) for value in self.trunks.values()]
             return self._paged(request, "trunks", rows, by_uri=False)
@@ -145,9 +148,10 @@ class Twilio:
         found = self.trunks[parts[1]]
         if len(parts) == 2:
             if request.method == "POST":
-                if not form["DomainName"].endswith(".pstn.twilio.com"):
+                if not form.get("DomainName", ".pstn.twilio.com").endswith(".pstn.twilio.com"):
                     return httpx.Response(400, json={"code": 21245, "message": "Invalid domain"})
-                found.domain_name = form["DomainName"]
+                found.domain_name = form.get("DomainName", found.domain_name)
+                found.transfer_mode = form.get("TransferMode", found.transfer_mode)
             return httpx.Response(200, json=_trunk_row(found))
         return self._of_a_trunk(request, found, parts[2:], form)
 
@@ -200,4 +204,5 @@ def _trunk_row(twilio_trunk_held: TwilioTrunkHeld) -> Row:
         "sid": twilio_trunk_held.sid,
         "friendly_name": twilio_trunk_held.friendly_name,
         "domain_name": twilio_trunk_held.domain_name,
+        "transfer_mode": twilio_trunk_held.transfer_mode,
     }

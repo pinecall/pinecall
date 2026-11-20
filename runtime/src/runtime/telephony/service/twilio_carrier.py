@@ -316,6 +316,11 @@ def _hook_steps(api: Twilio, at: _At, names: SipNames, number: str, env: Env) ->
     async def make_trunk() -> None:
         at.trunk = await api.make_trunk(domain, origination)
 
+    # A trunk made in this run was made taking them; one made before 2026-11-20 was not.
+    async def allow_transfers() -> None:
+        if at.trunk is not None and not at.trunk.takes_transfers:
+            await api.allow_transfers(at.trunk.sid)
+
     async def detach() -> None:
         if at.number is not None and on_another is not None:
             await api.detach(on_another, at.number.sid)
@@ -325,7 +330,13 @@ def _hook_steps(api: Twilio, at: _At, names: SipNames, number: str, env: Env) ->
             raise UpstreamError(f"Twilio: {number} or its trunk is not there to attach", vendor=twilio.VENDOR)
         await api.attach(at.trunk.sid, at.number.sid)
 
-    steps = [Step(f"Twilio: a trunk sending calls to {origination}", stands=trunk is not None, write=make_trunk)]
+    transfers = trunk is not None and trunk.takes_transfers
+    steps = [
+        Step(f"Twilio: a trunk sending calls to {origination}", stands=trunk is not None, write=make_trunk),
+        Step(
+            "Twilio: the trunk sends a caller on when an agent transfers them", stands=transfers, write=allow_transfers
+        ),
+    ]
     if on_another is not None:
         steps.append(Step(f"Twilio: {number} off trunk {on_another}", stands=False, write=detach))
     steps.append(Step(f"Twilio: {number} attached to it", stands=on_it, write=attach))

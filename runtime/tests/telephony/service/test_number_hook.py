@@ -80,6 +80,32 @@ async def test_an_import_makes_the_trunk_attaches_admits_rules_and_routes_once(l
     assert production.trunks == production.rules == {}, "the sandbox's alone"
 
 
+async def test_a_trunk_the_import_makes_takes_its_callers_transfers(line: Line) -> None:
+    """Twilio makes a trunk refusing every REFER: no cold transfer of a real phone call left (2026-11-20)."""
+    number = a_number()
+    await line.brought()
+    line.twilio.owns(number)
+    await imported(line, NumberImport(line.scope(Env.sandbox), "recepcion", number))
+    (trunk,) = line.twilio.trunks.values()
+    assert trunk.transfer_mode == "enable-all"
+
+
+async def test_a_trunk_made_before_takes_them_once_its_number_is_imported_again(line: Line) -> None:
+    number = a_number()
+    await line.brought()
+    held = line.twilio.trunk("made before", HERE)
+    line.twilio.owns(number, trunk=held)
+    transfers = "Twilio: the trunk sends a caller on when an agent transfers them"
+    plan = await planned(line, NumberImport(line.scope(Env.sandbox), "recepcion", number))
+    assert f"{transfers}: to do" in plan.steps
+    assert line.twilio.trunks[held].transfer_mode == "disable-all"
+    done = await imported(line, NumberImport(line.scope(Env.sandbox), "recepcion", number))
+    assert f"{transfers}: done" in done.steps
+    assert line.twilio.trunks[held].transfer_mode == "enable-all"
+    again = await imported(line, NumberImport(line.scope(Env.sandbox), "recepcion", number))
+    assert f"{transfers}: stands" in again.steps
+
+
 async def test_a_dry_run_is_the_plan_and_writes_nothing_anywhere(line: Line) -> None:
     """Planned, nothing changes at Twilio, on either LiveKit or in the table."""
     number = a_number()

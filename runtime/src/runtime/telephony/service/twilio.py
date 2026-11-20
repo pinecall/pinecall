@@ -12,6 +12,9 @@ from runtime.exceptions import UpstreamError, ValidationError
 # Who an UpstreamError of this module names.
 VENDOR = "twilio"
 TRUNKING = "https://trunking.twilio.com/v1"
+# A trunk is born refusing every REFER (`disable-all`), and `sip-only` refuses one to a phone number: a cold
+# transfer sends the caller to a number, on the account's bill, and the gateway's guards judge it first.
+TRANSFERS_ON = "enable-all"
 ACCOUNTS = "https://api.twilio.com/2010-04-01"
 # Never on a call's path: an import or a purchase waits for Twilio, a call never does.
 TIMEOUT_S = 30.0
@@ -54,6 +57,12 @@ class TwilioTrunk(BaseModel):
     sid: str
     friendly_name: str = ""
     domain_name: str | None = None
+    transfer_mode: str = ""
+
+    @property
+    def takes_transfers(self) -> bool:
+        """Whether the trunk carries out a REFER to a phone number: a cold transfer of its caller."""
+        return self.transfer_mode == TRANSFERS_ON
 
 
 class _Origination(BaseModel):
@@ -165,11 +174,16 @@ class Twilio:
         return [origination.sip_url for origination in await self._originations(sid)]
 
     async def make_trunk(self, name: str, uri: str) -> TwilioTrunk:
-        """A new trunk, sending its calls to the URI."""
-        made = TwilioTrunk.model_validate(await self._post(f"{TRUNKING}/Trunks", {"FriendlyName": name}))
+        """A new trunk, sending its calls to the URI and taking its callers' transfers."""
+        form = {"FriendlyName": name, "TransferMode": TRANSFERS_ON}
+        made = TwilioTrunk.model_validate(await self._post(f"{TRUNKING}/Trunks", form))
         form = {"FriendlyName": name, "SipUrl": uri, "Weight": "10", "Priority": "10", "Enabled": "true"}
         await self._post(f"{TRUNKING}/Trunks/{made.sid}/OriginationUrls", form)
         return made
+
+    async def allow_transfers(self, trunk: str) -> None:
+        """Have the trunk carry out a REFER to a phone number."""
+        await self._post(f"{TRUNKING}/Trunks/{trunk}", {"TransferMode": TRANSFERS_ON})
 
     async def attach(self, trunk: str, number: str) -> None:
         """Attach the number to the trunk: its voice URL is then ignored."""

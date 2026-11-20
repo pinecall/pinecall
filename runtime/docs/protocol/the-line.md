@@ -22,10 +22,12 @@ takes it.
 **Cold** is a REFER on the caller's own SIP leg: the carrier takes the call, the leg leaves the
 room, and this call ends as `transferred`. It needs a phone call. The number is written in E.164
 form, as it is everywhere else, and the gateway sends the REFER to its `tel:` URI. The carrier has
-to take a REFER, and a Twilio trunk refuses one until **Call Transfer (SIP REFER)** is enabled on
-it with **Enable PSTN Transfer** ticked (the trunk's General settings, or `TransferMode=enable-all`
-on its API); refused, the caller stays with the agent and `call.transferred` carries the carrier's
-SIP answer.
+to take a REFER, and Twilio makes a trunk that refuses one: the gateway makes its trunks with
+`TransferMode=enable-all` (**Call Transfer (SIP REFER)** enabled and **Enable PSTN Transfer**
+ticked, in Twilio's console), and a trunk it made before 2026-11-20 gets it the next time one of
+its numbers is imported, as the step "the trunk sends a caller on when an agent transfers them"
+([numbers.md](numbers.md)). Refused, the caller stays with the agent and `call.transferred` carries
+the carrier's SIP answer.
 
 **Warm** dials the destination into this call's room over the org's outbound trunk
 ([numbers.md](numbers.md)). Nobody moves: the caller hears ringing, and when the far end answers the

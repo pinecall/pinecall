@@ -5,8 +5,11 @@
 - **A cold transfer of a phone call leaves.** `call.transfer` to a number on a caller's SIP leg was refused by the
   media plane with `transfer_to must be a valid SIP(s) or TEL URI`: the gateway passed the number bare. It now sends
   the REFER to the number's `tel:` URI; the app still writes the number in E.164 form and `call.transferred` still
-  says it that way. A Twilio trunk takes a REFER once **Call Transfer (SIP REFER)** and **Enable PSTN Transfer** are
-  on in its settings.
+  says it that way.
+- **A Twilio trunk takes its callers' transfers.** Twilio makes a trunk that refuses every REFER, so a cold transfer
+  was refused by the carrier even when it left. The gateway makes its trunks with `TransferMode=enable-all`, and a
+  number's import has a step for it, "the trunk sends a caller on when an agent transfers them": a trunk made before
+  gets it the next time one of its numbers is imported.
 - **A tool's announcement that has played no longer ends the request.** A line a tool said while it ran, played to
   the end before the tool answered, reached the model as the request's last turn, in the agent's own voice: Anthropic
   refused it (`final assistant content cannot end with trailing whitespace`) and the call ended in an error, unless a
