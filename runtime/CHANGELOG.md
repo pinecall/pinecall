@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **A cold transfer of a phone call leaves.** `call.transfer` to a number on a caller's SIP leg was refused by the
+  media plane with `transfer_to must be a valid SIP(s) or TEL URI`: the gateway passed the number bare. It now sends
+  the REFER to the number's `tel:` URI; the app still writes the number in E.164 form and `call.transferred` still
+  says it that way. A Twilio trunk takes a REFER once **Call Transfer (SIP REFER)** and **Enable PSTN Transfer** are
+  on in its settings.
+
 ## 0.11.52 — the callers an agent is tested with live in its test folder, beside its goldens; one Calls page lists every conversation (2026-11-19)
 
 - **One Calls page lists every conversation.** Messages and Emails are no pages of their own any more: a phone call,

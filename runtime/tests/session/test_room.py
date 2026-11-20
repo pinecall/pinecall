@@ -263,7 +263,7 @@ async def test_a_cold_transfer_refers_the_callers_own_leg_and_says_it_took(box: 
     assert isinstance(params, TransferSIPParticipantRequest)
     assert (params.participant_identity, params.transfer_to, params.play_dialtone) == (
         "sip_caller",
-        "+59829000000",
+        "tel:+59829000000",
         True,
     )
     await where.call.writing.close(1.0)

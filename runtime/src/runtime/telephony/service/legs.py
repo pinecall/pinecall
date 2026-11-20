@@ -149,6 +149,14 @@ def sip_config(leg: LegTrunk) -> SIPOutboundConfig:
     )
 
 
+# livekit takes where a REFER sends the caller as a URI and refuses a bare number (`transfer_to must be
+# a valid SIP(s) or TEL URI`): until 2026-11-20 the number went as the app wrote it, and no cold
+# transfer of a real phone call ever left. The guards let through an E.164 number alone.
+def _refer_to(number: str) -> str:
+    """The `tel:` URI a REFER sends a caller to."""
+    return f"tel:{number.strip()}"
+
+
 # The caller is sent on only past the org's guards for a second leg (shape, pace, the ledger's
 # row), as a warm transfer is: the REFER is a leg the carrier dials on the org's bill.
 async def send_on(server: api.LiveKitAPI, room: rtc.Room, channel: Channel, legs: Legs, to: str) -> CallTransferred:
@@ -162,7 +170,7 @@ async def send_on(server: api.LiveKitAPI, room: rtc.Room, channel: Channel, legs
         logger.warning("call.transfer: the guards refused the leg: %s", refused)
         return _stay(to, "cold", str(refused) or NO_TRUNK.format(verb=TRANSFER, to=to))
     request = TransferSIPParticipantRequest(
-        participant_identity=leg.identity, room_name=room.name, transfer_to=to, play_dialtone=True
+        participant_identity=leg.identity, room_name=room.name, transfer_to=_refer_to(to), play_dialtone=True
     )
     try:
         answer = await server.sip.transfer_sip_participant(request)
