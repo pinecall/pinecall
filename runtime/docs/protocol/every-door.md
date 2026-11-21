@@ -179,10 +179,10 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `POST` | `/v1/hosted/{name}/start` | app | Run a stopped app again, its newest release. |
 | `POST` | `/v1/hosted/{name}/stop` | app | Stop running the app: its process drains, and its releases and token stay. |
 | `GET` | `/v1/pages/{host}/files/{path}` | none | One file of an app's page, from the release that runs; a path that names no file is the page itself. |
-| `GET` | `/v1/pages/{host}/pinecall/config` | none | What an app's page needs before it asks for a ticket: its agent, and the captcha's site key. |
+| `GET` | `/v1/pages/{host}/pinecall/config` | none | What an app's page needs before it asks for a ticket: its agent. |
 | `POST` | `/v1/pages/{host}/pinecall/code` | none | A code a visitor keys when they call the page's agent, so the page follows that call. |
-| `POST` | `/v1/pages/{host}/pinecall/dictation` | none | One dictation's socket, a minute long, for a visitor who passed the captcha. |
-| `POST` | `/v1/pages/{host}/pinecall/token` | none | A seat in a new call with the page's agent, for a visitor who passed the captcha. |
+| `POST` | `/v1/pages/{host}/pinecall/dictation` | none | One dictation's socket, a minute long, for a visitor of the page. |
+| `POST` | `/v1/pages/{host}/pinecall/token` | none | A seat in a new call with the page's agent, for a visitor of the page. |
 | `GET` | `/v1/studio/agents` | app | The org's Studio agents in this environment, by name, each its newest release. |
 | `POST` | `/v1/studio/agents` | app | Make an agent in Studio: a hosted app the gateway holds, its first release the definition. |
 | `GET` | `/v1/studio/agents/{name}` | app | The agent's newest release and its definition. |

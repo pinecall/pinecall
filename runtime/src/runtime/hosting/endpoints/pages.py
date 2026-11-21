@@ -13,7 +13,7 @@ from runtime.live.auth import TheCodes, TheLive, TheSigner
 from runtime.postgres import Session
 from runtime.providers import service as providers
 from runtime.providers.auth import TheTokenKey
-from runtime.signin.auth import Client, TheTurnstile
+from runtime.signin.auth import Client
 
 router = APIRouter()
 
@@ -25,27 +25,28 @@ THE_PAGE = {**PAGE_HEADERS, "Cache-Control": "no-store"}
 AN_ASSET = {**PAGE_HEADERS, "Cache-Control": "public, max-age=300"}
 
 
+# A page's doors ask no captcha (Bernardo, 2026-11-21: a visitor who came to write to an agent was shown
+# a challenge first, and read the page as broken). What stands at them is the count of asks from one
+# address a minute. `turnstile` is still answered, as null, for a page built when it named a site key.
 @router.get("/v1/pages/{host}/pinecall/config")
-async def page_config(paged: ThePage, settings: TheSettings) -> schemas.PageConfig:
-    """What an app's page needs before it asks for a ticket: its agent, and the captcha's site key."""
-    return schemas.PageConfig(agent=paged.page.agent, turnstile=settings.turnstile_site_key)
+async def page_config(paged: ThePage) -> schemas.PageConfig:
+    """What an app's page needs before it asks for a ticket: its agent."""
+    return schemas.PageConfig(agent=paged.page.agent, turnstile=None)
 
 
 @router.post("/v1/pages/{host}/pinecall/token", status_code=201)
 async def page_ticket(
-    host: str,
     body: schemas.PageTicketRequest,
     paged: ThePage,
     client: Client,
     tickets: ThePageTickets,
-    turnstile: TheTurnstile,
     parts: TheLive,
     signer: TheSigner,
     roster: TheRoster,
     session: Session,
 ) -> live_schemas.MintTokenResponse:
-    """A seat in a new call with the page's agent, for a visitor who passed the captcha."""
-    await pages.admit_visitor(tickets, turnstile, host, body.turnstile, client)
+    """A seat in a new call with the page's agent, for a visitor of the page."""
+    await pages.admit_visitor(tickets, client)
     wanted = live.Mint(agent=paged.page.agent, scope=body.scope, resume=body.resume)
     minted = await live.mint_room_token(session, parts, signer, roster, pages.visitor_of(paged), wanted)
     return live_schemas.MintTokenResponse.of(minted)
@@ -53,41 +54,36 @@ async def page_ticket(
 
 @router.post("/v1/pages/{host}/pinecall/code", status_code=201)
 async def page_code(
-    host: str,
-    body: schemas.PageCodeRequest,
     paged: ThePage,
     client: Client,
     tickets: ThePageTickets,
-    turnstile: TheTurnstile,
     codes: TheCodes,
     signer: TheSigner,
     session: Session,
 ) -> live_schemas.IssueCodeResponse:
     """A code a visitor keys when they call the page's agent, so the page follows that call."""
-    await pages.admit_visitor(tickets, turnstile, host, body.turnstile, client)
+    await pages.admit_visitor(tickets, client)
     asked = live_schemas.IssueCodeRequest(agent=paged.page.agent)
     issued = await live.issue_code(session, codes, signer, pages.visitor_of(paged), asked.agent, asked.ttl_s, asked.log)
     return live_schemas.IssueCodeResponse.of(issued)
 
 
 # A visitor dictates into the page's field: the microphone goes from their browser to the gateway's
-# socket, and the page never holds a key. Asked as a ticket is, past the captcha and so many a
-# minute from one address, since each one spends the org's transcription.
+# socket, and the page never holds a key. Asked as a ticket is, so many a minute from one address,
+# since each one spends the org's transcription.
 @router.post("/v1/pages/{host}/pinecall/dictation")
 async def page_dictation(
-    host: str,
     body: schemas.PageDictationRequest,
     paged: ThePage,
     client: Client,
     tickets: ThePageTickets,
-    turnstile: TheTurnstile,
     settings: TheSettings,
     own_key: TheTokenKey,
     vault: TheVault,
     session: Session,
 ) -> schemas.PageDictation:
-    """One dictation's socket, a minute long, for a visitor who passed the captcha."""
-    await pages.admit_visitor(tickets, turnstile, host, body.turnstile, client)
+    """One dictation's socket, a minute long, for a visitor of the page."""
+    await pages.admit_visitor(tickets, client)
     scope = pages.visitor_of(paged).scope
     minted = await providers.mint_for_a_page(session, vault, scope, body.language, own_key)
     return schemas.PageDictation(url=settings.base_url.replace("http", "ws", 1) + minted.path)

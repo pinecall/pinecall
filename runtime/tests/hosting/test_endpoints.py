@@ -1,6 +1,7 @@
 """The hosting doors as the CLI reaches them: logs asked for while a stream is open, a release said once stored."""
 
 import asyncio
+import inspect
 import io
 import tarfile
 
@@ -9,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from runtime.calls.log.feeds import Feeds
 from runtime.enums import Env
+from runtime.hosting.endpoints import pages as page_doors
 from runtime.hosting.models import HostedApp, HostedRelease
 from tests.conftest import Gateway, Tenant, needs_the_services
 
@@ -84,6 +86,15 @@ def a_project_with_a_page() -> bytes:
     return packed.getvalue()
 
 
+# Bernardo, 2026-11-21: a visitor who came to write to an agent is shown no challenge. A sign-up and a
+# forgotten password keep theirs; a page's doors stand on the count of asks from one address alone.
+def test_a_pages_doors_ask_no_captcha_whatever_the_box_is_set_to() -> None:
+    doors = (page_doors.page_config, page_doors.page_ticket, page_doors.page_code, page_doors.page_dictation)
+    for door in doors:
+        given = inspect.signature(door).parameters.values()
+        assert not any("urnstile" in str(one.annotation) for one in given), door.__name__
+
+
 @needs_the_services
 async def test_an_apps_page_is_served_at_the_apps_own_name_and_never_at_the_gateways(
     gateway: Gateway, tenant: Tenant
@@ -116,6 +127,10 @@ async def test_an_apps_page_is_served_at_the_apps_own_name_and_never_at_the_gate
     ticket = await gateway.http.post("/pinecall/token", json={"scope": "chat"}, headers=at_its_name)
     assert ticket.status_code == 404, ticket.text
     assert "support" in ticket.text
+    # A page's doors ask no captcha: a token a page open since they did still sends is taken and not read.
+    stale = {"scope": "chat", "turnstile": "solved-when-the-doors-asked-one"}
+    as_before = await gateway.http.post("/pinecall/token", json=stale, headers=at_its_name)
+    assert (as_before.status_code, "support" in as_before.text) == (404, True), as_before.text
     # A visitor dictates into the page's field: the socket is the gateway's own, a minute long.
     dictation = await gateway.http.post("/pinecall/dictation", json={"language": "es"}, headers=at_its_name)
     assert dictation.status_code == 200, dictation.text

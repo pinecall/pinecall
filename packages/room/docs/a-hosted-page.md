@@ -12,17 +12,16 @@ const call = useRoom(hosted());
 ```
 
 `hosted()` gives `room()` its `tokens` and its `expect`: the ticket is asked of `POST /pinecall/token`
-and the code a visitor keys from a phone of `POST /pinecall/code`, at the page's own origin. Where
-the gateway asks for a captcha, `GET /pinecall/config` says so and Cloudflare's Turnstile is solved
-before each ticket; its widget shows only when Cloudflare asks the visitor for something. A refusal
+and the code a visitor keys from a phone of `POST /pinecall/code`, at the page's own origin. The
+doors ask no captcha: what stands at them is how many asks one address makes a minute. A refusal
 is thrown with the server's own sentence, so `state.error` reads it.
 
 While you write the page, `pinecall start` answers the same routes on `http://localhost:4747` with
-your own key and no captcha. A dev server passes them on (`proxy: { "/pinecall": "http://localhost:4747" }`
+your own key. A dev server passes them on (`proxy: { "/pinecall": "http://localhost:4747" }`
 in Vite), or the page names the address: `hosted({ at: "http://localhost:4747" })`.
 
 `hosted()` also gives `dictation(language)`: one dictation into a field of the page, asked of
-`POST /pinecall/dictation` past the same captcha, answering the gateway's socket to open and send the
+`POST /pinecall/dictation`, answering the gateway's socket to open and send the
 microphone to. `<pinecall-widget>` takes it as its `dictationProvider`, beside `tokens` as its
 `tokenProvider`:
 

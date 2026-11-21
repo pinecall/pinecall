@@ -18,7 +18,6 @@ from runtime.hosting.service.apps import App
 from runtime.kit.text import parse_slug
 from runtime.platform import service as platform
 from runtime.scoping import scope_to
-from runtime.signin import service as signin
 
 # A slug never holds two dashes in a row, so the app, its org and its env are read back off one label.
 BETWEEN = "--"
@@ -142,12 +141,9 @@ def visitor_of(paged: Paged) -> Actor:
     return Actor(key_id=key_id, org=app.org, env=app.env, scopes=frozenset({KeyScope.talk}), label="page")
 
 
-async def admit_visitor(
-    tickets: platform.AttemptThrottle, turnstile: signin.Turnstile, host: str, token: str | None, client: str
-) -> None:
-    """Let one address ask for a ticket or a code: so many a minute, and past the captcha where the box asks one."""
+async def admit_visitor(tickets: platform.AttemptThrottle, client: str) -> None:
+    """Let one address ask for a ticket, a code or a dictation: so many a minute."""
     await tickets.check(f"{client} page", "calls from here")
-    await turnstile.check(token, "page", client, on=host.lower())
 
 
 class Pages:

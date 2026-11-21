@@ -410,10 +410,10 @@ reaches the agent of the app's first line, or the one `app.page(dir, { answers: 
 
 The page needs no server and holds no key. It asks its own name for its ticket
 (`POST /pinecall/token`), for the code a visitor keys from a phone (`POST /pinecall/code`) and for a
-dictation into one of its fields (`POST /pinecall/dictation`), and Pinecall answers each, after a
-captcha. With `@pinecall/room` that is `room({ ...hosted() })`, and `hosted().dictation`. While
+dictation into one of its fields (`POST /pinecall/dictation`), and Pinecall answers each, so many
+a minute from one address. With `@pinecall/room` that is `room({ ...hosted() })`, and `hosted().dictation`. While
 you write it, `pinecall start` serves the same folder and the same routes on
-`http://localhost:4747` (`PINECALL_PAGE_PORT` names another port), with your own key and no captcha, so
+`http://localhost:4747` (`PINECALL_PAGE_PORT` names another port), with your own key, so
 a dev server of yours only has to pass `/pinecall` on to it.
 
 A page has no caller id: `call.contact` is empty for its visitors. What the page knows of them it

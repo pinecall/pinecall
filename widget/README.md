@@ -127,7 +127,7 @@ doesn't serve). Use a production key with the `talk` scope (tokens, codes, dicta
 ### On an app's own page
 
 A page Pinecall serves for an app (`app.page("site")`) has no server of yours. Its doors,
-`/pinecall/token` and `/pinecall/code`, are Pinecall's: they ask for a captcha first and take no
+`/pinecall/token` and `/pinecall/code`, are Pinecall's: they take no
 agent's name, so `token-url` cannot point at them. Give the tag its tickets with `hosted()` of
 `@pinecall/room`, which speaks to them, on the deployed page and under `pinecall start` alike:
 

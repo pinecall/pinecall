@@ -142,7 +142,7 @@ class PageConfig(Row):
 
     # The agent a visitor reaches.
     agent: str
-    # The Turnstile site key the page solves before a ticket, or null where the box asks for none.
+    # Always null: a page's doors ask no captcha. Kept for a page built when this named a site key.
     turnstile: str | None
 
 
@@ -152,6 +152,8 @@ class PageTicketRequest(Schema):
     scope: Literal["talk", "chat"] = "talk"
     # A `resume_token` the page kept: back into that conversation.
     resume: str | None = Field(None, max_length=4096)
+    # Taken and not read, here and on the page's other doors: a page open since before the doors stopped
+    # asking a captcha still sends the token it solved.
     turnstile: str | None = None
 
 
@@ -169,9 +171,3 @@ class PageDictation(Row):
     url: str
     # A page of Pinecall's has no words of its own to expect: the app's are the agent's, on a call.
     hear: list[str] = []
-
-
-class PageCodeRequest(Schema):
-    """POST /pinecall/code on an app's page: a code a visitor keys when they call the agent's number."""
-
-    turnstile: str | None = None
