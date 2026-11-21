@@ -2,7 +2,7 @@
 // agent thinks, its words typed out at a reading pace, and what it shows held until they are read.
 
 import { deal } from "./cards.js";
-import { said } from "./markup.js";
+import { mended, said } from "./markup.js";
 
 const SEGMENT_ID = "lk.segment_id";
 const TRANSCRIPTION_FINAL = "lk.transcription_final";
@@ -196,8 +196,8 @@ export class Lines {
         if (target.indexOf("**", reveal.shown) !== -1 || reveal.final) visible += "**";
         else visible = visible.slice(0, visible.lastIndexOf("**"));
       }
-      // The agent's line is read as the little Markdown it writes.
-      reveal.line.replaceChildren(said(visible));
+      // The agent's line is read as the little Markdown it writes, a link still open as its words alone.
+      reveal.line.replaceChildren(said(mended(visible)));
       // On a voice call the words come at the pace she hears them: what the agent shows comes a moment
       // after it starts speaking, not at the end of the sentence.
       if (widget.scope === "talk" && this.shelved.length && !this.early) {

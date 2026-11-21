@@ -28,6 +28,24 @@ export const ICONS = {
   moon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg>`,
 };
 
+// Markdown still being typed out is mended before it is read: a link or a bold whose end has not been
+// revealed yet is drawn as its words alone, never as its marks. Until 2026-11-21 a link was typed out as
+// written, and "[Ver la ficha](https://www.dic" stood in the chat for the seconds its address took.
+// `remend` does the mending (pinned, from jsDelivr, as livekit-client is); until it has loaded, and on a
+// page whose policy does not let it load, a line is read as it is, as before.
+const REMEND = "https://cdn.jsdelivr.net/npm/remend@1.5.0/+esm";
+let mend = (text) => text;
+import(REMEND)
+  .then((module) => {
+    mend = (text) => module.default(text, { linkMode: "text-only" });
+  })
+  .catch(() => undefined);
+
+/** The words revealed so far, with whatever Markdown is still open closed or left as its words. */
+export function mended(text) {
+  return mend(text);
+}
+
 /**
  * The agent's words as the chat shows them: the little Markdown a model writes (**bold**, *italics*,
  * lists, [links](https://…)) made into elements, and nothing else. The text is escaped first, so a

@@ -551,7 +551,10 @@ gateway's `wss` origin. `look="dot"` also loads `@pinecall/room@0.11` and `@pine
 jsDelivr. A token opens one room for one agent and expires after `ttl_s` if unused. What the widget
 keeps in this browser is under `pinecall-widget:*` keys, one set per agent: the conversations
 (`localStorage`), the panel's size, the theme chosen, **Show tools**, and whether the panel was open
-(`sessionStorage`).
+(`sessionStorage`). The agent's words are typed out as the little Markdown they are written in, and what is still open
+while they are typed (a link, a bold) is mended first by `remend@1.5.0`, pinned and loaded from
+jsDelivr too: a page whose policy does not let it load reads a line as it is written until its end
+arrives.
 
 ## What is not there yet
 
