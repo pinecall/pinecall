@@ -58,8 +58,10 @@ SAY_GOODBYE_FIRST = (
     "Say your goodbye in the same reply in which you call this, before the call: nothing you "
     "say after it is heard, and nothing is generated for you."
 )
-# Added to every tool's schema: the model's own line for the wait, said while the tool runs when
-# its answer said nothing itself. The app never receives it.
+# Added to every tool's schema on a spoken call: the model's own line for the wait, said while the tool
+# runs when its answer said nothing itself. The app never receives it. A written call offers none:
+# nobody waits in silence for a tool there, and the line came out as one more message that said
+# nothing ("Buscando la propiedad…") ahead of the answer.
 SAY_PARAMETER: JsonObject = {
     "type": "string",
     "description": (
@@ -81,18 +83,18 @@ class Toolbox:
         self.line = line
         self.leave = leave
 
-    def tools(self, call: Call) -> list[llm.Tool | llm.Toolset]:
+    def tools(self, call: Call, *, spoken: bool) -> list[llm.Tool | llm.Toolset]:
         """The app's tools, the platform's lookups, and end_call when the agent may hang up."""
         declaration = call.declaration
         tools: list[llm.Tool | llm.Toolset] = [
-            *as_livekit_tools(declaration.tools, self._run_app_tool),
-            *as_livekit_tools(platform_tools(declaration), self._run_lookup),
+            *as_livekit_tools(declaration.tools, self._run_app_tool, with_a_line=spoken),
+            *as_livekit_tools(platform_tools(declaration), self._run_lookup, with_a_line=spoken),
         ]
         # A call somebody placed to a person is the one a machine answers instead.
         if declaration.voicemail is not None and call.context.direction is Direction.outbound:
             tools.extend(as_livekit_tools([VOICEMAIL_TOOL], self._run_voicemail))
         if call.context.channel is Channel.sms:
-            tools.extend(as_livekit_tools([STOP_MESSAGES_TOOL], self._run_stop_messages))
+            tools.extend(as_livekit_tools([STOP_MESSAGES_TOOL], self._run_stop_messages, with_a_line=False))
         if declaration.hangup is not None:
             tools.append(
                 EndCallTool(
@@ -196,9 +198,9 @@ class Toolbox:
         raise StopResponse
 
 
-def as_livekit_tools(specs: Sequence[ToolSpec], run: Run) -> list[llm.Tool]:
-    """Each tool as livekit's raw-schema tool, whose callable runs it through `run`."""
-    return [_raw(spec, run) for spec in specs]
+def as_livekit_tools(specs: Sequence[ToolSpec], run: Run, *, with_a_line: bool = True) -> list[llm.Tool]:
+    """Each tool as livekit's raw-schema tool, whose callable runs it through `run`; `with_a_line` offers its `say`."""
+    return [_raw(spec, run, with_a_line) for spec in specs]
 
 
 async def admit_tool(call: Call, name: str) -> None:
@@ -264,14 +266,16 @@ async def _nothing_after(_: llm.Toolset.ToolCompletedEvent) -> None:
 
 # The app runs its tools and ToolSpec is JSON Schema already, so the raw schema is given as it is; the
 # callable is where the session gates and writes the call.
-def _raw(spec: ToolSpec, run: Run) -> llm.Tool:
+def _raw(spec: ToolSpec, run: Run, with_a_line: bool) -> llm.Tool:
     async def call(raw_arguments: dict[str, object], context: RunContext[Call]) -> str | llm.ToolResult:
         arguments: JsonObject = {name: _json(value) for name, value in raw_arguments.items()}
         line = arguments.pop(SAY, "")
         return await run(ToolUse(context.function_call.call_id, spec.name, arguments, say=str(line or "")), context)
 
-    # A quiet tool is named by the words it runs under, so it is offered no line of its own to say.
-    parameters = dict(spec.parameters) if spec.quiet else _with_a_line_to_say(spec.parameters)
+    # A quiet tool is named by the words it runs under, so it is offered no line of its own to say; nor
+    # is any tool of a written call.
+    offered = with_a_line and not spec.quiet
+    parameters = _with_a_line_to_say(spec.parameters) if offered else dict(spec.parameters)
     schema = {"name": spec.name, "description": spec.description, "parameters": parameters}
     return llm.function_tool(call, raw_schema=schema)
 

@@ -7,10 +7,11 @@ from runtime.enums import Direction
 from runtime.kit.text import Json
 from runtime.session.call import Call, ToolUse
 from runtime.session.lookups import RECALL
+from runtime.session.session import Session
 from runtime.session.tools import SAY_PARAMETER, VOICEMAIL_TOOL, as_livekit_tools, read_back, result_text
 from runtime.wire.parts import ToolResult
 from tests.conftest import needs_the_database
-from tests.session.conftest import Box, a_session
+from tests.session.conftest import BOOKING, Box, a_session, spoken_call
 
 BOOK = ToolSpec("book", "Book a table.", {"type": "object", "properties": {}}, timeout_s=0.1)
 
@@ -83,6 +84,27 @@ def test_the_line_to_say_is_asked_beside_the_tools_own_arguments_and_never_requi
     assert set(parameters["properties"]) == {*RECALL.parameter_names, "say"}
     assert "say" not in parameters["required"]
     assert parameters["properties"]["say"]["type"] == "string"
+
+
+# Until 2026-11-21 a written call's tools carried the line too, and a chat read "Buscando la propiedad…"
+# as a message of its own before every answer.
+def test_a_tool_of_a_written_call_is_offered_no_line_to_say() -> None:
+    async def run(use: ToolUse, _context: RunContext[Call]) -> str:
+        return use.name
+
+    (tool,) = as_livekit_tools((RECALL,), run, with_a_line=False)
+    assert isinstance(tool, llm.RawFunctionTool)
+    assert set(tool.info.raw_schema["parameters"]["properties"]) == set(RECALL.parameter_names)
+
+
+@needs_the_database
+async def test_a_written_session_offers_its_tools_no_line_and_a_spoken_one_does(box: Box) -> None:
+    def lines(session: Session) -> list[bool]:
+        schemas = [tool.info.raw_schema for tool in session.agent.tools if isinstance(tool, llm.RawFunctionTool)]
+        return ["say" in schema["parameters"].get("properties", {}) for schema in schemas]
+
+    assert lines(a_session(box, BOOKING)) == [False] * len(BOOKING.tools)
+    assert lines(spoken_call(box, BOOKING)) == [True] * len(BOOKING.tools)
 
 
 def _names_offered(box: Box, declaration: Declaration, direction: Direction) -> list[str]:

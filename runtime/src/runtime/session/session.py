@@ -119,7 +119,7 @@ class Session:
         self.on_ended = on_ended
         self.blocks = prompt.Blocks(call.declaration.prompt, call.declaration.knowledge or "")
         toolbox = Toolbox(lookups, line, leave=lambda: self.hang_up("agent_hung_up", "agent"))
-        self.agent = CallAgent(live, self.blocks, lookups, toolbox.tools(call), line)
+        self.agent = CallAgent(live, self.blocks, lookups, toolbox.tools(call, spoken=medium is Medium.voice), line)
         self.started_at = time.time()
         self.closed = False
         # Set once close() wrote call.ended and sealed; the chat endpoint closes its socket on it.
