@@ -1,6 +1,8 @@
 """What a call is while it runs, spoken or written: its state, what the app's commands write, what it reaches."""
 
+import asyncio
 import contextlib
+import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
@@ -35,6 +37,12 @@ from runtime.wire.parts import EndedBy, EndReason, EventSource, PlatformTool, St
 SPEECH = "sp_"
 # A callback the agent took during a call; others come from the widget or an overflow.
 BY_THE_AGENT = "agent"
+# How long a call's first request to the model waits for its app to say what the call opens with. The
+# widget waits as long for an agent to be in the room before it sends a line. An app held on a laptop
+# answers `call.started` a round trip later, and its `onCall` hook runs first: until 2026-11-21 nothing
+# waited, a turn played at once (a golden's first line, a contact's first WhatsApp message) reached the
+# model with no prompt at all, and it answered as no agent of anybody's.
+APP_OPENS_WITHIN_S = 8.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -218,8 +226,9 @@ class Call:
         carried: llm.ChatContext | None = None,
         *,
         written: int = 0,
+        awaits_app: bool = False,
     ) -> None:
-        """A call nobody has spoken on yet, every tool of its agent open."""
+        """A call nobody has spoken on yet, every tool of its agent open; `awaits_app` when an app is to open it."""
         self.context = context
         self.declaration = declaration
         # The turns of the call it carries on (context.continues), which its model opens on.
@@ -246,6 +255,15 @@ class Call:
         self.open_tools = frozenset(tool.name for tool in declaration.tools)
         # Every request the model was sent, kept on a call an eval run opened and on no other.
         self.requests: list[JsonObject] = []
+        # Set once the app said what the call opens with: an SDK and Studio alike write the prompt's
+        # blocks and end on `tools.set`, so the first one is the opening whole. A call no app is to open
+        # (`awaits_app` unsaid: one taken up again, one built with no app behind it) waits for nothing.
+        self.opened = asyncio.Event()
+        if not awaits_app:
+            self.opened.set()
+        self._built_at = time.monotonic()
+        # How long the app took to open the call, once it did: how far it is from this process.
+        self.opened_after_s: float | None = None
 
     def speech(self) -> str:
         """A new speech id, `sp_<n>`."""
@@ -322,6 +340,24 @@ class Call:
         if wanted.state is not None:
             await self.set_state(StateSet(state=wanted.state))
 
+    # A call taken up again was opened by its app when it began: its session goes on, and its app says
+    # its prompt again when it is handed the call, with nothing held meanwhile.
+    def take_as_opened(self) -> None:
+        """Wait for no opening: the call is in the middle of its conversation."""
+        self.opened.set()
+
+    async def wait_until_opened(self, within_s: float = APP_OPENS_WITHIN_S) -> bool:
+        """Wait for the app's opening; False when it did not come within `within_s`, and the call goes on."""
+        if self.opened.is_set():
+            return True
+        try:
+            await asyncio.wait_for(self.opened.wait(), within_s)
+        except TimeoutError:
+            # Said once: the next request of the call waits for nothing.
+            self.opened.set()
+            return False
+        return True
+
     def list_closed_tools(self) -> list[str]:
         """The agent's tools the app closed, by name: what the model is told not to call this turn."""
         return sorted(tool.name for tool in self.declaration.tools if tool.name not in self.open_tools)
@@ -334,6 +370,9 @@ class Call:
         names = {tool.name for tool in self.declaration.tools}
         self.open_tools = frozenset(tool.name for tool in wanted.tools if tool.name in names)
         await self.writing.write("tools.changed", ToolsChanged(visible=sorted(self.open_tools)))
+        if not self.opened.is_set():
+            self.opened_after_s = time.monotonic() - self._built_at
+            self.opened.set()
 
 
 # Every field said, the unknown ones as null: the entry reads as it always did.

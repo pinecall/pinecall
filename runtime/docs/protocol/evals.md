@@ -43,7 +43,12 @@ session a real caller gets, tuned where the app holds the agent, on the org's ke
   takes no `then`: what the agent does with the fact is judged in the next line's turn;
 - `memory` answers `recall` for this call alone; `search` is the real index;
 - `today` is the day the model is told it is; absent, the real one;
-- after an event the run waits for the log to go quiet: the app reacting is the only signal.
+- the first line is played once the app has opened the call (its prompt, then `tools.set`:
+  [gateway-api.md](gateway-api.md)), never before: a model asked earlier has read no prompt;
+- after an event the run waits for the log to go quiet: the app reacting is the only signal. How
+  long a quiet counts is measured, not fixed: 150 ms for an app beside the gateway, and twice what
+  the app took to open the call when that is more, one second at most, so an app held on a laptop
+  has the view it renders for the fact in before the next line is played.
 
 **A turn's `then`** is asserted, in order, on that line's run, with livekit's own assertions where
 it has one:

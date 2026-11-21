@@ -103,6 +103,14 @@ entry of the call through `call.score`. The call-scoped commands carry `"call": 
 | `call.claim` | the caller said a page's code: [codes.md](codes.md) |
 | `tool.result` | the answer to a `tool.call`, by its `call_id`: an `output` or an `error`, never both |
 
+**A call's first request waits for its app.** An app answers `call.started` with what the call opens
+with: the prompt's blocks, then `tools.set`. Until that first `tools.set` arrives, no request of the
+call is sent to its model: a caller's turn, a greeting the model improvises or an `agent.reply` asked
+for meanwhile is held, 8 seconds at most, and then goes on with whatever prompt there is. So an app
+that writes this protocol itself ends its opening on `tools.set`, as every SDK and Studio do, even
+with no tool to name (`{"tools": []}`). A call taken up again in the middle of its conversation waits
+for nothing.
+
 A refusal (`error`, with the command's `type` and `id`) and a `pong` land on the agent's log only
 when this socket holds that agent; a frame naming any other slug, or no JSON at all, is answered
 down the socket alone (`seq: 0`) and the socket stays. A `tool.result` answers a call of an agent

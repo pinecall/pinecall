@@ -8,9 +8,11 @@ from runtime.calls.log.fanout import Fanout
 from runtime.calls.log.log import Log
 from runtime.calls.log.store import Store
 from runtime.evals.service.turn_checks import TurnRun
-from runtime.evals.service.written import AT_MOST_S, Played, drive, wait_until_quiet
+from runtime.evals.service.written import AT_MOST_S, QUIET_S, Played, drive, quiet_of, wait_until_quiet
 from runtime.kit.text import Json
+from runtime.session.commands import apply
 from runtime.wire.base import Entry
+from runtime.wire.commands import ToolsSet
 from runtime.wire.goldens import Golden
 from tests.conftest import needs_the_database
 from tests.session.conftest import AGENT, Box, a_session, model_of
@@ -54,6 +56,16 @@ async def test_a_log_that_ended_is_settled() -> None:
     ended = fanout.subscribe()
     fanout.close()
     await wait_until_quiet(ended)
+
+
+def test_an_app_beside_the_gateway_is_waited_for_the_quiet_it_always_was() -> None:
+    assert quiet_of(None) == QUIET_S
+    assert quiet_of(0.02) == QUIET_S
+
+
+def test_an_app_far_away_is_waited_for_twice_what_it_took_to_open_the_call_and_never_a_whole_step() -> None:
+    assert quiet_of(0.25) == 0.5
+    assert quiet_of(30) == AT_MOST_S / 2
 
 
 class Turns:
@@ -135,6 +147,28 @@ async def test_a_golden_whose_app_let_go_ends_as_app_detached_and_not_on_a_timeo
     assert not result.held
     ended = [entry for entry in await store.whole_of(call) if entry.type == "call.ended"]
     assert [(entry.data["reason"], entry.data["ended_by"]) for entry in ended] == [("app_detached", "platform")]
+
+
+# Until 2026-11-21 the first line was played once the log had been quiet for 150 ms: an app a round trip
+# away had not written the prompt yet, and the golden judged a model that had read none.
+@needs_the_database
+async def test_a_goldens_first_line_waits_for_an_app_that_opens_the_call_later_than_the_quiet(
+    store: Store, call: str
+) -> None:
+    box = Box(Log(store, call, AGENT))
+    session = a_session(box, FREED, ["hola"], run="run_1", awaits_app=True)
+    heard = box.log.fanout.subscribe()
+
+    async def open_as_an_app_far_away() -> None:
+        await asyncio.sleep(2 * QUIET_S)
+        await session.set_prompt("identity", "Eres la recepción de Clínica Norte.")
+        await apply(session, ToolsSet(tools=[]))
+
+    opening = asyncio.create_task(open_as_an_app_far_away())
+    result = await drive(session, a_golden(), heard, Turns().judged, is_held=lambda: True)
+    await opening
+    assert result.held
+    assert [asked["system"] for asked in result.requests] == [["Eres la recepción de Clínica Norte."]]
 
 
 @needs_the_database

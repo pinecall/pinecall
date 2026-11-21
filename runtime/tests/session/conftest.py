@@ -167,10 +167,12 @@ def a_session(
     run: str | None = None,
     place_of: Callable[[Call], Place] | None = None,
     direction: Direction = Direction.inbound,
+    awaits_app: bool = False,
 ) -> Session:
     """A written session whose model answers with the replies, in order; in the place made for its call, if any."""
     assert box.log.call is not None
-    call = Call(context_of(box.log.call, contact=contact, run=run, direction=direction), declaration, box)
+    context = context_of(box.log.call, contact=contact, run=run, direction=direction)
+    call = Call(context, declaration, box, awaits_app=awaits_app)
     scripted: list[Json] = list(replies)
     script: JsonObject = {"replies": scripted}
     return text_session(call, Running(ACME, "a-key", options=script), Place() if place_of is None else place_of(call))

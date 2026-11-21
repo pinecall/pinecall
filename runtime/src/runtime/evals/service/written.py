@@ -27,6 +27,9 @@ from runtime.wire.parts import EndedBy, EndReason
 QUIET_S = 0.15
 # An app that never answers cannot hold a run up longer than this per step.
 AT_MOST_S = 2.0
+# How many times what an app took to open the call its log must stay quiet to be read as the app being
+# done: its answer to a fact is a state and then the view for it, each a round trip away.
+ITS_DISTANCE_TIMES = 2
 
 APP_DETACHED: tuple[EndReason, EndedBy] = ("app_detached", "platform")
 HUNG_UP: tuple[EndReason, EndedBy] = ("caller_hung_up", "caller")
@@ -146,6 +149,16 @@ async def drive(
     return Played(held=kept_on, requests=tuple(running.call.requests), broke_at=broke_at, unplayed=unplayed)
 
 
+# The quiet of an app beside the gateway says nothing of one held on a laptop, whose every answer comes a
+# round trip later: until 2026-11-21 a golden's line that followed a fact was played 150 ms after it,
+# before the view the app rendered for it had arrived, and the model answered on the view before.
+def quiet_of(opened_after_s: float | None) -> float:
+    """How long the log of a call must stay quiet to be read as its app being done, by how far the app is."""
+    if opened_after_s is None:
+        return QUIET_S
+    return min(max(QUIET_S, ITS_DISTANCE_TIMES * opened_after_s), AT_MOST_S / 2)
+
+
 async def wait_until_quiet(heard: Subscription, *, quiet_s: float = QUIET_S) -> None:
     """Return once nothing reached the log for `quiet_s`, and always within AT_MOST_S."""
     loop = asyncio.get_running_loop()
@@ -162,7 +175,11 @@ async def wait_until_quiet(heard: Subscription, *, quiet_s: float = QUIET_S) -> 
 async def _play_turns(
     running: session.Session, golden: Golden, heard: Subscription, judge: JudgeTurn, is_held: Callable[[], bool]
 ) -> tuple[bool, int | None, Unplayed | None]:
-    await wait_until_quiet(heard)
+    # The first line waits for the app to have opened the call, as any first request does (`Call.opened`):
+    # what it took says how far the app is, and so how long its quiet is waited for from here on.
+    await running.call.wait_until_opened()
+    quiet = quiet_of(running.call.opened_after_s)
+    await wait_until_quiet(heard, quiet_s=quiet)
     context = running.call.context
     for number, turn in enumerate(golden.turns, 1):
         if not is_held():
@@ -171,7 +188,7 @@ async def _play_turns(
             sent = {"name": turn.event.name, "data": dict(turn.event.data)}
             command = Command(type=CALL_EVENT, agent=context.route.agent, call=context.call, data=sent)
             refused = await session.take(running, command)
-            await wait_until_quiet(heard)
+            await wait_until_quiet(heard, quiet_s=quiet)
             if refused is not None:
                 reason = EVENT_REFUSED.format(number=number, error=refused.message)
                 return True, number, Unplayed(f"t{number}.event", reason, EVENT_SAID_BY_THE_CLASS)
@@ -180,10 +197,10 @@ async def _play_turns(
         try:
             run = await session.run(running, turn.say or "")
         except APIError as failed:
-            await wait_until_quiet(heard)
+            await wait_until_quiet(heard, quiet_s=quiet)
             reason = VENDOR_FAILED.format(number=number, error=providers.sentence_of(failed))
             return True, number, Unplayed(f"t{number}.model", reason, MODEL_ANSWERS)
-        await wait_until_quiet(heard)
+        await wait_until_quiet(heard, quiet_s=quiet)
         ended_by = None if running.ended is None else running.ended[1]
         if not await judge(number, TurnRun(run, began, ended_by)):
             return True, number, None

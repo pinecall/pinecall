@@ -22,6 +22,7 @@ from runtime.providers.stage import Pipeline, Running
 from runtime.session.agent import LLM_TIMEOUT, MODEL_LATE
 from runtime.session.call import Call, ToolUse
 from runtime.session.commands import CallCommand, apply
+from runtime.session.history import history_of
 from runtime.session.hold import HoldMusic
 from runtime.session.prompt import ALREADY_SAID
 from runtime.session.session import Place, Session
@@ -105,6 +106,36 @@ async def test_a_call_an_eval_run_opened_keeps_every_request_the_model_was_sent(
     assert len(requests) == 2
     assert {"system", "tools", "messages"} <= set(requests[0])
     assert "buenas" in str(requests[0]["messages"])
+
+
+# ── the app's opening ──
+
+
+# Until 2026-11-21 a line said the moment a call opened reached the model before its app had written the
+# prompt: an app held on a laptop answers a round trip later, and the model answered with no instructions.
+@needs_the_database
+async def test_a_line_said_before_the_app_opened_the_call_is_asked_of_the_model_once_it_has(box: Box) -> None:
+    session = a_session(box, NOBODY, ["hola"], run="run_1", awaits_app=True)
+    await session.start()
+    answering = asyncio.create_task(hear(session, "buenas"))
+    await asyncio.sleep(0.2)
+    assert not answering.done()
+    assert session.call.requests == []
+    await session.set_prompt("identity", "Eres la recepción de Clínica Norte.")
+    await apply(session, ToolsSet(tools=[]))
+    assert await answering == "hola"
+    await session.end("caller_hung_up", "caller")
+    asked = session.call.requests
+    assert len(asked) == 1
+    assert asked[0]["system"] == ["Eres la recepción de Clínica Norte."]
+
+
+@needs_the_database
+async def test_a_call_taken_up_again_asks_its_model_without_waiting_for_an_opening(box: Box) -> None:
+    session = a_session(box, NOBODY, ["hola"], run="run_1", awaits_app=True)
+    await session.resume(history_of([]))
+    assert await asyncio.wait_for(hear(session, "buenas"), 5) == "hola"
+    await session.end("caller_hung_up", "caller")
 
 
 @needs_the_database

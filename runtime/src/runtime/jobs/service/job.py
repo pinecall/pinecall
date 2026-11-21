@@ -299,7 +299,7 @@ async def set_up_spoken(
     audio = recording_path(told.recordings_root, context.call) if declaration.record else None
     if audio is not None:
         link.keep_recording = partial(keep_recording, warmed.recordings, link, route.org, audio)
-    call = session.Call(context, declaration, link, audio, _history_of(link), written=link.written)
+    call = session.Call(context, declaration, link, audio, _history_of(link), written=link.written, awaits_app=True)
     room = _room_of(ctx, call, link)
     clip = await find_hold_clip(warmed.gateway, route.agent, arrived.scope, held)
     melody = None if clip is None else session.HoldMusic(clip, ctx.room, warmed.player(), held.after_s)
@@ -341,7 +341,9 @@ async def set_up_typed(
 ) -> Setup:
     """A written call in a room set up: the model alone, and the quiet that ends it."""
     told, route = warmed.told, arrived.route
-    call = session.Call(arrived.context, declaration, link, None, _history_of(link), written=link.written)
+    call = session.Call(
+        arrived.context, declaration, link, None, _history_of(link), written=link.written, awaits_app=True
+    )
     room = _room_of(ctx, call, link)
     running = session.open_written(
         call,

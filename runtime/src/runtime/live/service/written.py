@@ -239,7 +239,8 @@ def start_session(
 ) -> session.Session:
     """The session of a written call served here, built and said to run here; not yet started."""
     platform = GatewayPlatform(live, served, recalled)
-    call = session.Call(served.context, served.declaration, platform, carried=carried, written=written)
+    # Its app holds the socket it is served from, and opens it: the first request waits for that.
+    call = session.Call(served.context, served.declaration, platform, carried=carried, written=written, awaits_app=True)
     running = session.open_written(
         call, model, lookup_budget_ms=live.settings.text_lookup_budget_ms, tool_steps=live.settings.max_tool_steps
     )

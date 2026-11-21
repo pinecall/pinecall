@@ -2,6 +2,7 @@
 
 import asyncio
 import contextlib
+import logging
 from collections.abc import AsyncIterable, AsyncIterator, Callable
 from typing import override
 
@@ -12,7 +13,7 @@ from livekit.agents.voice import Agent, AgentSession, ModelSettings, SpeechHandl
 
 from runtime.providers.stage import Speaking, Thinking
 from runtime.session import stages
-from runtime.session.call import Call
+from runtime.session.call import APP_OPENS_WITHIN_S, Call
 from runtime.session.hearing import loops
 from runtime.session.line import Line
 from runtime.session.lookups import Lookups
@@ -26,6 +27,8 @@ type Thought = AsyncIterator[llm.ChatChunk | str]
 type Words = AsyncIterator[str | TimedString]
 # The history an agent takes over from the one before it, read when asked: the conversation as it stands then.
 type Carry = Callable[[], llm.ChatContext]
+
+logger = logging.getLogger(__name__)
 
 LLM_TIMEOUT = "llm_timeout"
 MODEL_SILENT = "the model said nothing within {seconds:g}s, so the caller was asked to say it again"
@@ -155,6 +158,14 @@ class CallAgent(Agent):
         self, chat_ctx: llm.ChatContext, tools: list[llm.Tool], model_settings: ModelSettings
     ) -> Thought:
         """The model run on the history, this turn's lookups, and the dynamic blocks."""
+        # The one place a request is built, so the one wait: a turn, a greeting the model improvises or
+        # an `agent.reply` asked for before the app said what the call opens with is held until it has.
+        if not await self.call.wait_until_opened():
+            logger.warning(
+                "call %s: its app did not say what the call opens with within %gs, so the model is asked without it",
+                self.call.context.call,
+                APP_OPENS_WITHIN_S,
+            )
         # What is still playing is not in the history yet: it is sent as said, once; played, livekit keeps it
         # and the request tells it as said from there (`prompt.request`).
         self.saying = [(speech, line) for speech, line in self.saying if not speech.chat_items]

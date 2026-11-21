@@ -1,4 +1,6 @@
-"""A call's state: its speech ids, the tools open, the events it receives, the app's declaration and its end."""
+"""A call's state: its speech ids, the tools open, the events it receives, the app's declaration, opening and end."""
+
+import asyncio
 
 from runtime.agents.declaration import Declaration, ToolSpec
 from runtime.calls.log.store import Store
@@ -83,3 +85,46 @@ async def test_the_apps_end_hook_done_is_said_to_the_platform_after_its_lines_we
 
 async def test_a_call_whose_platform_waits_for_nothing_takes_the_apps_word_and_goes_on(box: Box) -> None:
     await Call(context_of("call_1"), Declaration(slug="clinica-norte"), box).app_finished()
+
+
+# ── the app's opening ──
+
+
+@needs_the_database
+async def test_a_call_no_app_is_to_open_waits_for_nothing(box: Box, call: str) -> None:
+    ongoing = Call(context_of(call), Declaration(slug="a"), box)
+    assert await ongoing.wait_until_opened(0)
+    assert ongoing.opened_after_s is None
+
+
+@needs_the_database
+async def test_a_call_its_app_is_to_open_is_opened_by_its_first_tools_set(box: Box, call: str) -> None:
+    ongoing = Call(context_of(call), Declaration(slug="a", tools=(A_TOOL,)), box, awaits_app=True)
+    ongoing.writing.open()
+    waiting = asyncio.create_task(ongoing.wait_until_opened(5))
+    await asyncio.sleep(0.05)
+    assert not waiting.done()
+    await ongoing.set_tools(ToolsSet(tools=[]))
+    assert await waiting
+    took = ongoing.opened_after_s
+    assert took is not None and took >= 0.05
+    # A second tools.set narrows the tools and opens nothing again: the distance is the first one's.
+    await ongoing.set_tools(ToolsSet(tools=[]))
+    assert ongoing.opened_after_s == took
+    await ongoing.writing.close(5)
+
+
+@needs_the_database
+async def test_an_app_that_never_opens_holds_the_call_once_and_no_longer_than_it_may(box: Box, call: str) -> None:
+    ongoing = Call(context_of(call), Declaration(slug="a"), box, awaits_app=True)
+    assert not await ongoing.wait_until_opened(0.05)
+    # Said once: the turns after the first wait for nothing.
+    assert await ongoing.wait_until_opened(5)
+    assert ongoing.opened_after_s is None
+
+
+@needs_the_database
+async def test_a_call_taken_up_again_waits_for_no_opening(box: Box, call: str) -> None:
+    ongoing = Call(context_of(call), Declaration(slug="a"), box, awaits_app=True)
+    ongoing.take_as_opened()
+    assert await ongoing.wait_until_opened(0)

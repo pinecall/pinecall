@@ -175,6 +175,7 @@ class Session:
     async def resume(self, taken: history.Resumption, *, notice: str | None = None) -> None:
         """Open a call taken up again, with the history it had and where it stood."""
         self.call.resume_from(taken.turns, taken.last_said, taken.speeches)
+        self.call.take_as_opened()
         if taken.started_at is not None:
             self.started_at = taken.started_at
         self.call.writing.open()
