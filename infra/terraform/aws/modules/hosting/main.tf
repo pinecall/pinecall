@@ -28,7 +28,7 @@ resource "aws_route_table_association" "hosting" {
 
 resource "aws_security_group" "hosting" {
   name        = "pinecall-${var.name}-hosting"
-  description = "Pinecall ${var.name}: the hosted apps' nodes, apart from the platform's"
+  description = "Pinecall ${var.name}: the nodes of the hosted apps, apart from the platform"
   vpc_id      = var.vpc
   tags        = { Name = "pinecall-${var.name}-hosting" }
 }
@@ -44,7 +44,7 @@ resource "aws_vpc_security_group_egress_rule" "out" {
 # Among the pool's own nodes: an app's pod and its runner.
 resource "aws_vpc_security_group_ingress_rule" "own" {
   security_group_id            = aws_security_group.hosting.id
-  description                  = "the pool's own nodes and pods"
+  description                  = "the nodes and pods of the pool itself"
   ip_protocol                  = "-1"
   referenced_security_group_id = aws_security_group.hosting.id
 }
@@ -52,7 +52,7 @@ resource "aws_vpc_security_group_ingress_rule" "own" {
 # The control plane to the pool's kubelets and pods (logs, exec, the admission of its webhooks).
 resource "aws_vpc_security_group_ingress_rule" "from_cluster" {
   security_group_id            = aws_security_group.hosting.id
-  description                  = "the cluster's control plane"
+  description                  = "the control plane of the cluster"
   ip_protocol                  = "-1"
   referenced_security_group_id = var.cluster_security_group
 }
@@ -70,7 +70,7 @@ locals {
 resource "aws_vpc_security_group_ingress_rule" "to_cluster" {
   for_each                     = local.to_cluster
   security_group_id            = var.cluster_security_group
-  description                  = "the hosted apps' pool: ${each.key}"
+  description                  = "the pool of the hosted apps: ${each.key}"
   ip_protocol                  = each.value.protocol
   from_port                    = each.value.port
   to_port                      = each.value.port

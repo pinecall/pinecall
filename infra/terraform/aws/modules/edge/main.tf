@@ -23,9 +23,10 @@ resource "aws_eip" "media" {
   }
 }
 
+# EC2 takes no apostrophe in the description of a security group or of a rule: each is said without one.
 resource "aws_security_group" "media" {
   name        = "pinecall-${var.name}-media"
-  description = "Pinecall ${var.name}: a media node's LiveKit and RTP ports, open to callers"
+  description = "Pinecall ${var.name}: the LiveKit and RTP ports of a media node, open to callers"
   vpc_id      = var.vpc
   tags        = { Name = "pinecall-${var.name}-media" }
 }
@@ -57,7 +58,7 @@ resource "aws_vpc_security_group_ingress_rule" "media" {
 resource "aws_security_group" "sip" {
   for_each    = toset(["udp", "tcp"])
   name        = "pinecall-${var.name}-sip-${each.key}"
-  description = "Pinecall ${var.name}: 5060/${each.key} from the carriers' networks alone"
+  description = "Pinecall ${var.name}: 5060/${each.key} from the networks of the carriers alone"
   vpc_id      = var.vpc
   tags        = { Name = "pinecall-${var.name}-sip-${each.key}" }
 }
@@ -77,7 +78,7 @@ resource "aws_vpc_security_group_ingress_rule" "sip" {
 resource "aws_vpc_security_group_ingress_rule" "sip_from_production" {
   for_each          = contains(keys(var.sip_names), "production") ? toset(["udp", "tcp"]) : toset([])
   security_group_id = aws_security_group.sip[each.key].id
-  description       = "production's media address: a developer's ring dialled on"
+  description       = "the media address of production: a ring of a developer dialled on"
   ip_protocol       = each.key
   from_port         = 5060
   to_port           = 5060
