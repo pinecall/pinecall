@@ -5,8 +5,9 @@
 - **A hosted app asks its node for what the runner is told.** `PINECALL_RUNNER_APP_CPU` (`100m`; charts/hosting's
   `appCpu`) is what each app's pod asks of its node, in thousandths of a core; what it may take is half a core
   either way. Unset, it asks for that half core, as before, which is how a cluster that bills a pod by what it
-  asks is told its size. An idle app was measured at a hundredth of a core: on nodes of the operator's own, one
-  holds what three did.
+  asks is told its size. An idle app was measured at a hundredth of a core: on nodes of the operator's own, a
+  node then holds as many apps as it has memory for, a gibibyte each (what a pod's install step is given), where
+  the half core each asked let it hold three.
 - **A deployment can be three nodes.** An environment's media can run on the core node
   (`envs.<env>.mediaPool: core` in charts/pinecall; `media_on_core` in the AWS cluster's variables, which opens
   that node's media ports), and what a worker's pod asks of its node is a value beside its seats

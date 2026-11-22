@@ -449,7 +449,7 @@ and 200 MiB, on three nodes for what they asked. Three values make one machine c
 |---|---|---|
 | `media_on_core = ["production"]` | the cluster's variables | that env's LiveKit, SIP and core workers run on the core node, which then answers its media ports and its carriers; `chart_values` says `envs.production.mediaPool: core`. The other env keeps a node of its own, since each LiveKit and each SIP holds its node's ports. Moving a cluster that stands: name the env, apply, `make values`, `make deploy`, then take its node out of `pools.media` and apply again |
 | `envs.<env>.workers.core: { replicas, seats, resources }` | the operator's values | the calls answered with no wait are the core workers' seats, on a node that is on anyway: raised to what the machine holds (a call costs a worker about a quarter of a core, `runtime/docs/scaling.md`), with `scaled.min: 0`, no node is kept on for a call that may come, and the gateway orders one when 60 % of the seats are busy |
-| `appCpu: 100m` | `values/hosting-<cluster>.yaml` | each hosted app asks its node for what an idle app uses, and may still take half a core: one node of the pool holds what three did |
+| `appCpu: 100m` | `values/hosting-<cluster>.yaml` | each hosted app asks its node for what an idle app uses, and may still take half a core. A node then holds as many apps as it has memory for: a pod reserves the gibibyte its install step is given, so six on a node of 8 GiB, where the half core each asked let it hold three |
 
 **The names move last.** The load balancer exists only once `make edge` has run, so a cluster's
 records start unpointed: `point_names`, `point_services` and `point_sip` are false unless its
