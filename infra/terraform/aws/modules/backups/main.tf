@@ -64,5 +64,10 @@ module "postgres" {
   description      = "Pinecall's Postgres backups, ${var.name}"
   issuer           = var.issuer
   service_accounts = var.postgres_service_accounts
-  policy           = data.aws_iam_policy_document.postgres.json
+}
+
+resource "aws_iam_role_policy" "postgres" {
+  name   = "its-own-bucket"
+  role   = module.postgres.name
+  policy = data.aws_iam_policy_document.postgres.json
 }

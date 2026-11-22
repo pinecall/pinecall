@@ -10,16 +10,14 @@ locals {
     length(var.services) > 0 ? { services = { domain = var.services[0], others = slice(var.services, 1, length(var.services)) } } : {},
     var.pages == "" ? {} : { pages = { domain = "*.${var.pages}", others = [] } },
   )
-  # Every proof, once: a wildcard and its own domain would ask for the same record twice.
-  proofs = {
-    for proof in flatten([
-      for key, certificate in aws_acm_certificate.each : [
-        for option in certificate.domain_validation_options : {
-          name = option.resource_record_name, type = option.resource_record_type, value = option.resource_record_value
-        }
-      ]
-    ]) : proof.name => proof...
-  }
+  # Every domain a certificate names, by what a plan already knows of it (the certificate and the
+  # domain): the record that proves it is known only once Certificate Manager has answered.
+  proofs = merge([
+    for key, certificate in local.certificates : {
+      for domain in concat([certificate.domain], certificate.others) :
+      "${key} ${domain}" => { certificate = key, domain = domain }
+    }
+  ]...)
 }
 
 resource "aws_acm_certificate" "each" {
@@ -37,10 +35,10 @@ resource "aws_acm_certificate" "each" {
 resource "aws_route53_record" "proofs" {
   for_each        = local.proofs
   zone_id         = data.aws_route53_zone.zone.zone_id
-  name            = each.key
-  type            = each.value[0].type
+  name            = one([for option in aws_acm_certificate.each[each.value.certificate].domain_validation_options : option.resource_record_name if option.domain_name == each.value.domain])
+  type            = one([for option in aws_acm_certificate.each[each.value.certificate].domain_validation_options : option.resource_record_type if option.domain_name == each.value.domain])
   ttl             = 300
-  records         = [each.value[0].value]
+  records         = [one([for option in aws_acm_certificate.each[each.value.certificate].domain_validation_options : option.resource_record_value if option.domain_name == each.value.domain])]
   allow_overwrite = true
 }
 

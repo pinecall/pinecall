@@ -16,15 +16,3 @@ variable "service_accounts" {
   type        = list(string)
   description = "The Kubernetes ServiceAccounts that may act as the role, each `<namespace>/<name>`."
 }
-
-variable "policy" {
-  type        = string
-  description = "What the role may do, as a policy document; null where managed policies say it all."
-  default     = null
-}
-
-variable "managed_policies" {
-  type        = list(string)
-  description = "AWS's own policies attached to the role, each by its ARN."
-  default     = []
-}

@@ -53,9 +53,6 @@ resource "aws_vpc_security_group_ingress_rule" "media" {
 # number is dialled on to the sandbox's SIP from there (docs/telephony.md, "A developer's own
 # phone"). A group a protocol: a security group holds sixty rules, and one for both would be full
 # at thirty networks.
-locals {
-  sip_sources = toset(concat(var.sip_sources, [for env, address in aws_eip.media : "${address.public_ip}/32" if env == "production"]))
-}
 
 resource "aws_security_group" "sip" {
   for_each    = toset(["udp", "tcp"])
@@ -66,11 +63,23 @@ resource "aws_security_group" "sip" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "sip" {
-  for_each          = { for pair in setproduct(["udp", "tcp"], local.sip_sources) : "${pair[0]} ${pair[1]}" => pair }
+  for_each          = { for pair in setproduct(["udp", "tcp"], toset(var.sip_sources)) : "${pair[0]} ${pair[1]}" => pair }
   security_group_id = aws_security_group.sip[each.value[0]].id
   ip_protocol       = each.value[0]
   from_port         = 5060
   to_port           = 5060
   cidr_ipv4         = strcontains(each.value[1], ":") ? null : each.value[1]
   cidr_ipv6         = strcontains(each.value[1], ":") ? each.value[1] : null
+}
+
+# Production's own media address, where there is a production: named apart from the carriers',
+# since a plan knows their networks and not yet this address.
+resource "aws_vpc_security_group_ingress_rule" "sip_from_production" {
+  for_each          = contains(keys(var.sip_names), "production") ? toset(["udp", "tcp"]) : toset([])
+  security_group_id = aws_security_group.sip[each.key].id
+  description       = "production's media address: a developer's ring dialled on"
+  ip_protocol       = each.key
+  from_port         = 5060
+  to_port           = 5060
+  cidr_ipv4         = "${aws_eip.media["production"].public_ip}/32"
 }

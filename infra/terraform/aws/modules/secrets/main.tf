@@ -97,5 +97,10 @@ module "sync" {
   description      = "Pinecall ${var.name}: External Secrets Operator"
   issuer           = var.issuer
   service_accounts = ["${local.reader.namespace}/${local.reader.name}"]
-  policy           = data.aws_iam_policy_document.sync.json
+}
+
+resource "aws_iam_role_policy" "sync" {
+  name   = "read-the-clusters-secrets"
+  role   = module.sync.name
+  policy = data.aws_iam_policy_document.sync.json
 }

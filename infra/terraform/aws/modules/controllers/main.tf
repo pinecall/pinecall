@@ -31,7 +31,12 @@ module "load_balancer_identity" {
   description      = "Pinecall ${var.name}: the load balancer controller"
   issuer           = var.issuer
   service_accounts = ["kube-system/aws-load-balancer-controller"]
-  policy           = file("${path.module}/load-balancer-policy.json")
+}
+
+resource "aws_iam_role_policy" "load_balancer" {
+  name   = "make-load-balancers"
+  role   = module.load_balancer_identity.name
+  policy = file("${path.module}/load-balancer-policy.json")
 }
 
 resource "helm_release" "load_balancer" {
@@ -55,7 +60,7 @@ resource "helm_release" "load_balancer" {
     # every such Service's is left out.
     enableServiceMutatorWebhook = false
   })]
-  depends_on = [terraform_data.gateway_api]
+  depends_on = [terraform_data.gateway_api, aws_iam_role_policy.load_balancer]
 }
 
 # The autoscaler resizes the workers' Auto Scaling groups and no other: it reads every group to
@@ -89,7 +94,12 @@ module "autoscaler_identity" {
   description      = "Pinecall ${var.name}: the cluster autoscaler"
   issuer           = var.issuer
   service_accounts = ["kube-system/cluster-autoscaler"]
-  policy           = data.aws_iam_policy_document.autoscaler.json
+}
+
+resource "aws_iam_role_policy" "autoscaler" {
+  name   = "resize-the-workers-pools"
+  role   = module.autoscaler_identity.name
+  policy = data.aws_iam_policy_document.autoscaler.json
 }
 
 resource "helm_release" "autoscaler" {

@@ -41,5 +41,10 @@ module "kubeip" {
   description      = "Pinecall ${var.name}: kubeip"
   issuer           = var.issuer
   service_accounts = [var.kubernetes_service_account]
-  policy           = data.aws_iam_policy_document.kubeip.json
+}
+
+resource "aws_iam_role_policy" "kubeip" {
+  name   = "move-the-media-addresses"
+  role   = module.kubeip.name
+  policy = data.aws_iam_policy_document.kubeip.json
 }

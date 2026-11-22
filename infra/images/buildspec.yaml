@@ -22,9 +22,15 @@ phases:
       - export DOCKER_BUILDKIT=1
       - |
         set -euo pipefail
+        # Docker Hub counts anonymous pulls by address, and CodeBuild's addresses are everybody's:
+        # an official image a Containerfile names (`ARG X=docker.io/library/…@sha256:…`) is taken
+        # from its mirror at ECR Public instead, by the same digest, so the same bytes.
+        mirrored() {
+          sed -nE 's#^ARG ([A-Z_]+)=docker\.io/library/(.+)$#--build-arg \1=public.ecr.aws/docker/library/\2#p' "$1" | tr '\n' ' '
+        }
         case "$KIND" in
           runtime)
-            docker build -f infra/images/runtime/Containerfile -t "$IMAGE" .
+            docker build $(mirrored infra/images/runtime/Containerfile) -f infra/images/runtime/Containerfile -t "$IMAGE" .
             docker run --rm "$IMAGE" --version
             docker run --rm --entrypoint python "$IMAGE" -c "
         from runtime.providers.service.plugins import list_vendors; list_vendors()
@@ -42,11 +48,11 @@ phases:
         "
             ;;
           mcp)
-            docker build -f infra/images/mcp/Containerfile -t "$IMAGE" .
+            docker build $(mirrored infra/images/mcp/Containerfile) -f infra/images/mcp/Containerfile -t "$IMAGE" .
             docker run --rm --read-only --tmpfs /tmp "$IMAGE" --check
             ;;
           plain)
-            docker build -f Containerfile -t "$IMAGE" .
+            docker build $(mirrored Containerfile) -f Containerfile -t "$IMAGE" .
             ;;
           *)
             echo "KIND is runtime, mcp or plain, not '$KIND'" >&2; exit 2

@@ -33,7 +33,11 @@ module "disks_identity" {
   description      = "Pinecall ${var.name}: the disks' driver (EBS CSI)"
   issuer           = local.issuer
   service_accounts = ["kube-system/ebs-csi-controller-sa"]
-  managed_policies = ["arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"]
+}
+
+resource "aws_iam_role_policy_attachment" "disks" {
+  role       = module.disks_identity.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
 }
 
 resource "aws_eks_addon" "disks" {
@@ -43,5 +47,5 @@ resource "aws_eks_addon" "disks" {
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "OVERWRITE"
   configuration_values        = jsonencode({ defaultStorageClass = { enabled = true } })
-  depends_on                  = [aws_eks_node_group.pool]
+  depends_on                  = [aws_eks_node_group.pool, aws_iam_role_policy_attachment.disks]
 }
