@@ -67,6 +67,20 @@ async def setup(
         Path | None,
         typer.Option("--from", help="A server's processes installed from this wheel, not PyPI.", hidden=True),
     ] = None,
+    image: Annotated[
+        str | None,
+        typer.Option(
+            "--image",
+            help="A server's processes run this image of a registry, not one built here; `here` builds again.",
+            hidden=True,
+        ),
+    ] = None,
+    unpointed: Annotated[
+        bool,
+        typer.Option(
+            "--unpointed", help="A server made ready before its name points here: the name is not checked.", hidden=True
+        ),
+    ] = False,
     email: Annotated[
         str | None, typer.Option("--email", help="Who signs in to the console; asked when not given.", hidden=True)
     ] = None,
@@ -132,6 +146,8 @@ async def setup(
         livekit_key=livekit_key,
         livekit_secret_stdin=livekit_secret_stdin,
         wheel=wheel,
+        image=image,
+        unpointed=unpointed,
         email=email,
         person=person,
         password_stdin=password_stdin,

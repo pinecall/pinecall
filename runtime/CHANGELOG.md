@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **A server carries production.** `setup --domain` made a small server: a fifth caller of an environment heard
+  silence, an update cut every call in flight, nothing ran the night's erasure, the image could only be built on
+  the machine, and the Caddyfile had room for one name. Now each environment has an overflow beside its worker
+  and its own seats (`PINECALL_SANDBOX_MAX_JOBS`, `PINECALL_PRODUCTION_MAX_JOBS`); a worker told to stop is given
+  the ten minutes of its drain; `retention nightly` is a service that runs the night at 04:00 UTC; `--image <ref>`
+  runs a registry's image, the one a cluster runs, on every process; `--unpointed` makes a server ready before
+  its name points at it; `local restore <dump>` replaces the machine's database with another runtime's;
+  `<dir>/sites/*.caddy` are sites of the operator's own; the apps' pages get their certificates one by one, each
+  once `GET /v1/pages/known` says the name is a page; and SIP's audio ports are a line of the env file
+  (`PINECALL_SIP_RTP_PORTS`). `docs/the-runtime-cli.md`, "A server that carries production".
+- **A server backs its database up.** It kept none: the database was one Docker volume. With
+  `PINECALL_BACKUP_URL` (`s3://…`, `gs://…`) in its env file, Postgres archives every finished WAL segment there
+  and a service beside it takes a base backup a night, 35 days kept, with Barman's tools for an object store, the
+  ones a cluster's Postgres uses: the database is restored to any moment of those days. The package's Postgres
+  image carries the tools; on a laptop nothing is archived.
 - **On Google Cloud the hosting cluster obeys `deletion_protection` too.** The cluster's variable reached the
   main cluster alone, so a deployment with `hosting = true` could not be destroyed by Terraform: the hosting
   cluster stayed protected whatever the variable said.

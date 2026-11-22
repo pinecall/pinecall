@@ -18,6 +18,8 @@ SHIPPED = (
     "sip.yaml",
     "postgres/Dockerfile",
     "postgres/extensions.sql",
+    "postgres/archive-wal",
+    "postgres/backup-nightly",
     "models.yaml",
     "models.gpu.yaml",
     "providers.local.json",

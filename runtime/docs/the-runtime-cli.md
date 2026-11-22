@@ -86,9 +86,10 @@ Running. Ctrl-C stops it; `pinecall-runtime setup` starts it again.
 Let's Encrypt it renews itself, starts LiveKit facing out (its media on :7881 tcp and :7882 udp, the
 machine's public address found by STUN, a key pair drawn for this machine), and runs the gateway and
 a worker for each environment in Docker, from this release of the package, so all of it comes back
-after a reboot. Each worker holds four calls (`PINECALL_MAX_JOBS=4`, the env file's), and a server
-runs no overflow: a fifth phone caller of an environment hears silence. Open :80, :443, :7881/tcp
-and :7882/udp to the machine. The console's admin is the
+after a reboot. Each worker holds four calls (`PINECALL_MAX_JOBS=4`, the env file's), and each
+environment has an overflow beside it: the caller no worker has a seat for hears one sentence and
+is offered a call back, never silence. The night's work (`retention nightly`) runs there too.
+Open :80, :443, :7881/tcp and :7882/udp to the machine. The console's admin is the
 runtime's operator; a server always asks for a password (`--password-stdin` with `--yes`).
 
 ```console
@@ -123,9 +124,28 @@ $ pinecall-runtime setup --domain voice.example.com
 ```
 
 To update the server, upgrade the package and run the verb again: `uv tool upgrade pinecall-runtime
-&& pinecall-runtime setup` (the name, the LiveKit and the phone are kept; the schema migrates; the
-gateway and the workers restart on the new release). A machine that ran `setup` alone becomes a
-server the first time `--domain` is given.
+&& pinecall-runtime setup` (the name, the LiveKit, the phone and the image are kept; the schema
+migrates; the gateway and the workers restart on the new release). A worker told to stop takes no
+new call and ends when the last call it holds does, ten minutes at most, so a spoken call in flight
+is not cut by an update; the gateway is one process and is away for the seconds its restart takes,
+which a written call's socket does not outlive. A machine that ran `setup` alone becomes a server
+the first time `--domain` is given.
+
+**A server that carries production.** What a server is sized and built by are lines of its env file
+(`<dir>/env`), which `setup` writes once and never takes a line of yours out of; `local up` applies a
+change, and restarts every process that reads the file: the gateway for some seconds, each worker
+once the calls it holds have ended.
+
+| what | how |
+|---|---|
+| the seats of each environment | `PINECALL_SANDBOX_MAX_JOBS` and `PINECALL_PRODUCTION_MAX_JOBS`, each its worker's; `PINECALL_MAX_JOBS` is what either reads when it has no line of its own. A spoken call was measured at about a third of a core, the platform's part included |
+| the image | `--image <ref>`: every process of the runtime runs that image of a registry, the one a cluster of the same commit runs, pulled and never built here (the machine signs in to the registry itself). `setup` alone keeps it; `--image here` builds on the machine again |
+| a server made ready before its name moves | `--unpointed`: the name is not checked and https is not waited for. Caddy asks for the certificate by itself once the name points here, and `local up` then waits for it |
+| a database from another machine | `local restore <dump>`, below |
+| the database's backups | `PINECALL_BACKUP_URL=s3://<bucket>/<path>` (or `gs://…`): Postgres archives every finished WAL segment there, five minutes apart at most, and a service beside it takes a base backup when the place holds none and one a night (`PINECALL_BACKUP_AT`, 03:00 UTC), keeping `PINECALL_BACKUP_DAYS` (35) of them. The tool is Barman's, the one a cluster's Postgres backs up with. The machine's own identity signs for the bucket (an instance profile, a service account); where it has none, the store's variables go in `<dir>/backups.env` (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`). "A server's backups", below |
+| sites of your own on :443 | a file in `<dir>/sites/`, `<name>.caddy`, as Caddy writes a site: `setup` writes the Caddyfile whole on every run and never a file of that folder |
+| the apps' pages | `PINECALL_PAGES_DOMAIN=<domain>` and a wildcard record `*.<domain>` to the machine: each page's certificate is asked for at its first visit, once the gateway says the name is a page of an app that runs (`GET /v1/pages/known`). Let's Encrypt gives a registered domain 50 new certificates a week |
+| the hosted apps | a runner for each environment, on this machine or another: `pinecall-runtime runner start` with `PINECALL_GATEWAY_URL` (the server's https name), `PINECALL_RUNNER_KEY` (`keys runner <env>`), `PINECALL_RUNNER_ENGINE=processes` and a `PINECALL_RUNNER_HOME` of its own. Two runners never share a home: each empties it when it starts |
 
 **Your own LiveKit (`--livekit`).** LiveKit Cloud or a LiveKit you run, instead of one `setup`
 starts: its URL, then its API key and secret, asked once (`--livekit-key`, `--livekit-secret-stdin`
@@ -136,8 +156,41 @@ browser joins your LiveKit where it is; a phone call then goes through that Live
 `--phone` is refused beside it. `--livekit here` puts the LiveKit `setup` starts back, with a pair
 drawn for the machine again.
 
+**A server's backups.** With no `PINECALL_BACKUP_URL` a server keeps no backup at all: its database
+is one Docker volume. With one, what is in the bucket restores the database to any moment of the last
+35 days, on this machine or a new one. The runtime is stopped, Postgres's volume emptied and a base
+backup put in it, and Postgres told to replay its WAL from the bucket up to the moment; when it has,
+`up` starts the rest:
+
+```console
+$ cd ~/.pinecall-runtime/local && pinecall-runtime local down && set -a && . ./env && set +a
+$ docker compose -f compose.yaml run --rm --user postgres --entrypoint bash postgres -c '
+    barman-cloud-backup-list $PINECALL_BACKUP_URL pinecall'               # the backups, newest last
+$ docker compose -f compose.yaml run --rm --user postgres --entrypoint bash postgres -c '
+    rm -rf "$PGDATA"/* && barman-cloud-restore $PINECALL_BACKUP_URL pinecall <backup id> "$PGDATA"
+    cat >> "$PGDATA/postgresql.auto.conf" <<CONF
+restore_command = '"'"'barman-cloud-wal-restore $PINECALL_BACKUP_URL pinecall %f %p'"'"'
+recovery_target_time = '"'"'2026-11-23 14:05:00+00'"'"'
+recovery_target_action = promote
+CONF
+    touch "$PGDATA/recovery.signal"'
+$ docker compose -f compose.yaml up -d postgres
+$ until [ "$(docker compose -f compose.yaml exec -T postgres psql -U pinecall -d pinecall -Atc "select pg_is_in_recovery()")" = f ]; do sleep 2; done
+$ pinecall-runtime local up
+```
+
+Without the `recovery_target_time` line Postgres replays every segment the bucket holds. A bucket of
+Google's takes `--cloud-provider google-cloud-storage` after each of the three `barman-cloud-`
+commands. `up` run while Postgres still replays fails on its first statement (the database is
+read-only until then), which is what the wait is for. A backup is proven by restoring it: do this
+once on a machine that is not the server.
+
 **Phone calls (`--phone`).** LiveKit's SIP beside the LiveKit `setup` starts, on :5060, its audio on
-:10000-10019/udp: open them to your carrier alone. A number is then imported or bought as on any
+:10000-10019/udp, a port a call (`PINECALL_SIP_RTP_PORTS=10000-10199` in the env file for more):
+open them to your carrier alone. One SIP takes both environments' calls: a second name for the
+sandbox's (`PINECALL_SANDBOX_SIP_DOMAIN`) points at the same machine. What needs a SIP an environment is
+a cluster's: a simulated caller that rings by phone (`simulate --via sip`) is refused on a server in
+one sentence. A number is then imported or bought as on any
 runtime ([telephony.md](telephony.md)).
 
 **The keys.** For each installed vendor `setup` looks for its variable (`DEEPGRAM_API_KEY`,
@@ -193,6 +246,7 @@ up); `--dir` (`~/.pinecall-runtime/local` unless named).
 ```
 pinecall-runtime local [--dir <path>] up [--services-only]
 pinecall-runtime local [--dir <path>] down [--volumes]
+pinecall-runtime local [--dir <path>] restore <dump>
 pinecall-runtime local [--dir <path>] logs [<service>]
 pinecall-runtime local [--dir <path>] init --email <address> --person "<name>" [--org <slug>] [--name "…"]
 pinecall-runtime local [--dir <path>] env
@@ -215,6 +269,13 @@ for the name to answer over https, and returns: nothing runs in the terminal.
 
 `down` stops the services, a server's included, and keeps the database; `--volumes` deletes it, and
 the next `up` draws the box's keys again, since the database that knew them is gone.
+`restore <dump>` replaces this machine's database with a dump of another runtime's (`pg_dump -Fc`),
+which is how a runtime moves between machines, or between a cluster and a server: every service that
+writes is stopped, the schema emptied, the dump restored, and the runtime left stopped for `up` to
+bring the schema to this release and start it. What the dump holds is sealed under the other
+runtime's `PINECALL_VAULT_KEY` and signed with its `PINECALL_TOKEN_KEY`: both go into `<dir>/env`
+first (and each environment's fleet key, for workers that knock with them), or nothing sealed there
+opens here.
 `logs` follows a server's: every service's, or one's (`gateway`, `worker-sandbox`,
 `worker-production`, `livekit-server`, `caddy`); a laptop's are in the terminal `setup` runs in. `init` is `init` below,
 run on the local settings, so the first org and person need no shell line. `env` prints that
@@ -433,7 +494,7 @@ erases them, each through the erasure path with `retention` as who asked, 5 000 
 then forgets the detail records of erased phone calls, and the dials, older than 24 months, and
 the WhatsApp message ids claimed more than 7 days ago ([whatsapp.md](protocol/whatsapp.md)) and the alerts
 raised more than 90 days ago;
-then makes the log's days a week ahead (`call_log` is partitioned by UTC day; a row no day holds lands in `call_log_default`, and a day the default already holds rows of is named and not made) and drops each past day nothing is left in; the CronJob `pinecall-retention` runs it at 04:00 UTC every night. `doctor`'s `days` line names rows in the default and fewer than two days made ahead. `traceback <number> [--since
+then makes the log's days a week ahead (`call_log` is partitioned by UTC day; a row no day holds lands in `call_log_default`, and a day the default already holds rows of is named and not made) and drops each past day nothing is left in; the CronJob `pinecall-retention` runs it at 04:00 UTC every night, and on a server `retention nightly [--at HH:MM]` does, a service that waits for that hour of UTC and runs the same night, day after day. `doctor`'s `days` line names rows in the default and fewer than two days made ahead. `traceback <number> [--since
 YYYY-MM-DD]` answers a carrier's traceback: every phone call with the number, still kept or erased
 with its record, and every dial to it placed or refused, with the org, the environment, the number shown
 and who asked — 24 months back unless `--since` says a day. `migrate up` applies what the

@@ -137,6 +137,12 @@ class SecretList(Row):
     secrets: list[SecretRow]
 
 
+class PageKnown(Row):
+    """GET /v1/pages/known: the name asked about, when it is an app's page served now."""
+
+    name: str
+
+
 class PageConfig(Row):
     """GET /pinecall/config on an app's page: what the page needs before it asks for a ticket."""
 

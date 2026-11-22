@@ -89,6 +89,16 @@ async def page_dictation(
     return schemas.PageDictation(url=settings.base_url.replace("http", "ws", 1) + minted.path)
 
 
+# What a server's own proxy asks before it gets a name a certificate (Caddy's on-demand TLS, `ask`):
+# no certificate covers the name of an app nobody deployed yet, so each is asked for at its first
+# visit, and only for a name this answers 200 to. Anybody may ask: it says what visiting the name says.
+@router.get("/v1/pages/known")
+async def page_known(domain: str, settings: TheSettings, session: Session) -> schemas.PageKnown:
+    """Whether a name is an app's page served now; 404 for any other name."""
+    await pages.resolve_page(session, settings.pages_domain, domain, domain)
+    return schemas.PageKnown(name=domain)
+
+
 @router.get("/v1/pages/{host}/files/{path:path}")
 async def page_file(path: str, paged: ThePage, kept: ThePages, session: Session) -> Response:
     """One file of an app's page, from the release that runs; a path that names no file is the page itself."""

@@ -12,7 +12,14 @@ NAME = "voice.example.com"
 
 
 async def server_of(
-    before: dict[str, str], *, domain: str | None = None, livekit: str | None = None, phone: bool = False
+    before: dict[str, str],
+    *,
+    domain: str | None = None,
+    livekit: str | None = None,
+    phone: bool = False,
+    image: str | None = None,
+    wheel: Path | None = None,
+    unpointed: bool = False,
 ) -> server_.Server | None:
     flags = Flags(
         where=Path("unused"),
@@ -21,7 +28,9 @@ async def server_of(
         phone=phone,
         livekit_key=None,
         livekit_secret_stdin=False,
-        wheel=None,
+        wheel=wheel,
+        image=image,
+        unpointed=unpointed,
         email=None,
         person=None,
         password_stdin=False,
@@ -77,6 +86,26 @@ async def test_their_livekit_is_given_back_for_the_one_setup_starts() -> None:
         "LIVEKIT_API_SECRET": "s",
     }
     assert await server_of(theirs, livekit=server_.HERE) == server_.Server(NAME)
+
+
+async def test_a_registrys_image_is_kept_by_the_runs_after_until_one_builds_here_again() -> None:
+    """`--image` names the image once; `setup` alone keeps it; `--image here` or a wheel builds on this machine."""
+    image = "registry.example.com/pinecall/runtime:1a2b3c4d"
+    assert await server_of({}, domain=NAME, image=image) == server_.Server(NAME, image=image)
+    kept = {"PINECALL_DOMAIN": NAME, "LIVEKIT_URL": "ws://127.0.0.1:7880", server_.IMAGE: image}
+    assert await server_of(kept) == server_.Server(NAME, image=image)
+    assert await server_of(kept, image=server_.HERE) == server_.Server(NAME)
+    assert await server_of(kept, wheel=Path("runtime-9.9.9-py3-none-any.whl")) == server_.Server(NAME)
+    with pytest.raises(ValidationError, match="one of them"):
+        await server_of({}, domain=NAME, image=image, wheel=Path("runtime-9.9.9-py3-none-any.whl"))
+
+
+async def test_an_image_and_a_name_pointed_later_are_a_servers() -> None:
+    """A laptop builds nothing and has no name to point: both flags are refused without --domain."""
+    with pytest.raises(ValidationError, match="are a server's"):
+        await server_of({}, image="registry.example.com/runtime:1")
+    with pytest.raises(ValidationError, match="are a server's"):
+        await server_of({}, unpointed=True)
 
 
 def test_help_shows_a_persons_three_flags_and_help_all_the_scripts_under_their_heading() -> None:

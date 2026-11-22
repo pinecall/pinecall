@@ -43,3 +43,12 @@ async def test_the_nights_run_opens_neither_the_sfu_nor_redis(monkeypatch: pytes
     assert len(ran) == 1
     assert "0 calls erased past their org's days" in said.getvalue()
     assert "days of the log: 1 made ahead, 0 dropped once empty" in said.getvalue()
+
+
+def test_the_night_waits_for_its_hour_of_utc() -> None:
+    """A server's night runs at 04:00 UTC: later today, tomorrow once the hour is past, a whole day at the minute."""
+    midnight = 1795392000.0  # 2026-11-23T00:00:00Z
+    assert retention.seconds_until("04:00", midnight) == 4 * 3600
+    assert retention.seconds_until("04:00", midnight + 5 * 3600) == 23 * 3600
+    assert retention.seconds_until("04:00", midnight + 4 * 3600) == 24 * 3600
+    assert retention.seconds_until("23:30", midnight + 23 * 3600) == 30 * 60

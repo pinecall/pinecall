@@ -10,13 +10,11 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from importlib.metadata import version
 from pathlib import Path
-from shutil import copyfile
 
 from livekit import api
 from livekit.protocol.room import ListRoomsRequest
 
 from runtime.cli.setup.compose import Compose
-from runtime.cli.setup.files import find_shipped
 from runtime.exceptions import ConfigurationError, UpstreamError, ValidationError
 
 # Where the machine's own public address is read, to say whether the name points here.
@@ -24,51 +22,16 @@ PUBLIC_ADDRESS = "https://checkip.amazonaws.com"
 # How long the name is waited for over https: Caddy asks Let's Encrypt on its first start.
 HTTPS_WITHIN_S = 120.0
 LIVEKIT_KEY = "pinecall"
-# `--livekit here`: the LiveKit setup starts again, after one of the operator's own.
+# `--livekit here`: the LiveKit setup starts again, after one of the operator's own; `--image here`:
+# the image built on this machine again, after one from a registry.
 HERE = "here"
-FILES = ("server.yaml", "runtime/Dockerfile")
-
+# The env file's name for the registry's image a server runs; it stays as `setup --image` wrote it.
+IMAGE = "PINECALL_RUNTIME_IMAGE"
+# Where the database's backups go (s3://… or gs://…): named, the nightly base backups run beside Postgres.
+BACKUPS = "PINECALL_BACKUP_URL"
 BUILD_FAILED = "the runtime's image did not build:\n{output}"
+PULL_FAILED = "the runtime's image could not be pulled:\n{output}"
 UP_FAILED = "docker compose could not bring the server up:\n{output}"
-
-CADDYFILE = """{name} {{
-{livekit}	reverse_proxy 127.0.0.1:8080
-}}
-"""
-# The browser's LiveKit is reached under the name: /rtc is LiveKit's signal path.
-LIVEKIT_ROUTE = "\t@livekit path /rtc /rtc/*\n\treverse_proxy @livekit 127.0.0.1:7880\n"
-
-LIVEKIT_CONFIG = """# LiveKit as a server: its media on the machine's public address, the pair drawn for this machine,
-# its events to the gateway on loopback (one LiveKit serves both environments here).
-port: 7880
-rtc:
-  tcp_port: 7881
-  udp_port: 7882
-  use_external_ip: true
-redis:
-  address: 127.0.0.1:56380
-keys:
-  {key}: {secret}
-webhook:
-  api_key: {key}
-  urls:
-    - http://127.0.0.1:8080/v1/livekit/webhook
-logging:
-  level: info
-"""
-
-SIP_CONFIG = """# LiveKit's SIP as a server: calls to this machine's :5060, their audio on twenty RTP ports.
-api_key: {key}
-api_secret: {secret}
-ws_url: ws://127.0.0.1:7880
-redis:
-  address: 127.0.0.1:56380
-sip_port: 5060
-rtp_port: 10000-10019
-use_external_ip: true
-logging:
-  level: info
-"""
 
 
 @dataclass(frozen=True)
@@ -87,6 +50,8 @@ class Server:
     name: str
     livekit: TheirLiveKit | None = None
     phone: bool = False
+    # The image every process of the runtime runs, from a registry; None builds it on this machine.
+    image: str | None = None
 
 
 def linux_or_refuse() -> None:
@@ -168,38 +133,16 @@ def settings_of(server: Server, values: dict[str, str]) -> dict[str, str | None]
         }
     # LiveKit and the gateway share the host's network: the gateway stays on loopback, Caddy is the door.
     phone = {"PINECALL_SIP_DOMAIN": server.name if server.phone else None}
-    return {"PINECALL_DOMAIN": server.name, "PINECALL_GATEWAY_LISTEN": None, **livekit, **phone}
-
-
-def write_files(where: Path, server: Server, values: dict[str, str], wheel: Path | None) -> None:
-    """The server's compose, its image's Dockerfile and wheel, the Caddyfile, LiveKit's and SIP's configs."""
-    for name in FILES:
-        target = where / name
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(find_shipped(name).read_text(encoding="utf-8"), encoding="utf-8")
-    wheels = where / "runtime" / "wheels"
-    wheels.mkdir(exist_ok=True)
-    for old in wheels.iterdir():
-        old.unlink()
-    if wheel is not None:
-        copyfile(wheel, wheels / wheel.name)
-    route = LIVEKIT_ROUTE if server.livekit is None else ""
-    (where / "Caddyfile").write_text(CADDYFILE.format(name=server.name, livekit=route), encoding="utf-8")
-    pair = {"key": values["LIVEKIT_API_KEY"], "secret": values["LIVEKIT_API_SECRET"]}
-    for name, text in (("livekit.server.yaml", LIVEKIT_CONFIG), ("sip.server.yaml", SIP_CONFIG)):
-        target = where / name
-        target.touch(mode=0o600)
-        target.write_text(text.format(**pair), encoding="utf-8")
-        target.chmod(0o600)
+    return {"PINECALL_DOMAIN": server.name, "PINECALL_GATEWAY_LISTEN": None, IMAGE: server.image, **livekit, **phone}
 
 
 def bring_up(where: Path, server: Server, values: dict[str, str], wheel: Path | None, *, build: bool = True) -> None:
-    """The runtime's image built and every service up, kept up by Docker across reboots."""
+    """The runtime's image built or pulled and every service up, kept up by Docker across reboots."""
     files = compose_files(where)
-    environment = {**values, **image_of(wheel)}
+    environment = {**values, **image_of(wheel, server.image)}
     # Every profile of the server, so each service named exists for compose: `sip-server` depends on
     # `livekit-server`, and with its profile off compose refused the removal as "no such service".
-    every = Compose(files, ("server", "server-livekit", "server-phone"), environment)
+    every = Compose(files, EVERY_PROFILE, environment)
     # The laptop's LiveKit and SIP publish what the server's take on the host's network; a service
     # this server no longer runs (its LiveKit for theirs, SIP turned off) is stopped, not left behind.
     unused = [
@@ -207,19 +150,37 @@ def bring_up(where: Path, server: Server, values: dict[str, str], wheel: Path | 
         "sip",
         *(["livekit-server"] if server.livekit else []),
         *([] if server.phone else ["sip-server"]),
+        *([] if values.get(BACKUPS) else ["postgres-backup"]),
     ]
     every.run("--progress", "quiet", "rm", "--stop", "--force", *unused, failed=UP_FAILED)
-    if build:
+    if build and server.image is None:
         Compose(files, ("server",), environment).run("--progress", "quiet", "build", "gateway", failed=BUILD_FAILED)
+    elif build:
+        # A registry's image is never built here: pulled once by the gateway's name, run by every service.
+        Compose(files, ("server",), environment).run("--progress", "quiet", "pull", "gateway", failed=PULL_FAILED)
     profiles = (
         "server",
         *(["server-livekit"] if server.livekit is None else []),
         *(["server-phone"] if server.phone else []),
+        *(["server-backups"] if values.get(BACKUPS) else []),
     )
-    services = ["postgres", "redis", "caddy", "gateway", "worker-sandbox", "worker-production"]
+    services = ["postgres", "redis", "caddy", "gateway", *RUNTIME_BESIDE_THE_GATEWAY]
     services += [*(["livekit-server"] if server.livekit is None else []), *(["sip-server"] if server.phone else [])]
+    services += ["postgres-backup"] if values.get(BACKUPS) else []
     up = ("--progress", "quiet", "up", "-d", "--wait", "--remove-orphans", *services)
     Compose(files, profiles, environment).run(*up, failed=UP_FAILED)
+
+
+# Every profile of the server's compose file, so each service it names exists for compose.
+EVERY_PROFILE = ("server", "server-livekit", "server-phone", "server-backups")
+# What runs on the runtime's image beside the gateway: each environment's worker and overflow, and the night.
+RUNTIME_BESIDE_THE_GATEWAY = (
+    "worker-sandbox",
+    "worker-production",
+    "overflow-sandbox",
+    "overflow-production",
+    "retention",
+)
 
 
 def wait_for_https(name: str, within_s: float = HTTPS_WITHIN_S) -> None:
@@ -250,7 +211,17 @@ def from_the_env(values: dict[str, str]) -> Server | None:
         if url.startswith("ws://127.0.0.1")
         else TheirLiveKit(url, values["LIVEKIT_API_KEY"], values["LIVEKIT_API_SECRET"])
     )
-    return Server(name, theirs, phone=bool(values.get("PINECALL_SIP_DOMAIN")))
+    return Server(name, theirs, phone=bool(values.get("PINECALL_SIP_DOMAIN")), image=values.get(IMAGE) or None)
+
+
+# Compose reads both files whole whatever it is asked, and a service whose image is no name is no
+# project to it: every verb on a server's services, `logs` and `down` too, is given what the files
+# read, the env file's values and the image.
+def every_service(where: Path, values: dict[str, str], profiles: tuple[str, ...] = EVERY_PROFILE) -> Compose:
+    """docker compose on this machine's files with every profile on: what stops, follows or removes any service."""
+    serving = from_the_env(values)
+    environment = {**values, **image_of(None, serving.image if serving else None)}
+    return Compose(compose_files(where), profiles, environment)
 
 
 def compose_files(where: Path) -> tuple[Path, ...]:
@@ -259,8 +230,8 @@ def compose_files(where: Path) -> tuple[Path, ...]:
     return (where / "compose.yaml", *([server] if server.is_file() else []))
 
 
-def image_of(wheel: Path | None) -> dict[str, str]:
-    """The image's tag and what it installs: this release from PyPI, or the wheel given."""
+def image_of(wheel: Path | None, image: str | None = None) -> dict[str, str]:
+    """The image the runtime's services run, a registry's or the one built here, and what a build installs."""
     release = version("pinecall-runtime")
     spec = f"/wheels/{wheel.name}[voice]" if wheel is not None else f"pinecall-runtime[voice]=={release}"
-    return {"PINECALL_RUNTIME_VERSION": release, "PINECALL_RUNTIME_SPEC": spec}
+    return {IMAGE: image or f"pinecall-runtime:{release}", "PINECALL_RUNTIME_SPEC": spec}

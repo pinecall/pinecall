@@ -8,7 +8,7 @@ import typer
 from runtime.accounts.models import BOX_ORG
 from runtime.cli import orgs
 from runtime.cli.command import OK, Context, context_of, verb
-from runtime.cli.setup import children, compose, server
+from runtime.cli.setup import children, compose, restore, server
 from runtime.cli.setup.database import prepare_database
 from runtime.cli.setup.env_file import EnvFile
 from runtime.cli.setup.files import DEFAULT_DIR, GATEWAY_URL, write_shipped
@@ -17,7 +17,7 @@ from runtime.enums import Role
 app = typer.Typer(help="the runtime whole on this machine, for developing an agent", no_args_is_help=True)
 
 # Every profile the two compose files name, so `down` stops a server's services too.
-ALL_PROFILES = ("phone", "server", "server-livekit", "server-phone")
+ALL_PROFILES = ("phone", *server.EVERY_PROFILE)
 DOWN = "local: the services stopped; the database and {env} are kept"
 WIPED = "local: the services stopped and the database deleted; {env} is kept, its keys drawn again on the next up"
 
@@ -47,7 +47,7 @@ async def local_up(
     compose.docker_or_refuse()
     env = write_shipped(where)
     serving = server.from_the_env(env.read())
-    compose.services_up(where, ("postgres", "redis") if serving else compose.SERVICES)
+    compose.services_up(where, ("postgres", "redis") if serving else compose.SERVICES, env.read())
     history = await prepare_database(env, production_fleet=serving is not None)
     if serving is not None:
         server.bring_up(where, serving, env.read(), None, build=False)
@@ -78,8 +78,29 @@ async def local_down(
     """Stop the services; the database's volume stays unless `--volumes`."""
     where = _where(ctx)
     compose.docker_or_refuse()
-    compose.Compose(server.compose_files(where), ALL_PROFILES).follow("down", *(["-v"] if volumes else []))
+    values = EnvFile(where / "env").read()
+    server.every_service(where, values, ALL_PROFILES).follow("down", *(["-v"] if volumes else []))
     context_of(ctx).out.line((WIPED if volumes else DOWN).format(env=where / "env"))
+    return OK
+
+
+# A runtime moves between machines, or between a cluster and a server, as a dump of its database: the
+# settings that seal and sign what the dump holds (`PINECALL_VAULT_KEY`, `PINECALL_TOKEN_KEY`) are put
+# in this machine's env file by hand first, or what it holds cannot be opened here.
+@app.command("restore")
+@verb
+async def local_restore(
+    ctx: typer.Context,
+    dump: Annotated[Path, typer.Argument(help="A dump of another runtime's database, made with `pg_dump -Fc`.")],
+) -> int:
+    """This machine's database replaced by a dump: every service that writes stopped, the rows restored."""
+    where = _where(ctx)
+    compose.docker_or_refuse()
+    restore.replace_database(where, dump)
+    context_of(ctx).out.line(
+        f"local: {dump.name} restored, and the runtime is stopped\n"
+        "  `pinecall-runtime local up` brings its schema to this release and starts it"
+    )
     return OK
 
 
@@ -93,9 +114,8 @@ async def local_logs(
     where = _where(ctx)
     compose.docker_or_refuse()
     named = [service] if service else []
-    return compose.Compose(server.compose_files(where), ALL_PROFILES).follow(
-        "logs", "--follow", "--tail", "100", *named
-    )
+    values = EnvFile(where / "env").read()
+    return server.every_service(where, values, ALL_PROFILES).follow("logs", "--follow", "--tail", "100", *named)
 
 
 @app.command("init")

@@ -178,6 +178,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `POST` | `/v1/hosted/{name}/rollback` | app | An earlier release's sources kept again as the app's next release. |
 | `POST` | `/v1/hosted/{name}/start` | app | Run a stopped app again, its newest release. |
 | `POST` | `/v1/hosted/{name}/stop` | app | Stop running the app: its process drains, and its releases and token stay. |
+| `GET` | `/v1/pages/known` | none | Whether a name is an app's page served now; 404 for any other name. |
 | `GET` | `/v1/pages/{host}/files/{path}` | none | One file of an app's page, from the release that runs; a path that names no file is the page itself. |
 | `GET` | `/v1/pages/{host}/pinecall/config` | none | What an app's page needs before it asks for a ticket: its agent. |
 | `POST` | `/v1/pages/{host}/pinecall/code` | none | A code a visitor keys when they call the page's agent, so the page follows that call. |

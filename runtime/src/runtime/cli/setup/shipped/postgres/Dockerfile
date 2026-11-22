@@ -26,4 +26,19 @@ COPY --from=build /out/usr/lib/postgresql/17/lib/ /usr/lib/postgresql/17/lib/
 COPY --from=build /out/usr/share/postgresql/17/extension/ /usr/share/postgresql/17/extension/
 # pg_textsearch keeps BM25 statistics in shared memory: CREATE EXTENSION fails unless preloaded.
 RUN echo "shared_preload_libraries = 'pg_textsearch'" >> /usr/share/postgresql/17/postgresql.conf.sample
-COPY extensions.sql /docker-entrypoint-initdb.d/10-extensions.sql
+# Readable by the server's own user whatever the mode it was written with: under a umask of 077 the
+# file arrived owner-only, psql was refused it, and the database was left made with no extension.
+COPY --chmod=0644 extensions.sql /docker-entrypoint-initdb.d/10-extensions.sql
+# What a server backs its database up with (archive-wal, backup-nightly): Barman's tools for an
+# object store, the ones CloudNativePG's plugin runs in a cluster, and the two stores' libraries.
+# Amazon's is Debian's package. Google's is no package of Debian's, and pip would replace the
+# packages Debian installed to make room for it (it refuses: "Cannot uninstall requests"), so it
+# goes to a folder of its own that Python is told to read, and Debian's stay as they are.
+ARG GOOGLE_CLOUD_STORAGE=3.17.1
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends barman-cli-cloud python3-boto3 python3-pip \
+ && python3 -m pip install --no-cache-dir --target /usr/local/lib/barman-stores "google-cloud-storage==${GOOGLE_CLOUD_STORAGE}" \
+ && apt-get purge -y python3-pip && apt-get autoremove -y \
+ && rm -rf /var/lib/apt/lists/*
+ENV PYTHONPATH=/usr/local/lib/barman-stores
+COPY --chmod=0755 archive-wal backup-nightly /usr/local/bin/

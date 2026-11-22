@@ -123,6 +123,11 @@ async def test_an_apps_page_is_served_at_the_apps_own_name_and_never_at_the_gate
 
     config = await gateway.http.get("/pinecall/config", headers=at_its_name)
     assert config.json() == {"agent": "support", "turnstile": None}
+    # What a server's proxy asks before it gets a name a certificate: this page's name, and no other.
+    known = await gateway.http.get("/v1/pages/known", params={"domain": name})
+    assert (known.status_code, known.json()) == (200, {"name": name})
+    for other in (f"nobody--{tenant.slug}--sandbox.pages.test", "pages.test", "voice.example.com"):
+        assert (await gateway.http.get("/v1/pages/known", params={"domain": other})).status_code == 404
     # Nobody holds the agent in this test: the ticket is asked of it, and refused for that alone.
     ticket = await gateway.http.post("/pinecall/token", json={"scope": "chat"}, headers=at_its_name)
     assert ticket.status_code == 404, ticket.text

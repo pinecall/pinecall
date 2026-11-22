@@ -6,7 +6,7 @@ from pathlib import Path
 
 from runtime.cli.command import OK, Context
 from runtime.cli.output import Printer
-from runtime.cli.setup import ask, children, compose, models, person, server
+from runtime.cli.setup import ask, children, compose, models, person, server, server_files
 from runtime.cli.setup import keys as found_keys
 from runtime.cli.setup.choices import Choices, choices_of
 from runtime.cli.setup.database import prepare_database
@@ -36,6 +36,12 @@ NEXT_SERVER = """  ✓ ready   https://{name}
 
   More orgs: the console → Box → Organizations · logs: pinecall-runtime local logs
 """
+NEXT_UNPOINTED = """  ✓ running, and answering nobody yet: {name} does not point here
+  ✓ {email} runs this runtime and is admin of org default
+
+  Give {name} an A record to this machine's address. Caddy asks for the certificate by
+  itself once the name arrives; `pinecall-runtime local up` waits for it and says when it answers.
+"""
 WEBHOOK = """
   One step in your LiveKit → Settings → Webhooks, signed with {key}:
     https://{name}/v1/livekit/webhook
@@ -53,6 +59,8 @@ class Flags:
     livekit_key: str | None
     livekit_secret_stdin: bool
     wheel: Path | None
+    image: str | None
+    unpointed: bool
     email: str | None
     person: str | None
     password_stdin: bool
@@ -77,8 +85,14 @@ async def carry_out(flags: Flags, out: Printer) -> int:
     out.line(f"\n  Pinecall runtime · {wanted.name if wanted else 'on this machine'}\n")
     if wanted is not None:
         server.linux_or_refuse()
-        out.line(server.check_name(wanted.name))
-        out.line("  https     certificate from Let's Encrypt, renews itself")
+        if flags.unpointed:
+            out.line(f"  name      {wanted.name} — pointed at this machine later: not checked")
+            out.line("  https     certificate from Let's Encrypt once the name points here, renews itself")
+        else:
+            out.line(server.check_name(wanted.name))
+            out.line("  https     certificate from Let's Encrypt, renews itself")
+        if wanted.image is not None:
+            out.line(f"  image     {wanted.image}")
         if wanted.livekit is not None:
             out.line(f"  livekit   {wanted.livekit.url} ✓")
     # Decided before anything is brought up: the keys found, the open models, a key missing.
@@ -94,7 +108,7 @@ async def carry_out(flags: Flags, out: Printer) -> int:
         out.line("\n  starting  the first run downloads the services and the models: some minutes")
     env = write_shipped(flags.where)
     started = ("postgres", "redis") if flags.chat_only or wanted else compose.SERVICES
-    compose.services_up(flags.where, started)
+    compose.services_up(flags.where, started, env.read())
     if wanted is None:
         named = " · ".join(name for name, (_, service) in compose.PORTS.items() if service in started)
         out.line(f"  services  {named} — this machine only")
@@ -114,7 +128,7 @@ async def carry_out(flags: Flags, out: Printer) -> int:
             await models.models(runtime, flags.where, choices, keys, card=card)
     values = env.read()
     if wanted is not None:
-        return _serve(flags.where, wanted, values, flags.wheel, answers.email, out)
+        return _serve(flags, wanted, values, answers.email, out)
     out.line("\n" + NEXT_HERE.format(gateway=GATEWAY_URL))
     if flags.services_only:
         return OK
@@ -129,6 +143,8 @@ async def server_for(flags: Flags, before: dict[str, str]) -> server.Server | No
     kept = server.from_the_env(before)
     name = flags.domain or (kept.name if kept else None)
     if name is None:
+        if flags.image is not None or flags.unpointed:
+            raise ValidationError("--image and --unpointed are a server's: --domain <name>")
         if flags.livekit is not None:
             raise ValidationError(
                 "LiveKit must reach this runtime, and a laptop has no public address.\n    Run it on a server: "
@@ -145,6 +161,12 @@ async def server_for(flags: Flags, before: dict[str, str]) -> server.Server | No
         typed_secret = read_secret_line() if flags.livekit_secret_stdin else await ask.livekit_secret()
         theirs = server.TheirLiveKit(flags.livekit, typed_key, typed_secret)
     with_phone = flags.phone or (kept.phone if kept else False)
+    if flags.image is not None and flags.wheel is not None:
+        raise ValidationError("--image runs a registry's image and --from builds one here from a wheel: one of them")
+    # A wheel given builds here again; else the image named now, else the one a run before named.
+    image = (
+        None if flags.wheel is not None or flags.image == server.HERE else flags.image or (kept.image if kept else None)
+    )
     if theirs is not None and with_phone:
         raise ValidationError(
             "--phone runs LiveKit's SIP beside the LiveKit setup starts; with your own LiveKit, phone calls go "
@@ -153,20 +175,21 @@ async def server_for(flags: Flags, before: dict[str, str]) -> server.Server | No
     if theirs is not None:
         # Tried every run, a kept pair too: the ✓ setup prints says the pair works today.
         await server.check_their_livekit(theirs)
-    return server.Server(name, theirs, phone=with_phone)
+    return server.Server(name, theirs, phone=with_phone, image=image)
 
 
-def _serve(
-    where: Path, wanted: server.Server, values: dict[str, str], wheel: Path | None, email: str, out: Printer
-) -> int:
+def _serve(flags: Flags, wanted: server.Server, values: dict[str, str], email: str, out: Printer) -> int:
     services = "Postgres · Redis" + (" · LiveKit" if wanted.livekit is None else " — LiveKit is yours")
     out.line(f"  services  {services}")
     if wanted.livekit is not None:
         out.line("  phone     through your LiveKit's own SIP")
     else:
         out.line("  phone     on: SIP on :5060" if wanted.phone else "  phone     off — `--phone` turns it on")
-    server.write_files(where, wanted, values, wheel)
-    server.bring_up(where, wanted, values, wheel)
+    server_files.write_files(flags.where, wanted, values, flags.wheel)
+    server.bring_up(flags.where, wanted, values, flags.wheel)
+    if flags.unpointed:
+        out.line("\n" + NEXT_UNPOINTED.format(name=wanted.name, email=email))
+        return OK
     server.wait_for_https(wanted.name)
     out.line("\n" + NEXT_SERVER.format(name=wanted.name, email=email))
     if wanted.livekit is not None:

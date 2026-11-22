@@ -65,6 +65,20 @@ class Compose:
         if done.returncode != 0:
             raise UpstreamError(failed.format(output=(done.stderr or done.stdout).strip()[-SAID_AT_MOST:]))
 
+    def feed(self, *verb: str, source: Path, failed: str) -> None:
+        """One compose verb that reads a file as its input (a dump into `pg_restore`); UpstreamError as `run`."""
+        with source.open("rb") as read:
+            done = subprocess.run(
+                self._command(*verb),
+                stdin=read,
+                capture_output=True,
+                check=False,
+                env={**os.environ, **self.environment},
+            )
+        if done.returncode != 0:
+            said = (done.stderr or done.stdout).decode(errors="replace").strip()
+            raise UpstreamError(failed.format(output=said[-SAID_AT_MOST:]))
+
     def follow(self, *verb: str) -> int:
         """One compose verb whose output is the person's to read (`logs`, `down`); its exit."""
         return subprocess.run(self._command(*verb), check=False, env={**os.environ, **self.environment}).returncode
@@ -112,8 +126,10 @@ PORTS: dict[str, tuple[int, str]] = {
 COMPOSE_FAILED = "docker compose could not bring the services up:\n{output}"
 
 
-def services_up(where: Path, services: Sequence[str]) -> None:
+# The env file's values are compose's own here as they are when a server is brought up: a service read
+# with other values is another service to compose, which would stop Postgres and start it again.
+def services_up(where: Path, services: Sequence[str], environment: Mapping[str, str]) -> None:
     """The services' `docker compose up`, built, waited for, and each one's loopback port answering."""
     up = ("--progress", "quiet", "up", "-d", "--build", "--wait", *services)
-    Compose((where / "compose.yaml",)).run(*up, failed=COMPOSE_FAILED)
+    Compose((where / "compose.yaml",), environment=environment).run(*up, failed=COMPOSE_FAILED)
     wait_for_ports([(name, port) for name, (port, service) in PORTS.items() if service in services])

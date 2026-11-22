@@ -11,6 +11,19 @@ services:
       POSTGRES_USER: pinecall
       POSTGRES_PASSWORD: pinecall
       POSTGRES_DB: pinecall
+      # Where a server keeps its backups (`setup`, the env file); unset, nothing is archived.
+      PINECALL_BACKUP_URL: ${PINECALL_BACKUP_URL:-}
+    # A finished WAL segment is handed to archive-wal, which sends it to that place or, with none
+    # named, says it is done; a quiet database closes a segment every five minutes all the same.
+    command:
+      - postgres
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_command=/usr/local/bin/archive-wal %p
+      - -c
+      - archive_timeout=300
+    env_file: [{path: ./backups.env, required: false}]
     ports: ["127.0.0.1:55433:5432"]
     volumes: ["postgres:/var/lib/postgresql/data"]
     # Back after a reboot, as a server's services must be (and a laptop's Docker starts them with it).
