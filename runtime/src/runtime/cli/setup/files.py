@@ -63,15 +63,24 @@ def write_shipped(where: Path, *, listen: str = LISTEN_EVERYWHERE) -> EnvFile:
             target.write_text(content, encoding="utf-8")
     (where / "recordings").mkdir(exist_ok=True)
     env = EnvFile(where / "env")
+    drawn = SETTINGS.format(
+        gateway=GATEWAY_URL,
+        recordings=where / "recordings",
+        vault=base64.urlsafe_b64encode(secrets.token_bytes(32)).decode(),
+        ops=secrets.token_hex(24),
+        token=secrets.token_hex(32),
+        listen="",
+    )
     if not env.exists():
-        env.create(
-            SETTINGS.format(
-                gateway=GATEWAY_URL,
-                recordings=where / "recordings",
-                vault=base64.urlsafe_b64encode(secrets.token_bytes(32)).decode(),
-                ops=secrets.token_hex(24),
-                token=secrets.token_hex(32),
-                listen=listen,
-            )
-        )
+        env.create(drawn + listen)
+        return env
+    # A file the operator began (the keys a database moved here is sealed and signed with, a place for
+    # the backups) is completed, never replaced: each setting it lacks is given, and every line it
+    # holds stays as written. Where the gateway listens is said once, when the file is made: a
+    # server's file holds no such line, and none is put back.
+    held = env.read()
+    lacking = {name: value for name, _, value in (line.partition("=") for line in drawn.splitlines())}
+    lacking = {name: value for name, value in lacking.items() if name and name not in held}
+    if lacking:
+        env.set(**lacking)
     return env

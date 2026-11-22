@@ -132,7 +132,8 @@ which a written call's socket does not outlive. A machine that ran `setup` alone
 the first time `--domain` is given.
 
 **A server that carries production.** What a server is sized and built by are lines of its env file
-(`<dir>/env`), which `setup` writes once and never takes a line of yours out of; `local up` applies a
+(`<dir>/env`), which `setup` writes once and never takes a line of yours out of (a file begun by hand
+before the first run is completed with what it lacks, each line of it kept); `local up` applies a
 change, and restarts every process that reads the file: the gateway for some seconds, each worker
 once the calls it holds have ended.
 

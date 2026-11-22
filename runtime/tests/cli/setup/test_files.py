@@ -26,6 +26,19 @@ def test_the_settings_are_written_once(tmp_path: Path) -> None:
     assert write_shipped(tmp_path).path.read_text() == first
 
 
+def test_a_file_the_operator_began_is_completed_and_never_replaced(tmp_path: Path) -> None:
+    """The keys a moved database is sealed with are put first: setup adds what the file lacks and keeps every line."""
+    begun = "PINECALL_VAULT_KEY=the-other-runtimes-vault-key\nPINECALL_BACKUP_URL=s3://backups/voice\n"
+    (tmp_path / "env").write_text(begun)
+    values = write_shipped(tmp_path, listen=f"{LISTEN}\n").read()
+    assert values["PINECALL_VAULT_KEY"] == "the-other-runtimes-vault-key"
+    assert values["PINECALL_BACKUP_URL"] == "s3://backups/voice"
+    assert values["DATABASE_URL"].startswith("postgresql://") and values["PINECALL_TOKEN_KEY"]
+    # Where the gateway listens is said when the file is made alone: a server's file has no such line.
+    assert "PINECALL_GATEWAY_LISTEN" not in values
+    assert write_shipped(tmp_path).read() == values
+
+
 def test_the_package_ships_the_list_prices_their_notice_and_what_was_measured(tmp_path: Path) -> None:
     """The prices file rides beside the compose files with the MIT notice of the rows it took."""
     write_shipped(tmp_path)
