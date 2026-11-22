@@ -1,0 +1,52 @@
+# The AWS Load Balancer Controller's own objects (values.yaml, `ingress.aws`): the class the Gateway
+# names, the Application Load Balancer it is served by, and each backend's target group. What
+# backend-policies.yaml says to GKE: a socket lives up to an hour (an app's, a room's), a backend
+# that leaves is given a minute to end its requests, and its health is read at its own port.
+{{- with .Values.ingress.aws }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: {{ $.Values.ingress.className }}
+spec:
+  controllerName: gateway.k8s.aws/alb
+---
+apiVersion: gateway.k8s.aws/v1
+kind: LoadBalancerConfiguration
+metadata:
+  name: pinecall
+spec:
+  scheme: internet-facing
+  loadBalancerName: {{ required "ingress.aws.loadBalancer" .loadBalancer }}
+  {{- with .subnets }}
+  loadBalancerSubnets:
+    {{- range . }}
+    - identifier: {{ . }}
+    {{- end }}
+  {{- end }}
+  loadBalancerAttributes:
+    - { key: idle_timeout.timeout_seconds, value: "3600" }
+  listenerConfigurations:
+    - protocolPort: HTTPS:443
+      defaultCertificate: {{ required "ingress.aws.certificates: at least the first name's" (first .certificates) }}
+      {{- with rest .certificates }}
+      certificates:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- range $service := list "pinecall-gateway" "pinecall-livekit-production" "pinecall-livekit-sandbox" }}
+---
+apiVersion: gateway.k8s.aws/v1
+kind: TargetGroupConfiguration
+metadata:
+  name: {{ $service }}
+spec:
+  targetReference: { name: {{ $service }} }
+  defaultConfiguration:
+    # The pods themselves, never a node's port: LiveKit's is its node's own address.
+    targetType: ip
+    targetGroupAttributes:
+      - { key: deregistration_delay.timeout_seconds, value: "60" }
+    healthCheckConfig:
+      healthCheckProtocol: HTTP
+      healthCheckPath: /
+{{- end }}
+{{- end }}

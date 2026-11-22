@@ -1,0 +1,22 @@
+# An operator's values for charts/hosting on AWS (terraform/aws/modules/hosting, the cluster root's
+# `hosting` output): what hosting-example.yaml is for Google Cloud. Copy it into your OPS directory
+# as values/hosting-<cluster>.yaml and replace every example.
+secretPrefix: pinecall-production-
+secrets:
+  provider:
+    aws:
+      service: SecretsManager
+      region: us-east-1
+      auth:
+        jwt:
+          serviceAccountRef: { name: external-secrets, namespace: external-secrets }
+# The fenced pool of the cluster, and gVisor's handler on its nodes.
+pool: hosting
+runtimeHandler: runsc
+gatewayUrl: https://voice.example.com
+image:
+  repository: 111122223333.dkr.ecr.us-east-1.amazonaws.com/pinecall/runtime
+# Fixed addresses of the cluster's Services range (the cluster's `ranges.services`).
+envs:
+  production: { address: 10.142.15.200 }
+  sandbox: { address: 10.142.15.201 }

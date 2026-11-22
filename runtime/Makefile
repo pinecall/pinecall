@@ -41,8 +41,9 @@ CHART_VALUES = -f $(TF_VALUES) -f $(VALUES)
 # 2026-11-12 the project's was planned and applied by a line typed by hand, with no such refusal.
 ROOT     ?= cluster
 ifeq ($(ROOT),project)
-TF_STATE  = project
-TF_VARS   = -var-file=$(OPS)/terraform/project.tfvars
+# The provider says what its account's root is called among the operator's files (TF_PROJECT).
+TF_STATE  = $(TF_PROJECT)
+TF_VARS   = -var-file=$(OPS)/terraform/$(TF_PROJECT).tfvars
 else
 TF_STATE  = $(CLUSTER)
 TF_VARS   = -var name=$(NAME) -var-file=$(OPS)/terraform/$(CLUSTER).tfvars \
@@ -61,11 +62,15 @@ check:           ## ruff (lint, format), pyright and mypy strict, the convention
 	uv run pytest -q -n auto tests/conventions
 	@if command -v terraform >/dev/null; then $(MAKE) --no-print-directory tf-check; fi
 
-# Its own data directory: a root module initialized against its bucket would be reached again.
+# Its own data directory: a root module initialized against its bucket would be reached again. One
+# copy of each provider for every root (the plugin cache): a provider is some hundreds of megabytes,
+# and a copy a root filled a laptop's disk (2026-11-22).
 tf-check:         ## every root module formatted and valid, with no backend reached
 	terraform fmt -check -recursive $(INFRA)/terraform
+	@mkdir -p $(CURDIR)/.terraform-check/plugins
 	@for root in $(TF_ROOTS); do \
 	  data=$(CURDIR)/.terraform-check/$$(basename $$(dirname $$root))-$$(basename $$root); \
+	  export TF_PLUGIN_CACHE_DIR=$(CURDIR)/.terraform-check/plugins; \
 	  TF_DATA_DIR=$$data terraform -chdir=$$root init -backend=false -input=false >/dev/null && \
 	  TF_DATA_DIR=$$data terraform -chdir=$$root validate -no-color >/dev/null || exit 1; \
 	done

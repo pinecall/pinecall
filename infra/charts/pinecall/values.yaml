@@ -108,9 +108,17 @@ monitoring:
   collector: ""
   namespace: ""
 
-# The identity kubeip acts as (terraform/<cloud>/modules/kubeip). Unset, kubeip is not installed.
+# The identity kubeip acts as (terraform/<cloud>/modules/kubeip): on GKE `identity`, a Google
+# service account's address; on any other cloud `annotations`, whatever makes its ServiceAccount that
+# cloud's identity (on EKS `eks.amazonaws.com/role-arn: …`). Neither, and kubeip is not installed.
+# `filter` is how an env's address is found, in the cloud's own words, with `%s` where
+# `<cluster>-<env>` goes: unset, Google's (`labels.pinecall-media=%s`); on AWS
+# `Name=tag:pinecall-media,Values=%s`, with `region`.
 kubeip:
   identity: ""
+  annotations: {}
+  filter: ""
+  region: ""
 
 # The object store a finished recording moves to (docs/the-environment.md): unset, recordings stay
 # on the pod's disk and go with it. Its key is the env's `s3-access-key-id` and

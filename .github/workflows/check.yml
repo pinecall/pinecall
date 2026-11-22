@@ -186,7 +186,16 @@ jobs:
               --set image.tag=ci --set monitoring.collector=prometheus-operator \
               --set monitoring.namespace=monitoring --output-dir "$operator"
           done
-          for target in ../infra "$rendered" "$operator"; do
+          # The same charts as an operator on AWS releases them: the load balancer controller's
+          # Gateway, External Secrets on Secrets Manager, the hosted apps on a pool of the cluster.
+          aws="$RUNNER_TEMP/rendered-aws"
+          for chart in edge postgres pinecall mcp; do
+            helm template "$chart" "../infra/charts/$chart" -f ../infra/values/aws-example.yaml \
+              --set image.tag=ci --output-dir "$aws"
+          done
+          helm template hosting ../infra/charts/hosting -f ../infra/values/hosting-aws-example.yaml \
+            --set image.tag=ci --output-dir "$aws"
+          for target in ../infra "$rendered" "$operator" "$aws"; do
             "$RUNNER_TEMP/trivy" config --quiet --severity HIGH,CRITICAL --exit-code 1 \
               --ignorefile ../infra/trivy-ignore.yaml "$target"
           done

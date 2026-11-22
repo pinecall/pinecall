@@ -1,5 +1,9 @@
-# The orgs' hosted apps on a GKE Autopilot cluster of their own (terraform/<cloud>/modules/hosting): GKE
-# Sandbox's gVisor runs each app, and Secret Manager's CSI driver hands each runner its key.
+# The orgs' hosted apps, where the cloud's `hosting` module put them (terraform/<cloud>/modules/hosting):
+# each app's pod runs under gVisor, and each env's runner is handed its key off the cloud's secret
+# store. On Google Cloud that is a GKE Autopilot cluster of their own, which ships gVisor (GKE
+# Sandbox) and Secret Manager's CSI driver: `project` and `serviceAccount` below. On a cluster that
+# runs External Secrets and has a pool with gVisor for them (AWS: a fenced pool of the platform's
+# own cluster): `secrets.provider`, `pool` and `runtimeHandler`.
 # The runtime's image: the runner is `pinecall-runtime runner start`. The tag is the commit and
 # the digest what the registry holds for it, both given by `make hosting`.
 image:
@@ -9,11 +13,24 @@ image:
 # The box the runners serve, by its public name (https://…): the hosting cluster is not the box's.
 # Required.
 gatewayUrl: ""
-project: ""
 # modules/secrets' prefix: each env's runner key is <prefix>runner-key-<env>.
 secretPrefix: ""
-# modules/hosting's runner identity, the one that reads those keys and nothing else.
+# Google Cloud: the project whose Secret Manager holds the keys, and modules/hosting's runner
+# identity, the one that reads them and nothing else. Read where `secrets.provider` is unset.
+project: ""
 serviceAccount: ""
+# Any cluster that runs External Secrets: the secret store's provider block, as charts/pinecall
+# reads it (`aws: { service: SecretsManager, … }`). Set, each runner's key is synced by it into a
+# Secret the runner mounts, and nothing of GKE's is asked for.
+secrets:
+  provider: {}
+  refresh: 1h
+# Where the hosted apps share a cluster with the platform: the pool that is theirs
+# (`pinecall.io/pool: <pool>`, tainted with it), which the runners and every app's pod are kept to.
+pool: ""
+# The handler of the RuntimeClass below (`runsc` where gVisor was installed on the pool's nodes):
+# set, the chart makes the class, bound to the pool. Unset, the cluster ships it (GKE Sandbox).
+runtimeHandler: ""
 # Every hosted app's image, and the runtime class its pod runs under (GKE Sandbox's gVisor). Node's
 # own runs TypeScript projects alone; infra/images/app, built into the registry, runs Python ones too.
 appImage: docker.io/library/node:24-slim

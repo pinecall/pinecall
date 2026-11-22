@@ -10,6 +10,8 @@ CONTEXT  ?= gke_$(PROJECT)_$(ZONE)_pinecall-$(NAME)
 # Google's credentials are the gcloud login's, handed to Terraform as a short-lived token in the
 # environment, never printed.
 TF_AUTH   = GOOGLE_OAUTH_ACCESS_TOKEN="$$(gcloud auth print-access-token)"
+# The project's root (ROOT=project) among the operator's files: project.tfvars, project.backend.hcl.
+TF_PROJECT ?= project
 
 # The images: Artifact Registry (terraform/google/project), built by Cloud Build as the builds' own
 # identity, never on the laptop.

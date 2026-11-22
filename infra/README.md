@@ -72,7 +72,7 @@ and a new cloud adds both without touching another's:
 | | what it holds |
 |---|---|
 | `terraform/<provider>/` | its roots (`bootstrap`, `project`, `cluster`) and its modules. A cluster root takes the same variables (`name`, `dns_zone`, `names`, `sip_names`, `sip_sources`, `given_secrets`, `pages`, `services`, `hosting`) and ends in the same output, `chart_values`: what it made, in the words the charts read. `terraform/modules/addons` is called by every one |
-| `make/<provider>.mk` | `TF_AUTH` (how Terraform is given the operator's login), `CONTEXT` (the cluster's kubectl context), `REGISTRY`, `build` (an image built from a context by the cloud's own builder, as `runtime`, `mcp` or `plain`), `digest` (what the registry holds for a tag), `HOSTING` and `hosting_credentials` (where the hosted apps run) |
+| `make/<provider>.mk` | `TF_AUTH` (how Terraform is given the operator's login), `TF_PROJECT` (what the account's root is called among the operator's files), `CONTEXT` (the cluster's kubectl context), `REGISTRY`, `build` (an image built from a context by the cloud's own builder, as `runtime`, `mcp` or `plain`), `digest` (what the registry holds for a tag), `HOSTING` and `hosting_credentials` (where the hosted apps run) |
 
 The operator's `<cluster>.mk` says which: `PROVIDER = <provider>` (Google's unless said), and
 `NAME = <name>` where the cluster is not named as its files are, as when two clouds hold a
@@ -397,6 +397,53 @@ $ make mcp CLUSTER=<cluster> TAG=<commit>     # charts/mcp released; then its he
 moves the other. Going back is `helm rollback pinecall-mcp`. A new pod answers before the old one is
 told to stop; what the old one kept for its keys (a written call left open, a run being waited on)
 is hung up with it.
+
+## On AWS
+
+`terraform/aws/` and `make/aws.mk` are this deployment on Amazon Web Services: the same charts, the
+same pools under the same label and taint, the same names, secrets and values. **It is written and
+checked (every root formatted and valid, the charts rendered with `values/aws-example.yaml` and
+scanned), and no cluster has been made from it yet: nothing under "Proven" was measured on it.**
+
+| on Google Cloud | on AWS | where |
+|---|---|---|
+| a zonal GKE cluster | an EKS cluster whose nodes all run in one zone, public, with no NAT gateway; the Kubernetes Secrets sealed under a key of the account | `modules/network`, `modules/eks` |
+| node pools, and Google's autoscaler | managed node groups with the same `pinecall.io/pool` label and taint, and the cluster autoscaler on the workers' | `modules/eks`, `modules/controllers` |
+| Workload Identity | a role a ServiceAccount, taken by the cluster's own token (IAM roles for service accounts) | `modules/identity` |
+| Secret Manager | Secrets Manager, the same names; a `given` one is put with `aws secretsmanager put-secret-value --secret-id pinecall-<name>-<secret> --secret-string file:///dev/stdin` | `modules/secrets` |
+| the backups' bucket | an S3 bucket, a deleted object kept a week as an old version | `modules/backups` |
+| the global address, Certificate Manager's map, Google's load balancer | an Application Load Balancer the AWS Load Balancer Controller makes for the same Gateway, with a Certificate Manager certificate a name (charts/edge, `ingress.aws`); the Gateway API's definitions, which EKS does not ship | `modules/edge`, `modules/controllers` |
+| kubeip and a reserved address | kubeip and an Elastic IP, found by its tag | `modules/edge`, `modules/kubeip` |
+| the firewall | security groups on the media nodes: LiveKit's and RTP's ports open, 5060 from the carriers alone, a group a protocol (sixty rules each) | `modules/edge` |
+| a hosting cluster, Autopilot with GKE Sandbox | a fenced pool of the same cluster: gVisor installed on its nodes at boot, a subnet and a security group of its own that the platform's side admits on two ports (the API, the names), and the chart's NetworkPolicy enforced by the cluster's network. No second control plane is paid for | `modules/hosting` |
+| Artifact Registry, Cloud Build | Elastic Container Registry (a repository an image), CodeBuild on `images/buildspec.yaml` | `aws/project` |
+| Managed Prometheus, Cloud Monitoring | nothing yet: `monitoring.collector` is `none`, and the alerts of `charts/pinecall/alerts.yaml` wait for a Prometheus on the cluster | |
+
+The operator's `<cluster>.mk` says `PROVIDER = aws` and `ACCOUNT = <the account's twelve digits>`
+(`REGION` where it is not `us-east-1`), its `<cluster>.tfvars` the same names, SIP names, secrets
+and services as on Google Cloud, with `ranges = { vpc = "10.140.0.0/16", services = "10.142.0.0/20" }`,
+and its backend file `bucket`, `key`, `region` and `dynamodb_table`. With the AWS CLI signed in
+(`~/.aws`):
+
+```console
+$ terraform -chdir=infra/terraform/aws/bootstrap init && terraform -chdir=infra/terraform/aws/bootstrap apply   # once: the state's bucket and its lock
+$ make tf-init ROOT=project CLUSTER=<cluster> && make tf-plan ROOT=project CLUSTER=<cluster> && make tf-apply ROOT=project CLUSTER=<cluster>   # once: the registry and the builder
+$ make tf-init CLUSTER=<cluster> && make tf-fence CLUSTER=<cluster> && make tf-plan CLUSTER=<cluster> && make tf-apply CLUSTER=<cluster>
+$ make values CLUSTER=<cluster>
+$ aws eks update-kubeconfig --name pinecall-<name> --region <region>
+$ REGION=<region> ACCOUNT=<account> infra/make/aws-build infra/images/postgres plain <registry>/postgres:17.11-pgvector0.8.6-pgtextsearch1.4.0
+$ make edge CLUSTER=<cluster>       # the Gateway: the controller makes its load balancer
+$ make postgres CLUSTER=<cluster> && make image && make deploy CLUSTER=<cluster>
+```
+
+**The names move last.** The load balancer exists only once `make edge` has run, so a cluster's
+records start unpointed: `point_names`, `point_services` and `point_sip` are false unless its
+variables say otherwise. The certificates are issued all the same, and the front door is tried at
+the load balancer's own address (`curl --resolve`). Turning them on and applying again points the
+names, taking over a record another deployment held in one change, with no moment in which the name
+resolves to nothing; that deployment's Terraform is then told to forget the record (it is taken out
+of its state) and never deletes it. A media address is new on a new cloud: a carrier or a PBX that
+sends to the old one by its number, not by the SIP name, is told before the SIP names move.
 
 ## Staging, made and destroyed
 

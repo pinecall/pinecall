@@ -1,12 +1,16 @@
 # A runner per env: it asks the box which apps its env wants, starts and stops their pods in
-# the apps' namespace, and serves their releases' sources to them. Its key is read off Secret
-# Manager by the identity modules/hosting made, mounted as a file, never in a value here.
+# the apps' namespace, and serves their releases' sources to them. Its key is read off the cloud's
+# secret store and mounted as a file, never in a value here: by External Secrets where
+# `secrets.provider` names the store, else by GKE's own driver as the identity modules/hosting made.
+{{- $synced := not (empty .Values.secrets.provider) }}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: runner
+  {{- if not $synced }}
   annotations:
     iam.gke.io/gcp-service-account: {{ required "serviceAccount" .Values.serviceAccount | quote }}
+  {{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -31,8 +35,33 @@ metadata:
 roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: runner }
 subjects:
   - { kind: ServiceAccount, name: runner, namespace: {{ .Release.Namespace }} }
+{{- if $synced }}
+---
+# A store of this chart's own, as charts/postgres has one: it is released apart from the runtime's.
+apiVersion: external-secrets.io/v1
+kind: ClusterSecretStore
+metadata:
+  name: pinecall-hosting
+spec:
+  provider:
+    {{- toYaml .Values.secrets.provider | nindent 4 }}
+{{- end }}
 {{- range $env, $runner := .Values.envs }}
 ---
+{{- if $synced }}
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: runner-key-{{ $env }}
+spec:
+  refreshInterval: {{ $.Values.secrets.refresh }}
+  secretStoreRef: { kind: ClusterSecretStore, name: pinecall-hosting }
+  target:
+    name: runner-key-{{ $env }}
+  data:
+    - secretKey: key
+      remoteRef: { key: {{ printf "%srunner-key-%s" (required "secretPrefix" $.Values.secretPrefix) $env | quote }} }
+{{- else }}
 apiVersion: secrets-store.csi.x-k8s.io/v1
 kind: SecretProviderClass
 metadata:
@@ -43,6 +72,7 @@ spec:
     secrets: |
       - resourceName: "projects/{{ required "project" $.Values.project }}/secrets/{{ required "secretPrefix" $.Values.secretPrefix }}runner-key-{{ $env }}/versions/latest"
         path: "key"
+{{- end }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -57,6 +87,11 @@ spec:
     metadata: { labels: { app: runner, world: {{ $env }} } }
     spec:
       serviceAccountName: runner
+      {{- with $.Values.pool }}
+      nodeSelector: { pinecall.io/pool: {{ . }} }
+      tolerations:
+        - { key: pinecall.io/pool, operator: Equal, value: {{ . }}, effect: NoSchedule }
+      {{- end }}
       securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
       containers:
         - name: runner
@@ -85,10 +120,14 @@ spec:
       volumes:
         - { name: tmp, emptyDir: { sizeLimit: 64Mi } }
         - name: key
+          {{- if $synced }}
+          secret: { secretName: runner-key-{{ $env }} }
+          {{- else }}
           csi:
             driver: secrets-store-gke.csi.k8s.io
             readOnly: true
             volumeAttributes: { secretProviderClass: runner-key-{{ $env }} }
+          {{- end }}
 ---
 apiVersion: v1
 kind: Service

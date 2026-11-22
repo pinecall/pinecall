@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# What the account's registry holds for an image's tag, as its digest (`sha256:…`); nothing, and
+# exit 0, when it holds none: `make deploy` reads the empty answer as "no image".
+#
+#   aws-digest <account>.dkr.ecr.<region>.amazonaws.com/<repository>:<tag>
+#
+# REGION comes from the Makefile.
+set -euo pipefail
+image=${1#*/}
+found=$(aws ecr describe-images --region "$REGION" --repository-name "${image%:*}" --image-ids "imageTag=${image##*:}" \
+  --query 'imageDetails[0].imageDigest' --output text 2>/dev/null || true)
+[ "$found" = None ] || printf '%s' "$found"

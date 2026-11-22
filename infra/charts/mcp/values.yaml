@@ -4,7 +4,8 @@
 # request carries the key of whoever asks, proven at the gateway.
 #
 # Given the same values files as every chart: `domain` is the cluster's (the gateway's public name,
-# where a person signs in and where every tool acts), `ingress.gkePolicies` the front door's.
+# where a person signs in and where every tool acts), `ingress.gkePolicies` and `ingress.aws` the
+# front door's.
 image:
   repository: ""
   tag: ""
@@ -26,3 +27,4 @@ mcp:
 
 ingress:
   gkePolicies: false
+  aws: {}

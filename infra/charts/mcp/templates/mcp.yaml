@@ -101,3 +101,21 @@ spec:
       httpHealthCheck: { port: 8787, requestPath: /health }
   targetRef: { group: "", kind: Service, name: pinecall-mcp }
 {{- end }}
+{{- if .Values.ingress.aws }}
+---
+# The same said to the AWS Load Balancer Controller: the pod's health at its own path. A request's
+# two minutes are within the hour the load balancer gives every socket (charts/edge).
+apiVersion: gateway.k8s.aws/v1
+kind: TargetGroupConfiguration
+metadata:
+  name: pinecall-mcp
+spec:
+  targetReference: { name: pinecall-mcp }
+  defaultConfiguration:
+    targetType: ip
+    targetGroupAttributes:
+      - { key: deregistration_delay.timeout_seconds, value: "60" }
+    healthCheckConfig:
+      healthCheckProtocol: HTTP
+      healthCheckPath: /health
+{{- end }}

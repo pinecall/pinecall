@@ -35,8 +35,44 @@ misconfigurations:
     statement: >-
       The suite's image (never on production's cluster) and the laptop's Postgres, whose
       entrypoint starts as root to own its data directory and drops to postgres itself.
+  - id: AWS-0164
+    paths:
+      - terraform/aws/modules/network/main.tf
+    statement: >-
+      Every node holds a public address, as on Google Cloud: LiveKit and SIP announce their node's
+      own, and with no private subnet there is no NAT gateway billed by the hour and the gigabyte.
+      What reaches a node is its security group's to say (modules/eks, modules/edge, modules/hosting).
+  - id: AWS-0040
+    paths:
+      - terraform/aws/modules/eks/main.tf
+    statement: >-
+      The cluster's API answers the internet because `make` runs on the operators' machines, with
+      no network of the cluster's to be inside of; it lets in whoever IAM names (access entries),
+      and the nodes reach it inside the VPC.
+  - id: AWS-0031
+    paths:
+      - terraform/aws/project/registry.tf
+    statement: >-
+      A tag is a commit, and the suites' image is built again at one commit as the checkout
+      changes; a release names the digest the registry holds for its tag (`make deploy`), which
+      no push can move.
+  - id: AWS-0132
+    paths:
+      - terraform/aws/bootstrap/main.tf
+      - terraform/aws/modules/backups/main.tf
+      - terraform/aws/project/build.tf
+    statement: >-
+      The state's, the backups' and the builds' buckets are encrypted at rest under S3's own keys,
+      as Google's are under Google's; each is private, and read by the one role that needs it.
 
   # The operator's call, owed by the date below: a list that is wrong locks them out.
+  - id: AWS-0041
+    paths:
+      - terraform/aws/modules/eks/main.tf
+    statement: >-
+      The Kubernetes API is reached by IAM alone until the networks it answers are chosen
+      (`api_sources`): a list that forgets the place the operator works from locks them out.
+    expired_at: 2026-12-07
   - id: GCP-0061
     paths:
       - terraform/google/modules/gke/main.tf

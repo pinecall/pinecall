@@ -18,3 +18,9 @@ ingress:
   # GKE's own policies on each backend: a socket lives up to an hour (an app's, a room's) and a
   # backend's health is read at its own port. Another implementation says the same its own way.
   gkePolicies: false
+  # The same said to the AWS Load Balancer Controller, where the Gateway is its Application Load
+  # Balancer (terraform/aws/cluster's `chart_values`): `loadBalancer`, the name it is made under,
+  # which the names' records find it by; `certificates`, Certificate Manager's by their ARNs, the
+  # first the default; `subnets`, the load balancer's own. With it the chart makes the class too,
+  # which EKS does not ship (`className` names it). Unset, none of it.
+  aws: {}

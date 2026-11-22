@@ -11,6 +11,11 @@ metadata:
   {{- end }}
 spec:
   gatewayClassName: {{ required "ingress.className" .Values.ingress.className }}
+  {{- if .Values.ingress.aws }}
+  # The load balancer's own settings (aws.yaml): its name, its certificates, how long a socket lives.
+  infrastructure:
+    parametersRef: { group: gateway.k8s.aws, kind: LoadBalancerConfiguration, name: pinecall }
+  {{- end }}
   {{- with .Values.ingress.addresses }}
   addresses:
     {{- toYaml . | nindent 4 }}

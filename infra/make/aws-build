@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# One image built by AWS CodeBuild and pushed to the account's registry: the context zipped and
+# uploaded to the builds' bucket, the build started on it and waited for, its log's end printed, and
+# this script's exit the build's. `make image` on AWS (infra/make/aws.mk): nothing is built here.
+#
+#   aws-build <context: a folder or a .tar.gz> <runtime|mcp|plain> <registry>/<image>:<tag>
+#
+# REGION and ACCOUNT come from the Makefile. The steps are infra/images/buildspec.yaml, held by the
+# project (terraform/aws/project).
+set -euo pipefail
+context=$1 kind=$2 image=$3
+project=pinecall-image
+bucket=pinecall-build-$ACCOUNT
+
+work=$(mktemp -d)
+cleanup() { rm -rf -- "${work:?}"; }
+trap cleanup EXIT
+
+# CodeBuild takes a source from S3 as a zip, whatever the Makefile made.
+if [ -d "$context" ]; then
+  (cd "$context" && zip -qry "$work/context.zip" .)
+else
+  mkdir "$work/tree"
+  tar -xzf "$context" -C "$work/tree"
+  (cd "$work/tree" && zip -qry "$work/context.zip" .)
+fi
+key="context/$(date -u +%Y%m%dT%H%M%SZ)-$$.zip"
+aws s3 cp --only-show-errors --region "$REGION" "$work/context.zip" "s3://$bucket/$key"
+
+id=$(aws codebuild start-build --region "$REGION" --project-name "$project" \
+  --source-type-override S3 --source-location-override "$bucket/$key" \
+  --environment-variables-override "name=KIND,value=$kind,type=PLAINTEXT" "name=IMAGE,value=$image,type=PLAINTEXT" \
+  --query build.id --output text)
+echo "build $id: $kind → $image"
+
+status=IN_PROGRESS
+while [ "$status" = IN_PROGRESS ]; do
+  sleep 10
+  status=$(aws codebuild batch-get-builds --region "$REGION" --ids "$id" --query 'builds[0].buildStatus' --output text)
+done
+
+# The build's own last words, whatever its end: where a refusal says why.
+aws logs get-log-events --region "$REGION" --log-group-name /pinecall/build --log-stream-name "${id#*:}" \
+  --start-from-head --query 'events[].message' --output text 2>/dev/null | tr '\t' '\n' | grep -v '^$' | tail -40 || true
+echo "build $id: $status"
+[ "$status" = SUCCEEDED ]

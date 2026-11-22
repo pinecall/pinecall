@@ -5,6 +5,20 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: {{ .Values.appsNamespace }}
+{{- with .Values.runtimeHandler }}
+---
+# The class every app's pod names (`runtimeClass`), on a cluster that ships none: gVisor's handler,
+# and the one pool whose nodes have it, which a pod of the class is sent to and tolerated on.
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: {{ $.Values.runtimeClass }}
+handler: {{ . }}
+scheduling:
+  nodeSelector: { pinecall.io/pool: {{ required "pool: the pool whose nodes run the handler" $.Values.pool }} }
+  tolerations:
+    - { key: pinecall.io/pool, operator: Equal, value: {{ $.Values.pool }}, effect: NoSchedule }
+{{- end }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

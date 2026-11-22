@@ -1,0 +1,68 @@
+# An operator's values for charts/edge, charts/postgres and charts/pinecall on AWS, as
+# terraform/aws/cluster makes it: what example.yaml is for Google Cloud. With the Terraform of this
+# repository every key below but the images is written by `make values` into
+# values/<cluster>.terraform.json; they are typed here so the charts are rendered and scanned as an
+# AWS operator releases them. The image's repository, tag and digest are given by `make deploy`.
+domain: voice.example.com
+secrets:
+  provider:
+    aws:
+      service: SecretsManager
+      region: us-east-1
+      # The store's own identity: a token of External Secrets' ServiceAccount, exchanged with AWS
+      # directly (modules/secrets' role), never the node's metadata service.
+      auth:
+        jwt:
+          serviceAccountRef: { name: external-secrets, namespace: external-secrets }
+  prefix: pinecall-production-
+# None named: the cluster's default class, the disks' driver's own on gp3.
+storageClass: ""
+# The AWS Load Balancer Controller's Application Load Balancer (modules/edge's outputs).
+ingress:
+  className: pinecall-alb
+  aws:
+    loadBalancer: pinecall-production
+    certificates:
+      - arn:aws:acm:us-east-1:111122223333:certificate/00000000-0000-0000-0000-000000000001
+      - arn:aws:acm:us-east-1:111122223333:certificate/00000000-0000-0000-0000-000000000002
+    subnets: [subnet-0aaaaaaaaaaaaaaaa, subnet-0bbbbbbbbbbbbbbbb]
+image:
+  repository: 111122223333.dkr.ecr.us-east-1.amazonaws.com/pinecall/runtime
+postgres:
+  image: 111122223333.dkr.ecr.us-east-1.amazonaws.com/pinecall/postgres:17.11-pgvector0.8.6-pgtextsearch1.4.0
+  # modules/backups' outputs.
+  backups:
+    destination: s3://pinecall-production-postgres-111122223333/postgres
+    credentials:
+      s3Credentials:
+        inheritFromIAMRole: true
+    serviceAccountAnnotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::111122223333:role/pinecall-production-postgres
+cluster: production
+monitoring:
+  collector: none
+# modules/kubeip's outputs; neither identity nor annotations, kubeip is not installed.
+kubeip:
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::111122223333:role/pinecall-production-kubeip
+  filter: Name=tag:pinecall-media,Values=%s
+  region: us-east-1
+# Each env's SIP name (the cluster's `sip_names`) and its media address (modules/edge's
+# media_addresses, Elastic IPs).
+envs:
+  production:
+    sipDomain: sip.example.com
+    mediaAddress: 203.0.113.10
+  sandbox:
+    sipDomain: sip.sandbox.example.com
+    mediaAddress: 203.0.113.11
+media:
+  # the nodes' subnet (modules/network).
+  nodeNetwork: 10.140.0.0/18
+gateway:
+  podNetwork: 10.140.0.0/18
+  dbPool: 20
+  # The load balancer's own two subnets (modules/network's balancer_ranges).
+  trustedProxies: 10.140.65.0/24,10.140.66.0/24
+mcp:
+  name: mcp.voice.example.com

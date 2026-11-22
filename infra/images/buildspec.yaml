@@ -1,0 +1,55 @@
+# One image built by AWS CodeBuild and pushed to the account's registry (terraform/aws/project),
+# as cloudbuild.yaml and the two beside the runtime's and the MCP server's Containerfiles are for
+# Google's Cloud Build: on the cloud's machines, as the builds' own role, from the context `make
+# image` uploaded; nothing is built on a laptop. KIND says which image and so which checks stand
+# between the build and the push; IMAGE is its whole name, registry and tag.
+#
+#   runtime  a commit's whole tree: the package answers, every installed voice plugin imports for
+#            livekit's preload, Smart Turn's weights are on the image offline, and the model that
+#            says who takes the floor loads and takes a frame as the image's own user
+#   mcp      a commit's whole tree: as the image's own user, on a root it cannot write, every
+#            module loads and the tools are there
+#   plain    a folder with its Containerfile at its root (the suites', Postgres's, the apps')
+version: 0.2
+env:
+  shell: bash
+phases:
+  pre_build:
+    commands:
+      - aws ecr get-login-password | docker login --username AWS --password-stdin "${IMAGE%%/*}"
+  build:
+    commands:
+      - export DOCKER_BUILDKIT=1
+      - |
+        set -euo pipefail
+        case "$KIND" in
+          runtime)
+            docker build -f infra/images/runtime/Containerfile -t "$IMAGE" .
+            docker run --rm "$IMAGE" --version
+            docker run --rm --entrypoint python "$IMAGE" -c "
+        from runtime.providers.service.plugins import list_vendors; list_vendors()
+        from smart_turn_livekit.models import resolve_model
+        print(resolve_model('smart-turn-v3', local_only=True))
+        import os, pathlib
+        from livekit import rtc
+        frame = rtc.AudioFrame(data=bytes(2400), sample_rate=24000, num_channels=1, samples_per_channel=1200)
+        from runtime.session.taking_the_floor import load_floor_model
+        floor = load_floor_model(pathlib.Path(os.environ['PINECALL_FLOOR_MODEL']))
+        assert floor is not None, 'the floor model did not load'
+        overlap = floor.open_stream(); overlap.hear(frame, agent_speaks=True); overlap.hear(frame, agent_speaks=True)
+        assert len(overlap.recent) > 0, 'the floor model judged no frame'
+        print('the floor: a frame judged')
+        "
+            ;;
+          mcp)
+            docker build -f infra/images/mcp/Containerfile -t "$IMAGE" .
+            docker run --rm --read-only --tmpfs /tmp "$IMAGE" --check
+            ;;
+          plain)
+            docker build -f Containerfile -t "$IMAGE" .
+            ;;
+          *)
+            echo "KIND is runtime, mcp or plain, not '$KIND'" >&2; exit 2
+            ;;
+        esac
+        docker push "$IMAGE"
