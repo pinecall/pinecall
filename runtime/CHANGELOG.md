@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **On Google Cloud the hosting cluster obeys `deletion_protection` too.** The cluster's variable reached the
+  main cluster alone, so a deployment with `hosting = true` could not be destroyed by Terraform: the hosting
+  cluster stayed protected whatever the variable said.
 - **A hosted app asks its node for what the runner is told.** `PINECALL_RUNNER_APP_CPU` (`100m`; charts/hosting's
   `appCpu`) is what each app's pod asks of its node, in thousandths of a core; what it may take is half a core
   either way. Unset, it asks for that half core, as before, which is how a cluster that bills a pod by what it

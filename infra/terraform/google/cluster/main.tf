@@ -103,6 +103,8 @@ module "hosting" {
   pods_range     = var.hosting_ranges.pods
   services_range = var.hosting_ranges.services
   runner_keys    = { for env in local.envs : env => module.secrets.ids["runner-key-${env}"] }
+
+  deletion_protection = var.deletion_protection
 }
 
 module "lab" {
