@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# A server set up, or brought to another commit, from that commit's image: the one a cluster of the
+# same commit runs (`make image`). Run on the server itself, as the user that owns its runtime and
+# may use Docker:
+#
+#   install <image> --domain <name> [--phone] [--unpointed] [any other flag of `setup`]   the first time
+#   install <image>                                                                       an update
+#
+# The image holds the wheel it was built from. This takes the wheel out and installs the command
+# line from it, so the verb that sets the server up and the processes it starts are one commit, and
+# then runs `pinecall-runtime setup --image <image>` with what follows. `setup` keeps what a run
+# before it was told (the name, the phone, the env file), so an update names the image and nothing
+# else. Docker is signed in to the registry already (the machine's own identity:
+# infra/terraform/<provider>/server), and `uv` is on the PATH.
+set -euo pipefail
+image=${1:?the image to run, as <registry>/pinecall/runtime:<commit>}
+shift
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+docker pull --quiet "$image" >/dev/null
+held=$(docker create "$image")
+docker cp --quiet "$held:/opt/pinecall/wheel/." "$work/"
+docker rm "$held" >/dev/null
+
+uv tool install --quiet --python 3.13 --force "$(ls "$work"/pinecall_runtime-*.whl)"
+export PATH="$HOME/.local/bin:$PATH"
+exec pinecall-runtime setup --image "$image" "$@"

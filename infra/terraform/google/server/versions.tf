@@ -1,0 +1,17 @@
+# One server and, beside it, the hosted apps' machine: Terraform and the providers it is planned
+# with, and where its state is kept.
+terraform {
+  required_version = "~> 1.5.7"
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 6.0"
+    }
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+  # bucket and prefix: the operator's <name>.backend.hcl (`make tf-init`), one state per deployment.
+  backend "gcs" {}
+}

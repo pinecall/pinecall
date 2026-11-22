@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# A script of this repository run on a machine of a server deployment (terraform/aws/server), as a
+# user of that machine, and what it said printed here:
+#
+#   REGION=us-east-1 aws-on <instance id> <user> <script> [arguments…]
+#
+# Through Systems Manager, as the operator's own AWS login: the machine opens no port 22 and nobody
+# holds a key to it. The script travels as text and its arguments as they are, so neither carries a
+# secret: Systems Manager keeps what it was sent. What a script printed comes back whole up to
+# 24 000 characters, Systems Manager's own limit; a longer run is read on the machine.
+set -euo pipefail
+instance=${1:?the instance id}
+user=${2:?the user it runs as}
+script=${3:?the script to run}
+shift 3
+
+body=$(base64 < "$script" | tr -d '\n')
+arguments=$(printf '%q ' "$@")
+line="echo $body | base64 -d > /tmp/pinecall-run && chmod 0755 /tmp/pinecall-run && sudo -iu $user /tmp/pinecall-run $arguments"
+parameters=$(python3 -I -c 'import json, sys; print(json.dumps({"commands": [sys.argv[1]], "executionTimeout": ["3600"]}))' "$line")
+
+sent=$(aws ssm send-command --region "$REGION" --instance-ids "$instance" --document-name AWS-RunShellScript \
+  --timeout-seconds 600 --parameters "$parameters" --query Command.CommandId --output text)
+while true; do
+  status=$(aws ssm get-command-invocation --region "$REGION" --command-id "$sent" --instance-id "$instance" \
+    --query Status --output text 2>/dev/null || echo Pending)
+  case "$status" in Pending | InProgress | Delayed) sleep 5 ;; *) break ;; esac
+done
+aws ssm get-command-invocation --region "$REGION" --command-id "$sent" --instance-id "$instance" \
+  --query '[StandardOutputContent, StandardErrorContent]' --output text
+[ "$status" = Success ] || { echo "aws-on: the script ended as $status on $instance" >&2; exit 1; }

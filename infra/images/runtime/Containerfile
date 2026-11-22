@@ -45,6 +45,9 @@ RUN --mount=type=bind,from=uv,source=/uv,target=/usr/local/bin/uv \
     --mount=type=bind,from=wheel,source=/out,target=/out \
     uv pip install --system --no-cache --require-hashes -r /out/requirements.txt \
  && uv pip install --system --no-cache --no-deps /out/pinecall_runtime-*.whl
+# The wheel itself stays in the image, three megabytes: a server's own machine installs its command
+# line from it (infra/server/install), so the verb that sets a server up is the commit its image is.
+COPY --from=wheel /out/pinecall_runtime-*.whl /opt/pinecall/wheel/
 # Smart Turn v3, the second end-of-turn model, is fetched from Hugging Face on first use; here it
 # is fetched once, at build, and the pod runs offline. livekit's own (v1-mini) is in its library.
 # Pinned to the repository's commit and checked by its hash: two builds of one commit carry the

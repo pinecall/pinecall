@@ -23,6 +23,10 @@ build     = REGION=$(REGION) ACCOUNT=$(ACCOUNT) $(INFRA)/make/aws-build $(1) $(2
 # $(call digest,<image>:<tag>): what the registry holds for it (`sha256:…`), or nothing.
 digest    = $$(REGION=$(REGION) $(INFRA)/make/aws-digest $(1))
 
+# $(call on,<a machine of a server>,<user>,<script>,<arguments>): a script of this repository run
+# on that machine, in a session of Systems Manager as the operator's own login.
+on        = REGION=$(REGION) $(INFRA)/make/aws-on $(1) $(2) $(3) $(4)
+
 # The hosted apps run on a fenced pool of the cluster itself (terraform/aws/modules/hosting): the
 # same context, and no credentials to fetch.
 HOSTING  ?= $(CONTEXT)

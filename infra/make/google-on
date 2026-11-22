@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# A script of this repository run on a machine of a server deployment (terraform/google/server), as
+# a user of that machine, and what it said printed here:
+#
+#   PROJECT=<project> ZONE=<zone> google-on <machine> <user> <script> [arguments…]
+#
+# Through Identity-Aware Proxy, as the operator's own Google login: the machine's port 22 is open to
+# that proxy alone and nobody holds a key to it. The script is read from this command's input and
+# its arguments travel as they are, so neither carries a secret.
+set -euo pipefail
+machine=${1:?the machine, as pinecall-<name>-server}
+user=${2:?the user it runs as}
+script=${3:?the script to run}
+shift 3
+
+arguments=$(printf '%q ' "$@")
+gcloud compute ssh "$machine" --project "$PROJECT" --zone "$ZONE" --tunnel-through-iap --quiet \
+  --command "sudo -iu $user bash -s -- $arguments" < "$script"

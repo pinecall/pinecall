@@ -28,6 +28,10 @@ build     = gcloud builds submit $(1) --config $(build_$(2)) --service-account $
 # $(call digest,<image>:<tag>): what the registry holds for it (`sha256:…`), or nothing.
 digest    = $$(gcloud artifacts docker images describe $(1) --project $(PROJECT) --format='value(image_summary.digest)' 2>/dev/null)
 
+# $(call on,<a machine of a server>,<user>,<script>,<arguments>): a script of this repository run
+# on that machine, through Identity-Aware Proxy as the operator's own login.
+on        = PROJECT=$(PROJECT) ZONE=$(ZONE) $(INFRA)/make/google-on $(1) $(2) $(3) $(4)
+
 # The hosting cluster (terraform/google/modules/hosting): a regional Autopilot cluster of its own.
 HOSTING  ?= gke_$(PROJECT)_$(REGION)_pinecall-$(NAME)-hosting
 hosting_credentials = gcloud container clusters get-credentials pinecall-$(NAME)-hosting --region $(REGION) \

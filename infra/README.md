@@ -71,8 +71,8 @@ and a new cloud adds both without touching another's:
 
 | | what it holds |
 |---|---|
-| `terraform/<provider>/` | its roots (`bootstrap`, `project`, `cluster`) and its modules. A cluster root takes the same variables (`name`, `dns_zone`, `names`, `sip_names`, `sip_sources`, `given_secrets`, `pages`, `services`, `hosting`) and ends in the same output, `chart_values`: what it made, in the words the charts read. `terraform/modules/addons` is called by every one |
-| `make/<provider>.mk` | `TF_AUTH` (how Terraform is given the operator's login), `TF_PROJECT` (what the account's root is called among the operator's files), `CONTEXT` (the cluster's kubectl context), `REGISTRY`, `build` (an image built from a context by the cloud's own builder, as `runtime`, `mcp` or `plain`), `digest` (what the registry holds for a tag), `HOSTING` and `hosting_credentials` (where the hosted apps run) |
+| `terraform/<provider>/` | its roots (`bootstrap`, `project`, `cluster`, and `server` for the deployment's other shape) and its modules. A cluster root takes the same variables (`name`, `dns_zone`, `names`, `sip_names`, `sip_sources`, `given_secrets`, `pages`, `services`, `hosting`) and ends in the same output, `chart_values`: what it made, in the words the charts read. `terraform/modules/addons` is called by every one |
+| `make/<provider>.mk` | `TF_AUTH` (how Terraform is given the operator's login), `TF_PROJECT` (what the account's root is called among the operator's files), `CONTEXT` (the cluster's kubectl context), `REGISTRY`, `build` (an image built from a context by the cloud's own builder, as `runtime`, `mcp` or `plain`), `digest` (what the registry holds for a tag), `HOSTING` and `hosting_credentials` (where the hosted apps run), `on` (a script of this repository run on a machine of a server, as the operator's own login) |
 
 The operator's `<cluster>.mk` says which: `PROVIDER = <provider>` (Google's unless said), and
 `NAME = <name>` where the cluster is not named as its files are, as when two clouds hold a
@@ -459,6 +459,51 @@ names, taking over a record another deployment held in one change, with no momen
 resolves to nothing; that deployment's Terraform is then told to forget the record (it is taken out
 of its state) and never deletes it. A media address is new on a new cloud: a carrier or a PBX that
 sends to the old one by its number, not by the SIP name, is told before the SIP names move.
+
+## A server: one machine, and a second for the apps
+
+The cluster is the shape for more calls than a machine holds. The other shape is a server: the
+runtime whole in Docker on one machine (`pinecall-runtime setup --domain`,
+[the-runtime-cli.md](../runtime/docs/the-runtime-cli.md), "A server that carries production"), and a
+second, smaller machine that runs the hosted apps and nothing else, so an org's code never runs
+where the database and the vault's key are. It is the same package and the same image; nothing in
+the runtime knows which shape it runs in. What a server gives up is what a cluster is for: its seats
+are fixed (a caller past the last one hears the overflow's sentence, no node is added), an update
+restarts the one gateway for some seconds (a spoken call in flight ends by itself: a worker drains
+for ten minutes), and the apps are kept from the server but not from one another (processes of one
+machine, where a cluster gives each a gVisor pod).
+
+| | cluster | server |
+|---|---|---|
+| Terraform's root | `terraform/<provider>/cluster` | `terraform/<provider>/server` (`ROOT = server` in the operator's `<cluster>.mk`) |
+| what it makes | the cluster, its pools, the load balancer's names, the secret store | a network, the two machines and their identities, the firewall (5060 from `sip_sources` alone), one address every name points at, the backups' bucket |
+| the runtime put on it | `make deploy`, `make hosting` | `make server`, `make runners`: `infra/server/install` and `infra/server/runners` run on the machine at a commit's image |
+| the front door | the Gateway and its certificates | Caddy on the machine, a certificate a name from Let's Encrypt; services of your own are files of `sites/` |
+| Postgres's backups | CloudNativePG's Barman Cloud plugin | the same tool beside Postgres (`PINECALL_BACKUP_URL`), as the machine's own identity |
+| a shell | `kubectl` | Systems Manager (AWS) or Identity-Aware Proxy (Google): no port 22 to the world, no key |
+
+```console
+$ make tf-init tf-plan tf-apply CLUSTER=<name>                       # ROOT = server: the machines, unpointed
+$ make image TAG=<commit>
+$ make server CLUSTER=<name> TAG=<commit> SETUP="--domain voice.example.com --phone --unpointed --yes --email you@example.com"
+$ make runners CLUSTER=<name> TAG=<commit> GATEWAY=https://voice.example.com
+$ make server CLUSTER=<name> TAG=<another commit>                     # an update: the commit and nothing else
+```
+
+Terraform's `env` output is what the server's env file is told of what was made
+(`PINECALL_BACKUP_URL`, `PINECALL_SIP_RTP_PORTS`, `PINECALL_PAGES_DOMAIN`); each environment's seats
+are the operator's own lines (`PINECALL_PRODUCTION_MAX_JOBS`, `PINECALL_SANDBOX_MAX_JOBS`). A runner's
+key is a file of the apps' machine, `/etc/pinecall/runner-<env>.key`, put there before `make runners`.
+
+**From a cluster to a server, or back.** A runtime moves as a dump of its database and the settings
+that seal and sign what the dump holds. The server is made and set up with its names still pointing
+at the cluster (`--unpointed`); `PINECALL_VAULT_KEY`, `PINECALL_TOKEN_KEY`, `PINECALL_OPS_KEY` and each
+environment's fleet key are written into its env file from the cluster's secret store, by the
+machine itself (`reads_secrets` lets it read them, and nothing else there); the cluster's gateways
+and workers are stopped, `pg_dump -Fc` taken and `pinecall-runtime local restore` given it; then
+`point_names` and `point_sip` move the names, each taken over in one change, and the cluster's
+Terraform is told to forget the records. An address carriers already know moves with it
+(`kept_address`). The way back is the same dump in the other direction.
 
 ## Staging, made and destroyed
 

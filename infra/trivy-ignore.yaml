@@ -38,10 +38,27 @@ misconfigurations:
   - id: AWS-0164
     paths:
       - terraform/aws/modules/network/main.tf
+      - terraform/aws/server/main.tf
     statement: >-
       Every node holds a public address, as on Google Cloud: LiveKit and SIP announce their node's
       own, and with no private subnet there is no NAT gateway billed by the hour and the gigabyte.
-      What reaches a node is its security group's to say (modules/eks, modules/edge, modules/hosting).
+      What reaches a node is its security group's to say (modules/eks, modules/edge, modules/hosting);
+      a server's two machines are the same, each behind a group of its own (terraform/aws/server).
+  - id: GCP-0031
+    paths:
+      - terraform/google/server/machines.tf
+    statement: >-
+      A server's machine is the address its callers reach: Caddy, LiveKit's media and SIP answer on
+      it, and the apps' machine reaches the registries an app installs from with no NAT to pay for.
+      What reaches either is its firewall rules' to say, by its tag (terraform/google/server/main.tf):
+      the apps' machine has no rule but Identity-Aware Proxy's to port 22.
+  - id: AWS-0104
+    paths:
+      - terraform/aws/server/main.tf
+    statement: >-
+      A server calls out to whoever its orgs chose: the vendors of each agent's voice and model, the
+      carriers, an org's own webhooks, and the apps' machine to the registries an app installs from.
+      No list of addresses says that, so what leaves is not fenced; what arrives is, rule by rule.
   - id: AWS-0040
     paths:
       - terraform/aws/modules/eks/main.tf
@@ -61,6 +78,7 @@ misconfigurations:
       - terraform/aws/bootstrap/main.tf
       - terraform/aws/modules/backups/main.tf
       - terraform/aws/project/build.tf
+      - terraform/aws/server/backups.tf
     statement: >-
       The state's, the backups' and the builds' buckets are encrypted at rest under S3's own keys,
       as Google's are under Google's; each is private, and read by the one role that needs it.

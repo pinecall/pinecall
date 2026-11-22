@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# The hosted apps' machine: a runner an environment, each kept up by systemd as the user `pinecall`
+# and each in a home of its own (a runner empties its home when it starts, so two never share one).
+# Run on that machine as root:
+#
+#   runners <image> <the server's https address>
+#
+# The runners run what `pinecall deploy` sends as processes of this machine
+# (`PINECALL_RUNNER_ENGINE=processes`), with nothing fencing one app from another: what this machine
+# keeps apart is the apps from the server, whose database and vault key are not here. A runner calls
+# the server by its public name and nothing calls a runner, so this machine opens no port.
+#
+# Before it runs, each environment's runner key is a file only root reads:
+#   /etc/pinecall/runner-sandbox.key   /etc/pinecall/runner-production.key
+# (`pinecall-runtime keys runner <env>` on the server prints one). An environment with no key file
+# gets no runner. The command line is installed from the image's own wheel, as on the server
+# (infra/server/install); run again with another image, it updates and restarts the runners.
+set -euo pipefail
+image=${1:?the image to take the command line from, as <registry>/pinecall/runtime:<commit>}
+gateway=${2:?the address of the server, as https://voice.example.com}
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+sudo -iu pinecall docker pull --quiet "$image" >/dev/null
+held=$(sudo -iu pinecall docker create "$image")
+docker cp --quiet "$held:/opt/pinecall/wheel/." "$work/"
+docker rm "$held" >/dev/null
+chmod -R a+rX "$work"
+sudo -iu pinecall uv tool install --quiet --python 3.13 --force "$(ls "$work"/pinecall_runtime-*.whl)"
+
+cat > /etc/systemd/system/pinecall-runner@.service <<'UNIT'
+[Unit]
+Description=Pinecall: the %i environment's hosted apps
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=pinecall
+EnvironmentFile=/etc/pinecall/runner-%i.env
+Environment=PINECALL_RUNNER_ENGINE=processes
+Environment=PINECALL_RUNNER_HOME=/home/pinecall/.pinecall-runtime/apps-%i
+Environment=PATH=/home/pinecall/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/pinecall/.local/bin/pinecall-runtime runner start
+# Told to stop, a runner stops its apps, each given its drain.
+TimeoutStopSec=120
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+systemctl daemon-reload
+for env in sandbox production; do
+  key=/etc/pinecall/runner-$env.key
+  [ -s "$key" ] || { echo "runners: no $key, so no runner for $env"; continue; }
+  # The unit reads the address and the key from one file of root's, never from its own text.
+  (umask 077; printf 'PINECALL_GATEWAY_URL=%s\nPINECALL_RUNNER_KEY=%s\n' "$gateway" "$(cat "$key")" > /etc/pinecall/runner-$env.env)
+  systemctl enable --quiet "pinecall-runner@$env"
+  systemctl restart "pinecall-runner@$env"
+  echo "runners: $env is $(systemctl is-active "pinecall-runner@$env")"
+done

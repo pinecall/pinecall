@@ -54,7 +54,8 @@ TF_ROOT   = $(abspath $(INFRA)/terraform/$(PROVIDER)/$(ROOT))
 TF        = TF_DATA_DIR=$(TF_ROOT)/.terraform/$(TF_STATE) terraform -chdir=$(TF_ROOT)
 TF_PLAN   = $(TF_ROOT)/$(TF_STATE).plan
 # Every cloud's roots, for `tf-check`: a change to one cloud's never leaves another's unread.
-TF_ROOTS  = $(wildcard $(INFRA)/terraform/*/bootstrap $(INFRA)/terraform/*/project $(INFRA)/terraform/*/cluster)
+TF_ROOTS  = $(wildcard $(INFRA)/terraform/*/bootstrap $(INFRA)/terraform/*/project $(INFRA)/terraform/*/cluster \
+	$(INFRA)/terraform/*/server)
 
 check:           ## ruff (lint, format), pyright and mypy strict, the convention tests; terraform's form
 	uv run ruff check . && uv run ruff format --check .
@@ -78,7 +79,7 @@ tf-check:         ## every root module formatted and valid, with no backend reac
 # ENV is an org's env (production or sandbox) and `make fleet` alone takes one. Until 2026-11-12 it
 # named the cluster, so a target of a cluster that is given ENV, on the command line or by the
 # environment, refuses: obeyed, it would act on the default cluster, whatever ENV said.
-OF_A_CLUSTER = tf-init tf-fence tf-plan tf-apply values image suite diff edge postgres deploy-guards deploy rollback hosting mcp restore-from-box logs
+OF_A_CLUSTER = tf-init tf-fence tf-plan tf-apply values image suite diff edge postgres deploy-guards deploy rollback hosting mcp restore-from-box logs server runners
 $(OF_A_CLUSTER): cluster-not-env
 cluster-not-env:
 ifneq ($(filter command environment,$(origin ENV)),)
@@ -267,6 +268,23 @@ hosting:          ## CLUSTER=…: charts/hosting released where the hosted apps 
 	  --namespace pinecall-runner --create-namespace \
 	  -f $(OPS)/values/hosting-$(CLUSTER).yaml $(IMAGE) \
 	  --wait --timeout 15m
+
+# A server, the deployment's other shape (terraform/<provider>/server; `ROOT = server` in the
+# operator's <cluster>.mk, so `tf-plan` and `tf-apply` are its own): one machine runs the runtime
+# whole in Docker (`pinecall-runtime setup --domain`, docs/the-runtime-cli.md) and a second runs the
+# hosted apps. The runtime is put on each at a commit's image, the one `make image` builds for a
+# cluster, by a script of infra/server/ run on the machine itself as the operator's own login: no
+# port 22, no key. SETUP is what `setup` is told the first time (`--domain <name> --phone
+# --unpointed --yes`); an update names the commit alone.
+server_machine = $$($(TF_AUTH) $(TF) output -json machines | python3 -c 'import json, sys; print(json.load(sys.stdin)["$(1)"])')
+server:           ## CLUSTER=… TAG=<commit> [SETUP="--domain <name> …"]: the server set up, or brought to that commit's image
+	@[ -n "$(DIGEST)" ] || \
+	  { echo "make server: no image $(REGISTRY)/runtime:$(TAG); make image TAG=$(TAG) first" >&2; exit 2; }
+	$(call on,$(call server_machine,server),pinecall,$(INFRA)/server/install,$(REGISTRY)/runtime:$(TAG) $(SETUP))
+
+runners:          ## CLUSTER=… TAG=<commit> GATEWAY=https://<name>: the hosted apps' machine's runners, at that commit
+	@[ -n "$(GATEWAY)" ] || { echo "make runners: GATEWAY=https://<the server's name>" >&2; exit 2; }
+	$(call on,$(call server_machine,apps),root,$(INFRA)/server/runners,$(REGISTRY)/runtime:$(TAG) $(GATEWAY))
 
 # The hosted MCP server (mcp/ in the repository, charts/mcp): the CLI's tools over HTTP at a name of
 # its own (`mcp.name` in the operator's values, a name of the cluster in Terraform's `names`), so an
