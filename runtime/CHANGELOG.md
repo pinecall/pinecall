@@ -8,8 +8,8 @@
   registry and a builder), and `infra/make/aws.mk` is its side of the `Makefile` (`PROVIDER = aws`). The hosted
   apps run on a fenced pool of the same cluster, under gVisor, rather than on a second one. The charts take what
   AWS needs as values beside Google's, which render as they did: `ingress.aws`, `kubeip.annotations` with its
-  `filter`, and for charts/hosting `secrets.provider`, `pool` and `runtimeHandler`. Checked and scanned; no
-  cluster has been made from it yet (`infra/README.md`, "On AWS").
+  `filter`, and for charts/hosting `secrets.provider`, `pool` and `runtimeHandler`. A cluster was made from it
+  from nothing and a database moved onto it (`infra/README.md`, "On AWS").
 - **The infra's Terraform is a tree for each cloud.** Google Cloud's roots and modules moved from `infra/terraform/`
   to `infra/terraform/google/` (`bootstrap`, `project`, `cluster`, `modules/…`), with `modules/addons`, which names no
   cloud, left where every cloud's cluster calls it; and everything of gcloud's in the runtime's `Makefile` is now

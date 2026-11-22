@@ -401,9 +401,13 @@ is hung up with it.
 ## On AWS
 
 `terraform/aws/` and `make/aws.mk` are this deployment on Amazon Web Services: the same charts, the
-same pools under the same label and taint, the same names, secrets and values. **It is written and
-checked (every root formatted and valid, the charts rendered with `values/aws-example.yaml` and
-scanned), and no cluster has been made from it yet: nothing under "Proven" was measured on it.**
+same pools under the same label and taint, the same names, secrets and values. Made on 2026-11-22: a staging
+cluster from nothing (the gateway asked at its name six of six, a written call, a spoken call, a
+hosted app deployed and run under gVisor, the hosted apps' fence probed from inside it, each media
+node's address given by kubeip, Postgres's WAL in its bucket, the suites inside the cluster) and
+then a production one, a database of some 255,000 log entries moved onto it from a Google Cloud
+cluster in two minutes. What the numbers under "Proven" say was measured on Google Cloud; no load
+was measured on AWS.
 
 | on Google Cloud | on AWS | where |
 |---|---|---|

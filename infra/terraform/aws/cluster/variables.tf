@@ -45,11 +45,13 @@ variable "ranges" {
 }
 
 # The machines, each pool's: said here once, and a value of the operator's own where it differs.
-# A scaled worker asks for six cores and 12 GiB (charts/pinecall), one a node; production's media
-# node is no burstable type, since audio cannot wait for a credit.
+# A scaled worker asks for six cores and 12 GiB (charts/pinecall), one a node. The core node, which
+# holds the database and the gateways, and production's media node are no burstable type: neither a
+# statement nor audio can wait for a credit, and on a t3a core the suites' slower tests ran past
+# their ten seconds (2026-11-22).
 variable "pools" {
   type = object({
-    core        = optional(string, "t3a.xlarge")
+    core        = optional(string, "m6a.xlarge")
     media       = optional(map(string), { production = "m6a.xlarge", sandbox = "t3a.large" })
     workers     = optional(string, "c6a.2xlarge")
     workers_max = optional(map(number), { production = 10, sandbox = 3 })
