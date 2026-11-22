@@ -22,10 +22,27 @@ const FEWEST_REPLIES_TO_COMPARE = 3;
 const SLOW_TIMES = 2;
 const SLOW_OVER_S = 1;
 
+/** Whether a voice answered in this call: some reply of it was timed end to end. A written call times none. */
+const isSpoken = (turns: readonly Turn[]): boolean => turns.some((turn) => turn.role === "agent" && typeof turn.metrics.e2e_latency === "number");
+
+/**
+ * How long the agent took to answer. In a spoken call, the caller's wait to the first sound, which only the first reply
+ * after their turn carries. In a written one no voice starts and nothing is timed end to end: the model's first token.
+ */
+function replyTime(turn: Turn, spoken: boolean): number | null {
+  if (turn.role !== "agent") return null;
+  const took = spoken ? turn.metrics.e2e_latency : turn.metrics.llm_node_ttft;
+  return typeof took === "number" && took >= 0 ? took : null;
+}
+
 /** The middle of this call's reply times, or null when too few were timed to call one slow. */
 function usualReply(turns: readonly Turn[]): number | null {
+  const spoken = isSpoken(turns);
   const timed = turns
-    .flatMap((turn) => (turn.role === "agent" && typeof turn.metrics.e2e_latency === "number" && turn.metrics.e2e_latency >= 0 ? [turn.metrics.e2e_latency] : []))
+    .flatMap((turn) => {
+      const took = replyTime(turn, spoken);
+      return took === null ? [] : [took];
+    })
     .sort((one, other) => one - other);
   if (timed.length < FEWEST_REPLIES_TO_COMPARE) return null;
   const half = Math.floor(timed.length / 2);
@@ -42,6 +59,7 @@ export function ChatView({ entries, state, score, onSeek }: { entries: Entry[]; 
   const broken = useMemo(() => brokenAt(score, rows), [score, rows]);
   const loggedAt = useMemo(() => new Map(entries.map((entry) => [entry.seq, entry.ts])), [entries]);
   const usual = useMemo(() => usualReply(state.turns), [state.turns, state.seq]);
+  const spoken = useMemo(() => isSpoken(state.turns), [state.turns, state.seq]);
   const began = state.started_at;
 
   useEffect(() => {
@@ -69,7 +87,7 @@ export function ChatView({ entries, state, score, onSeek }: { entries: Entry[]; 
             case "turn": {
               const spokeAt = row.turn.metrics.started_speaking_at;
               const logged = spokeAt ?? loggedAt.get(row.seq);
-              return <Said key={`t-${row.seq}`} turn={row.turn} seq={row.seq} at={logged === undefined || began === null ? null : elapsed(began, logged)} seek={typeof spokeAt === "number" && began !== null && onSeek !== undefined ? () => onSeek(Math.max(0, spokeAt - began)) : undefined} usual={usual} broke={broke} />;
+              return <Said key={`t-${row.seq}`} turn={row.turn} seq={row.seq} at={logged === undefined || began === null ? null : elapsed(began, logged)} seek={typeof spokeAt === "number" && began !== null && onSeek !== undefined ? () => onSeek(Math.max(0, spokeAt - began)) : undefined} usual={usual} spoken={spoken} broke={broke} />;
             }
             case "tool":
               return <ToolLine key={`x-${row.seq}`} run={row.run} seq={row.seq} broke={broke} />;
@@ -98,11 +116,10 @@ export function ChatView({ entries, state, score, onSeek }: { entries: Entry[]; 
 }
 
 /** One turn: the bubble, and under it its seq, its moment, how long the agent took to answer, and the judges that cite it. */
-function Said({ turn, seq, at, seek, usual, broke }: { turn: Turn; seq: number; at: string | null; seek: (() => void) | undefined; usual: number | null; broke: readonly Broke[] | undefined }): ReactNode {
+function Said({ turn, seq, at, seek, usual, spoken, broke }: { turn: Turn; seq: number; at: string | null; seek: (() => void) | undefined; usual: number | null; spoken: boolean; broke: readonly Broke[] | undefined }): ReactNode {
   const who = turn.role === "agent" ? "agent" : "caller";
-  const answer = turn.role === "agent" ? turn.metrics.e2e_latency : null;
-  const timed = typeof answer === "number" && answer >= 0;
-  const slow = timed && usual !== null && answer >= usual * SLOW_TIMES && answer - usual >= SLOW_OVER_S;
+  const answer = replyTime(turn, spoken);
+  const slow = answer !== null && usual !== null && answer >= usual * SLOW_TIMES && answer - usual >= SLOW_OVER_S;
   return (
     <div className={who === "caller" ? "calls-said calls-said-caller" : "calls-said"} data-seq={seq}>
       <Bubble who={who} text={turn.text} broken={broke !== undefined} />
@@ -118,7 +135,7 @@ function Said({ turn, seq, at, seek, usual, broke }: { turn: Turn; seq: number; 
           ))}
         {turn.role === "agent" && (
           <span className={slow ? "dash-mood-warn" : undefined} title={slow && usual !== null ? `Much slower than this call's usual reply, ${seconds(usual)}` : undefined}>
-            {timed ? seconds(answer) : "—"}
+            {answer !== null ? seconds(answer) : "—"}
           </span>
         )}
         {turn.role === "agent" && turn.interrupted && <span className="dash-mood-warn">Cut off by the caller</span>}

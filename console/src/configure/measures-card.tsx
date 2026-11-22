@@ -41,7 +41,8 @@ export function measuringOf(agent: string, report: Report, counted: Insights | n
   const think = medianOf(report, "llm_node_ttft");
   const speak = medianOf(report, "tts_node_ttfb");
   return {
-    total: medianOf(report, "e2e_latency"),
+    // An agent that only writes starts no voice, so no call of its times a turn end to end: its response time is the model's first token.
+    total: medianOf(report, "e2e_latency") ?? think,
     calls: report.calls,
     steps: [
       { name: "Transcriber", value: hear, tone: "accent" },

@@ -34,15 +34,20 @@ function Tile({ label, value, sub }: { label: string; value: string; sub: string
   );
 }
 
-/** How fast the agent answered, end to end, and under it how long it took to hear, to think and to start speaking. */
+/**
+ * How fast the agent answered. A spoken reply is timed end to end, from the caller's last word to the voice's first
+ * sound, with what it took to hear, to think and to start speaking under it. A written one starts no voice, so nothing
+ * measures it end to end: its time is the model's first token, as the talk page and the simulations already say it.
+ */
 function Response({ latencies }: { latencies: readonly Median[] }): ReactNode {
   const median = (name: string): number | undefined => latencies.find((one) => one.name === name)?.seconds;
   const e2e = median("e2e_latency");
   const hears = median("transcription_delay");
   const thinks = median("llm_node_ttft");
   const speaks = median("tts_node_ttfb");
+  if (e2e === undefined) return <Tile label="Response" value={thinks === undefined ? "—" : seconds(thinks)} sub={thinks === undefined ? "No turn was timed" : "Median to the model's first token"} />;
   const parts = [hears === undefined ? null : `hears ${seconds(hears)}`, thinks === undefined ? null : `thinks ${seconds(thinks)}`, speaks === undefined ? null : `speaks ${seconds(speaks)}`].filter((part) => part !== null);
-  return <Tile label="Response" value={e2e === undefined ? "—" : seconds(e2e)} sub={e2e === undefined ? "No turn was timed" : parts.join(", ") || "Median end to end"} />;
+  return <Tile label="Response" value={seconds(e2e)} sub={parts.join(", ") || "Median end to end"} />;
 }
 
 // What the bill went on, by the unit it was billed in: tokens are the model, characters the voice, audio seconds the transcription, the line's own minutes the rest.
@@ -81,12 +86,12 @@ const ENDED_BY: Record<string, [string, string]> = {
 
 function Tiles({ state, latencies }: { state: State; latencies: readonly Median[] }): ReactNode {
   const over = state.status === "ended";
-  // A conversation written message by message has no caller and no voice to time: it closes when nobody writes.
+  // A conversation written message by message has no caller: it closes when nobody writes.
   const written = isWritten(state);
   const [who, did] = written && state.end_reason === "timeout" ? ["Silence", "nobody wrote"] : (ENDED_BY[state.end_reason ?? ""] ?? ["—", (state.end_reason ?? "").replace(/_/g, " ")]);
   return (
     <section className="calls-tiles" aria-label="In numbers">
-      {!written && <Response latencies={latencies} />}
+      <Response latencies={latencies} />
       {state.cost !== null && state.cost.rows.length > 0 && <Tile label="Cost" value={usd(state.cost.usd)} sub={sharesOf(state.cost.rows)} />}
       <Tile label="Turns" value={String(state.turns.length)} sub={`${written ? "Contact" : "Caller"} ${state.turns.filter((turn) => turn.role === "user").length}, agent ${state.turns.filter((turn) => turn.role === "agent").length}`} />
       {over && state.end_reason !== null && <Tile label="Ended by" value={who} sub={`${did}, after ${lengthOf(state.started_at, state.ended_at)}`} />}
