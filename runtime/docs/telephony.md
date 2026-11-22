@@ -46,7 +46,7 @@ registers to it and sends the calls on as above.
 flood guard then refuses the honest calls with the rest, so the platform admits SIP from carriers'
 signalling edges alone, twice:
 
-1. **The cloud's firewall** in front of the SIP node (`infra/terraform/modules/edge`): 5060 open
+1. **The cloud's firewall** in front of the SIP node (`infra/terraform/<cloud>/modules/edge`): 5060 open
    to the networks Terraform's `sip_sources` names, and denied to everyone else. The networks it
    should name are Twilio's, the other carriers' the operator admits and the addresses he
    approved, the list the console's platform screen shows (`GET /v1/ops/carriers`, its `fence`); a

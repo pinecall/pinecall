@@ -2,7 +2,7 @@
 # so it is preloaded by the operator's own setting; the two extensions are made once, at initdb, by
 # the superuser, as local/postgres/extensions.sql does on a laptop (the migrations make none). Its
 # WAL goes to the bucket as it is written and a base backup each night, by the Barman Cloud plugin,
-# as the identity terraform/modules/backups made: a restore reaches any minute of the window.
+# as the identity terraform/<cloud>/modules/backups made: a restore reaches any minute of the window.
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:

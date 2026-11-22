@@ -13,7 +13,7 @@ misconfigurations:
       caller's media.
   - id: GCP-0048
     paths:
-      - terraform/modules/gke/main.tf
+      - terraform/google/modules/gke/main.tf
     statement: >-
       The legacy metadata endpoints (v0.1, v1beta1) are disabled on every GKE node since 1.12 and
       were turned down for all of Compute Engine in 2020; setting the key by hand recreates the
@@ -39,7 +39,7 @@ misconfigurations:
   # The operator's call, owed by the date below: a list that is wrong locks them out.
   - id: GCP-0061
     paths:
-      - terraform/modules/gke/main.tf
+      - terraform/google/modules/gke/main.tf
     statement: >-
       The Kubernetes API is reached by IAM alone until authorized networks are chosen: a list
       that forgets the place the operator works from locks them out.

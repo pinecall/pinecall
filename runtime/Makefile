@@ -12,27 +12,30 @@ REDIS_PORT ?= 56379
 LOCAL_REDIS = redis://127.0.0.1:$(REDIS_PORT)/1
 T        ?= tests
 
-# The cluster both envs run on: one Terraform root for every cluster ($(INFRA)/terraform/cluster), told
-# which one by CLUSTER (its name, its variables, its state, its own data directory), and the operator's
-# own of it, which no public tree holds: OPS (PINECALL_OPS, else ../../ops, beside the
-# repository's checkout) has <CLUSTER>.mk (PROJECT, and REGION, ZONE or CONTEXT where they are not
-# these), values/<CLUSTER>.yaml ($(INFRA)/values/example.yaml is one), values/<CLUSTER>.terraform.json
-# (written by `make values`) and terraform/<CLUSTER>.tfvars and
-# <CLUSTER>.backend.hcl. Google's credentials are the gcloud
-# login's, handed over as a short-lived token in the environment, never printed.
+# The cluster both envs run on: one Terraform root for every cluster of a cloud
+# ($(INFRA)/terraform/<PROVIDER>/cluster), told which one by CLUSTER (its variables, its state, its own
+# data directory), and the operator's own of it, which no public tree holds: OPS (PINECALL_OPS, else
+# ../../ops, beside the repository's checkout) has <CLUSTER>.mk (the cloud, PROVIDER, where it is not
+# Google's, and what that cloud's file reads: $(INFRA)/make/<PROVIDER>.mk), values/<CLUSTER>.yaml
+# ($(INFRA)/values/example.yaml is one), values/<CLUSTER>.terraform.json (written by `make values`)
+# and terraform/<CLUSTER>.tfvars and <CLUSTER>.backend.hcl.
 CLUSTER  ?= staging
 OPS      ?= $(abspath $(or $(PINECALL_OPS),../../ops))
 # The repository's infra/: the charts, the images, the Terraform, beside this package.
 INFRA    ?= ../infra
 -include $(OPS)/$(CLUSTER).mk
+# The cloud the cluster is made in. Everything of a cloud's own is its file's: who Terraform acts as,
+# the cluster's context, the registry, how an image is built and found, where the hosted apps run.
+PROVIDER ?= google
+# What everything made for the cluster is named after (pinecall-<NAME>): CLUSTER, unless the
+# operator's <CLUSTER>.mk says another, as when two clouds hold a cluster of one name for a while.
+NAME     ?= $(CLUSTER)
+include $(INFRA)/make/$(PROVIDER).mk
 VALUES    = $(OPS)/values/$(CLUSTER).yaml
 # What Terraform made, as the charts read it (`make values`); the operator's own file, read after
 # it, holds decisions alone and wins where both speak.
 TF_VALUES = $(OPS)/values/$(CLUSTER).terraform.json
 CHART_VALUES = -f $(TF_VALUES) -f $(VALUES)
-REGION   ?= us-central1
-ZONE     ?= $(REGION)-c
-CONTEXT  ?= gke_$(PROJECT)_$(ZONE)_pinecall-$(CLUSTER)
 # Two roots go through the same rails (init, a plan that is saved and refuses to remove, the apply
 # of that plan): a cluster's, and with ROOT=project what every cluster of the project shares. Until
 # 2026-11-12 the project's was planned and applied by a line typed by hand, with no such refusal.
@@ -42,15 +45,15 @@ TF_STATE  = project
 TF_VARS   = -var-file=$(OPS)/terraform/project.tfvars
 else
 TF_STATE  = $(CLUSTER)
-TF_VARS   = -var name=$(CLUSTER) -var-file=$(OPS)/terraform/$(CLUSTER).tfvars \
+TF_VARS   = -var name=$(NAME) -var-file=$(OPS)/terraform/$(CLUSTER).tfvars \
 	-var-file=$(OPS)/terraform/$(CLUSTER).fence.tfvars.json
 endif
-TF_ROOT   = $(abspath $(INFRA)/terraform/$(ROOT))
+TF_ROOT   = $(abspath $(INFRA)/terraform/$(PROVIDER)/$(ROOT))
 # Each state keeps its own data directory: the cluster's root is initialised against one per cluster.
 TF        = TF_DATA_DIR=$(TF_ROOT)/.terraform/$(TF_STATE) terraform -chdir=$(TF_ROOT)
 TF_PLAN   = $(TF_ROOT)/$(TF_STATE).plan
-TF_AUTH   = GOOGLE_OAUTH_ACCESS_TOKEN="$$(gcloud auth print-access-token)"
-TF_ROOTS  = $(INFRA)/terraform/bootstrap $(INFRA)/terraform/project $(INFRA)/terraform/cluster
+# Every cloud's roots, for `tf-check`: a change to one cloud's never leaves another's unread.
+TF_ROOTS  = $(wildcard $(INFRA)/terraform/*/bootstrap $(INFRA)/terraform/*/project $(INFRA)/terraform/*/cluster)
 
 check:           ## ruff (lint, format), pyright and mypy strict, the convention tests; terraform's form
 	uv run ruff check . && uv run ruff format --check .
@@ -62,7 +65,7 @@ check:           ## ruff (lint, format), pyright and mypy strict, the convention
 tf-check:         ## every root module formatted and valid, with no backend reached
 	terraform fmt -check -recursive $(INFRA)/terraform
 	@for root in $(TF_ROOTS); do \
-	  data=$(CURDIR)/.terraform-check/$$(basename $$root); \
+	  data=$(CURDIR)/.terraform-check/$$(basename $$(dirname $$root))-$$(basename $$root); \
 	  TF_DATA_DIR=$$data terraform -chdir=$$root init -backend=false -input=false >/dev/null && \
 	  TF_DATA_DIR=$$data terraform -chdir=$$root validate -no-color >/dev/null || exit 1; \
 	done
@@ -147,41 +150,36 @@ db:               ## the local Postgres and Redis: colima up, the image built on
 hooks:            ## the pre-commit hook: `make check` when a commit touches runtime/
 	git config core.hooksPath runtime/.githooks
 
-# The runtime's image, built whole by Cloud Build as the builds' own identity ($(INFRA)/terraform/
-# modules/build), never on the laptop. Its context is the commit's tree and nothing else (`git
-# archive`): the console, the wheel and the image are built there, in the three stages of
-# $(INFRA)/images/runtime/Containerfile, so what no commit holds cannot be in an image and the
-# working tree may be in any state. Its tag is that commit. Until 2026-11-12 the console and the
-# wheel were built here, from this laptop's node_modules, and two guards stood in for the commit.
-REGISTRY ?= $(REGION)-docker.pkg.dev/$(PROJECT)/pinecall
-BUILDER  ?= projects/$(PROJECT)/serviceAccounts/pinecall-build@$(PROJECT).iam.gserviceaccount.com
+# The runtime's image, built whole by the cloud's own builder as the builds' own identity (the
+# provider's `build`, $(INFRA)/terraform/<PROVIDER>/project), never on the laptop. Its context is the
+# commit's tree and nothing else (`git archive`): the console, the wheel and the image are built
+# there, in the three stages of $(INFRA)/images/runtime/Containerfile, so what no commit holds cannot
+# be in an image and the working tree may be in any state. Its tag is that commit. Until 2026-11-12
+# the console and the wheel were built here, from this laptop's node_modules, and two guards stood in
+# for the commit.
 TAG      ?= $(shell git rev-parse --short HEAD)
 # What the registry holds for TAG, by its digest: a tag can be pushed again, a digest cannot, so a
 # release names both and a pod pulls the digest.
-DIGEST    = $$(gcloud artifacts docker images describe $(REGISTRY)/runtime:$(TAG) --project $(PROJECT) --format='value(image_summary.digest)' 2>/dev/null)
+DIGEST    = $(call digest,$(REGISTRY)/runtime:$(TAG))
 # The image a release runs, named whole by what built it: the registry `make image` pushed to, the
 # commit, the digest. No values file repeats the registry.
 IMAGE     = --set image.repository=$(REGISTRY)/runtime --set image.tag=$(TAG) --set image.digest=$(DIGEST)
-image:           ## the runtime's container image, TAG=<commit>, built from that commit and checked by Cloud Build
+image:           ## the runtime's container image, TAG=<commit>, built from that commit and checked by the cloud's builder
 	git -C .. archive --format=tar.gz -o runtime/.image.tar.gz '$(TAG)^{commit}'
-	gcloud builds submit .image.tar.gz --config $(INFRA)/images/runtime/cloudbuild.yaml \
-	  --service-account $(BUILDER) --substitutions _IMAGE=$(REGISTRY)/runtime:$(TAG) \
-	  --project $(PROJECT) --region $(REGION); status=$$?; rm -f .image.tar.gz; exit $$status
+	$(call build,.image.tar.gz,runtime,$(REGISTRY)/runtime:$(TAG)); status=$$?; rm -f .image.tar.gz; exit $$status
 
 # Every suite inside the cluster, against its Postgres (CloudNativePG, the application user, no
 # superuser) and a Redis made for the run: the checkout's files as they are now, built
-# by Cloud Build like the runtime's image; the Job's log is the result.
+# by the cloud's builder like the runtime's image; the Job's log is the result.
 suite:            ## CLUSTER=…: every suite as a Job on the cluster, TAG=<commit>; its log printed
-ifeq ($(CLUSTER),production)
+ifeq ($(NAME),production)
 	$(error make suite runs every suite against the cluster's own Postgres: never production's)
 endif
 	rm -rf .suite && mkdir .suite
 	git ls-files -co --exclude-standard | while read -r f; do [ -f "$$f" ] && echo "$$f"; done \
 	  | tar -cf - -T - | tar -xf - -C .suite
 	cp $(INFRA)/images/suite/Containerfile .suite/
-	gcloud builds submit .suite --config $(INFRA)/images/cloudbuild.yaml \
-	  --service-account $(BUILDER) --substitutions _IMAGE=$(REGISTRY)/suite:$(TAG) \
-	  --project $(PROJECT) --region $(REGION); status=$$?; rm -rf .suite; exit $$status
+	$(call build,.suite,plain,$(REGISTRY)/suite:$(TAG)); status=$$?; rm -rf .suite; exit $$status
 	kubectl --context $(CONTEXT) delete job/suite pod/suite-redis service/suite-redis --ignore-not-found
 	sed "s|SUITE_IMAGE|$(REGISTRY)/suite:$(TAG)|" $(INFRA)/manifests/suite.yaml | kubectl --context $(CONTEXT) apply -f -
 	kubectl --context $(CONTEXT) wait job/suite --for=condition=complete --timeout=30m; status=$$?; \
@@ -254,12 +252,12 @@ fleet:            ## CLUSTER=… ENV=sandbox|production MIN=<n> [MOST=<n>]: that
 	  --set image.repository=$(REGISTRY)/runtime --set image.tag=$$running \
 	  $${pinned:+--set image.digest=$$pinned} --rollback-on-failure --timeout 10m
 
-# The hosting cluster (modules/hosting, when the cluster has one): the runners of both envs,
-# at TAG=<commit>, the same image as the runtime's. Its context is the regional Autopilot cluster's.
-HOSTING   = gke_$(PROJECT)_$(REGION)_pinecall-$(CLUSTER)-hosting
-hosting:          ## CLUSTER=…: charts/hosting released on the hosting cluster at TAG=<commit>
-	gcloud container clusters get-credentials pinecall-$(CLUSTER)-hosting --region $(REGION) \
-	  --project $(PROJECT) >/dev/null
+# Where the orgs' hosted apps run (the cloud's `hosting` module, when the cluster has it): the runners
+# of both envs, at TAG=<commit>, the same image as the runtime's. Its context (HOSTING) and how its
+# credentials are fetched are the provider's: a cluster of its own on Google Cloud, a fenced pool of
+# the cluster itself on AWS.
+hosting:          ## CLUSTER=…: charts/hosting released where the hosted apps run, at TAG=<commit>
+	$(hosting_credentials)
 	helm upgrade --install pinecall-hosting $(INFRA)/charts/hosting --kube-context $(HOSTING) \
 	  --namespace pinecall-runner --create-namespace \
 	  -f $(OPS)/values/hosting-$(CLUSTER).yaml $(IMAGE) \
@@ -273,12 +271,10 @@ hosting:          ## CLUSTER=…: charts/hosting released on the hosting cluster
 # A first release's route takes the load balancer minutes to serve (it answered 404 for four on
 # 2026-11-16, the pod ready all the while, and one request in forty for four more), so the name is
 # asked until it has answered five times running, 7 minutes at most.
-MCP_DIGEST = $$(gcloud artifacts docker images describe $(REGISTRY)/mcp:$(TAG) --project $(PROJECT) --format='value(image_summary.digest)' 2>/dev/null)
-mcp-image:        ## the hosted MCP server's image, TAG=<commit>, built from that commit and checked by Cloud Build
+MCP_DIGEST = $(call digest,$(REGISTRY)/mcp:$(TAG))
+mcp-image:        ## the hosted MCP server's image, TAG=<commit>, built from that commit and checked by the cloud's builder
 	git -C .. archive --format=tar.gz -o runtime/.mcp.image.tar.gz '$(TAG)^{commit}'
-	gcloud builds submit .mcp.image.tar.gz --config $(INFRA)/images/mcp/cloudbuild.yaml \
-	  --service-account $(BUILDER) --substitutions _IMAGE=$(REGISTRY)/mcp:$(TAG) \
-	  --project $(PROJECT) --region $(REGION); status=$$?; rm -f .mcp.image.tar.gz; exit $$status
+	$(call build,.mcp.image.tar.gz,mcp,$(REGISTRY)/mcp:$(TAG)); status=$$?; rm -f .mcp.image.tar.gz; exit $$status
 
 mcp:              ## CLUSTER=…: charts/mcp released at TAG=<commit> (make mcp-image first), then asked at its name
 	@[ -n "$(MCP_DIGEST)" ] || \
@@ -302,7 +298,7 @@ BOX      ?=
 PG        = kubectl --context $(CONTEXT) exec -i pinecall-postgres-1 -c postgres --
 DUMP      = /var/lib/postgresql/data/box.dump
 restore-from-box: ## CLUSTER=…: the box's database restored into the cluster's Postgres (BOX=<ssh alias>)
-ifeq ($(CLUSTER),production)
+ifeq ($(NAME),production)
 	$(error make restore-from-box empties the cluster's schema first: never on production)
 endif
 	@[ -n "$(BOX)" ] || { echo "make restore-from-box: BOX=<the box's ssh alias>" >&2; exit 2; }

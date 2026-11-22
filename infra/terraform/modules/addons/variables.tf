@@ -1,6 +1,6 @@
-variable "secrets_service_account" {
-  type        = string
-  description = "The Google identity External Secrets Operator acts as (modules/secrets)."
+variable "secrets_identity" {
+  type        = map(string)
+  description = "The annotations that make External Secrets' ServiceAccount the cloud identity that reads the secret store: on GKE `iam.gke.io/gcp-service-account = <email>`, on EKS `eks.amazonaws.com/role-arn = <arn>`."
 }
 
 variable "cnpg_chart" {

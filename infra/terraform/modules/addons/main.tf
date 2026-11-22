@@ -1,8 +1,10 @@
-# The operators a cluster runs Pinecall on, each the standard one for its job and pinned:
-# CloudNativePG (Postgres) with its Barman Cloud plugin (WAL and base backups to modules/backups'
-# bucket) and cert-manager, which the plugin's TLS needs; External Secrets Operator (Secret Manager
-# into the cluster, as the identity modules/secrets made); KEDA (the scaled workers, on the
-# gateway's own number). Pinecall's own charts (infra/charts) are released apart, by `make deploy`.
+# The operators a cluster runs Pinecall on, whichever cloud made the cluster, each the standard one
+# for its job and pinned: CloudNativePG (Postgres) with its Barman Cloud plugin (WAL and base backups
+# to the bucket of the cloud's `backups` module) and cert-manager, which the plugin's TLS needs;
+# External Secrets Operator (the cloud's secret store into the cluster, as the identity the cloud's
+# `secrets` module made); KEDA (the scaled workers, on the gateway's own number). Nothing here names
+# a cloud: each cluster root (google/cluster, aws/cluster) calls it. Pinecall's own charts
+# (infra/charts) are released apart, by `make deploy`.
 
 resource "helm_release" "cnpg" {
   name             = "cnpg"
@@ -49,11 +51,10 @@ resource "helm_release" "external_secrets" {
   chart            = "external-secrets"
   version          = var.external_secrets_chart
   wait             = true
+  # The annotation's own dots are escaped: Helm reads a bare one as a level of the values.
   set = [
-    {
-      name  = "serviceAccount.annotations.iam\\.gke\\.io/gcp-service-account"
-      value = var.secrets_service_account
-    },
+    for annotation, value in var.secrets_identity :
+    { name = "serviceAccount.annotations.${replace(annotation, ".", "\\.")}", value = value }
   ]
 }
 

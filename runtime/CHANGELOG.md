@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The infra's Terraform is a tree for each cloud.** Google Cloud's roots and modules moved from `infra/terraform/`
+  to `infra/terraform/google/` (`bootstrap`, `project`, `cluster`, `modules/…`), with `modules/addons`, which names no
+  cloud, left where every cloud's cluster calls it; and everything of gcloud's in the runtime's `Makefile` is now
+  `infra/make/google.mk`, read because the operator's `<cluster>.mk` says `PROVIDER` (Google's unless said). Nothing
+  made changes and no state moves: an operator runs `make tf-init CLUSTER=<cluster>` once, since a root's modules are
+  found from where it now stands. `NAME` in `<cluster>.mk` names the cluster where its files are named otherwise.
 - **A cold transfer of a phone call leaves.** `call.transfer` to a number on a caller's SIP leg was refused by the
   media plane with `transfer_to must be a valid SIP(s) or TEL URI`: the gateway passed the number bare. It now sends
   the REFER to the number's `tel:` URI; the app still writes the number in E.164 form and `call.transferred` still

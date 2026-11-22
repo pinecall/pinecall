@@ -1,5 +1,5 @@
 # Who reaches the two stores. Enforced only on a cluster whose dataplane enforces NetworkPolicy
-# (GKE's Dataplane V2, terraform/modules/gke `datapath_provider`); on one that does not, they are
+# (GKE's Dataplane V2, terraform/google/modules/gke `datapath_provider`); on one that does not, they are
 # written and wait. Each names every client its store has, and no default deny is set elsewhere:
 # a policy that forgot a client would cut it the day enforcement comes on.
 #

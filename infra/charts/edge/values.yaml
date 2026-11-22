@@ -3,7 +3,7 @@
 # reinstall of the runtime never makes it again. The operator's values file names the name.
 domain: ""
 # The domain the apps' own pages are served under, one label each (`<app>--<org>.<pages>`): a wildcard
-# name and certificate of terraform/modules/edge (`pages`). Empty, no app has a page.
+# name and certificate of terraform/<cloud>/modules/edge (`pages`). Empty, no app has a page.
 pages: ""
 
 # The Gateway API's Gateway, as the cluster's implementation takes it. On GKE (modules/edge's

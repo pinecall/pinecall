@@ -214,7 +214,7 @@ waits for the operator: `GET /v1/ops/carrier-networks?state=waiting|approved|ref
 follow at once (a number fenced by nothing approved is taken off them). A network wider than a
 `/24`, or not public, never reaches the list: `PUT /v1/carrier` and `POST /v1/numbers` refuse it.
 
-In a cluster the fence is the cloud's firewall (`infra/terraform/modules/edge`): its rule
+In a cluster the fence is the cloud's firewall (`infra/terraform/<cloud>/modules/edge`): its rule
 `pinecall-<world>-sip` (priority 500) admits the networks of Terraform's `sip_sources`, and
 `pinecall-<world>-sip-deny` (600) denies everyone else's 5060, ending a flow the allow no longer
 covers. The networks it admits are the fence's `networks`, each checked again (none wider than a

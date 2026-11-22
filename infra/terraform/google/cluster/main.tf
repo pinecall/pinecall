@@ -50,9 +50,9 @@ module "secrets" {
 
 # After the cluster and its pools: a chart waits for its pods, which need a node to run on.
 module "addons" {
-  source                  = "../modules/addons"
-  secrets_service_account = module.secrets.sync_service_account
-  depends_on              = [module.gke]
+  source           = "../../modules/addons"
+  secrets_identity = { "iam.gke.io/gcp-service-account" = module.secrets.sync_service_account }
+  depends_on       = [module.gke]
 }
 
 module "backups" {

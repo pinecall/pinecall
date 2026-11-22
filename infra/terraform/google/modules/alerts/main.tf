@@ -16,7 +16,7 @@ locals {
   # charts/pinecall/alerts.yaml, the one copy of the rules: a project holds several clusters, so
   # each selector names this one, with no comma left before a brace.
   rules = {
-    for rule in yamldecode(file("${path.module}/../../../charts/pinecall/alerts.yaml")).groups[0].rules :
+    for rule in yamldecode(file("${path.module}/../../../../charts/pinecall/alerts.yaml")).groups[0].rules :
     replace(lower(rule.alert), "/[^a-z0-9]+/", "-") => {
       title    = rule.alert
       query    = replace(replace(rule.expr, "$cluster", "cluster=\"${local.cluster}\","), ",}", "}")

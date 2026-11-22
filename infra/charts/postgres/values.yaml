@@ -3,7 +3,7 @@
 # backups' destination and identity; the same file is given to every chart.
 # The cloud's secret store, read through a store of this chart's own (`pinecall-postgres`), since
 # this chart is released before charts/pinecall's: the gateway's role's password is drawn there
-# (terraform/modules/secrets, postgres-app-password). `provider` as charts/pinecall reads it.
+# (terraform/<cloud>/modules/secrets, postgres-app-password). `provider` as charts/pinecall reads it.
 secrets:
   provider: {}
   prefix: ""
@@ -34,7 +34,7 @@ postgres:
     # s3://<bucket>/postgres, an Azure container), and how it is let in: `credentials` is its
     # ObjectStore's credentials block (`googleCredentials: { gkeEnvironment: true }`,
     # `s3Credentials: { inheritFromIAMRole: true }`), and `serviceAccountAnnotations` give the
-    # instances' pods the cloud identity those credentials are (terraform/modules/backups' outputs:
+    # instances' pods the cloud identity those credentials are (terraform/<cloud>/modules/backups' outputs:
     # `iam.gke.io/gcp-service-account: …`; on EKS `eks.amazonaws.com/role-arn: …`). Required.
     destination: ""
     credentials: {}

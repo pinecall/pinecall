@@ -52,7 +52,7 @@ gateway.
 | `PINECALL_RECORDINGS` | where a kept recording lands. **Whether** audio is kept is the agent's own setting |
 | `PINECALL_S3_ENDPOINT` · `PINECALL_S3_REGION` · `PINECALL_S3_ACCESS_KEY_ID` · `PINECALL_S3_SECRET_ACCESS_KEY` | the object store what leaves the disk goes to: any S3-compatible endpoint (AWS S3, Google Cloud Storage by HMAC key, R2, B2, MinIO), the region its signature names, and the key the platform writes with. In a cluster the endpoint, the region and
 the bucket are `store` in the chart's values, and the key is the environment's `s3-access-key-id` and
-`s3-secret-access-key` in Secret Manager, put by the operator (`infra/terraform/modules/secrets`,
+`s3-secret-access-key` in Secret Manager, put by the operator (`infra/terraform/<cloud>/modules/secrets`,
 `given`). A runtime given a recordings bucket and not all four does not start, and says which are missing |
 | `PINECALL_RECORDINGS_BUCKET` | the bucket of that store a finished recording moves to, as `<org>/<call>/audio.ogg`. Unset, recordings stay on the disk as they always have |
 | `PINECALL_WAL_SPOOL` | a WAL spool whose backlog `doctor`'s `archive` line reads through Postgres (unset, `/var/lib/pinecall/wal`, the single-machine install's). The chart sets it empty: a cluster's Postgres archives through its operator and keeps no such directory, and the app's role may not list one, so the line reads the archiver alone |

@@ -1,6 +1,6 @@
 # The box's alerts, once, as a Prometheus rule file: whatever evaluates them reads these. On a
 # cluster with the Prometheus Operator, charts/pinecall carries them as its PrometheusRule
-# (`monitoring.collector: prometheus-operator`); on Google Cloud, terraform/modules/alerts makes a
+# (`monitoring.collector: prometheus-operator`); on Google Cloud, terraform/google/modules/alerts makes a
 # Cloud Monitoring policy of each. `$cluster` stands for the cluster's own selector and its comma:
 # nothing where one Prometheus watches one cluster, `cluster="pinecall-<env>",` where one project
 # holds several. Durations in seconds, as both read them.

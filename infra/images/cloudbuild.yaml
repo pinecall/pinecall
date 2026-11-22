@@ -2,7 +2,7 @@
 #   gcloud builds submit infra/images/<image> --config infra/images/cloudbuild.yaml \
 #     --service-account <terraform output build_service_account> \
 #     --substitutions _IMAGE=<registry>/<image>:<tag>
-# Built on Google's machines, as the builds' own identity (terraform/modules/build), from the
+# Built on Google's machines, as the builds' own identity (terraform/google/project), from the
 # Containerfile beside it: nothing is built on a laptop.
 steps:
   - name: gcr.io/cloud-builders/docker

@@ -1,26 +1,28 @@
 # infra: Pinecall on Kubernetes
 
-The runtime on a Kubernetes cluster, from nothing, on Google Cloud. Terraform makes everything in
-the cloud (the cluster and its pools, the registry, the address, the firewall, the names, the
-secrets, the operators the charts rely on); three Helm charts run the runtime on it (the front
-door, Postgres, the runtime), each released by its own target. Nothing is made by hand and nothing
-is built on a laptop.
+The runtime on a Kubernetes cluster, from nothing. Terraform makes everything in the cloud (the
+cluster and its pools, the registry, the address, the firewall, the names, the secrets, the
+operators the charts rely on); three Helm charts run the runtime on it (the front door, Postgres,
+the runtime), each released by its own target. Nothing is made by hand and nothing is built on a
+laptop. The charts name no cloud; a cloud is a tree of Terraform and one file of the Makefile's
+([Another cloud](#another-cloud)). This page walks Google Cloud's.
 
 | path | what |
 |---|---|
-| `terraform/bootstrap` | the bucket every other root module keeps its state in, made once with local state |
-| `terraform/project` | what every cluster of the project shares, each in a file of its own: the images' registry (`registry.tf`) and the identity Cloud Build builds them as (`build.tf`) |
-| `terraform/cluster` | one cluster, the same code for every one: `CLUSTER` names it and picks its variables and its state. `production` (both environments at one name) and `staging`, made for a proof with calls and destroyed after it, are two files of values |
-| `terraform/modules/gke` | a cluster: zonal, Workload Identity; a core pool both environments share, and for each environment a media node and a workers pool from 0 that the cluster autoscaler sizes alone ("A pool an environment" below) |
-| `terraform/modules/secrets` | the runtime's secrets, drawn once into Secret Manager, and the identity External Secrets reads them as |
-| `terraform/modules/addons` | CloudNativePG with its Barman Cloud plugin and cert-manager, External Secrets and KEDA, each its pinned chart |
-| `terraform/modules/backups` | the bucket Postgres's WAL and base backups go to, and the identity that writes them, which touches it alone |
-| `terraform/modules/edge` | the global address and a certificate for each name, proved by DNS before it points here, a wildcard name and certificate for the apps' own pages when `pages` names their domain, and a certificate of its own for services of the operator's own at the same endpoint (`services`); each environment's media address and its SIP name; the firewall (media open, 5060 to the carriers alone); the names in Route 53 |
-| `terraform/modules/notify` | optional (`firebase_project`): the Google identity a notifier of the operator's own signs its pushes as (Firebase Cloud Messaging alone), bound to its chart's service account |
-| `terraform/modules/kubeip` | the identity kubeip acts as: it gives each environment's media node the static address `modules/edge` reserves, and can do nothing else |
-| `terraform/modules/hosting` | the hosting cluster, optional (`hosting = true`): GKE Autopilot in a VPC of its own, where the orgs' hosted apps run, one gVisor pod each |
-| `terraform/modules/lab` | the voice lab's generator, beside a cluster made for a proof and destroyed after it (`lab = false`) |
-| `terraform/modules/alerts` | the alerts on the gateways' measures, in Cloud Monitoring, and the addresses they are mailed to |
+| `terraform/google/bootstrap` | the bucket every other root module keeps its state in, made once with local state |
+| `terraform/google/project` | what every cluster of the project shares, each in a file of its own: the images' registry (`registry.tf`) and the identity Cloud Build builds them as (`build.tf`) |
+| `terraform/google/cluster` | one cluster, the same code for every one: `CLUSTER` names it and picks its variables and its state. `production` (both environments at one name) and `staging`, made for a proof with calls and destroyed after it, are two files of values |
+| `terraform/google/modules/gke` | a cluster: zonal, Workload Identity; a core pool both environments share, and for each environment a media node and a workers pool from 0 that the cluster autoscaler sizes alone ("A pool an environment" below) |
+| `terraform/google/modules/secrets` | the runtime's secrets, drawn once into Secret Manager, and the identity External Secrets reads them as |
+| `terraform/modules/addons` | the one module every cloud's cluster calls, since it names none: CloudNativePG with its Barman Cloud plugin and cert-manager, External Secrets and KEDA, each its pinned chart |
+| `make/<provider>.mk` | a cloud's side of the runtime's Makefile: who Terraform acts as, the registry, how an image is built and found, where the hosted apps run |
+| `terraform/google/modules/backups` | the bucket Postgres's WAL and base backups go to, and the identity that writes them, which touches it alone |
+| `terraform/google/modules/edge` | the global address and a certificate for each name, proved by DNS before it points here, a wildcard name and certificate for the apps' own pages when `pages` names their domain, and a certificate of its own for services of the operator's own at the same endpoint (`services`); each environment's media address and its SIP name; the firewall (media open, 5060 to the carriers alone); the names in Route 53 |
+| `terraform/google/modules/notify` | optional (`firebase_project`): the Google identity a notifier of the operator's own signs its pushes as (Firebase Cloud Messaging alone), bound to its chart's service account |
+| `terraform/google/modules/kubeip` | the identity kubeip acts as: it gives each environment's media node the static address `modules/edge` reserves, and can do nothing else |
+| `terraform/google/modules/hosting` | the hosting cluster, optional (`hosting = true`): GKE Autopilot in a VPC of its own, where the orgs' hosted apps run, one gVisor pod each |
+| `terraform/google/modules/lab` | the voice lab's generator, beside a cluster made for a proof and destroyed after it (`lab = false`) |
+| `terraform/google/modules/alerts` | the alerts on the gateways' measures, in Cloud Monitoring, and the addresses they are mailed to |
 | `images/runtime/` | the runtime's image: one for every process, each a `pinecall-runtime` verb (`make image`), built from one commit in three stages |
 | `images/postgres/` | the cluster's Postgres: CloudNativePG's operand image with pg_textsearch on it |
 | `images/suite/` | every suite, run as a Job inside a cluster (`make suite`) |
@@ -32,7 +34,7 @@ is built on a laptop.
 | `charts/hosting/` | the hosting cluster's workloads: a runner per environment and the namespace their apps run in, fenced (`make hosting`) |
 | `charts/edge/` | the front endpoint, released apart and first: the Gateway (Google's HTTPS load balancer, the Gateway API) with Certificate Manager's certificate, its routes, the HTTP redirect and the backends' policies; its load balancer takes minutes to make, so a reinstall of the runtime never makes it again |
 | `values/example.yaml` · `hosting-example.yaml` | an operator's values for the charts, every one an example: copied into `OPS` (below) and filled in; CI renders and scans the charts with them |
-| `lab/` | calls with real audio and the vendors faked, against staging, measured (`terraform/modules/lab` is its generator) |
+| `lab/` | calls with real audio and the vendors faked, against staging, measured (`terraform/google/modules/lab` is its generator) |
 | `local/` | the runtime on a laptop, and the Postgres image of the suites (`make local`, `make db`) |
 | `models/` | the open stack: three model servers on one GPU and the providers row that points the runtime at them |
 
@@ -45,13 +47,13 @@ repository's checkout; a private repository is the place for it). The Makefile r
 
 | `OPS/` | what |
 |---|---|
-| `<cluster>.mk` | `PROJECT = <the Google Cloud project>`, and `REGION`, `ZONE` or `CONTEXT` where they are not `us-central1`, `<region>-c` and `gke_<project>_<zone>_pinecall-<cluster>` |
+| `<cluster>.mk` | the cloud, `PROVIDER`, where it is not `google`, and what its file reads. On Google Cloud: `PROJECT = <the project>`, and `REGION`, `ZONE` or `CONTEXT` where they are not `us-central1`, `<region>-c` and `gke_<project>_<zone>_pinecall-<cluster>` |
 | `values/<cluster>.terraform.json` | what Terraform made, as the charts read it: the names, the secret store's provider and prefix, the ingress, the backups' destination and identity, the ranges, the addresses. Written by `make values CLUSTER=<cluster>` from the cluster root's `chart_values` output after an apply, never typed |
 | `values/<cluster>.yaml` | the decisions, read after it and winning where both speak: Postgres's image, the recordings' store, sign-up, pools and fleets (`infra/values/example.yaml` shows every key a chart reads, those of both files) |
 | `values/hosting-<cluster>.yaml` | `charts/hosting`'s (`infra/values/hosting-example.yaml`) |
 | `terraform/<cluster>.tfvars` | the root's variables: the project, the DNS zone, the names, the SIP names, the ranges, services of your own, the secrets you put, who alerts mail |
 | `terraform/<cluster>.backend.hcl` | the state bucket and prefix (`bucket = "…"`, `prefix = "cluster/<cluster>"`), given to `make tf-init` |
-| `terraform/bootstrap.tfvars` · `project.tfvars` · `project.backend.hcl` | the same for the two roots made once |
+| `terraform/google/bootstrap.tfvars` · `project.tfvars` · `project.backend.hcl` | the same for the two roots made once |
 
 The charts never guess a provider: the secret store is the values' `secrets.provider` (on GKE with
 `auth.workloadIdentity` naming the cluster and the operator's ServiceAccount, so the store never
@@ -60,12 +62,28 @@ endpoint's class and annotations `ingress`, Postgres's backups `postgres.backups
 credentials, the pods' identity), the disks' class `storageClass`, the collector
 `monitoring.collector`. Unset where one is required, the release fails and says which.
 
+## Another cloud
+
+Nothing in `charts/` names a cloud: the secret store is a provider block of External Secrets, the
+front door a class of the Gateway API, Postgres's backups an object store and its credentials, the
+disks a class, the collector a word, and each is a value. What is a cloud's own lives in two places,
+and a new cloud adds both without touching another's:
+
+| | what it holds |
+|---|---|
+| `terraform/<provider>/` | its roots (`bootstrap`, `project`, `cluster`) and its modules. A cluster root takes the same variables (`name`, `dns_zone`, `names`, `sip_names`, `sip_sources`, `given_secrets`, `pages`, `services`, `hosting`) and ends in the same output, `chart_values`: what it made, in the words the charts read. `terraform/modules/addons` is called by every one |
+| `make/<provider>.mk` | `TF_AUTH` (how Terraform is given the operator's login), `CONTEXT` (the cluster's kubectl context), `REGISTRY`, `build` (an image built from a context by the cloud's own builder, as `runtime`, `mcp` or `plain`), `digest` (what the registry holds for a tag), `HOSTING` and `hosting_credentials` (where the hosted apps run) |
+
+The operator's `<cluster>.mk` says which: `PROVIDER = <provider>` (Google's unless said), and
+`NAME = <name>` where the cluster is not named as its files are, as when two clouds hold a
+cluster of one name while a deployment moves from one to the other.
+
 ## From nothing to a release
 
 With gcloud signed in on the project, and the zone of the names on Route 53 (`~/.aws`):
 
 ```console
-$ terraform -chdir=infra/terraform/bootstrap init && terraform -chdir=infra/terraform/bootstrap apply -var-file=$OPS/terraform/bootstrap.tfvars   # once
+$ terraform -chdir=infra/terraform/google/bootstrap init && terraform -chdir=infra/terraform/google/bootstrap apply -var-file=$OPS/terraform/google/bootstrap.tfvars   # once
 $ make tf-init ROOT=project && make tf-plan ROOT=project && make tf-apply ROOT=project   # once: the registry and the builds' identity, through the same rails as a cluster's
 $ make tf-init CLUSTER=<cluster>
 $ make tf-fence CLUSTER=<cluster>   # the networks the gateway approved for SIP, into the operator's own directory
@@ -74,8 +92,8 @@ $ make tf-apply CLUSTER=<cluster>   # exactly the plan read, which is then delet
 $ make values CLUSTER=<cluster>     # what Terraform made, into the values the charts read; read its diff
 $ gcloud container clusters get-credentials pinecall-<cluster> --zone <zone>
 $ gcloud builds submit infra/images/postgres --config infra/images/cloudbuild.yaml \
-    --service-account "$(terraform -chdir=infra/terraform/project output -raw build_service_account)" \
-    --substitutions _IMAGE="$(terraform -chdir=infra/terraform/project output -raw registry)/postgres:17.11-pgvector0.8.6-pgtextsearch1.4.0"
+    --service-account "$(terraform -chdir=infra/terraform/google/project output -raw build_service_account)" \
+    --substitutions _IMAGE="$(terraform -chdir=infra/terraform/google/project output -raw registry)/postgres:17.11-pgvector0.8.6-pgtextsearch1.4.0"
 $ make edge CLUSTER=<cluster>       # the front door: charts/edge, when it or its values change
 $ make postgres CLUSTER=<cluster>   # Postgres: charts/postgres, when it or its values change (it may restart the instance)
 $ make image                        # the runtime at this commit
@@ -171,7 +189,7 @@ from the console's Box or the same `kubectl exec`.
 
 ## A pool an environment
 
-Both environments share the core pool (`terraform/modules/gke`, `core`): the gateways, Postgres, Redis
+Both environments share the core pool (`terraform/google/modules/gke`, `core`): the gateways, Postgres, Redis
 and Pinecall's services. Each environment has the rest of a call to itself, so a sandbox call never
 shares a machine with a production call: a **media pool** of one node (`media-<env>`,
 `media_type`; production's an e2-standard-4, the sandbox's an e2-standard-2) with the environment's own
@@ -197,8 +215,8 @@ LiveKit with the prefix taken off.
 
 Google's HTTPS load balancer, the name, carries no UDP: a carrier sends an environment's calls to the
 environment's SIP name (`envs.<env>.sipDomain` in the values, `PINECALL_SIP_DOMAIN`, `PINECALL_SANDBOX_SIP_DOMAIN`),
-which Route 53 points at the environment's media address (`terraform/modules/edge`, `media_addresses`).
-kubeip (the chart, as the identity `terraform/modules/kubeip` made) gives each environment's media node
+which Route 53 points at the environment's media address (`terraform/google/modules/edge`, `media_addresses`).
+kubeip (the chart, as the identity `terraform/google/modules/kubeip` made) gives each environment's media node
 its address, found by its label (`pinecall-media=<cluster>-<env>`), and gives it again to a node
 that replaces it; the environment's LiveKit and SIP announce it (`node_ip`, `nat_1_to_1_ip`). A Twilio
 trunk made before the SIP name moved is sent on once, by `pinecall-runtime sip repoint`.
@@ -212,7 +230,7 @@ core node is the shape that is not (`docs/scaling.md`).
 ## HTTPS
 
 The name is served by `charts/edge`'s Gateway (the Gateway API, `gke-l7-global-external-managed`)
-on the global address `terraform/modules/edge` reserves, with a Certificate Manager certificate
+on the global address `terraform/google/modules/edge` reserves, with a Certificate Manager certificate
 proved by DNS (a CNAME each in Route 53): it is issued before a name points at the address, so a
 cutover moves the names onto a certificate that is valid already. Made on staging:
 the certificate active before any load balancer served it, the names answering over HTTPS on it,
@@ -222,7 +240,7 @@ Ingress had served kept.
 ## The secrets the operator puts
 
 Terraform draws most of a cluster's secrets. The ones a cluster names in `given`
-(`terraform/modules/secrets`) are made empty, and the operator puts each once, piped, so that no
+(`terraform/google/modules/secrets`) are made empty, and the operator puts each once, piped, so that no
 state and no terminal holds it: `vault-key` is the key the database is sealed under (a database
 moved in from elsewhere, as production's was on 2026-10-04, keeps the key it was sealed under), `s3-access-key-id` with `s3-secret-access-key` are the object
 store's key, made by hand, and `turnstile-secret` is Cloudflare Turnstile's, where the values name
@@ -240,7 +258,7 @@ sealed, under its org and call.
 ## Hosting
 
 The orgs' hosted apps (`pinecall deploy`, `docs/protocol/hosting.md`) run on a cluster of their
-own, `terraform/modules/hosting`, made where the cluster's variables say `hosting = true`: a GKE
+own, `terraform/google/modules/hosting`, made where the cluster's variables say `hosting = true`: a GKE
 Autopilot cluster in a VPC of its own, so an org's code never shares a network with the platform's
 database, its gateways or its calls. Off, the runtime serves everything but hosted apps.
 
@@ -265,8 +283,8 @@ CPython reads and Node's slim image lacks), built once into the registry under a
 
 ```console
 $ gcloud builds submit infra/images/app --config infra/images/cloudbuild.yaml \
-    --service-account "$(terraform -chdir=infra/terraform/project output -raw build_service_account)" \
-    --substitutions _IMAGE="$(terraform -chdir=infra/terraform/project output -raw registry)/app:node24-py3.13-2"
+    --service-account "$(terraform -chdir=infra/terraform/google/project output -raw build_service_account)" \
+    --substitutions _IMAGE="$(terraform -chdir=infra/terraform/google/project output -raw registry)/app:node24-py3.13-2"
 ```
 
 ## From a deployment (history)
@@ -283,7 +301,7 @@ there, the chart installed on it, the live suite green, the platform's orgs, fle
 
 ## Backups, and a restore
 
-Postgres's WAL goes to the bucket of `terraform/modules/backups` as it is written, and a base
+Postgres's WAL goes to the bucket of `terraform/google/modules/backups` as it is written, and a base
 backup is taken each night at 03:00 UTC (`charts/postgres`: the Barman Cloud plugin, 35 days
 kept), as an identity that touches that bucket alone. WAL alone restores nothing, so a database
 just installed or just restored is backed up once by hand, a `Backup` of `method: plugin`. A
@@ -326,7 +344,7 @@ read and neither guesses (unset, the release fails):
 
 | `monitoring.collector` | collects | evaluates and tells |
 |---|---|---|
-| `gmp` (Google Cloud) | Google's Managed Prometheus: a `PodMonitoring` for the gateways and one for Postgres | `terraform/modules/alerts`, a Cloud Monitoring policy for each rule (scoped to the cluster, as a project holds several), mailed to the cluster's `alert_emails`, and an uptime check of the name |
+| `gmp` (Google Cloud) | Google's Managed Prometheus: a `PodMonitoring` for the gateways and one for Postgres | `terraform/google/modules/alerts`, a Cloud Monitoring policy for each rule (scoped to the cluster, as a project holds several), mailed to the cluster's `alert_emails`, and an uptime check of the name |
 | `prometheus-operator` (any other cluster: EKS, AKS, your own) | the cluster's Prometheus: a `PodMonitor` for each | the cluster's Prometheus, `alerts.yaml` carried as the chart's `PrometheusRule`; Alertmanager tells whom it is told to, and the name's check from outside is that cloud's own (a Route 53 health check, a blackbox exporter) |
 | `none` | nothing | nothing |
 
@@ -388,7 +406,7 @@ then Terraform:
 ```console
 $ for r in pinecall pinecall-edge pinecall-postgres; do helm --kube-context <staging> uninstall $r --wait; done
 $ gcloud storage rm -r "gs://pinecall-staging-postgres-<project number>/**"
-$ cd infra/terraform/cluster && export TF_DATA_DIR=$PWD/.terraform/staging
+$ cd infra/terraform/google/cluster && export TF_DATA_DIR=$PWD/.terraform/staging
 $ terraform plan -destroy -var name=staging -var-file=$OPS/terraform/staging.tfvars -var-file=$OPS/terraform/staging.fence.tfvars.json -var lab=true -out=staging.plan && terraform apply staging.plan
 ```
 
