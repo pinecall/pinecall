@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **A hosted app asks its node for what the runner is told.** `PINECALL_RUNNER_APP_CPU` (`100m`; charts/hosting's
+  `appCpu`) is what each app's pod asks of its node, in thousandths of a core; what it may take is half a core
+  either way. Unset, it asks for that half core, as before, which is how a cluster that bills a pod by what it
+  asks is told its size. An idle app was measured at a hundredth of a core: on nodes of the operator's own, one
+  holds what three did.
+- **A deployment can be three nodes.** An environment's media can run on the core node
+  (`envs.<env>.mediaPool: core` in charts/pinecall; `media_on_core` in the AWS cluster's variables, which opens
+  that node's media ports), and what a worker's pod asks of its node is a value beside its seats
+  (`envs.<env>.workers.core.resources`, `.scaled.resources`), so the calls answered with no wait are sized to a
+  machine that is on anyway instead of a second one kept warm. On AWS the Gateway gives every backend a default
+  (its pods as targets), so a route of another chart can no longer stop it being built, and the cluster runs the
+  metrics server. `infra/README.md`, "A small deployment".
 - **The runtime's deployment is written for AWS too.** `infra/terraform/aws/` makes the same cluster on Elastic
   Kubernetes Service (the pools under the same label and taint, Secrets Manager, an S3 bucket for Postgres's
   backups, an Application Load Balancer for the charts' Gateway, an Elastic IP for each env's media node, the

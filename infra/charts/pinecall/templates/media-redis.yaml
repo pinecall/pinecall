@@ -28,7 +28,7 @@ spec:
   template:
     metadata: { labels: { app: pinecall-media-redis, world: {{ $env }} } }
     spec:
-      {{- include "pinecall.onMedia" $env | nindent 6 }}
+      {{- include "pinecall.onMedia" (dict "root" $ "env" $env) | nindent 6 }}
       # The image's own user, and the disk made its (fsGroup: a disk written as root before is
       # given to it at mount); its config file is written to an emptyDir, the rest is read-only.
       {{- include "pinecall.podSecurityAs" 999 | nindent 6 }}

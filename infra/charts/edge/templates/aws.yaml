@@ -25,6 +25,11 @@ spec:
   {{- end }}
   loadBalancerAttributes:
     - { key: idle_timeout.timeout_seconds, value: "3600" }
+  # What every backend of this Gateway is unless its own says otherwise: a chart of the operator's
+  # own (billing, a notifier) attaches a route here, and a route whose Service had no settings of
+  # its own was taken for a node's port, which no Service of the cluster has, and the whole Gateway
+  # stopped being built until it was given one (2026-11-22).
+  defaultTargetGroupConfiguration: { name: pinecall }
   listenerConfigurations:
     - protocolPort: HTTPS:443
       defaultCertificate: {{ required "ingress.aws.certificates: at least the first name's" (first .certificates) }}
@@ -32,6 +37,17 @@ spec:
       certificates:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+---
+apiVersion: gateway.k8s.aws/v1
+kind: TargetGroupConfiguration
+metadata:
+  name: pinecall
+spec:
+  defaultConfiguration:
+    # The pods themselves, never a node's port.
+    targetType: ip
+    targetGroupAttributes:
+      - { key: deregistration_delay.timeout_seconds, value: "60" }
 {{- range $service := list "pinecall-gateway" "pinecall-livekit-production" "pinecall-livekit-sandbox" }}
 ---
 apiVersion: gateway.k8s.aws/v1

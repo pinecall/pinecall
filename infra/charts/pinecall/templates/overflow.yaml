@@ -10,7 +10,7 @@ spec:
   template:
     metadata: { labels: { app: overflow } }
     spec:
-      {{- include "pinecall.onMedia" "production" | nindent 6 }}
+      {{- include "pinecall.onMedia" (dict "root" . "env" "production") | nindent 6 }}
       {{- include "pinecall.podSecurity" . | nindent 6 }}
       terminationGracePeriodSeconds: 120
       containers:

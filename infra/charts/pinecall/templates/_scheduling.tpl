@@ -5,9 +5,18 @@
 {{ required "image.repository" .Values.image.repository }}:{{ required "image.tag: the commit the runtime image was built from" .Values.image.tag }}{{ with .Values.image.digest }}@{{ . }}{{ end }}
 {{- end -}}
 
-{{/* An env's media node: its pool's selector and the toleration of its taint (modules/gke). */}}
+{{/* The pool an env's media runs on: its own, `media-<env>`, unless the values say another
+     (`envs.<env>.mediaPool`: `core`, where one machine carries the platform and that env's calls).
+     Given root and env. */}}
+{{- define "pinecall.mediaPool" -}}
+{{- default (printf "media-%s" .env) (index .root.Values.envs .env).mediaPool -}}
+{{- end -}}
+
+{{/* An env's media node: its pool's selector and the toleration of its taint (the cloud's cluster
+     module); a pool with no taint, as `core` is, tolerates nothing it needs to. Given root and env. */}}
 {{- define "pinecall.onMedia" -}}
-nodeSelector: { pinecall.io/pool: media-{{ . }} }
+{{- $pool := include "pinecall.mediaPool" . -}}
+nodeSelector: { pinecall.io/pool: {{ $pool }} }
 tolerations:
-  - { key: pinecall.io/pool, operator: Equal, value: media-{{ . }}, effect: NoSchedule }
+  - { key: pinecall.io/pool, operator: Equal, value: {{ $pool }}, effect: NoSchedule }
 {{- end -}}

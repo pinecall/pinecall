@@ -20,8 +20,8 @@ spec:
   template:
     metadata: { labels: { app: worker, world: {{ $env }}, pool: core } }
     spec:
-      {{- include "pinecall.onMedia" $env | nindent 6 }}
-      {{- include "pinecall.worker" (dict "root" $ "env" $env "pool" "core" "seats" $core.seats) | nindent 6 }}
+      {{- include "pinecall.onMedia" (dict "root" $ "env" $env) | nindent 6 }}
+      {{- include "pinecall.worker" (dict "root" $ "env" $env "pool" "core" "seats" $core.seats "resources" $core.resources) | nindent 6 }}
 {{- end }}
 {{- range $env, $settings := .Values.envs }}
 {{- $scaled := $settings.workers.scaled }}
@@ -39,7 +39,7 @@ spec:
       nodeSelector: { pinecall.io/pool: workers-{{ $env }} }
       tolerations:
         - { key: pinecall.io/pool, operator: Equal, value: workers-{{ $env }}, effect: NoSchedule }
-      {{- include "pinecall.worker" (dict "root" $ "env" $env "pool" "workers" "seats" $scaled.seats) | nindent 6 }}
+      {{- include "pinecall.worker" (dict "root" $ "env" $env "pool" "workers" "seats" $scaled.seats "resources" $scaled.resources) | nindent 6 }}
 ---
 apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication

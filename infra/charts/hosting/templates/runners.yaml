@@ -101,6 +101,9 @@ spec:
             - { name: PINECALL_GATEWAY_URL, value: {{ required "gatewayUrl" $.Values.gatewayUrl | quote }} }
             - { name: PINECALL_RUNNER_IMAGE, value: {{ $.Values.appImage | quote }} }
             - { name: PINECALL_RUNNER_RUNTIME_CLASS, value: {{ $.Values.runtimeClass | quote }} }
+            {{- with $.Values.appCpu }}
+            - { name: PINECALL_RUNNER_APP_CPU, value: {{ . | quote }} }
+            {{- end }}
             - { name: PINECALL_RUNNER_NAMESPACE, value: {{ $.Values.appsNamespace | quote }} }
             - { name: PINECALL_RUNNER_SOURCES_URL, value: "http://{{ required (printf "envs.%s.address" $env) $runner.address }}:8080" }
             - { name: PINECALL_RUNNER_LISTEN, value: 0.0.0.0 }

@@ -18,6 +18,7 @@ staging before production.
 | you need | do | holds (measured) |
 |---|---|---|
 | a cluster | `make tf-plan`, `make tf-apply`, `make image`, `make deploy` ([../infra/README.md](../../infra/README.md)) | two gateways, Postgres, a LiveKit, a SIP and two small workers per environment |
+| the smallest cluster that answers at once | an environment's media on the core node (`envs.<env>.mediaPool: core`), its core workers' `seats` raised to what that machine holds, and no scaled worker kept warm (`scaled.min: 0`): the infra's README, "A small deployment" | the seats of the core workers, with no wait; past 60 % of them busy the gateway orders a scaled worker, whose node takes a minute or two ("The burst", below) |
 | more calls at once | nothing: KEDA adds a scaled worker when the gateway asks for one, and the cluster autoscaler a node for it ("The burst", below) | 32 calls a scaled worker, alone on an 8-vCPU node at ~60 % |
 | more gateway processes | `gateway.replicas` in the chart's values | ~330 calls a gateway core |
 | Postgres that outlives a node | `postgres.instances: 2` (`charts/postgres`): CloudNativePG keeps a streaming replica and promotes it; its WAL and nightly base backups are in a bucket either way | — |

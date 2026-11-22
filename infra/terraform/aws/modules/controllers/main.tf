@@ -22,6 +22,11 @@ resource "terraform_data" "gateway_api" {
 
 data "aws_region" "this" {}
 
+# The pools this module's charts land on: each release waits for them through this.
+resource "terraform_data" "pools" {
+  input = var.pools
+}
+
 # The controller's policy as its release publishes it, kept beside this file at the same version
 # (load-balancer-policy.json): what it needs to make and keep load balancers, target groups and
 # their security groups.
@@ -60,7 +65,7 @@ resource "helm_release" "load_balancer" {
     # every such Service's is left out.
     enableServiceMutatorWebhook = false
   })]
-  depends_on = [terraform_data.gateway_api, aws_iam_role_policy.load_balancer]
+  depends_on = [terraform_data.gateway_api, terraform_data.pools, aws_iam_role_policy.load_balancer]
 }
 
 # The autoscaler resizes the workers' Auto Scaling groups and no other: it reads every group to
@@ -130,4 +135,5 @@ resource "helm_release" "autoscaler" {
       "balance-similar-node-groups"   = false
     }
   })]
+  depends_on = [terraform_data.pools, aws_iam_role_policy.autoscaler]
 }

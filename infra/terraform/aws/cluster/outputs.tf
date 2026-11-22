@@ -51,9 +51,14 @@ output "chart_values" {
     pages   = var.pages
     # Each env's SIP name and the media address it is reached at (modules/edge makes an address
     # for every SIP name).
+    # An env named in `media_on_core` runs its media on the core pool; the others on their own.
     envs = {
       for env, address in module.edge.media_addresses :
-      env => { sipDomain = var.sip_names[env], mediaAddress = address }
+      env => {
+        sipDomain    = var.sip_names[env]
+        mediaAddress = address
+        mediaPool    = contains(var.media_on_core, env) ? "core" : "media-${env}"
+      }
     }
     # None named: the cluster's default class, the disks' driver's own on gp3 (modules/eks).
     storageClass = ""

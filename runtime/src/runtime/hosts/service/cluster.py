@@ -88,6 +88,11 @@ class Engine:
     namespace: str
     # This runner's own address as an app's pod reaches it: `<url>/sources/<sha256>`.
     sources_url: str
+    # What an app's pod asks of its node for itself while it waits for a call; what it may take
+    # stays CPU. Unset, the whole of it: a pod that asks for all it may take is how a cluster that
+    # bills a pod by what it asks is told its size. On nodes that are the operator's own an idle
+    # app asks for what it uses, and a node holds many.
+    cpu: str | None = None
 
 
 class _Read(BaseModel):
@@ -344,7 +349,7 @@ def pod(engine: Engine, launch: Launch) -> JsonObject:
                         {"name": "PINECALL_SOURCE", "value": source},
                     ],
                     "securityContext": _lock_down(),
-                    "resources": _cap(INSTALL_MEMORY),
+                    "resources": _cap(INSTALL_MEMORY, engine.cpu),
                     "volumeMounts": [
                         {"name": "app", "mountPath": "/app"},
                         {"name": "cli", "mountPath": CLI_HOME},
@@ -365,7 +370,7 @@ def pod(engine: Engine, launch: Launch) -> JsonObject:
                         {"name": "NO_COLOR", "value": "1"},
                     ],
                     "securityContext": _lock_down(),
-                    "resources": _cap(MEMORY),
+                    "resources": _cap(MEMORY, engine.cpu),
                     "volumeMounts": [
                         {"name": "app", "mountPath": "/app", "readOnly": True},
                         {"name": "cli", "mountPath": CLI_HOME, "readOnly": True},
@@ -428,9 +433,8 @@ def _lock_down() -> JsonObject:
     }
 
 
-def _cap(memory: str) -> JsonObject:
-    caps: JsonObject = {"memory": memory, "cpu": CPU}
-    return {"requests": caps, "limits": caps}
+def _cap(memory: str, asked: str | None) -> JsonObject:
+    return {"requests": {"memory": memory, "cpu": asked or CPU}, "limits": {"memory": memory, "cpu": CPU}}
 
 
 def _seconds(stamp: str) -> float:

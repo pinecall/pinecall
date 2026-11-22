@@ -17,6 +17,11 @@ variable "issuer" {
   description = "The cluster's token issuer (modules/eks): where its ServiceAccounts are named."
 }
 
+variable "pools" {
+  type        = map(string)
+  description = "The cluster's pools once they stand (modules/eks, `ready`): what runs here waits for its nodes by needing this."
+}
+
 variable "worker_grace_seconds" {
   type        = number
   description = "How long a worker's pod is given to drain its calls before its node is taken."

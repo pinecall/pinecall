@@ -47,6 +47,7 @@ module "eks" {
   workers_type          = var.pools.workers
   workers_max           = var.pools.workers_max
   media_security_groups = module.edge.media_security_groups
+  core_holds_media      = length(var.media_on_core) > 0
   deletion_protection   = var.deletion_protection
 }
 
@@ -70,14 +71,17 @@ module "kubeip" {
   issuer = module.eks.issuer
 }
 
-# After the cluster and its pools: a chart waits for its pods, which need a node to run on.
+# After the cluster and its pools: a chart waits for its pods, which need a node to run on. Said
+# by what the module is given (`pools`), not by `depends_on`: a module told to wait for another
+# reads its own data again at every change of that one, and a plan that touched a pool showed five
+# changes here that were none.
 module "controllers" {
-  source     = "../modules/controllers"
-  name       = var.name
-  cluster    = module.eks.cluster
-  vpc        = module.network.vpc
-  issuer     = module.eks.issuer
-  depends_on = [module.eks]
+  source  = "../modules/controllers"
+  name    = var.name
+  cluster = module.eks.cluster
+  vpc     = module.network.vpc
+  issuer  = module.eks.issuer
+  pools   = module.eks.ready
 }
 
 module "addons" {

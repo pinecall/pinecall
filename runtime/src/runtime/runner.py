@@ -42,6 +42,7 @@ async def _open_place(settings: Settings) -> hosts.Hosts:
         runtime_class=settings.runner_runtime_class,
         namespace=settings.runner_namespace,
         sources_url=settings.runner_sources_url,
+        cpu=settings.runner_app_cpu,
     )
     cluster = hosts.in_cluster(engine)
     await cluster.serve_sources(settings.runner_listen, settings.runner_port)

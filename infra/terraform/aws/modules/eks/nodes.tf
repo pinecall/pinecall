@@ -35,7 +35,8 @@ locals {
   # in which the control plane and the nodes reach each other.
   cluster_security_group = aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
   pools = merge(
-    { core = { type = var.core_type, least = var.core_nodes, most = var.core_nodes, own = false, security_groups = [] } },
+    # Where an env's media runs on the core node, the node answers that env's media ports too.
+    { core = { type = var.core_type, least = var.core_nodes, most = var.core_nodes, own = false, security_groups = var.core_holds_media ? var.media_security_groups : [] } },
     # One node: LiveKit and SIP hold the node's ports and announce the env's one address. Its ports
     # are opened by the security groups modules/edge makes.
     { for env, type in var.media_type : "media-${env}" => { type = type, least = 1, most = 1, own = true, security_groups = var.media_security_groups } },

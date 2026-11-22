@@ -3,7 +3,10 @@
 {{/* What a worker's pod runs, under where it is scheduled: the runtime's image as `worker start`,
      its env's settings and `seats`, its two probes, its recordings and scratch. On `pool` core
      (the env's media node) it is small, one warm process beside the box's services; on the
-     workers pool it has a node to itself. Given root, env, pool and seats. */}}
+     workers pool it has a node to itself. What it asks of its node is `resources`, the values'
+     own (`envs.<env>.workers.core.resources`, `.scaled.resources`), or these, which fit the seats
+     the chart ships with: more seats on a core worker want more of both. Given root, env, pool,
+     seats and resources. */}}
 {{- define "pinecall.worker" -}}
 {{ include "pinecall.podSecurity" .root }}
 terminationGracePeriodSeconds: 900
@@ -28,7 +31,10 @@ containers:
     volumeMounts:
       - { name: recordings, mountPath: /var/lib/pinecall/recordings }
       {{- include "pinecall.scratchMounts" .root | nindent 6 }}
-    {{- if eq .pool "core" }}
+    {{- if .resources }}
+    resources:
+      {{- toYaml .resources | nindent 6 }}
+    {{- else if eq .pool "core" }}
     resources:
       requests: { cpu: 150m, memory: 768Mi }
     {{- else }}

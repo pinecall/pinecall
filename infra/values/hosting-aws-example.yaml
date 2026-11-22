@@ -13,6 +13,8 @@ secrets:
 # The fenced pool of the cluster, and gVisor's handler on its nodes.
 pool: hosting
 runtimeHandler: runsc
+# The pool's nodes are the operator's own: an idle app asks for what it uses.
+appCpu: 100m
 gatewayUrl: https://voice.example.com
 image:
   repository: 111122223333.dkr.ecr.us-east-1.amazonaws.com/pinecall/runtime

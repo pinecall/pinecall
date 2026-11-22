@@ -100,6 +100,9 @@ class Settings(BaseSettings):
     runner_key: SecretStr | None = Field(None, alias="PINECALL_RUNNER_KEY")
     runner_image: str = Field("docker.io/library/node:24-slim", alias="PINECALL_RUNNER_IMAGE")
     runner_runtime_class: str = Field("gvisor", alias="PINECALL_RUNNER_RUNTIME_CLASS")
+    # What a hosted app's pod asks of its node, in thousandths of a core up to the half core it may
+    # take; unset, that half core.
+    runner_app_cpu: str | None = Field(None, alias="PINECALL_RUNNER_APP_CPU", pattern=r"^([1-9]\d?|[1-4]\d\d|500)m$")
     runner_namespace: str = Field("pinecall-apps", alias="PINECALL_RUNNER_NAMESPACE")
     runner_sources_url: str = Field("http://127.0.0.1:8080", alias="PINECALL_RUNNER_SOURCES_URL")
     runner_listen: str = Field("127.0.0.1", alias="PINECALL_RUNNER_LISTEN")

@@ -1,7 +1,8 @@
 # What EKS runs on the cluster as its own add-ons, each at the version EKS gives the cluster's:
 # the pods' network, which also enforces NetworkPolicy (the fence of charts/hosting, the two stores'
-# policies of charts/pinecall); the Services' proxy; the cluster's names; and the disks' driver,
-# with a default class on gp3, so a chart that names no class gets one.
+# policies of charts/pinecall); the Services' proxy; the cluster's names; the pods' and nodes'
+# measures; and the disks' driver, with a default class on gp3, so a chart that names no class gets
+# one.
 
 resource "aws_eks_addon" "network" {
   cluster_name                = aws_eks_cluster.this.name
@@ -22,6 +23,16 @@ resource "aws_eks_addon" "proxy" {
 resource "aws_eks_addon" "names" {
   cluster_name                = aws_eks_cluster.this.name
   addon_name                  = "coredns"
+  resolve_conflicts_on_create = "OVERWRITE"
+  resolve_conflicts_on_update = "OVERWRITE"
+  depends_on                  = [aws_eks_node_group.pool]
+}
+
+# What each pod and node uses, as `kubectl top` reads it: a pool's machine is chosen and a worker's
+# seats are set from what was measured, never from what was asked for.
+resource "aws_eks_addon" "metrics" {
+  cluster_name                = aws_eks_cluster.this.name
+  addon_name                  = "metrics-server"
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "OVERWRITE"
   depends_on                  = [aws_eks_node_group.pool]

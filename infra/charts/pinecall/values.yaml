@@ -31,11 +31,23 @@ envs:
     # env's media node by the address's label (pinecall-media=<cluster>-<env>), and the env's
     # LiveKit and SIP announce it. Unset, they announce the node's ephemeral address.
     mediaAddress: ""
+    # The pool the env's media runs on (its LiveKit, its SIP, their Redis, its core workers, kubeip):
+    # its own, `media-<env>`, unless said. `core` puts it on the node the gateways and Postgres
+    # share, for a deployment small enough that one machine carries the platform and that env's
+    # calls (docs/scaling.md, "Growing it, step by step"): what the env's calls share a machine with
+    # is then the platform, still never the other env's. Two envs cannot name one pool: each
+    # LiveKit and each SIP holds its node's own ports.
+    mediaPool: ""
     # The env's workers on its media node (`core`), and the ones KEDA scales on its own workers
     # pool from `min` on the gateway's own number (GET /v1/fleet/wanted); `most` is the pool's
     # ceiling (terraform/google/modules/gke, workers_max), and `min` how many are kept warm whatever the
     # calls — one is a node of the pool always up, for a burst that cannot wait the minute or two
     # a node takes.
+    # What a worker's pod asks of its node is `resources` beside `seats`, a container's own block
+    # (`core: { replicas: 2, seats: 4, resources: { requests: { cpu: 500m, memory: 2Gi } } }`):
+    # unset, what fits the seats shipped here. A call costs a worker about a quarter of a core
+    # (docs/scaling.md, "Capacity is counted in calls"), so seats are raised with the machine in
+    # mind, and measured there before they are trusted.
     workers:
       core: { replicas: 2, seats: 2 }
       scaled: { seats: 32, most: 10, min: 0 }

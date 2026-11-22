@@ -24,7 +24,7 @@ spec:
       hostNetwork: true
       # On the node's network, the cluster's names still resolve: the gateway's Service, Redis's.
       dnsPolicy: ClusterFirstWithHostNet
-      {{- include "pinecall.onMedia" $env | nindent 6 }}
+      {{- include "pinecall.onMedia" (dict "root" $ "env" $env) | nindent 6 }}
       terminationGracePeriodSeconds: 600
       # Its ports are all above 1024, so no capability; it writes no file.
       {{- include "pinecall.podSecurityAs" 10001 | nindent 6 }}

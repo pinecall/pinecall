@@ -66,6 +66,12 @@ variable "media_security_groups" {
   description = "The security groups that open a media node's ports (modules/edge)."
 }
 
+variable "core_holds_media" {
+  type        = bool
+  description = "Whether an env's media runs on the core node, which then carries the media nodes' security groups."
+  default     = false
+}
+
 variable "disk_gb" {
   type        = number
   description = "Each node's disk: the images it pulls and its pods' scratch."

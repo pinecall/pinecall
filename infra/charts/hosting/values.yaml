@@ -35,6 +35,11 @@ runtimeHandler: ""
 # own runs TypeScript projects alone; infra/images/app, built into the registry, runs Python ones too.
 appImage: docker.io/library/node:24-slim
 runtimeClass: gvisor
+# What each app's pod asks of its node, in thousandths of a core (`100m`); what it may take is half
+# a core either way. Unset, that half core: on GKE Autopilot a pod is billed by what it asks, and
+# asks for what it may take. On a pool of the operator's own nodes an idle app asks for what it
+# uses (a hundredth of a core, measured), so one node holds many.
+appCpu: ""
 appsNamespace: pinecall-apps
 # An env's runner serves its releases' sources at a fixed address of the services range
 # (modules/hosting, services_range): an app's pod resolves nothing of the cluster's (public

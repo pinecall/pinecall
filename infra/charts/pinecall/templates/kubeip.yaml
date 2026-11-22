@@ -45,7 +45,7 @@ spec:
     metadata: { labels: { app: pinecall-kubeip, world: {{ $env }} } }
     spec:
       serviceAccountName: pinecall-kubeip
-      {{- include "pinecall.onMedia" $env | nindent 6 }}
+      {{- include "pinecall.onMedia" (dict "root" $ "env" $env) | nindent 6 }}
       terminationGracePeriodSeconds: 30
       # The image's own user (distroless, 1001), said here so the cluster holds it to it.
       {{- include "pinecall.podSecurityAs" 1001 | nindent 6 }}

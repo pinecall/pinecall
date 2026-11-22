@@ -159,3 +159,22 @@ async def test_the_pod_started_carries_the_exits_of_the_process_it_continues(tmp
     assert annotations[EXITS_ANNOTATION] == "9970.0,10000.0"
     (read_back,) = await read_by_the_runner(tmp_path / "token", a_listed_pod(annotations))
     assert read_back.exits == (9970.0, NOW)
+
+
+def test_a_pod_asks_its_node_for_what_the_engine_says_and_may_take_half_a_core_either_way() -> None:
+    launch = Launch(
+        env="sandbox", app="org_1/support", host=HOST, release=3, sha256="f" * 64, source=b"", arguments=["start"]
+    )
+    whole = pod(ENGINE, launch)["spec"]
+    assert [each["resources"] for each in (*whole["initContainers"], *whole["containers"])] == [
+        {"requests": {"memory": "1Gi", "cpu": "500m"}, "limits": {"memory": "1Gi", "cpu": "500m"}},
+        {"requests": {"memory": "256Mi", "cpu": "500m"}, "limits": {"memory": "256Mi", "cpu": "500m"}},
+    ]
+    engine = Engine(
+        image="runtime:1", runtime_class="gvisor", namespace="apps", sources_url="http://runner", cpu="100m"
+    )
+    idle = pod(engine, launch)["spec"]
+    assert [each["resources"] for each in (*idle["initContainers"], *idle["containers"])] == [
+        {"requests": {"memory": "1Gi", "cpu": "100m"}, "limits": {"memory": "1Gi", "cpu": "500m"}},
+        {"requests": {"memory": "256Mi", "cpu": "100m"}, "limits": {"memory": "256Mi", "cpu": "500m"}},
+    ]

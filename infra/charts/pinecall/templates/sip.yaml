@@ -20,7 +20,7 @@ spec:
     spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
-      {{- include "pinecall.onMedia" $env | nindent 6 }}
+      {{- include "pinecall.onMedia" (dict "root" $ "env" $env) | nindent 6 }}
       terminationGracePeriodSeconds: 600
       # 5060, its health port and the RTP range are all above 1024: no capability; it writes no file.
       {{- include "pinecall.podSecurityAs" 10001 | nindent 6 }}

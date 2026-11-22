@@ -62,6 +62,23 @@ variable "pools" {
   default     = {}
 }
 
+# An env whose media runs on the core node, beside the gateways and Postgres, instead of on a media
+# node of its own: for a deployment one machine carries (the platform as its media plane costs about
+# a tenth of a core a call, runtime/docs/scaling.md). The core node then answers that env's media
+# ports and its carriers on 5060, and kubeip gives it the env's address. While an env is named here
+# and still has a node in `pools.media`, that node stands empty: the way from one shape to the other
+# is to name the env here, release the chart, then take its node out of `pools.media`.
+variable "media_on_core" {
+  type        = list(string)
+  description = "The envs whose LiveKit, SIP and core workers run on the core node."
+  default     = []
+
+  validation {
+    condition     = alltrue([for env in var.media_on_core : contains(["production", "sandbox"], env)]) && length(var.media_on_core) <= 1
+    error_message = "One env at most, production or sandbox: each LiveKit and each SIP holds its node's own ports, so two envs never share a node."
+  }
+}
+
 variable "admins" {
   type        = list(string)
   description = "IAM users or roles, besides whoever makes the cluster, that are its admins: each an ARN."
