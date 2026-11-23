@@ -17,7 +17,8 @@ module Pinecall
         # @param when [Proc] visibility predicate, evaluated against the state
         # @param stage [Symbol, Array<Symbol>] shorthand for a `when` on the stage field
         # @param confirm [String] read-back spoken before running; marks the tool irreversible
-        # @param announce [String] what the agent says as the tool starts, when its turn said nothing
+        # @param announce [String] deprecated: it still works, but it is no longer recommended; the line
+        #   the model writes in the argument `say` every tool carries speaks for the tool instead
         # @param delayed [String] what the agent says when the wait has grown long
         # @param delayed_after [Numeric] seconds before it says it, 5 unless set
         # @param failed [String] what the agent says when the tool failed, before the model reads why

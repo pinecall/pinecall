@@ -25,7 +25,7 @@ export default class FrontDesk extends Agent {
   }
 
   /** The open times of one day. `day` is YYYY-MM-DD. */
-  @tool({ announce: "Let me check the agenda." })
+  @tool()
   freeSlots(day: string) {
     this.slots = clinic.free(day);
     if (this.slots.length === 0) return "Nothing is open that day. Say just that, and ask about another day.";

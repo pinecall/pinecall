@@ -25,7 +25,7 @@ class FrontDesk < Pinecall::Agent
   end
 
   # The open times of one day. `day` is YYYY-MM-DD.
-  tool announce: "Let me check the agenda."
+  tool
   def free_slots(day:)
     self.slots = Clinic.free(day)
     return "Nothing is open that day. Say just that, and ask about another day." if slots.empty?

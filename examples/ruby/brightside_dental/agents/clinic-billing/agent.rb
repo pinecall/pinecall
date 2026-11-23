@@ -22,7 +22,7 @@ class Billing < Pinecall::Agent
   end
 
   # Take a refund request for one invoice. The office decides it and calls back.
-  tool announce: "Let me write that down."
+  tool
   def ask_refund(invoice:, reason:)
     Clinic.ask_refund(invoice, reason)
     "Written down. Say the office will call back within one business day, and promise nothing else."

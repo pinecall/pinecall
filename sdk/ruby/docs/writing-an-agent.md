@@ -234,7 +234,7 @@ tool; the signature is the schema it fills.
 | `stage:` | visible while the state is in one of these stages. Sugar over `when:` |
 | `when:` | a question asked of the state, on every change: `-> { slots.any? }` or `->(s) { s.slots.any? }` |
 | `confirm:` | the sentence said after the tool runs. **This is what makes a tool irreversible on the wire**; `{{result.x}}` names a field of what it returns |
-| `announce:` | what the agent says as the tool starts ("Let me check the agenda."), when the model's turn said nothing itself and wrote no line of its own in the argument `say` every tool carries; a turn that spoke first is not announced twice. No tool declares an argument named `say` |
+| `announce:` | **Deprecated**: it still works, but it is no longer recommended. What the agent says as the tool starts ("Let me check the agenda."), when the model's turn said nothing itself and wrote no line of its own in the argument `say` every tool carries; a turn that spoke first is not announced twice. No tool declares an argument named `say` |
 | `delayed:` | what the agent says when the wait has grown long, 5 seconds in unless `delayed_after:` says otherwise; `failed:`, what it says when the tool failed, before the model reads why |
 | `quiet: true` | a move on the caller's screen, such as a pointer: it runs as the model calls it, while its words still play, and asks for no answer |
 | `preview:` | how many rows of a list result the *model* sees. The state field keeps every row |

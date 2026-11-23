@@ -258,7 +258,7 @@ the model sends is checked against it before the method runs.
 | `stage` | visible while the state is in this stage, or one of these: `stage: ["choose", "book"]` |
 | `when` | a question asked of the state on every change: `when: (s) => s.slots.length > 0` |
 | `confirm` | the sentence said after the tool runs. **This is what makes a tool irreversible on the wire**; `{{result.x}}` names a field of what it returns |
-| `announce` | what the agent says as the tool starts ("Let me check the agenda."), when the model's turn said nothing itself and wrote no line of its own in the argument `say` every tool carries; a turn that spoke first is not announced twice. No tool declares an argument named `say` |
+| `announce` | **Deprecated**: it still works, but it is no longer recommended. What the agent says as the tool starts ("Let me check the agenda."), when the model's turn said nothing itself and wrote no line of its own in the argument `say` every tool carries; a turn that spoke first is not announced twice. No tool declares an argument named `say` |
 | `delayed` | what the agent says when the wait has grown long, 5 seconds in unless `delayedAfter` says otherwise; `failed`, what it says when the tool failed, before the model reads why |
 | `quiet` | a move on the caller's screen, such as a pointer: it runs as the model calls it, while the words of that answer still play, and the model is asked for no answer of its own. Without it, every tool's result is a turn the model answers |
 | `preview` | how many items of a list the *model* sees. The state keeps every one |

@@ -23,6 +23,8 @@ class ToolOptions(TypedDict, total=False):
     stage: str | Sequence[str]
     when: Callable[[Any], object]
     confirm: str
+    # Deprecated: it still works, but it is no longer recommended. The line the model writes in the
+    # argument `say` every tool carries speaks for the tool instead.
     announce: str
     delayed: str
     delayed_after: float

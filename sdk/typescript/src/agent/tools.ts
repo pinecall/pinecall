@@ -23,7 +23,12 @@ export interface ToolOptions<T = unknown> {
   stage?: StageOf<T> | StageOf<T>[];
   /** Confirmation read back after the tool runs; `{{result.x}}` is filled from its return value. Marks the tool irreversible. */
   confirm?: string;
-  /** What the agent says as the tool starts ("Let me check the agenda."), when the model's turn said nothing itself. */
+  /**
+   * What the agent says as the tool starts ("Let me check the agenda."), when the model's turn said nothing itself.
+   *
+   * @deprecated It still works, but it is no longer recommended: the line the model writes in the
+   * argument `say` every tool carries speaks for the tool instead.
+   */
   announce?: string;
   /** What the agent says when the wait has grown long, `delayedAfter` seconds in (5 unless set). */
   delayed?: string;

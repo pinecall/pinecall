@@ -27,7 +27,7 @@ class Billing(Agent):
             case _:
                 pass
 
-    @tool(announce="Let me write that down.")
+    @tool
     def ask_refund(self, invoice: str, reason: str) -> str:
         """Take a refund request for one invoice. The office decides it and calls back."""
         clinic.ask_refund(invoice, reason)

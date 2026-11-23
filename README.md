@@ -103,7 +103,7 @@ export default class FrontDesk extends Agent {
   }
 
   /** The open times of one day. `day` is YYYY-MM-DD. */
-  @tool({ announce: "Let me check the agenda." })     // a verb the model may call
+  @tool()                                             // a verb the model may call
   freeSlots(day: string) {
     return (this.slots = clinic.free(day));
   }

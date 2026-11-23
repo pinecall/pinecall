@@ -22,7 +22,7 @@ export default class Billing extends Agent {
   }
 
   /** Take a refund request for one invoice. The office decides it and calls back. */
-  @tool({ announce: "Let me write that down." })
+  @tool()
   askRefund(invoice: string, reason: string) {
     clinic.askRefund(invoice, reason);
     return "Written down. Say the office will call back within one business day, and promise nothing else.";

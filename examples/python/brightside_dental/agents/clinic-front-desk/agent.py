@@ -30,7 +30,7 @@ class FrontDesk(Agent):
     def on_call(self, call: CallWorld) -> None:
         self.call.shared["patient"] = clinic.patient_by_phone(call.contact)
 
-    @tool(announce="Let me check the agenda.")
+    @tool
     def free_slots(self, day: str) -> list[Slot] | str:
         """The open times of one day. `day` is YYYY-MM-DD."""
         self.slots = clinic.free(day)
