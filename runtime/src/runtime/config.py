@@ -24,7 +24,11 @@ A_FLEET_NAME = r"^[a-z0-9][a-z0-9-]{0,62}$"
 class Settings(BaseSettings):
     """The process's configuration, from systemd credentials, a .env and the environment."""
 
-    model_config = SettingsConfigDict(frozen=True, extra="ignore", populate_by_name=True, env_file_encoding="utf-8")
+    # A bare `NAME=` is unset, read here as in `load_settings`: a server's compose hands a worker every
+    # knob it reads, empty where the env file names none (2026-11-23, every worker refused to start).
+    model_config = SettingsConfigDict(
+        frozen=True, extra="ignore", populate_by_name=True, env_file_encoding="utf-8", env_ignore_empty=True
+    )
 
     # ── LiveKit, the media plane ──
     livekit_url: str = Field("ws://127.0.0.1:7880", alias="LIVEKIT_URL")
