@@ -167,7 +167,7 @@ database, no Redis, no vault key, no operator's key and no signing key; the rete
 its owner, the vault and the recordings. `setup` draws, once, the role's password
 (`PINECALL_DB_APP_URL`), Redis's (`PINECALL_REDIS_PASSWORD`; LiveKit and SIP sign in with it too)
 and a password for the owner in place of the image's, and grants the role every table's rows each
-run. LiveKit's and SIP's configs are said in the compose file from the env file's values, so the
+run. Each worker and overflow answers its health on a port of loopback, which compose waits for: a run of `setup` or `local up` fails on one that does not start, and Docker starts one again that stops answering. LiveKit's and SIP's configs are said in the compose file from the env file's values, so the
 env file (owner-only) is the one file of the machine that holds a secret. On a cloud's machine,
 `infra/server/fence` (run by `make server`, as root) keeps the metadata address, and with it the
 machine's identity, from the runtime's processes: it answers root, the operator and Postgres's

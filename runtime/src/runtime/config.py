@@ -97,6 +97,8 @@ class Settings(BaseSettings):
     worker_http_port: int = Field(8082, alias="PINECALL_WORKER_HTTP_PORT")
     worker_name: str | None = Field(None, alias="PINECALL_WORKER_NAME")
     notify_socket: str | None = Field(None, alias="NOTIFY_SOCKET")
+    # Where the overflow answers its health; 0, any free port of loopback (a pod's has no probe).
+    overflow_http_port: int = Field(0, alias="PINECALL_OVERFLOW_HTTP_PORT")
     # The overflow's one sentence, for every call it answers; unset, it says its own in the agent's language.
     overflow_says: str | None = Field(None, alias="PINECALL_OVERFLOW_SAYS")
 

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **A server waits for its workers to answer.** A worker or an overflow that died at start was taken as up,
+  because none had a health check: a deploy said it had succeeded while no call could be answered (six minutes
+  on 2026-11-23). Each now answers its health on a port of loopback (the overflow's is
+  `PINECALL_OVERFLOW_HTTP_PORT`, any free port unless named), compose waits for it, and Docker starts again one
+  that stops answering.
 - **A server's processes hold what a cluster's pods hold, and no more.** Every process of a server ran as root
   with Docker's capabilities and a root filesystem it could write; each worker was handed the env file whole,
   the database's owner, the vault key, the operator's key and the signing key among it; the gateways connected

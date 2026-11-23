@@ -109,7 +109,7 @@ def worker_server(settings: Settings, load: jobs.Load) -> AgentServer:
 
 
 def overflow_server(settings: Settings) -> AgentServer:
-    """The overflow's AgentServer, under <fleet>/overflow, on any free port, always open."""
+    """The overflow's AgentServer, under <fleet>/overflow, on its health port or any free one, always open."""
     key, secret = key_pair(settings)
     preload_plugins()
     server = AgentServer(
@@ -118,7 +118,7 @@ def overflow_server(settings: Settings) -> AgentServer:
         api_secret=secret,
         initialize_process_timeout=INITIALIZE_S,
         host="127.0.0.1",
-        port=0,
+        port=settings.overflow_http_port,
         setup_fnc=prewarm,
         load_fnc=_always_open,
     )

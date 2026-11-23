@@ -83,6 +83,16 @@ def test_a_worker_is_handed_no_database_no_vault_and_no_operators_key() -> None:
         assert "PINECALL_WORKER_KEY" in block, service
 
 
+def test_a_worker_that_does_not_answer_is_no_worker_up() -> None:
+    """Each worker and overflow answers its health on a port of its own: compose waits for it, Docker restarts it."""
+    found = blocks()
+    assert "start_period:" in found["x-answers-calls"] and "PINECALL_WORKER_HTTP_PORT" in found["x-answers-calls"]
+    for service in WORKERS:
+        assert "healthcheck: *answers-calls" in found[service], service
+    ports = [re.search(r'PINECALL_(?:WORKER|OVERFLOW)_HTTP_PORT: "(\d+)"', found[service]) for service in WORKERS]
+    assert len({port.group(1) for port in ports if port}) == len(WORKERS)
+
+
 def test_the_gateways_reach_postgres_as_the_role_that_changes_no_table() -> None:
     """The env file whole, but the database as the app's role: only setup's migrations sign in as the owner."""
     found = blocks()

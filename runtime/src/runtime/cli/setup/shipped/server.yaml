@@ -30,6 +30,22 @@ x-runtime: &runtime
   volumes: ["${PINECALL_RECORDINGS}:${PINECALL_RECORDINGS}", "home:/home/pinecall"]
   restart: unless-stopped
 
+# A worker or an overflow answers on its health port once LiveKit has it (as a cluster's startup and
+# liveness probes ask): compose waits for it, so `setup` and `local up` fail on a worker that does not
+# start, and Docker starts one again that stops answering. Its first answer can take a minute (the
+# warm process loads the turn and floor models).
+x-answers-calls: &answers-calls
+  test:
+    - CMD
+    - python
+    - -c
+    - "import os, urllib.request as r; r.urlopen('http://127.0.0.1:' + (os.environ.get('PINECALL_OVERFLOW_HTTP_PORT') or os.environ['PINECALL_WORKER_HTTP_PORT']) + '/', timeout=3)"
+  interval: 10s
+  timeout: 5s
+  retries: 3
+  start_period: 180s
+  start_interval: 3s
+
 # What a worker and an overflow read, name by name: their LiveKit and its pair, the name, where the
 # recordings go, and how they log and pace a call. The fleet, the key and the seats are each one's.
 x-worker-reads: &worker-reads
@@ -243,6 +259,7 @@ services:
       PINECALL_MAX_JOBS: "${PINECALL_SANDBOX_MAX_JOBS:-${PINECALL_MAX_JOBS:-4}}"
       PINECALL_WORKER_HTTP_PORT: "8182"
     stop_grace_period: 10m
+    healthcheck: *answers-calls
     depends_on: [gateway]
 
   worker-production:
@@ -257,10 +274,11 @@ services:
       PINECALL_MAX_JOBS: "${PINECALL_PRODUCTION_MAX_JOBS:-${PINECALL_MAX_JOBS:-4}}"
       PINECALL_WORKER_HTTP_PORT: "8183"
     stop_grace_period: 10m
+    healthcheck: *answers-calls
     depends_on: [gateway]
 
   # Who answers the call no worker has a seat for: one sentence and a call back offered, where a
-  # server with none left that caller in silence. It listens on a free port of loopback.
+  # server with none left that caller in silence. It answers its health on a port of loopback.
   overflow-sandbox:
     <<: *runtime
     profiles: [server]
@@ -269,8 +287,10 @@ services:
     environment:
       <<: *worker-reads
       PINECALL_FLEET: pinecall-sandbox
+      PINECALL_OVERFLOW_HTTP_PORT: "8184"
       PINECALL_WORKER_KEY: ${PINECALL_SANDBOX_FLEET_KEY}
     stop_grace_period: 2m
+    healthcheck: *answers-calls
     depends_on: [gateway]
 
   overflow-production:
@@ -281,8 +301,10 @@ services:
     environment:
       <<: *worker-reads
       PINECALL_FLEET: pinecall
+      PINECALL_OVERFLOW_HTTP_PORT: "8185"
       PINECALL_WORKER_KEY: ${PINECALL_PRODUCTION_FLEET_KEY}
     stop_grace_period: 2m
+    healthcheck: *answers-calls
     depends_on: [gateway]
 
   # The night's work, which a cluster gives a CronJob: the calls past their org's days erased, what
