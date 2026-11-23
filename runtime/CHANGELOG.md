@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A server asks for its certificate as soon as its name arrives.** A server set up with `--unpointed` has a Caddy
+  that asked for the certificate while the name was still elsewhere, was refused, and waits longer after each
+  refusal: after half an hour, ten minutes between tries. A name that had just been moved went unanswered for
+  the rest of such a wait (six minutes of a cutover on 2026-11-23). `local up` now starts Caddy again when the
+  name points at the machine and Caddy holds no certificate for it, so it asks at once, for every name it serves;
+  a Caddy that holds the certificate, or a name that points elsewhere, is left as it is.
 - **A server's hosted apps each run in a sandbox.** A server ran what `pinecall deploy` sent as processes of one
   user (`PINECALL_RUNNER_ENGINE=processes`), which is right only where every app is the operator's own: one org's
   code could read another's sources and secrets, the runner's key, and whatever the machine's identity could.

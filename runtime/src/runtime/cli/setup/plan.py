@@ -39,8 +39,8 @@ NEXT_SERVER = """  ✓ ready   https://{name}
 NEXT_UNPOINTED = """  ✓ running, and answering nobody yet: {name} does not point here
   ✓ {email} runs this runtime and is admin of org default
 
-  Give {name} an A record to this machine's address. Caddy asks for the certificate by
-  itself once the name arrives; `pinecall-runtime local up` waits for it and says when it answers.
+  Give {name} an A record to this machine's address, then `pinecall-runtime local up`: it has
+  Caddy ask for the certificate at once, and says when the name answers.
 """
 WEBHOOK = """
   One step in your LiveKit → Settings → Webhooks, signed with {key}:

@@ -8,7 +8,7 @@ import typer
 from runtime.accounts.models import BOX_ORG
 from runtime.cli import orgs
 from runtime.cli.command import OK, Context, context_of, verb
-from runtime.cli.setup import children, compose, restore, server, server_files
+from runtime.cli.setup import certificate, children, compose, restore, server, server_files
 from runtime.cli.setup.database import prepare_database
 from runtime.cli.setup.env_file import EnvFile
 from runtime.cli.setup.files import DEFAULT_DIR, GATEWAY_URL, write_shipped
@@ -52,6 +52,8 @@ async def local_up(
     if serving is not None:
         again = server_files.write_configs(where, serving, env.read())
         server.bring_up(where, serving, env.read(), None, build=False, again=again)
+        if certificate.ask_again(where, serving, env.read()):
+            context.out.line(f"{serving.name} points here now: Caddy asks for its certificate again")
         server.wait_for_https(serving.name)
         context.out.line(
             f"https://{serving.name}: up, kept up by Docker across reboots · logs: pinecall-runtime local logs"
