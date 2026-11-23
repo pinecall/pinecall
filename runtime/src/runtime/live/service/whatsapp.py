@@ -3,7 +3,7 @@
 import asyncio
 import dataclasses
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
 from functools import partial
 
@@ -16,6 +16,7 @@ from runtime.calls.context import CallContext, Contact, Route, new_call_id
 from runtime.enums import Direction
 from runtime.exceptions import PinecallError, QuotaExceeded, UpstreamError
 from runtime.kit.loops import survive
+from runtime.kit.text import Json
 from runtime.kit.time import today_in
 from runtime.live.holders import Registration
 from runtime.live.parts import LiveParts
@@ -101,6 +102,17 @@ class OpenThread:
             self.session.call.writing.write("error", error)
 
 
+# The agent writes first (`texting`): the call it opens, what its call.started carries beside the
+# thread's own (an email's thread and subject win), and whether the model words its opening.
+@dataclass(frozen=True, slots=True)
+class FirstMessage:
+    """A conversation the agent opens: its call, its metadata, and whether it words its opening itself."""
+
+    call: str
+    metadata: Mapping[str, Json] = field(default_factory=dict[str, Json])
+    opens_itself: bool = False
+
+
 # What `whatsapp`'s webhook is handed (`whatsapp.service.Threads`): the contacts' conversations.
 class Threads:
     """The open WhatsApp threads of this process, keyed by org, env, number and contact."""
@@ -169,14 +181,16 @@ class Threads:
             clock = self._live.store.clock()
             return (await find_earlier(session_, scope, agent, contact, now=clock, idle_s=self.idle_s)).going
 
-    async def open_to(self, registration: Registration, route: RouteRow, contact: whatsapp.Inbound, first: str) -> str:
+    async def open_to(
+        self, registration: Registration, route: RouteRow, contact: whatsapp.Inbound, first: FirstMessage
+    ) -> str:
         """The call the agent writes on: the conversation going, here or on another gateway, or a new one, `first`."""
         key = _thread_key(registration.scope, contact)
         here = self._open.get(key)
         if here is not None:
             return here.session.call.context.call
         if self._live.owners.find_thread_holder(key) is not None:
-            return first
+            return first.call
         thread = await self._open_thread(registration, route, contact, first)
         if thread is None:
             raise UpstreamError(f"agent {route.agent} cannot write from {route.number}: the gateway's log says why")
@@ -312,11 +326,11 @@ class Threads:
     # The token and the call are read and written in a transaction of this conversation's own, over
     # before the session starts: its greeting may wait on the model.
     async def _open_thread(
-        self, registration: Registration, route: RouteRow, inbound: whatsapp.Inbound, first: str | None = None
+        self, registration: Registration, route: RouteRow, inbound: whatsapp.Inbound, first: FirstMessage | None = None
     ) -> OpenThread | None:
         live = self._live
         async with live.sessions.begin() as session_:
-            reaches = await way_to(session_, live, route, inbound)
+            reaches = await way_to(session_, live, route, inbound, opens=first is not None)
             if reaches is None:
                 logger.warning(
                     "%s: agent %s cannot answer at %s: nothing here to answer with (a Meta token, a Twilio account)",
@@ -331,9 +345,15 @@ class Threads:
                 going = earlier.going
                 taken = None if going is None else await written.resume_written(session_, live, registration, going)
                 context = self._context(registration, route, inbound, earlier.carried)
+                opens_itself = first is not None and first.opens_itself
                 if first is not None:
-                    context = dataclasses.replace(context, call=first, direction=Direction.outbound)
-                running = taken or await written.open_written(session_, live, registration, context)
+                    metadata = {**first.metadata, **context.metadata}
+                    context = dataclasses.replace(
+                        context, call=first.call, direction=Direction.outbound, metadata=metadata
+                    )
+                running = taken or await written.open_written(
+                    session_, live, registration, context, opens_itself=opens_itself
+                )
             except PinecallError as refused:
                 logger.warning("whatsapp: agent %s cannot answer at %s: %s", route.agent, inbound.number, refused)
                 return None

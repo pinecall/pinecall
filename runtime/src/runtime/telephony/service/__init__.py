@@ -6,7 +6,7 @@ from runtime.telephony.service.email_account import EmailAccount
 from runtime.telephony.service.email_box import read_new
 from runtime.telephony.service.email_layout import Layout, layout_of
 from runtime.telephony.service.email_message import read_email
-from runtime.telephony.service.email_reply import compose_reply, send_reply
+from runtime.telephony.service.email_reply import compose_first, compose_reply, new_message_id, send_email
 from runtime.telephony.service.hand_over import hand_on, unbridge
 from runtime.telephony.service.inboxes import lease_inbox, list_routed_mailboxes, move_inbox
 from runtime.telephony.service.legs import (
@@ -67,6 +67,7 @@ __all__ = [
     "caller_leg",
     "callers_room",
     "check_simulated_ring",
+    "compose_first",
     "compose_reply",
     "count_managed",
     "dial_in",
@@ -91,6 +92,7 @@ __all__ = [
     "meta_token_for",
     "move_inbox",
     "move_routes_with_agent",
+    "new_message_id",
     "note_call",
     "outbound_leg",
     "read_email",
@@ -98,8 +100,8 @@ __all__ = [
     "read_sms_media",
     "release_numbers_of",
     "ring_simulated_caller",
+    "send_email",
     "send_on",
-    "send_reply",
     "send_sms",
     "send_tones",
     "sip_config",

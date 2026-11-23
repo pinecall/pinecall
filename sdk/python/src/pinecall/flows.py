@@ -199,18 +199,33 @@ class Step:
         known = {name: said.get(name) for name in ("reason", "call", "refused", "message")}
         return Called(answered=bool(said.get("answered")), **cast("dict[str, str | None]", known))
 
-    async def text(
-        self, to: str, agent: type | str, words: str, *, from_: str | None = None
+    async def text(  # noqa: PLR0913 - each is a part of what the text opens with, as a call's are
+        self,
+        to: str,
+        agent: type | str,
+        words: str | None = None,
+        *,
+        from_: str | None = None,
+        subject: str | None = None,
+        metadata: JsonObject | None = None,
+        instruction: str | None = None,
     ) -> Texted:
-        """Have an agent, its class or its slug, send a contact one SMS first."""
+        """Have an agent, its class or its slug, write first: an SMS, or an email to an address.
+
+        An email goes under `subject`, and its `words` may be left out: the agent writes it then.
+        """
         cls = _config.agent_named(agent) if isinstance(agent, str) else agent
         slug = None if cls is None else self._slug_of(cls)
         if slug is None:
             named = agent if isinstance(agent, str) else agent.__name__
             raise DeclarationRefused(f"{self._of.name}: {named} is no agent this process serves")
-        asked: JsonObject = {"agent": slug, "to": to, "text": words}
-        if from_ is not None:
-            asked["from"] = from_
+        opening = {"text": words, "from": from_, "subject": subject, "metadata": metadata,
+                   "instruction": instruction}  # fmt: skip
+        asked: JsonObject = {
+            "agent": slug,
+            "to": to,
+            **{k: v for k, v in opening.items() if v is not None},
+        }
         said = cast("JsonObject", await self._waited("text", asked) or {})
         known = {name: said.get(name) for name in ("call", "refused", "message")}
         return Texted(

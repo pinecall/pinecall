@@ -57,6 +57,8 @@ thread opens a call on the channel `email`, `medium: text`, whose `call.started`
 by `caller.email` and carries `metadata: {email_thread, subject}`; it continues the contact's newest
 call with the agent, on any channel, as every written call does ([whatsapp.md](whatsapp.md)). A
 thread quiet for two hours is over: its next email opens a new call that carries the last one on.
+An email call the contact opened greets nobody: the contact already wrote, and one email is answered
+by one email, so the agent's greeting is not said and its first turn is the answer.
 
 ## The reply
 
@@ -73,6 +75,43 @@ In the plain part the marks are taken off and a link's or an image's address sta
 words. A reply SMTP refuses is an `error` on the call, `email_not_sent`,
 in the server's words. The framework's rule for the channel (`email` of `GET
 /v1/studio/channel-rules`) tells the model to write the whole reply in one message.
+
+## The agent writes first — `POST /v1/agents/{slug}/text`
+
+The endpoint an agent texts first by ([numbers.md](numbers.md), "SMS") writes the first email when `to`
+is an address: `{to, subject, text?, from?, consent?, metadata?, instruction?}` (`talk`) answers
+`202 {call, agent, to, from, env}`. `from` is one of the addresses the agent answers email at in the
+key's environment, the first unsaid; `to` is lowercased. `subject` is required (200 characters at
+most), and refused on a number. `metadata` and `instruction` are a dial's ([numbers.md](numbers.md),
+"Dialling out"): `metadata` (8 KB of JSON at most) rides the call's `call.started` beside
+`email_thread` and `subject`, which win a key they share, and `instruction`, what the email is for,
+is kept there as `instruction` and read by the agent for the whole conversation.
+
+`text` is the email's words, as an SMS's are: a `say` on the call (`supervisor.verb`, by whoever
+holds the key), logged as the agent's turn, and nothing greets before it. With no `text`, the agent
+writes the email itself, as a dialled call with no greeting given opens: the model's first turn,
+on `instruction` when there is one, else on the agent's own greeting, else on its prompt alone, with
+the call's metadata in the app's view. It writes it whatever conversation the call carries on.
+
+The email goes from the routed address through the mailbox's SMTP, set in the org's layout as a
+reply is, under `subject` and a new `Message-ID` of the address's domain, with no `In-Reply-To` and
+`Auto-Submitted: auto-generated`: it answers nothing, and RFC 3834 §5 names what an automatic process
+writes that is no response to another message so (a contact's autoresponder still does not answer
+it). That id names the thread: the call's `call.started` says it as `email_thread`, and the
+contact's reply, whose `In-Reply-To` and `References` name it, lands on the same call, which the
+agent answers in the thread. What the agent writes before the contact answers is a reply to its own
+first email. Each address opens a thread of its own: a second email to the same contact is a second
+thread.
+
+The call is `outbound`, on the channel `email`, and carries on the contact's newest call with the
+agent as an inbound email call does. It passes every guard an SMS does, on the same ledger, keyed
+on the address: a stranger unless the org dials anywhere, the consent on file or given with the
+request (`consent_everywhere` decides whether one is owed: the TCPA's are a phone's), the org's
+calling hours, the pace and `per_number_day`. An address names no zone of its own: the hours are
+kept in the agent's `timezone`, and an agent that sets none is not written to while the org keeps
+calling hours (`403`, `quiet_hours`). A contact who asked for no more messages is `403`; nobody
+holding the agent is `409`; an address the agent answers email at none of is `404`. An email SMTP
+refuses is an `error` on the call, `email_not_sent`, as a refused reply is.
 
 ## The layout — `/v1/org/email/layout`
 

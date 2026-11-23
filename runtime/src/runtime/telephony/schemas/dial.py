@@ -1,4 +1,4 @@
-"""The bodies of a dial and of a text the agent sends first: the far end, the consent, and the call it became."""
+"""The bodies of a dial and of a text or email the agent sends first: the far end, the consent, the call it became."""
 
 import json
 from typing import Literal
@@ -60,12 +60,26 @@ class DialResponse(Row):
 
 
 class TextRequest(Schema):
-    """POST /v1/agents/{slug}/text: the contact, the words, the org's number they leave from, the consent."""
+    """POST /v1/agents/{slug}/text: the contact, the words, the org's number or address they leave from, the consent."""
 
+    # A number is sent an SMS; an address (it holds an `@`) an email, under `subject`.
     to: str
-    text: str = Field(min_length=1, max_length=1600)
+    # An email's alone may be left out: the agent then writes its first words itself.
+    text: str | None = Field(default=None, min_length=1, max_length=1600)
     from_: str | None = Field(None, alias="from")
     consent: Consent | None = None
+    subject: str | None = Field(default=None, min_length=1, max_length=200)
+    # A dial's: what the call's `call.started` carries, and what the call is for, which the agent reads
+    # for the whole conversation and, with no `text`, opens on.
+    metadata: JsonObject = Field(default_factory=dict[str, Json])
+    instruction: str | None = Field(default=None, min_length=1, max_length=2000)
+
+    @field_validator("metadata")
+    @classmethod
+    def _fits_a_dispatch(cls, given: JsonObject) -> JsonObject:
+        if len(json.dumps(given)) > OPENING_BYTES:
+            raise ValueError(f"what a written call opens with is {OPENING_BYTES} bytes of JSON at most")
+        return given
 
 
 class TextResponse(Row):

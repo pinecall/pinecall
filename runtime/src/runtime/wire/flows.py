@@ -16,7 +16,10 @@ A_SLEEP_ASKS = "a sleep step asks {until}: a time, ISO 8601 with its zone: 2026-
 A_WAIT_ASKS = "a wait step asks {event, match?, until?}: the event's name, what of its data must match, and a time"
 A_CALL_ASKS = "a call step asks {agent, to}: the agent that calls, and the number in +E.164"
 AN_EMIT_ASKS = "an emit step asks {name, data?}: the event's name, and what it carries"
-A_TEXT_ASKS = "a text step asks {agent, to, text}: the agent that writes, the number in +E.164, and the words"
+A_TEXT_ASKS = (
+    "a text step asks {agent, to, text?, subject?}: the agent that writes, the number in +E.164 or an address, "
+    "and the words (an email's, under its subject, may be left to the agent)"
+)
 
 
 def fit(given: JsonObject) -> JsonObject:
@@ -80,12 +83,16 @@ class CallStep(_Asked):
 
 
 class TextStep(_Asked):
-    """`text` asks `{agent, to, text, from?}`: who writes, the contact's number, and the words of one SMS."""
+    """`text` asks `{agent, to, text?, from?, subject?, metadata?, instruction?}` as the text endpoint does."""
 
     agent: str
+    # A number is sent one SMS; an address the first email of a thread, under `subject`.
     to: str
-    text: str = Field(min_length=1, max_length=1600)
+    text: str | None = Field(default=None, min_length=1, max_length=1600)
     from_: Words = Field(default=None, alias="from")
+    subject: Words = None
+    metadata: Data = Field(default_factory=dict[str, Json])
+    instruction: Words = None
 
 
 class EmitStep(_Asked):

@@ -1,7 +1,7 @@
 """What an agent's class declares: its prompt, its tools, its turns and its words, and the declaration whole."""
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from runtime.exceptions import ValidationError
@@ -419,3 +419,23 @@ def check_words(declaration: Declaration) -> None:
         memory=declaration.memory,
         bases=declaration.bases,
     )
+
+
+# A call the agent places out (a dial, a written call it opens) may bring its own opening: its words
+# over the agent's greeting, or, with none, what the call is for, which the model opens on.
+def open_as_asked(declaration: Declaration, greeting: str | None, instruction: str | None) -> Declaration:
+    """The agent's declaration with the opening its call was asked to open with."""
+    if greeting is not None:
+        return replace(declaration, greeting=Greeting(say=greeting))
+    if instruction is not None:
+        return replace(declaration, greeting=Greeting(reply=instruction))
+    return declaration
+
+
+# A call that cannot wait for the far end to speak first (an email the agent writes) opens as a
+# dialled one with no greeting given does; an agent that greets with neither is left to open on its
+# prompt alone, with what the call carries in its view (an empty `reply`).
+def open_itself(declaration: Declaration, instruction: str | None) -> Declaration:
+    """The agent's declaration with an opening the model writes: on what the call is for, else its own greeting."""
+    asked = open_as_asked(declaration, None, instruction)
+    return asked if asked.greeting is not None else replace(asked, greeting=Greeting(reply=""))

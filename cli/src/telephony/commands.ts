@@ -83,6 +83,13 @@ The agent sends the contact one SMS, from a number it answers SMS at, and what t
 
   $ pinecall text reminder +14155550142 "Ana, your cleaning is tomorrow at 9:30. Reply here to change it."
 
+To an address, the agent writes the first email of a thread, from an address it answers email at,
+under --subject; the contact's reply lands on the same conversation. With no words, the agent writes
+the email itself, on --instruction, as a dialled call with no greeting opens:
+
+  $ pinecall text reminder ana@example.org "Your cleaning is tomorrow at 9:30." --subject "Your visit"
+  $ pinecall text reminder ana@example.org --subject "Your visit" --instruction "Remind Ana of her cleaning." --metadata '{"visit": "v-812"}'
+
 Somebody must be holding the agent. A contact whose conversation is still open is written on it.
 Any other passes the org's guards first, as a dial does (who may be reached, when, how often), and
 one that is refused is sent nothing. A contact who texted STOP is written to by nobody.
@@ -284,14 +291,17 @@ export function register(program: Command, ctx: Context): void {
 
   program
     .command("text")
-    .description("have an agent send a contact one SMS first")
+    .description("have an agent send a contact one SMS, or the first email of a thread")
     .argument("<agent>", "the agent's slug")
-    .argument("<number>", "the contact's number, in +E.164")
-    .argument("<words>", "what the contact reads")
-    .option("--from <number>", "which of the agent's SMS numbers it leaves from")
+    .argument("<to>", "the contact's number, in +E.164, or their email address")
+    .argument("[words]", "what the contact reads; an email's may be left to the agent")
+    .option("--from <number>", "which of the agent's SMS numbers, or email addresses, it leaves from")
+    .option("--subject <words>", "an email's subject: the thread's, and every reply's after it")
+    .option("--metadata <json>", "what the conversation's call.started carries")
+    .option("--instruction <words>", "what this conversation is for: the agent reads it throughout")
     .addHelpText("after", TEXT)
-    .action(async (agent, number, words, flags) => {
-      const input = service.TextInput.parse({ agent, to: number, text: words, from: flags.from });
+    .action(async (agent, to, words, flags) => {
+      const input = service.TextInput.parse({ agent, to, text: words, from: flags.from, subject: flags.subject, metadata: jsonOf("--metadata", flags.metadata), instruction: flags.instruction });
       ctx.io.result(await service.textOut(ctx, input), render.texted);
     });
 

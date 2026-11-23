@@ -72,3 +72,21 @@ async def test_a_contact_who_stopped_the_messages_is_written_to_by_nobody_and_an
             await texting.text_as_agent(
                 session, side.parts, side.threads, a_key(tenant), "front-desk", Text(CONTACT, "hola"), NOON
             )
+
+
+@needs_the_database
+@pytest.mark.usefixtures("number")
+async def test_an_email_needs_its_subject_an_sms_its_words_and_an_agent_that_answers_email_at_an_address(
+    side: Side, sessions: async_sessionmaker[AsyncSession], tenant: Tenant
+) -> None:
+    """A number and an address are told apart by the `@`; each is refused for what only the other takes."""
+    refused = [
+        (Text("ana@example.org", "hola"), ValidationError, "needs a `subject`"),
+        (Text(CONTACT, "hola", subject="Tu turno"), ValidationError, "an SMS has no `subject`"),
+        (Text(CONTACT, None), ValidationError, "an SMS needs its `text`"),
+        (Text("ana@example.org", None, subject="Tu turno"), NotFound, "answers email at no address"),
+    ]
+    async with sessions() as session:
+        for asked, error, why in refused:
+            with pytest.raises(error, match=why):
+                await texting.text_as_agent(session, side.parts, side.threads, a_key(tenant), "front-desk", asked, NOON)

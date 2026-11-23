@@ -153,16 +153,19 @@ Have an agent call a phone number, with the state its call opens in. The org's d
 
 ## `text`
 
-Have an agent send a contact one SMS first, from a number it answers SMS at. The org's dial guards decide: who may be reached, when, and how often.
+Have an agent write to a contact first: one SMS to a number, from a number it answers SMS at, or the first email of a thread to an address, from an address it answers email at. The org's dial guards decide: who may be reached, when, and how often.
 
-`text` sends a contact one SMS as the agent and answers with the conversation it was said on: the call's id, the number it left from and the environment. What the contact answers reaches the agent on that conversation, with these words before it. Somebody must be holding the agent, and the agent must answer SMS at a number (`numbers` imports one with `channel: sms`). A contact whose conversation is still open is written on it; any other passes the org's guards as a dial does (a stranger, no consent, quiet hours, too many today), and a refusal says which guard and sends nothing. A contact who texted STOP is refused whatever else is true: `compliance consent` says who did.
+`text` writes to a contact as the agent and answers with the conversation it was said on: the call's id, the number or address it left from and the environment. What the contact answers reaches the agent on that conversation, with these words before it. To an address it is an email: under `subject`, from an address the agent answers email at (`numbers` imports one with `channel: email`), its words `text` or, left out, written by the agent on `instruction` as a dialled call with no greeting opens; the contact's reply lands on the same conversation. Somebody must be holding the agent, and the agent must answer SMS at a number (`numbers` imports one with `channel: sms`) for an SMS. A contact whose SMS conversation is still open is written on it; any other passes the org's guards as a dial does (a stranger, no consent, quiet hours, too many today), and a refusal says which guard and sends nothing. A contact who asked for no more messages is refused whatever else is true: `compliance consent` says who did.
 
 | parameter | takes | | what it is |
 |---|---|---|---|
 | `agent` | text | required | the agent that writes: its slug |
-| `to` | text | required | the contact's number, in +E.164 |
-| `text` | text | required | what the contact reads |
-| `from` | text |  | which of the agent's SMS numbers it leaves from; the first when left out |
+| `to` | text | required | the contact's number, in +E.164, or their email address |
+| `text` | text |  | what the contact reads; required for an SMS, and an email's is the agent's own to write when left out |
+| `from` | text |  | which of the agent's SMS numbers, or email addresses, it leaves from; the first when left out |
+| `subject` | text |  | an email's subject, required for one: the thread's, and every reply's after it |
+| `metadata` | an object |  | what the conversation's `call.started` carries |
+| `instruction` | text |  | what this conversation is for: the agent reads it throughout and, with no `text`, writes its email on it |
 | `prod` | true or false |  | true acts in production; left out or false, in the sandbox |
 
 ## `email`

@@ -63,7 +63,7 @@ since the function changed under its run. Only a `ready` run takes a new step.
 | `wait` | `{event, match?, until?}` | the run is `waiting` for an event of that name whose data has every key of `match` with the same value; at `until` it gives up, and the step's result is `null` |
 | `call` | `{agent, to, from?, state?, metadata?, greeting?, instruction?}` | places the call as `POST /v1/agents/{agent}/dial` does, after the same guards ([numbers.md](numbers.md)); the run is `calling` until the call ends |
 
-| `text` | `{agent, to, text, from?}` | sends the contact one SMS as `POST /v1/agents/{agent}/text` does, after the same guards ([numbers.md](numbers.md), "SMS"); over as it is written |
+| `text` | `{agent, to, text?, from?, subject?, metadata?, instruction?}` | sends the contact one SMS, or an address the first email of a thread, as `POST /v1/agents/{agent}/text` does, after the same guards ([numbers.md](numbers.md), "SMS"; [email.md](email.md), "The agent writes first"); over as it is written |
 
 Each step reads back as `{seq, kind, asked, over, result}`. A `sleep` ends with `null`, a `wait`
 with the event's data, a `call` with `{answered, reason, call}`: `reason` is the call's end reason,

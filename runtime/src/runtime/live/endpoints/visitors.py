@@ -67,8 +67,16 @@ async def dial_out(
 async def text_out(
     slug: KnownAgent, body: TextRequest, actor: TalkKey, live: TheLive, threads: TheWhatsappThreads, session: Session
 ) -> TextResponse:
-    """Send a contact one SMS as the agent, after its guards: the conversation it was said on."""
-    asked = texting.Text(to=body.to, text=body.text, shown=body.from_, consent=_consent_of(body.consent))
+    """Send a contact one SMS or email as the agent, after its guards: the conversation it was said on."""
+    asked = texting.Text(
+        to=body.to,
+        text=body.text,
+        shown=body.from_,
+        consent=_consent_of(body.consent),
+        subject=body.subject,
+        metadata=body.metadata,
+        instruction=body.instruction,
+    )
     texted = await texting.text_as_agent(session, live, threads, actor, slug, asked, now())
     answer = {"call": texted.call, "agent": slug, "to": texted.to, "from": texted.shown, "env": actor.env}
     return TextResponse.model_validate(answer)

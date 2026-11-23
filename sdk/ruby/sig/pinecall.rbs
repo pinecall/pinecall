@@ -550,10 +550,19 @@ module Pinecall
       attr_reader message: String?
     end
 
+    class Texted
+      attr_reader sent: bool
+      attr_reader call: String?
+      attr_reader from: String?
+      attr_reader refused: String?
+      attr_reader message: String?
+    end
+
     class Step
       def sleep: (String) -> nil
       def sleep_until: (Time | String, ?before: String?) -> nil
       def call: (String, Class, ?state: Hash[Symbol, untyped]?, ?metadata: Hash[Symbol, untyped]?, ?greeting: String?, ?instruction: String?, ?from: String?) -> Called
+      def text: (String, Class, ?String?, ?from: String?, ?subject: String?, ?metadata: Hash[Symbol, untyped]?, ?instruction: String?) -> Texted
       def wait_for: (String, ?match: Hash[Symbol, untyped]?, ?within: String?) -> Hash[Symbol, untyped]?
       def run: [T] () { () -> T } -> T
       def emit: (String, ?Hash[Symbol, untyped]) -> nil

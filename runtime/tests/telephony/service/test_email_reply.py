@@ -1,4 +1,4 @@
-"""An agent's reply by email: under the subject it answers, threaded under that message, set in the layout."""
+"""An agent's email: the first of a thread it opens, and a reply under the subject and the message it answers."""
 
 from runtime.enums import Channel
 from runtime.telephony.service import email_reply
@@ -57,3 +57,25 @@ def test_an_email_with_no_subject_is_answered_under_one_of_ours() -> None:
     """The subject the reply's says when the email had none."""
     assert email_reply.compose_reply(ACCOUNT, THE_PLAIN_ONE, answered(None), "Hola").subject == "Re: Your message"
     assert email_reply.reply_subject("AW: Termin") == "AW: Termin"
+
+
+def test_the_first_email_of_a_thread_the_agent_opens_goes_under_the_threads_own_id_and_answers_nothing() -> None:
+    """The thread's subject and id; no In-Reply-To or References; `auto-generated`, which no autoresponder answers."""
+    ours = email_reply.new_message_id(ACCOUNT.address)
+    to = Inbound(
+        "help@acme.example",
+        "",
+        "ana@example.org",
+        None,
+        ours,
+        "text",
+        None,
+        channel=Channel.email,
+        subject="Tu turno",
+        thread=ours,
+    )
+    email = email_reply.compose_first(THE_PLAIN_ONE, to, "Ana, tu turno es **mañana**.")
+    assert (email.to, email.subject, email.text) == ("ana@example.org", "Tu turno", "Ana, tu turno es mañana.")
+    assert email.headers == {"Message-ID": ours, "Auto-Submitted": "auto-generated"}
+    assert ours.endswith("@acme.example>")
+    assert email.html is not None and "<strong>mañana</strong>" in email.html

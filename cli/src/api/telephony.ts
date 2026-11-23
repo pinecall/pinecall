@@ -256,11 +256,17 @@ export async function dial(gw: GatewayClient, slug: string, body: DialBody): Pro
   return { call: placed.call, agent: placed.agent, to: placed.to, from: placed.from, env: placed.env };
 }
 
-/** What a text the agent sends first takes: the contact, the words, the number they leave from. */
+/** What a text the agent sends first takes: the contact (a number, or an address for an email), the words, where they leave from. */
 export interface TextBody {
   to: string;
-  text: string;
+  /** An email's may be left out: the agent writes it. */
+  text?: string | undefined;
   from?: string | undefined;
+  /** An email's, and required for one. */
+  subject?: string | undefined;
+  /** A dial's: what the call.started carries, and what the conversation is for. */
+  metadata?: Record<string, unknown> | undefined;
+  instruction?: string | undefined;
 }
 
 /** A text said on its conversation: the call it is, and the number it left from. */
@@ -272,7 +278,7 @@ export interface Texted {
   env: Env;
 }
 
-/** `POST /v1/agents/{slug}/text`: the agent sends a contact one SMS first, past the org's dial guards. */
+/** `POST /v1/agents/{slug}/text`: the agent sends a contact one SMS or email first, past the org's dial guards. */
 export async function text(gw: GatewayClient, slug: string, body: TextBody): Promise<Texted> {
   return gw.post<Texted>(`/v1/agents/${seg(slug)}/text`, body);
 }

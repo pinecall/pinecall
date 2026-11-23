@@ -190,7 +190,7 @@ media is dropped. Letting the SMS route go
 (`DELETE /v1/numbers/{number}?channel=sms`) empties the number's `SmsUrl` at Twilio when it is
 this deployment's; a post for a number nobody routed is answered `200` and dropped.
 
-**The agent writes first.** `POST /v1/agents/{slug}/text {to, text, from?, consent?}` (`talk`) sends the
+**The agent writes first.** `POST /v1/agents/{slug}/text {to, text, from?, consent?, metadata?, instruction?}` (`talk`) sends the
 contact one SMS as the agent: `202 {call, agent, to, from, env}`, the conversation it was said on. `from`
 is one of the numbers the agent answers SMS at in the key's environment, the first unsaid; `text` is
 1600 characters at most, sent as several messages when it is long. A contact whose conversation has
@@ -204,7 +204,10 @@ carries. Nobody holding the agent is `409`: what they answer would reach no app.
 on the call (`supervisor.verb`, by whoever holds the key), logged as the agent's turn and sent by the
 conversation's own tap, so a refusal of Twilio's is the `error` a refused reply is. The new call is
 `outbound`, carries on the contact's newest call with the agent as an inbound one does, and greets
-nobody: the words given are its opening.
+nobody: the words given are its opening. `metadata` and `instruction` are a dial's, carried on the
+call's `call.started`; `text` is required for a number, and `subject` refused. A `to` that is an
+address (it holds an `@`) is an email, under a `subject`, its words given or written by the agent:
+[email.md](email.md), "The agent writes first".
 
 **A contact who stops.** A text that is, whole, one of `STOP`, `STOPALL`, `UNSUBSCRIBE`, `CANCEL`,
 `END`, `QUIT`, `REVOKE`, `OPTOUT` (case, accents and punctuation aside), or a word the org added

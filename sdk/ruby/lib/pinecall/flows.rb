@@ -120,12 +120,15 @@ module Pinecall
                    message: said[:message])
       end
 
-      # Have an agent send a contact one SMS first, from a number it answers SMS at.
-      def text(to, agent, words, from: nil)
+      # Have an agent write to a contact first: one SMS to a number, from a number it answers SMS at, or
+      # the first email of a thread to an address, under `subject`; an email's `words` may be left to
+      # the agent, which writes it on `instruction`.
+      def text(to, agent, words = nil, from: nil, subject: nil, metadata: nil, instruction: nil)
         slug = @slug_of.call(agent)
         raise DeclarationRefused, "#{@flow.name}: #{agent} is no agent this process serves" if slug.nil?
 
-        said = waited("text", { agent: slug, to:, text: words, from: }.compact) || {}
+        asked = { agent: slug, to:, text: words, from:, subject:, metadata:, instruction: }.compact
+        said = waited("text", asked) || {}
         Texted.new(sent: said[:sent] == true, call: said[:call], from: said[:from], refused: said[:refused],
                    message: said[:message])
       end

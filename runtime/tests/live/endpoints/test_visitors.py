@@ -1,25 +1,34 @@
-"""A page's tokens: seated with the attributes it asked for and its contact, and reading its log as itself."""
+"""A page's tokens, and the agent writing first: an SMS, an email and the thread its contact's reply continues."""
 
 import asyncio
 import json
 import os
 import secrets
 import time
+from dataclasses import dataclass, field
 
 import jwt
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from websockets.asyncio.client import ClientConnection
 
 from runtime.compliance.service import dial_guards
 from runtime.compliance.service.dial_guards import Guards
 from runtime.enums import Channel, Env
 from runtime.kit.crypto import Vault
 from runtime.kit.text import JsonObject
+from runtime.live.service.whatsapp import Threads
+from runtime.mail import service as mail
+from runtime.telephony import service as telephony
 from runtime.telephony.repository import RouteRepository, RouteToWrite
 from runtime.telephony.service import accounts
+from runtime.telephony.service.email_account import EmailAccount
 from runtime.telephony.service.twilio_carrier import TwilioCarrier
 from runtime.wire.dispatch import Dispatch
-from tests.conftest import Gateway, Tenant, holding, needs_the_services
+from tests.conftest import Gateway, Tenant, holding, needs_the_services, received
+from tests.fakes import acme
 from tests.fakes.twilio import Twilio
+from tests.telephony.service.test_email_message import an_email
 
 
 def claims_of(token: str) -> JsonObject:
@@ -117,3 +126,145 @@ async def test_an_agent_writes_first_on_a_conversation_that_greets_nobody_and_it
         assert again.status_code == 202 and again.json()["call"] == texted["call"], again.text
         other = await gateway.http.post(door, json={**asked, "from": "+15550000000"}, headers=tenant.person)
         assert other.status_code == 400 and "answers SMS at" in other.text
+
+
+# ── the agent writes the first email ──
+
+
+@dataclass
+class Sent:
+    """Every email the agents sent through the tenant's mailbox, in the order they left."""
+
+    emails: list[mail.Email] = field(default_factory=list[mail.Email])
+
+    async def wait_for(self, count: int, within_s: float = 30.0) -> list[mail.Email]:
+        """The emails once there are this many: the first answer waits for an app that never opens its call."""
+        deadline = time.monotonic() + within_s
+        while len(self.emails) < count:
+            assert time.monotonic() < deadline, f"{len(self.emails)} emails left, not {count}"
+            await asyncio.sleep(0.05)
+        return self.emails
+
+
+@pytest.fixture
+def sent(monkeypatch: pytest.MonkeyPatch) -> Sent:
+    """The mailbox's SMTP server, in the test's hands: what it was handed, never refused."""
+    taken = Sent()
+
+    async def send_email(account: telephony.EmailAccount, email: mail.Email) -> None:
+        taken.emails.append(email)
+
+    monkeypatch.setattr(telephony, "send_email", send_email)
+    return taken
+
+
+async def a_mailbox(sessions: async_sessionmaker[AsyncSession], tenant: Tenant, agent: str) -> str:
+    """A mailbox of the tenant's whose address answers email for the agent in the sandbox; its address."""
+    address = f"help-{secrets.token_hex(3)}@acme.example"
+    account = EmailAccount(
+        org=tenant.org, address=address, password="p", imap_host="mail.acme.example", smtp_host="mail.acme.example"
+    )
+    route = RouteToWrite(
+        org=tenant.org, number=address, agent=agent, channel=Channel.email, env=Env.sandbox, account=address
+    )
+    async with sessions.begin() as session:
+        await accounts.put_carrier(session, Vault(os.environ["PINECALL_VAULT_KEY"]), account)
+        await RouteRepository(session).put(route)
+        await dial_guards.put_guards(session, tenant.org, Guards(dial_anywhere=True))
+    return address
+
+
+async def configure(app: ClientConnection, agent: str) -> None:
+    """The agent greets every call with fixed words, and thinks with acme."""
+    declared = {"config": {"greeting": {"say": GREETING}, "llm": {"provider": acme.ACME, "model": acme.MODEL}}}
+    await app.send(json.dumps({"type": "agent.configure", "agent": agent, "call": None, "data": declared}))
+    await received(app, "agent.configured")
+
+
+GREETING = "Buenas, Brightside Dental."
+
+
+@needs_the_services
+async def test_the_agents_first_email_opens_a_thread_its_contacts_reply_continues_on_the_same_call(
+    gateway: Gateway, tenant: Tenant, agent: str, sessions: async_sessionmaker[AsyncSession], sent: Sent
+) -> None:
+    """Sent from the routed address under our own id; the reply names it, and the agent answers it on that call."""
+    async with holding(gateway, tenant, agent) as app:
+        await configure(app, agent)
+        address = await a_mailbox(sessions, tenant, agent)
+        door = f"/v1/agents/{agent}/text"
+        asked = {"to": "Ana@Example.org", "subject": "Tu turno", "text": "Ana, tu turno es mañana a las 9:30."}
+        answer = await gateway.http.post(door, json=asked, headers=tenant.person)
+        assert answer.status_code == 202, answer.text
+        texted = answer.json()
+        assert (texted["from"], texted["to"]) == (address, "ana@example.org")
+        (first,) = await sent.wait_for(1)
+        ours = first.headers["Message-ID"]
+        assert (first.to, first.subject, first.text) == ("ana@example.org", "Tu turno", asked["text"])
+        assert ours.endswith("@acme.example>") and "In-Reply-To" not in first.headers
+        assert first.headers["Auto-Submitted"] == "auto-generated", "it answers nothing (RFC 3834 §5)"
+        entries = await entries_until(gateway, tenant, texted["call"], "turn.agent")
+        started = next(entry["data"] for entry in entries if entry["type"] == "call.started")
+        assert (started["channel"], started["direction"]) == ("email", "outbound")
+        assert started["metadata"] == {"email_thread": ours, "subject": "Tu turno"}
+        headers = {"Message-ID": "<r1@example.org>", "In-Reply-To": ours, "References": ours, "Subject": "Re: Tu turno"}
+        reply = telephony.read_email(an_email("¿Puedo a las 10?", To=address, **headers), address, "<f@x>")
+        assert reply is not None and reply.thread == ours
+        threads: Threads = gateway.state["whatsapp_threads"]
+        assert await threads.receive(reply)
+        answered = (await sent.wait_for(2))[1]
+        assert (answered.subject, answered.headers["In-Reply-To"]) == ("Re: Tu turno", "<r1@example.org>")
+        assert answered.headers["References"] == f"{ours} <r1@example.org>"
+        assert answered.text == "acme heard: ¿Puedo a las 10?"
+        entries = await entries_until(gateway, tenant, texted["call"], "turn.user")
+        said = [entry["data"]["text"] for entry in entries if entry["type"] == "turn.agent"]
+        assert said == [asked["text"], "acme heard: ¿Puedo a las 10?"], "the reply is answered on the same call"
+
+
+@needs_the_services
+async def test_an_email_with_no_words_given_is_written_by_the_agent_on_what_it_is_for(
+    gateway: Gateway, tenant: Tenant, agent: str, sessions: async_sessionmaker[AsyncSession], sent: Sent
+) -> None:
+    """As a dialled call with no greeting opens: the model writes, on the instruction, with the metadata on the call."""
+    async with holding(gateway, tenant, agent) as app:
+        await configure(app, agent)
+        await a_mailbox(sessions, tenant, agent)
+        door = f"/v1/agents/{agent}/text"
+        aviso = {"aviso": {"id": 7, "barrio": "Pocitos"}}
+        asked = {"to": "ana@example.org", "subject": "Un aviso", "metadata": aviso, "instruction": "Contale del aviso."}
+        answer = await gateway.http.post(door, json=asked, headers=tenant.person)
+        assert answer.status_code == 202, answer.text
+        (first,) = await sent.wait_for(1)
+        assert first.subject == "Un aviso" and first.text.startswith("acme heard:"), (
+            "the model wrote it, not the greeting"
+        )
+        entries = await entries_until(gateway, tenant, answer.json()["call"], "turn.agent")
+        started = next(entry["data"] for entry in entries if entry["type"] == "call.started")
+        metadata = started["metadata"]
+        assert {**aviso, "instruction": "Contale del aviso.", "subject": "Un aviso"}.items() <= metadata.items()
+        assert metadata["email_thread"] == first.headers["Message-ID"]
+        refused = await gateway.http.post(door, json={**asked, "subject": None}, headers=tenant.person)
+        assert refused.status_code == 400 and "needs a `subject`" in refused.text
+        no_words = await gateway.http.post(door, json={"to": "+59899000001"}, headers=tenant.person)
+        assert no_words.status_code == 400 and "an SMS needs its `text`" in no_words.text
+
+
+# An email the contact wrote is answered by one email: the class's greeting went out first, alone, and
+# the answer after it (2026-11-23, every agent with a greeting answered every first email twice).
+@needs_the_services
+async def test_an_email_the_contact_wrote_is_answered_by_one_email_and_nothing_greets_before_it(
+    gateway: Gateway, tenant: Tenant, agent: str, sessions: async_sessionmaker[AsyncSession], sent: Sent
+) -> None:
+    async with holding(gateway, tenant, agent) as app:
+        await configure(app, agent)
+        address = await a_mailbox(sessions, tenant, agent)
+        written = telephony.read_email(
+            an_email(To=address, **{"Message-ID": f"<{secrets.token_hex(4)}@example.org>"}), address, "<f@x>"
+        )
+        assert written is not None
+        threads: Threads = gateway.state["whatsapp_threads"]
+        assert await threads.receive(written)
+        (answer,) = await sent.wait_for(1)
+        assert answer.text == "acme heard: Hola, ¿abren el sábado?", "the first email out is the answer"
+        await asyncio.sleep(1.0)
+        assert [email.text for email in sent.emails] == [answer.text], "and the only one"

@@ -238,18 +238,21 @@ export type DialInput = z.infer<typeof DialInput>;
 
 const WORDS = { error: "a text is 1 to 1600 characters: the words the contact reads" };
 
-/** What `text` takes: the agent, the contact, the words, and the number they leave from. */
+/** What `text` takes: the agent, the contact (a number, or an address), the words, where they leave from; an email's subject; a dial's metadata and instruction. */
 export const TextInput = z.object({
   agent: z.string().min(1),
   to: z.string().min(1),
-  text: z.string(WORDS).min(1, WORDS).max(1600, WORDS),
+  text: z.string(WORDS).min(1, WORDS).max(1600, WORDS).optional(),
   from: z.string().min(1).optional(),
+  subject: z.string().min(1).max(200).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  instruction: z.string().min(1).optional(),
 });
 export type TextInput = z.infer<typeof TextInput>;
 
-/** Have the agent send a contact one SMS first: the conversation it was said on. */
+/** Have the agent send a contact one SMS, or the first email of a thread: the conversation it was said on. */
 export async function textOut(ctx: Context, input: TextInput): Promise<api.Texted> {
-  return api.text(ctx.gateway(), input.agent, { to: input.to, text: input.text, from: input.from });
+  return api.text(ctx.gateway(), input.agent, { to: input.to, text: input.text, from: input.from, subject: input.subject, metadata: input.metadata, instruction: input.instruction });
 }
 
 /** Have the agent call a number: the call it became, before anything rings. */

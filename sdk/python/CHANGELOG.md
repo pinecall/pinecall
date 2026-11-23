@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **`step.text` writes the first email of a thread** to an address: `step.text("ana@example.org", Reminder, subject="Your visit", instruction="Remind Ana of her cleaning.")`, its words given or left to the agent; `metadata` and `instruction` are `step.call`'s, for an SMS too.
+
 ## 0.11.52 — the callers an agent is tested with live in its test folder, beside its goldens; one Calls page lists every conversation (2026-11-19)
 
 - **An agent's test callers live in `agents/<slug>/test/personas.py`, beside its goldens.** Every `own_persona(…)` at the file's top level is the agent's own, whatever its name, and `ON = ["in-a-hurry", …]` names Pinecall's that are on; the serve entry loads the file with the class. `personas = personas(…)` on the class still works where there is no such file, and `pinecall start` says once that their place is the file; a class with both is refused. `judges` stay on the class.

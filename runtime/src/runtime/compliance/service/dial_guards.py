@@ -17,9 +17,9 @@ from runtime.compliance.repository.dials import DialPolicyRepository, DialReposi
 from runtime.compliance.service import consents, policy
 from runtime.compliance.service.country_codes import CALLING_CODES, NEVER_DIALLED, SHORTEST_NATIONAL
 from runtime.compliance.service.policy import Hours
-from runtime.enums import ConsentKind, Env
+from runtime.enums import Channel, ConsentKind, Env
 from runtime.exceptions import Forbidden, TooManyRequests, ValidationError
-from runtime.kit.text import parse_e164
+from runtime.kit.text import parse_e164, parse_email
 from runtime.kit.time import A_MINUTE_S, now
 from runtime.scoping import box_wide
 
@@ -95,6 +95,10 @@ class DialAsk:
     own_phone: bool = False
     # The consent the call runs on, as the dial carried it; written down before anything rings.
     consent: Consent | None = None
+    # What the contact is reached on: a number on every channel but `email`, an address on that one,
+    # which names no zone of its own and is held to the hours in the agent's (`zone`), when it has one.
+    channel: Channel = Channel.phone
+    zone: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,8 +112,10 @@ class Rules:
     consent_required: bool = False
 
 
-def destination_of(number: str) -> str:
-    """The number a dial may reach, or ValidationError saying why not."""
+def destination_of(number: str, channel: Channel = Channel.phone) -> str:
+    """The number (on the channel `email`, the address) a dial may reach, or ValidationError saying why not."""
+    if channel.is_by_email:
+        return parse_email(number)
     e164 = parse_e164(number)
     digits = e164.removeprefix("+")
     code = next((digits[:length] for length in (3, 2, 1) if digits[:length] in CALLING_CODES), None)
@@ -237,7 +243,7 @@ async def forget_dials(session: AsyncSession, before: datetime) -> int:
 
 async def _check_shape(sessions: async_sessionmaker[AsyncSession], dial: DialAsk) -> str:
     try:
-        return destination_of(dial.to)
+        return destination_of(dial.to, dial.channel)
     except ValidationError as malformed:
         await _refuse(sessions, dial, SHAPE)
         raise ValidationError(f"{malformed} ({SHAPE})") from None
@@ -339,12 +345,10 @@ async def _keep_consent(
 async def _check_hours(
     sessions: async_sessionmaker[AsyncSession], dial: DialAsk, destination: str, hours: Hours
 ) -> None:
-    zones = zones_of(destination)
+    zones, unplaced = _zones_for(dial, destination)
     if not zones:
         await _refuse(sessions, dial, QUIET_HOURS)
-        raise Forbidden(
-            f"{destination} has no zone this box can place it in, so its hours cannot be kept ({QUIET_HOURS})"
-        )
+        raise Forbidden(f"{unplaced}, so its hours cannot be kept ({QUIET_HOURS})")
     if not is_within(zones, dial.at, hours):
         await _refuse(sessions, dial, QUIET_HOURS)
         window = f"{hours.from_}:00 to {hours.until}:00"
@@ -353,6 +357,15 @@ async def _check_hours(
             f"{destination} is outside the hours it may be rung ({window}) in {named} ({QUIET_HOURS}); "
             "the sandbox and your own phone are not held to them"
         )
+
+
+# A number's zones are where its prefix is; an address says none, and is held to its agent's.
+def _zones_for(dial: DialAsk, destination: str) -> tuple[tuple[str, ...], str]:
+    """The zones the contact's hours are kept in, and what is said when there are none."""
+    if dial.channel.is_by_email:
+        unplaced = f"{destination} is an address, held to its agent's own `timezone`, and agent {dial.agent} sets none"
+        return () if dial.zone is None else (dial.zone,), unplaced
+    return zones_of(destination), f"{destination} has no zone this box can place it in"
 
 
 # Under the org's lock, held by the request's transaction until it ends: the counts and the row are one

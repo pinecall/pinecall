@@ -1,26 +1,11 @@
-"""One job, one call: the opening a dialled call brings, and a call no session could be built for, ended at once."""
+"""One job, one call: a call no session could be built for, ended at once."""
 
-from runtime.agents.declaration import Declaration, Greeting
 from runtime.calls.log.store import Store
 from runtime.exceptions import ValidationError
 from runtime.jobs.service.client import GatewayClient
-from runtime.jobs.service.job import NOT_BUILT, SESSION_FAILED, fail_call, open_as_dialled
-from runtime.wire.dispatch import Dispatch
+from runtime.jobs.service.job import NOT_BUILT, SESSION_FAILED, fail_call
 from tests.conftest import Tenant, needs_the_services
 from tests.jobs.factories import opened
-
-
-def test_a_dialled_call_opens_on_its_own_words_or_on_what_it_is_for_and_any_other_on_the_agents() -> None:
-    desk = Declaration(slug="desk", greeting=Greeting(say="Brightside Dental."))
-    assert open_as_dialled(desk, Dispatch(greeting="Hi Ana, it is Brightside.")).greeting == Greeting(
-        say="Hi Ana, it is Brightside."
-    )
-    assert open_as_dialled(desk, Dispatch(instruction="Remind her of her visit.")).greeting == Greeting(
-        reply="Remind her of her visit."
-    )
-    both = Dispatch(greeting="Hi Ana.", instruction="Remind her of her visit.")
-    assert open_as_dialled(desk, both).greeting == Greeting(say="Hi Ana.")
-    assert open_as_dialled(desk, Dispatch()) is desk
 
 
 # A worker whose session could not be built left the call ringing for the reaper's ten minutes, sealed

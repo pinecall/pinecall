@@ -4,6 +4,13 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+- **`pinecall text` writes the first email of a thread** when the contact is an address: under `--subject`, from an
+  address the agent answers email at, its words given or, left out, written by the agent on `--instruction`; the
+  contact's reply lands on the same conversation. `--metadata` and `--instruction` are `dial`'s, for an SMS too. The
+  MCP tool `text` takes `subject`, `metadata` and `instruction` the same way.
+
 ## 0.11.52 — the callers an agent is tested with live in its test folder, beside its goldens; one Calls page lists every conversation (2026-11-19)
 
 - **The callers an agent is tested with live in `agents/<agent>/test/personas.ts`** (`.py`, `.rb`), beside its

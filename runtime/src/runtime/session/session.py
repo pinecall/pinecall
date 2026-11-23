@@ -164,7 +164,7 @@ class Session:
         if notice is not None:
             self.live.say(notice, allow_interruptions=False)
         # A call that carries another on opens in the middle of the conversation: no greeting.
-        if call.carried is None:
+        if call.greets:
             self._greet()
         await self.line.open()
 

@@ -1,7 +1,6 @@
 """One job, one call: what it runs on, spoken or typed, the commands it follows, and its end."""
 
 import asyncio
-import dataclasses
 import logging
 import time
 from collections.abc import Callable
@@ -13,7 +12,7 @@ from livekit import api, rtc
 from livekit.agents import JobContext, llm
 from livekit.agents.voice.background_audio import BackgroundAudioPlayer
 
-from runtime.agents.declaration import Declaration, Greeting, Idle
+from runtime.agents.declaration import Declaration, Idle, open_as_asked
 from runtime.calls.projection import Audience, project_entry, project_state
 from runtime.calls.recordings import Recordings, recording_path
 from runtime.enums import Channel, Stage
@@ -33,7 +32,7 @@ from runtime.providers.stage import Running
 from runtime.session import service as session
 from runtime.telephony import service as telephony
 from runtime.wire.base import Entry
-from runtime.wire.dispatch import Dialling, Dispatch
+from runtime.wire.dispatch import Dialling
 from runtime.wire.events import CallEnded, ErrorEvent
 from runtime.wire.room import CHAT, SCOPE_ATTRIBUTE, TALK
 from runtime.wire.state import State
@@ -247,7 +246,7 @@ async def answer_job(ctx: JobContext, warmed: Warmed) -> None:
         gateway.get_stages(route.agent, scope, call=call, test=test),
         gateway.get_hold(route.agent, scope),
     )
-    declaration = open_as_dialled(declaration, dispatch)
+    declaration = open_as_asked(declaration, dispatch.greeting, dispatch.instruction)
     link = await open_call(gateway, arrived.open_with(told.app), declaration)
     link.measures, link.lent = told.measures, stages.pipeline.lent
     # An outbound call is its far end answering: nothing is built for a leg that never came up.
@@ -364,17 +363,6 @@ async def set_up_typed(
         idle=None,
         silence_s=None,
     )
-
-
-# A dialled call may bring its own opening: its words over the agent's greeting, or, with none, what
-# the call is for, which the model opens on.
-def open_as_dialled(declaration: Declaration, dispatch: Dispatch) -> Declaration:
-    """The agent's declaration with the opening its dial asked for."""
-    if dispatch.greeting is not None:
-        return dataclasses.replace(declaration, greeting=Greeting(say=dispatch.greeting))
-    if dispatch.instruction is not None:
-        return dataclasses.replace(declaration, greeting=Greeting(reply=dispatch.instruction))
-    return declaration
 
 
 # A call no session runs ends at once, the failure on its log: a Soniox model handed as an argument

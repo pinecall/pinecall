@@ -3,6 +3,15 @@
 ## Unreleased
 
 - **Every email the box sends carries a `Date`** (RFC 5322); a relay used to add it, or not.
+- **The agent writes the first email.** `POST /v1/agents/{slug}/text` with `to` an address sends the first email
+  of a thread from an address the agent answers email at, under `subject` (required), its `text` said as an SMS's
+  is or, left out, written by the agent as a dialled call with no greeting opens (on `instruction`, else its
+  greeting, else its prompt). `metadata` and `instruction` are a dial's, on an SMS too. The email goes under a
+  `Message-ID` of the address's domain that names the thread, so the contact's reply lands on the same call;
+  `Auto-Submitted: auto-generated`. The guards are an SMS's, keyed on the address; its calling hours are kept in
+  the agent's `timezone`. A flow's `text` step takes the same fields.
+- **An email call the contact opened greets nobody.** The class's greeting went out as an email of its own before
+  the answer: every agent with a greeting answered every first email twice.
 - **A server waits for its workers to answer.** A worker or an overflow that died at start was taken as up,
   because none had a health check: a deploy said it had succeeded while no call could be answered (six minutes
   on 2026-11-23). Each now answers its health on a port of loopback (the overflow's is

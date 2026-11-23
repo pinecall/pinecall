@@ -360,13 +360,21 @@ async def _call(
     return None
 
 
-# A text is over as it is written, and what refused it is the step's answer as a refused dial is. The
-# words are said on the conversation before this transaction commits: a step whose request died in
-# that moment is sent again by the flow's next stretch, and the contact reads the words twice.
+# A text (an SMS, or an email's first) is over as it is written, and what refused it is the step's
+# answer as a refused dial is. The words are said on the conversation before this transaction commits:
+# a step whose request died in that moment is sent again by the flow's next stretch, and the contact
+# reads the words twice.
 async def _text(session: AsyncSession, side: LiveSide, app: App, asked: TextStep, asked_by: str) -> JsonObject:
     if side.holders.find_serving(app.scope, asked.agent) is None:
         return {"sent": False, "refused": NO_APP, "message": f"nobody holds {asked.agent}"}
-    wanted = live.Text(to=asked.to, text=asked.text, shown=asked.from_)
+    wanted = live.Text(
+        to=asked.to,
+        text=asked.text,
+        shown=asked.from_,
+        subject=asked.subject,
+        metadata=asked.metadata,
+        instruction=asked.instruction,
+    )
     by = Supervisor(id=asked_by, name=None)
     try:
         texted = await side.text(session, live.Texting(app.scope, asked.agent, wanted, by, now()))

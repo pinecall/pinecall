@@ -2319,20 +2319,29 @@ the guard.
 ## `text`
 
 ```
-pinecall text <agent> <number> <words> [--from <number>]
+pinecall text <agent> <number> <words> [--from <number>] [--metadata <json>] [--instruction <words>]
+pinecall text <agent> <address> [words] --subject <words> [--from <address>] [--metadata <json>] [--instruction <words>]
 ```
 
 ```console
 $ pinecall text reminder +14155550142 "Ana, your cleaning is tomorrow at 9:30. Reply here to change it."
 reminder wrote to +14155550142 from +14155550134 · production
   → pinecall sessions call_8c1d4e7a2b5f4c0e9a3d6b1f7e2c5a90 reads the conversation
+$ pinecall text reminder ana@example.org --subject "Your visit" --instruction "Remind Ana of her cleaning."
+reminder wrote to ana@example.org from front-desk@brightside.example · production
+  → pinecall sessions call_2f7a9c1e4b8d4a6f9e0c3b5d7a1e8f24 reads the conversation
 ```
 
 The agent sends the contact one SMS, from a number it answers SMS at (`--from` picks one of several),
-and what they answer reaches it on that conversation, with these words before it. Somebody must be
-holding the agent. A contact whose conversation is still open is written on it; any other passes the
-org's guards first, as a dial does, and one that is refused is sent nothing. A contact who texted
-STOP is written to by nobody (`pinecall data consent <number>` says who did).
+and what they answer reaches it on that conversation, with these words before it. To an address it
+writes the first email of a thread instead, from an address it answers email at, under `--subject`
+(required): the contact's reply lands on the same conversation. An email's words may be left out,
+and the agent writes the email itself, on `--instruction`, as a dialled call with no greeting opens.
+`--metadata` and `--instruction` are `dial`'s: what the conversation's `call.started` carries, and
+what it is for, which the agent reads throughout. Somebody must be holding the agent. A contact whose
+SMS conversation is still open is written on it; any other passes the org's guards first, as a dial
+does, and one that is refused is sent nothing. A contact who asked for no more messages is written
+to by nobody (`pinecall data consent <number|address>` says who did).
 
 ## `email`
 

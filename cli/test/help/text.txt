@@ -1,20 +1,34 @@
 $ pinecall text --help
-Usage: pinecall text [options] <agent> <number> <words>
+Usage: pinecall text [options] <agent> <to> [words]
 
-have an agent send a contact one SMS first
+have an agent send a contact one SMS, or the first email of a thread
 
 Arguments:
-  agent            the agent's slug
-  number           the contact's number, in +E.164
-  words            what the contact reads
+  agent                  the agent's slug
+  to                     the contact's number, in +E.164, or their email address
+  words                  what the contact reads; an email's may be left to the
+                         agent
 
 Options:
-  --from <number>  which of the agent's SMS numbers it leaves from
-  -h, --help       display help for command
+  --from <number>        which of the agent's SMS numbers, or email addresses,
+                         it leaves from
+  --subject <words>      an email's subject: the thread's, and every reply's
+                         after it
+  --metadata <json>      what the conversation's call.started carries
+  --instruction <words>  what this conversation is for: the agent reads it
+                         throughout
+  -h, --help             display help for command
 
 The agent sends the contact one SMS, from a number it answers SMS at, and what they answer reaches it:
 
   $ pinecall text reminder +14155550142 "Ana, your cleaning is tomorrow at 9:30. Reply here to change it."
+
+To an address, the agent writes the first email of a thread, from an address it answers email at,
+under --subject; the contact's reply lands on the same conversation. With no words, the agent writes
+the email itself, on --instruction, as a dialled call with no greeting opens:
+
+  $ pinecall text reminder ana@example.org "Your cleaning is tomorrow at 9:30." --subject "Your visit"
+  $ pinecall text reminder ana@example.org --subject "Your visit" --instruction "Remind Ana of her cleaning." --metadata '{"visit": "v-812"}'
 
 Somebody must be holding the agent. A contact whose conversation is still open is written on it.
 Any other passes the org's guards first, as a dial does (who may be reached, when, how often), and

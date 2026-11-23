@@ -127,16 +127,24 @@ class BySms:
             return None
 
 
-@dataclass(frozen=True, slots=True)
+# A thread the agent opened starts on its first email, under the id the thread is keyed by; what it
+# writes after that, until the contact answers, is a reply to that email (`to` names it).
+@dataclass(slots=True)
 class ByEmail:
-    """The org's own mailbox: the reply set as the org sets its emails, threaded under what it answers, sent by SMTP."""
+    """The org's own mailbox: each email set as the org sets its emails, threaded, sent by SMTP."""
 
     account: telephony.EmailAccount
     layout: telephony.Layout
+    # The agent writes the thread's first email: it has not gone yet.
+    opens: bool = False
 
     async def send(self, to: whatsapp.Inbound, text: str) -> None:
-        """Answer the email `to` from the address it was written to."""
-        await telephony.send_reply(self.account, telephony.compose_reply(self.account, self.layout, to, text))
+        """Answer the email `to` from the address it was written to, or write the thread's first."""
+        if self.opens:
+            await telephony.send_email(self.account, telephony.compose_first(self.layout, to, text))
+            self.opens = False
+            return
+        await telephony.send_email(self.account, telephony.compose_reply(self.account, self.layout, to, text))
 
     async def mark_read(self, message: whatsapp.Inbound, *, typing: bool) -> None:
         """Nothing: the inbox marked it read when it was read."""
@@ -145,13 +153,16 @@ class ByEmail:
         """None: an email's attachments are not read."""
 
 
-# The one place that tells the channels apart for a reply.
-async def way_to(session_: AsyncSession, live: LiveParts, route: RouteRow, inbound: whatsapp.Inbound) -> Reaches | None:
+# The one place that tells the channels apart for a reply. `opens`: the agent writes first, which only
+# an email's thread tells apart (its first message threads nothing).
+async def way_to(
+    session_: AsyncSession, live: LiveParts, route: RouteRow, inbound: whatsapp.Inbound, *, opens: bool = False
+) -> Reaches | None:
     """How the contact who wrote is answered; None when the box holds nothing to answer with."""
     if inbound.channel is Channel.email:
         mailbox = await telephony.email_account_of(session_, live.vault, route.org, route.account)
         layout = await telephony.layout_of(session_, route.org)
-        return None if mailbox is None else ByEmail(mailbox, layout)
+        return None if mailbox is None else ByEmail(mailbox, layout, opens=opens)
     if inbound.channel is Channel.sms:
         account = await telephony.sms_account_of(session_, live.vault, route)
         status_to = telephony.sms_status_url(live.vault, live.settings.base_url, inbound.number)

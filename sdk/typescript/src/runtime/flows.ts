@@ -40,6 +40,18 @@ export interface Opening {
   from?: string;
 }
 
+/** What a text a flow sends carries beside its words. An email (`to` an address) needs `subject`. */
+export interface TextOptions {
+  /** Which of the agent's SMS numbers, or email addresses, it leaves from. */
+  from?: string;
+  /** An email's subject: the thread's, and every reply's after it. */
+  subject?: string;
+  /** What the conversation's call.started carries, as a call's does. */
+  metadata?: Data;
+  /** What the conversation is for: the agent reads it throughout and, with no words, writes its email on it. */
+  instruction?: string;
+}
+
 /** The steps of a flow. Each is written to the run's journal: on the next run of the function it answers what it came to. */
 export interface Step {
   /** Sleep for a while: `"2h"`, `"30m"`, `"45s"`, `"1d"`. */
@@ -48,8 +60,10 @@ export interface Step {
   sleepUntil(at: Date | string, options?: { before?: string }): Promise<void>;
   /** Have an agent call a number, and wait for how the call ended. */
   call(to: string, agent: Ctor, opening?: Opening): Promise<Called>;
-  /** Have an agent send a contact one SMS first, from a number it answers SMS at: `step.text(visit.phone, Reminder, "Your cleaning is tomorrow at 9:30.")`. */
-  text(to: string, agent: Ctor, words: string, options?: { from?: string }): Promise<Texted>;
+  /** Have an agent send a contact one SMS first, or an address the first email of a thread: `step.text(visit.phone, Reminder, "Your cleaning is tomorrow at 9:30.")`. */
+  text(to: string, agent: Ctor, words: string, options?: TextOptions): Promise<Texted>;
+  /** Have an agent write an address the first email of a thread itself, on `instruction`: `step.text(visit.email, Reminder, { subject: "Your visit", instruction: "Remind Ana of her cleaning." })`. */
+  text(to: string, agent: Ctor, options: TextOptions & { subject: string }): Promise<Texted>;
   /** Wait for an event of the app whose data has what `match` names, for `within` at most; null when it gave up. */
   waitFor(event: string, options?: { match?: Data; within?: string }): Promise<Data | null>;
   /** Run something once: what it returned is kept, and read back instead of run again. */
@@ -183,10 +197,12 @@ export async function advance(door: AppDoor, of: Flow, run: KeptRun, slugOf: (ag
       return (await waited("call", { agent: slug, to, ...opening })) as Called;
     },
     // Over as it is written: what the gateway answered is read back, and the words are never sent twice.
-    text: async (to, agent, words, options = {}) => {
+    text: async (to: string, agent: Ctor, words?: string | TextOptions, more: TextOptions = {}) => {
       const slug = slugOf(agent);
       if (slug === undefined) throw new DeclarationRefused(`${of.name}: ${agent.name} is no agent this process serves`);
-      return (await waited("text", { agent: slug, to, text: words, ...(options.from === undefined ? {} : { from: options.from }) })) as Texted;
+      const [text, options] = typeof words === "string" ? [{ text: words }, more] : [{}, words ?? {}];
+      const given = Object.fromEntries(Object.entries(options).filter(([, value]) => value !== undefined)) as Data;
+      return (await waited("text", { agent: slug, to, ...text, ...given })) as Texted;
     },
     waitFor: async (event, options = {}) => {
       const until = options.within === undefined ? {} : { until: new Date(Date.now() + secondsOf(options.within) * 1000).toISOString() };

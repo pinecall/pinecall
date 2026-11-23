@@ -227,12 +227,16 @@ class Call:
         *,
         written: int = 0,
         awaits_app: bool = False,
+        greets: bool | None = None,
     ) -> None:
         """A call nobody has spoken on yet, every tool of its agent open; `awaits_app` when an app is to open it."""
         self.context = context
         self.declaration = declaration
         # The turns of the call it carries on (context.continues), which its model opens on.
         self.carried = carried
+        # Whether it opens on its greeting: unsaid, when it carries no conversation on. A written call
+        # the agent opens says (`live.written`): it greets on its own opening whatever it carries on.
+        self.greets = carried is None if greets is None else greets
         # Where its session records its audio: none for a written call or one the agent keeps none.
         self.recording = recording
         self.platform = platform

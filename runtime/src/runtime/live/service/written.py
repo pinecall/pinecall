@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from runtime.accounts import service as accounts
 from runtime.actor import Actor, Scope
 from runtime.agents import service as agents
-from runtime.agents.declaration import Declaration
+from runtime.agents.declaration import Declaration, open_itself
 from runtime.agents.settings import Versions
 from runtime.billing import service as billing
 from runtime.calls import service as calls
@@ -25,7 +25,7 @@ from runtime.kit.time import today_in
 from runtime.live.holders import NoApp, Registration
 from runtime.live.parts import LiveParts
 from runtime.live.served import Opening, Served
-from runtime.live.service import handoff, lookups, openings, seal
+from runtime.live.service import dialing, handoff, lookups, openings, seal
 from runtime.live.service.ending import Sealing
 from runtime.live.sockets import SocketId
 from runtime.providers import service as providers
@@ -54,6 +54,8 @@ class WrittenSetup:
     recalled: tuple[str, ...] | None = None
     # A test room's own voice and models, read again whenever the call takes its stages anew.
     test: Mapping[str, Any] | None = None
+    # The agent writes first and words its opening itself, as a dialled call with no greeting given does.
+    opens_itself: bool = False
 
 
 # What a session reaches outside itself when the gateway hosts it (`session.Platform`): the call's own
@@ -118,6 +120,7 @@ async def open_written(
     context: CallContext,
     *,
     test: Mapping[str, Any] | None = None,
+    opens_itself: bool = False,
 ) -> session.Session:
     """A new written call on the socket that holds the agent, admitted and unstarted.
 
@@ -130,7 +133,11 @@ async def open_written(
     resolved = await agents.resolve_for_call(session_, agent.whole, scope, catalog, picked, test)
     keys = await providers.keys_of(session_, live.vault, scope)
     model = providers.thinking_of(resolved.declaration, catalog, keys)
-    setup = WrittenSetup(resolved.declaration, resolved.versions, model, test=test)
+    declaration = resolved.declaration
+    if opens_itself:
+        instruction = context.metadata.get(dialing.INSTRUCTION)
+        declaration = open_itself(declaration, instruction if isinstance(instruction, str) else None)
+    setup = WrittenSetup(declaration, resolved.versions, model, test=test, opens_itself=opens_itself)
     return await open_written_as(session_, live, registration, context, setup)
 
 
@@ -145,10 +152,12 @@ async def open_written_as(
     opening = Opening(context, setup.declaration, scope, Opener.gateway, registration.owner)
     served = await openings.open_served(live, opening, setup.versions)
     carried = await _history_of(session_, live, context)
-    # The agent writes first: the words it was given open the conversation, and nothing greets before them.
-    if carried is None and context.direction is Direction.outbound:
-        carried = llm.ChatContext.empty()
-    return start_session(live, served, setup.model, setup.recalled, test=setup.test, carried=carried)
+    # The agent writes first: the words it was given open the conversation, and nothing greets before
+    # them; an opening it words itself is written whatever conversation it carries on. An email the
+    # contact wrote is answered by one email: a greeting before it was a second (2026-11-23).
+    outbound = context.direction is Direction.outbound
+    greets = setup.opens_itself if outbound else carried is None and not context.channel.is_by_email
+    return start_session(live, served, setup.model, setup.recalled, test=setup.test, carried=carried, greets=greets)
 
 
 # A contact who writes again is the same person: the conversation opens on what was said before, on
@@ -236,11 +245,14 @@ def start_session(
     written: int = 0,
     test: Mapping[str, Any] | None = None,
     carried: llm.ChatContext | None = None,
+    greets: bool | None = None,
 ) -> session.Session:
     """The session of a written call served here, built and said to run here; not yet started."""
     platform = GatewayPlatform(live, served, recalled)
     # Its app holds the socket it is served from, and opens it: the first request waits for that.
-    call = session.Call(served.context, served.declaration, platform, carried=carried, written=written, awaits_app=True)
+    call = session.Call(
+        served.context, served.declaration, platform, carried=carried, written=written, awaits_app=True, greets=greets
+    )
     running = session.open_written(
         call, model, lookup_budget_ms=live.settings.text_lookup_budget_ms, tool_steps=live.settings.max_tool_steps
     )
