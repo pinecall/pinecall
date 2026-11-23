@@ -24,9 +24,15 @@ def test_a_dump_replaces_the_database_with_every_writer_stopped(
     def no_ports(ports: object) -> None:
         return None
 
+    def built(image: str) -> bool:
+        return True
+
     monkeypatch.setattr(Compose, "run", run)
     monkeypatch.setattr(Compose, "feed", feed)
     monkeypatch.setattr(compose, "wait_for_ports", no_ports)
+    monkeypatch.setattr(compose, "is_built", built)
+    (tmp_path / "postgres").mkdir()
+    (tmp_path / compose.BUILT_FROM).write_text(compose.files_of_postgres(tmp_path))
     (tmp_path / "compose.yaml").write_text("services: {}\n")
     (tmp_path / "server.yaml").write_text("services: {}\n")
     dump = tmp_path / "production.dump"

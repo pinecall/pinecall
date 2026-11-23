@@ -18,7 +18,9 @@
   too; they are started again one after the other, the second once the first answers. `local up` writes the files
   a server's settings decide (the pages' domain, SIP's ports) and has Caddy read its own again, where a changed
   setting waited for the next `setup`; and each worker keeps one process warm (`PINECALL_IDLE_PROCESSES`), as a
-  cluster's does, where it kept one a core.
+  cluster's does, where it kept one a core. Postgres's image is built when its files changed and not on every
+  run: a build of the same files is a new image to Docker, and each `setup` and `local up` stopped the database
+  to start it on that.
 - **A server backs its database up.** It kept none: the database was one Docker volume. With
   `PINECALL_BACKUP_URL` (`s3://…`, `gs://…`) in its env file, Postgres archives every finished WAL segment there
   and a service beside it takes a base backup a night, 35 days kept, with Barman's tools for an object store, the

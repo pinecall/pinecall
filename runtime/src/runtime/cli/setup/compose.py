@@ -1,5 +1,6 @@
 """docker compose as `setup` and `local` run it: the files, the profiles, the environment, one way to fail."""
 
+import hashlib
 import os
 import socket
 import subprocess
@@ -116,6 +117,25 @@ def wait_for_ports(ports: Sequence[tuple[str, int]], within_s: float = PORTS_WIT
                 time.sleep(0.5)
 
 
+def files_of_postgres(where: Path) -> str:
+    """One word for every file Postgres's image is built from: it changes when any of them does."""
+    digest = hashlib.sha256()
+    for path in sorted((where / "postgres").iterdir()):
+        if path.is_file():
+            digest.update(path.name.encode() + b"\0" + path.read_bytes() + b"\0")
+    return digest.hexdigest()
+
+
+def is_built(image: str) -> bool:
+    """Whether Docker holds that image now."""
+    asked = subprocess.run(["docker", "image", "inspect", image], capture_output=True, check=False)
+    return asked.returncode == 0
+
+
+def _read(path: Path) -> str | None:
+    return path.read_text(encoding="utf-8") if path.is_file() else None
+
+
 # The services on loopback, as the settings name them: the name a person reads, the port, the service.
 SERVICES = ("postgres", "redis", "livekit")
 PORTS: dict[str, tuple[int, str]] = {
@@ -126,10 +146,24 @@ PORTS: dict[str, tuple[int, str]] = {
 COMPOSE_FAILED = "docker compose could not bring the services up:\n{output}"
 
 
+# The image compose.yaml names for Postgres, and where the files it was last built from are remembered.
+POSTGRES_IMAGE = "pinecall/postgres:17-pgvector0.8.6-pgtextsearch1.4.0"
+BUILT_FROM = ".postgres-built"
+
+
 # The env file's values are compose's own here as they are when a server is brought up: a service read
-# with other values is another service to compose, which would stop Postgres and start it again.
+# with other values is another service to compose, which would stop Postgres and start it again. And
+# Postgres's image is built when its files changed or it is not there, never on every run: a build of
+# the same files is a new image to Docker (its own record of the build is part of it), and compose
+# stops the database to start it on that image. Until 2026-11-23 every `setup` and `local up` did,
+# and each run cost a server three seconds of its database.
 def services_up(where: Path, services: Sequence[str], environment: Mapping[str, str]) -> None:
-    """The services' `docker compose up`, built, waited for, and each one's loopback port answering."""
-    up = ("--progress", "quiet", "up", "-d", "--build", "--wait", *services)
-    Compose((where / "compose.yaml",), environment=environment).run(*up, failed=COMPOSE_FAILED)
+    """The services' `docker compose up`, Postgres built when its files changed, each loopback port answering."""
+    compose = Compose((where / "compose.yaml",), environment=environment)
+    files = files_of_postgres(where)
+    remembered = where / BUILT_FROM
+    if "postgres" in services and not (is_built(POSTGRES_IMAGE) and _read(remembered) == files):
+        compose.run("--progress", "quiet", "build", "postgres", failed=COMPOSE_FAILED)
+        remembered.write_text(files, encoding="utf-8")
+    compose.run("--progress", "quiet", "up", "-d", "--wait", *services, failed=COMPOSE_FAILED)
     wait_for_ports([(name, port) for name, (port, service) in PORTS.items() if service in services])
