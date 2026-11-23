@@ -42,6 +42,7 @@ async def _open_place(settings: Settings) -> hosts.Hosts:
             image=settings.runner_image,
             runtime=settings.runner_runtime_class,
             network=settings.runner_network,
+            resolvers=settings.runner_home / "resolv.conf",
             cpus=hosts.as_cpus(settings.runner_app_cpu),
         )
     engine = hosts.Engine(

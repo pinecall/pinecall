@@ -2,8 +2,10 @@
 
 import asyncio
 import json
+import tempfile
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -67,8 +69,17 @@ class _Docker:
         return [words for words in self.commands if words[: len(start)] == list(start)]
 
 
-def _containers(docker: _Docker) -> Containers:
-    return Containers(image="registry/pinecall/app:1", runtime="gvisor", network="pinecall-apps", docker=docker)
+RESOLVERS_FILE = "resolv.conf"
+
+
+def _containers(docker: _Docker, home: Path | None = None) -> Containers:
+    return Containers(
+        image="registry/pinecall/app:1",
+        runtime="gvisor",
+        network="pinecall-apps",
+        resolvers=(home or Path(tempfile.mkdtemp())) / RESOLVERS_FILE,
+        docker=docker,
+    )
 
 
 def _launch(exits: tuple[float, ...] = ()) -> Launch:
@@ -132,7 +143,7 @@ async def test_a_release_is_installed_then_run_under_the_sandbox_with_no_root_an
 
 
 async def test_the_release_arrives_on_the_installs_input_and_no_folder_of_the_machine_is_mounted() -> None:
-    """The sources are the install's input, and every mount is a volume of the host's own."""
+    """The sources are the install's input; a mount is a volume of the host's own, or the runner's file of resolvers."""
     docker = _Docker()
     await _started(_containers(docker), {})
     at = next(index for index, words in enumerate(docker.commands) if words[0] == "run" and "-i" in words)
@@ -140,7 +151,9 @@ async def test_the_release_arrives_on_the_installs_input_and_no_folder_of_the_ma
     for words in docker.ran("run"):
         mounted = [words[index + 1] for index, word in enumerate(words) if word == "-v"]
         assert mounted
-        assert all(mount.startswith(f"{HOST}-") for mount in mounted)
+        assert all(
+            mount.startswith(f"{HOST}-") or mount.endswith(f"{RESOLVERS_FILE}:/etc/resolv.conf:ro") for mount in mounted
+        )
         assert "/var/run/docker.sock" not in " ".join(words)
 
 
@@ -150,7 +163,20 @@ async def test_the_app_reads_what_its_install_wrote_and_writes_none_of_it() -> N
     await _started(_containers(docker), {})
     app = next(words for words in docker.ran("run") if "-d" in words)
     mounted = [app[index + 1] for index, word in enumerate(app) if word == "-v"]
-    assert mounted == [f"{HOST}-app:/app:ro", f"{HOST}-cli:/opt/pinecall:ro"]
+    assert [mount for mount in mounted if mount.startswith(HOST)] == [
+        f"{HOST}-app:/app:ro",
+        f"{HOST}-cli:/opt/pinecall:ro",
+    ]
+
+
+async def test_names_are_asked_of_public_resolvers_alone_from_a_file_no_container_writes(tmp_path: Path) -> None:
+    """Both containers read the runner's file of resolvers, read-only, and Docker's own resolver is not asked."""
+    docker = _Docker()
+    await _started(_containers(docker, tmp_path), {})
+    assert (tmp_path / RESOLVERS_FILE).read_text() == "nameserver 1.1.1.1\nnameserver 8.8.8.8\n"
+    for words in (run for run in docker.ran("run") if "-i" in run or "-d" in run):
+        assert _has(words, "-v", f"{tmp_path / RESOLVERS_FILE}:/etc/resolv.conf:ro")
+        assert "--dns" not in words
 
 
 async def test_a_value_of_the_environment_is_never_on_the_command_line() -> None:

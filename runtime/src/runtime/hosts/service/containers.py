@@ -7,6 +7,7 @@ import time
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from runtime.exceptions import UpstreamError
@@ -96,6 +97,9 @@ class Containers:
     runtime: str
     # The network the apps are on: fenced from this machine, its neighbours and one another.
     network: str
+    # The public resolvers as a file of this runner's, read-only in every container: on a network
+    # of its own Docker answers names itself, at an address gVisor's network never reaches.
+    resolvers: Path
     cpus: str = CPUS
     docker: Docker = run_docker
     installing: dict[str, asyncio.Task[None]] = field(default_factory=dict[str, asyncio.Task[None]])
@@ -177,6 +181,7 @@ class Containers:
             raise UpstreamError(NO_SANDBOX.format(runtime=self.runtime))
         if (await self.docker(["network", "inspect", self.network], None, None)).code != 0:
             raise UpstreamError(NO_NETWORK.format(network=self.network))
+        await asyncio.to_thread(_write_resolvers, self.resolvers)
         self.is_checked = True
 
     async def _do(self, verb: str, arguments: Sequence[str]) -> None:
@@ -227,7 +232,7 @@ class Containers:
 
     # What every container of an org's code is run with, the same words a pod's lock-down says: the
     # sandbox, no root, no capability, a root filesystem it cannot write, a ceiling on its memory,
-    # its processors and its processes, the apps' own network and public resolvers.
+    # its processors and its processes, the apps' own network and public resolvers alone.
     def _fence(self, launch: Launch, stage: str, memory: str) -> list[str]:
         labels = {
             ENV_LABEL: launch.env,
@@ -241,7 +246,7 @@ class Containers:
             *("--runtime", self.runtime, "--user", f"{APP_USER}:{APP_USER}", "--read-only"),
             *("--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--pids-limit", str(PROCESSES)),
             *("--memory", memory, "--memory-swap", memory, "--cpus", self.cpus),
-            *("--network", self.network, *(word for resolver in RESOLVERS for word in ("--dns", resolver))),
+            *("--network", self.network, "-v", f"{self.resolvers}:/etc/resolv.conf:ro"),
             *("--hostname", launch.host[:63], "--restart", "no", "--log-opt", "max-size=5m", "--log-opt", "max-file=2"),
             *("--tmpfs", f"{SCRATCH}:rw,exec,size={SCRATCH_SIZE},uid={APP_USER},gid={APP_USER},mode=0700"),
             *(word for name, value in labels.items() for word in ("--label", f"{name}={value}")),
@@ -278,6 +283,13 @@ def container_of(host: str, found: Sequence[Mapping[str, Any]], *, installing: b
         started_at=started,
         exits=exits,
     )
+
+
+# Public resolvers, and nothing of this machine's own: no search domain, no resolver of its network.
+def _write_resolvers(named: Path) -> None:
+    named.parent.mkdir(parents=True, exist_ok=True)
+    named.write_text("".join(f"nameserver {resolver}\n" for resolver in RESOLVERS))
+    named.chmod(0o644)
 
 
 def _install_of(host: str) -> str:
