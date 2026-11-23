@@ -1,4 +1,4 @@
-"""This machine's containers as the runner drives them: a sandboxed container a host, for code that is not the owner's."""
+"""This machine's containers as the runner drives them: a sandboxed container a host, for code not the owner's."""
 
 import asyncio
 import json
