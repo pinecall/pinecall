@@ -85,8 +85,8 @@ Running. Ctrl-C stops it; `pinecall-runtime setup` starts it again.
 `setup` checks the name resolves here, puts Caddy in front on :80 and :443 with a certificate from
 Let's Encrypt it renews itself, starts LiveKit facing out (its media on :7881 tcp and :7882 udp, the
 machine's public address found by STUN, a key pair drawn for this machine), and runs the gateway and
-a worker for each environment in Docker, from this release of the package, so all of it comes back
-after a reboot. Each worker holds four calls (`PINECALL_MAX_JOBS=4`, the env file's), and each
+a worker for each environment in Docker (two gateways, so one answers while the other is started
+again), from this release of the package, so all of it comes back after a reboot. Each worker holds four calls (`PINECALL_MAX_JOBS=4`, the env file's), and each
 environment has an overflow beside it: the caller no worker has a seat for hears one sentence and
 is offered a call back, never silence. The night's work (`retention nightly`) runs there too.
 Open :80, :443, :7881/tcp and :7882/udp to the machine. The console's admin is the
@@ -125,17 +125,20 @@ $ pinecall-runtime setup --domain voice.example.com
 
 To update the server, upgrade the package and run the verb again: `uv tool upgrade pinecall-runtime
 && pinecall-runtime setup` (the name, the LiveKit, the phone and the image are kept; the schema
-migrates; the gateway and the workers restart on the new release). A worker told to stop takes no
-new call and ends when the last call it holds does, ten minutes at most, so a spoken call in flight
-is not cut by an update; the gateway is one process and is away for the seconds its restart takes,
-which a written call's socket does not outlive. A machine that ran `setup` alone becomes a server
-the first time `--domain` is given.
+migrates; the gateways and the workers start again on the new release). The name answers all
+through it: a server runs two gateways behind Caddy, as a cluster does, and they are started again
+one after the other, the second once the first answers (one gateway alone was away the half minute
+it takes to start: 58 s measured on four busy cores). A socket held by the gateway that restarts,
+a written call's or a held agent's, is dropped and opened again on the other. A worker told to stop
+takes no new call and ends when the last call it holds does, ten minutes at most, so a spoken call
+in flight is not cut by an update. A machine that ran `setup` alone becomes a server the first time
+`--domain` is given.
 
 **A server that carries production.** What a server is sized and built by are lines of its env file
 (`<dir>/env`), which `setup` writes once and never takes a line of yours out of (a file begun by hand
 before the first run is completed with what it lacks, each line of it kept); `local up` applies a
-change, and restarts every process that reads the file: the gateway for some seconds, each worker
-once the calls it holds have ended.
+change, and starts every process that reads the file again: the gateways one after the other, each
+worker once the calls it holds have ended.
 
 | what | how |
 |---|---|

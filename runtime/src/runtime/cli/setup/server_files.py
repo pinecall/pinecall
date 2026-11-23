@@ -16,10 +16,26 @@ RTP_PORTS_UNLESS_SAID = "10000-10019"
 # The operator's own sites stand beside the runtime's: setup writes this file whole on every run and
 # never a file of sites/.
 CADDYFILE = """{options}{name} {{
-{livekit}	reverse_proxy 127.0.0.1:8080
-}}
+{livekit}{gateways}}}
+
+# The gateways for what runs on this machine: the workers' knocks and LiveKit's events.
+http://127.0.0.1:8079 {{
+	bind 127.0.0.1
+{gateways}}}
 {pages}
 import sites/*.caddy
+"""
+# Either gateway, whichever is up: one that refuses a connection is passed over at once and tried
+# again within seconds, so a gateway starting again loses no request (a server's two are started
+# one after the other).
+GATEWAYS = """	reverse_proxy 127.0.0.1:8080 127.0.0.1:8081 {
+		lb_policy round_robin
+		lb_try_duration 30s
+		lb_try_interval 250ms
+		health_uri /.well-known/pinecall
+		health_interval 2s
+		fail_duration 5s
+	}
 """
 # An app's page is served at its own name under the pages' domain, by the gateway. No certificate
 # covers names nobody knows yet, so each is asked for on the first visit, once the gateway has said
@@ -27,7 +43,7 @@ import sites/*.caddy
 # a name.
 ON_DEMAND = """{
 	on_demand_tls {
-		ask http://127.0.0.1:8080/v1/pages/known
+		ask http://127.0.0.1:8079/v1/pages/known
 	}
 }
 
@@ -37,8 +53,7 @@ PAGES_SITE = """
 	tls {{
 		on_demand
 	}}
-	reverse_proxy 127.0.0.1:8080
-}}
+{gateways}}}
 """
 # The browser's LiveKit is reached under the name: /rtc is LiveKit's signal path.
 LIVEKIT_ROUTE = "\t@livekit path /rtc /rtc/*\n\treverse_proxy @livekit 127.0.0.1:7880\n"
@@ -57,7 +72,7 @@ keys:
 webhook:
   api_key: {key}
   urls:
-    - http://127.0.0.1:8080/v1/livekit/webhook
+    - http://127.0.0.1:8079/v1/livekit/webhook
 logging:
   level: info
 """
@@ -126,5 +141,6 @@ def caddyfile_of(server: Server, pages: str | None) -> str:
         options=ON_DEMAND if pages else "",
         name=server.name,
         livekit=route,
-        pages=PAGES_SITE.format(pages=pages) if pages else "",
+        gateways=GATEWAYS,
+        pages=PAGES_SITE.format(pages=pages, gateways=GATEWAYS) if pages else "",
     )

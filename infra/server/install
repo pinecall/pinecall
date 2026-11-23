@@ -36,6 +36,11 @@ password=$HOME/.pinecall-runtime/console.password
 if [ -s "$password" ]; then
   pinecall-runtime setup --image "$image" --password-stdin "$@" < "$password"
   unlink "$password"
+elif [ "$#" -eq 0 ]; then
+  # An update: the commit and nothing else. Which vendors and models an agent runs on by default is
+  # the console's by now, so it is left as it is (`--models none`); `setup` with no flag would work
+  # the defaults out again, and ask for the key of a vendor this server does not use.
+  exec pinecall-runtime setup --image "$image" --models none
 else
   exec pinecall-runtime setup --image "$image" "$@"
 fi

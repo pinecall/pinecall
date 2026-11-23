@@ -468,10 +468,11 @@ runtime whole in Docker on one machine (`pinecall-runtime setup --domain`,
 second, smaller machine that runs the hosted apps and nothing else, so an org's code never runs
 where the database and the vault's key are. It is the same package and the same image; nothing in
 the runtime knows which shape it runs in. What a server gives up is what a cluster is for: its seats
-are fixed (a caller past the last one hears the overflow's sentence, no node is added), an update
-restarts the one gateway for some seconds (a spoken call in flight ends by itself: a worker drains
-for ten minutes), and the apps are kept from the server but not from one another (processes of one
-machine, where a cluster gives each a gVisor pod).
+are fixed (a caller past the last one hears the overflow's sentence, no node is added), one machine
+is one place to fail (its two gateways are started again one after the other, so an update leaves
+the name answering, and a worker drains for ten minutes; a machine that stops takes everything with
+it until it is back), and the apps are kept from the server but not from one another (processes of
+one machine, where a cluster gives each a gVisor pod).
 
 | | cluster | server |
 |---|---|---|

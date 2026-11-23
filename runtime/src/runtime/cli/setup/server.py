@@ -172,22 +172,30 @@ def bring_up(
         *(["server-phone"] if server.phone else []),
         *(["server-backups"] if values.get(BACKUPS) else []),
     )
-    services = ["postgres", "redis", "caddy", "gateway", *RUNTIME_BESIDE_THE_GATEWAY]
+    services = ["postgres", "redis", "caddy", *GATEWAYS, *RUNTIME_BESIDE_THE_GATEWAY]
     services += [*(["livekit-server"] if server.livekit is None else []), *(["sip-server"] if server.phone else [])]
     services += ["postgres-backup"] if values.get(BACKUPS) else []
-    up = ("--progress", "quiet", "up", "-d", "--wait", "--remove-orphans", *services)
+    up = ("--progress", "quiet", "up", "-d", "--wait")
     running = Compose(files, profiles, environment)
-    running.run(*up, failed=UP_FAILED)
-    # Compose starts a service again when what it was made with changed, and a file it only mounts is
-    # not that. Caddy reads its own again with no connection dropped (the pages' name, a site of the
-    # operator's); LiveKit and SIP read theirs once, so one whose config changed is started again.
+    # In an order that leaves the name answering through an update. Caddy first: compose starts a
+    # service again when what it was made with changed, and a file it only mounts is not that, so
+    # Caddy is told to read its own again, with no connection dropped (the two gateways, the pages'
+    # name, a site of the operator's). Then one gateway, waited for until it answers while the other
+    # serves, then the other. Then everything else: a worker told to stop ends when its calls do.
+    running.run(*up, "--no-deps", "caddy", failed=UP_FAILED)
     running.run("exec", "-T", "caddy", "caddy", "reload", "--config", "/etc/caddy/Caddyfile", failed=UP_FAILED)
+    for gateway in GATEWAYS:
+        running.run(*up, "--no-deps", gateway, failed=UP_FAILED)
+    running.run(*up, "--remove-orphans", *services, failed=UP_FAILED)
+    # LiveKit and SIP read their configs once: one whose config changed under it is started again.
     if stale := [service for service in again if service in services]:
         running.run("--progress", "quiet", "restart", *stale, failed=UP_FAILED)
 
 
 # Every profile of the server's compose file, so each service it names exists for compose.
 EVERY_PROFILE = ("server", "server-livekit", "server-phone", "server-backups")
+# A server's two gateways, in the order an update starts them again.
+GATEWAYS = ("gateway", "gateway-b")
 # What runs on the runtime's image beside the gateway: each environment's worker and overflow, and the night.
 RUNTIME_BESIDE_THE_GATEWAY = (
     "worker-sandbox",

@@ -13,6 +13,26 @@ from runtime.exceptions import ValidationError
 from tests.cli.setup.test_server_files import written
 
 NAME = "voice.example.com"
+# The order that keeps the name answering through an update: Caddy and its file read again, one
+# gateway waited for while the other serves, the other, then everything else.
+THE_ROLL = ["up caddy", "reload caddy", "up gateway", "up gateway-b", "up everything"]
+
+
+def steps_of(ran: list[tuple[str, ...]]) -> list[str]:
+    """Each compose verb a run made, as the word that tells it from the others."""
+    steps: list[str] = []
+    for verb in ran:
+        if verb[0] == "exec":
+            steps.append("reload caddy")
+        elif verb[2] == "up":
+            steps.append(f"up {verb[-1]}" if "--no-deps" in verb else "up everything")
+        elif verb[2] == "restart":
+            steps.append(f"restart {verb[-1]}")
+        else:
+            steps.append(verb[2])
+    return steps
+
+
 THEIRS = server_.TheirLiveKit("wss://acme.livekit.cloud", "APIacme", "their-secret")
 
 
@@ -41,10 +61,10 @@ def test_a_registrys_image_is_run_as_it_is_and_never_built(tmp_path: Path, monke
 
     monkeypatch.setattr(Compose, "run", record)
     server_.bring_up(tmp_path, server, values, None)
-    assert [verb[2] for verb in ran] == ["rm", "pull", "up", "caddy"]
+    assert steps_of(ran) == ["rm", "pull", *THE_ROLL]
     ran.clear()
     server_.bring_up(tmp_path, server_.Server(NAME), values, None)
-    assert [verb[2] for verb in ran] == ["rm", "build", "up", "caddy"]
+    assert steps_of(ran) == ["rm", "build", *THE_ROLL]
 
 
 def test_a_server_answers_past_its_last_seat_and_runs_the_night(
@@ -58,7 +78,7 @@ def test_a_server_answers_past_its_last_seat_and_runs_the_night(
 
     monkeypatch.setattr(Compose, "run", record)
     server_.bring_up(tmp_path, server_.Server(NAME), {}, None, build=False)
-    started = ran[1]
+    started = ran[-1]
     for service in ("overflow-sandbox", "overflow-production", "retention", "worker-sandbox", "worker-production"):
         assert service in started
     written(tmp_path, server_.Server(NAME))
@@ -82,12 +102,12 @@ def test_a_place_for_the_backups_starts_the_nightly_beside_postgres(
 
     monkeypatch.setattr(Compose, "run", record)
     server_.bring_up(tmp_path, server_.Server(NAME), {server_.BACKUPS: "s3://backups/voice"}, None, build=False)
-    (_, removed), (profiles, up), _reload = ran
+    (_, removed), *_, (profiles, up) = ran
     assert "postgres-backup" not in removed
     assert "server-backups" in profiles and up[-1] == "postgres-backup"
     ran.clear()
     server_.bring_up(tmp_path, server_.Server(NAME), {}, None, build=False)
-    (_, removed), (profiles, up), _reload = ran
+    (_, removed), *_, (profiles, up) = ran
     assert removed[-1] == "postgres-backup" and "server-backups" not in profiles and "postgres-backup" not in up
     # Postgres hands every finished segment to the script that archives it, or says it is done.
     written(tmp_path, server_.Server(NAME))
@@ -128,7 +148,7 @@ def test_what_this_server_does_not_run_is_removed_with_every_profile_on(
 
     monkeypatch.setattr(Compose, "run", record)
     server_.bring_up(tmp_path, server_.Server(NAME), {}, None, build=False)
-    removed, up, _reload = ran
+    removed, *_, up = ran
     assert removed == (
         server_.EVERY_PROFILE,
         ("--progress", "quiet", "rm", "--stop", "--force", "livekit", "sip", "sip-server", "postgres-backup"),
@@ -154,9 +174,8 @@ def test_a_config_that_changed_is_read_again(tmp_path: Path, monkeypatch: pytest
     again = server_files.write_configs(tmp_path, server, env.set(**{server_files.RTP_PORTS: "10000-10199"}))
     assert again == ("sip-server",)
     server_.bring_up(tmp_path, server, values, None, build=False, again=again)
-    assert ran[-2][:6] == ("exec", "-T", "caddy", "caddy", "reload", "--config")
-    assert ran[-1] == ("--progress", "quiet", "restart", "sip-server")
+    assert steps_of(ran) == ["rm", *THE_ROLL, "restart sip-server"]
     # A service this server does not run is never started again for a file it left behind.
     ran.clear()
     server_.bring_up(tmp_path, server_.Server(NAME), values, None, build=False, again=again)
-    assert ran[-1][0] == "exec"
+    assert steps_of(ran) == ["rm", *THE_ROLL]

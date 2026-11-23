@@ -12,8 +12,9 @@ data "aws_ssm_parameter" "ubuntu" {
 locals {
   registry = "${data.aws_caller_identity.this.account_id}.dkr.ecr.${var.region}.amazonaws.com"
   # What a machine installs as it first starts, by its kind: the user everything runs as, Docker
-  # signed in to the registry as the machine's role, uv, and on the apps' machine Node, which an
-  # app's install and its process need.
+  # signed in to the registry as the machine's role, uv, the AWS command line (a machine reads the
+  # secrets it may read with it, as itself), and on the apps' machine Node, which an app's install
+  # and its process need.
   first_start = { for kind in ["server", "apps"] : kind => <<-EOT
     #!/bin/bash
     set -euo pipefail
@@ -26,6 +27,7 @@ locals {
     echo '{"credHelpers": {"${local.registry}": "ecr-login"}}' > /home/pinecall/.docker/config.json
     chown pinecall:pinecall /home/pinecall/.docker/config.json
     curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
+    snap install aws-cli --classic
     %{if kind == "apps"}
     curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
     apt-get install -y -qq nodejs

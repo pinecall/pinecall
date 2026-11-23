@@ -8,7 +8,7 @@ from runtime.cli.setup.env_file import EnvFile
 from runtime.exceptions import ValidationError
 
 # Every service that holds a connection to the database: stopped before its rows are replaced.
-WRITERS = ("gateway", *server.RUNTIME_BESIDE_THE_GATEWAY)
+WRITERS = (*server.GATEWAYS, *server.RUNTIME_BESIDE_THE_GATEWAY)
 # The schema emptied by its owner, who is the container's superuser here; the dump then makes its own
 # extensions (`CREATE EXTENSION IF NOT EXISTS`) and every table, as the role this machine connects as.
 EMPTY = ("psql", "-v", "ON_ERROR_STOP=1", "-U", "pinecall", "-d", "pinecall", "-c")

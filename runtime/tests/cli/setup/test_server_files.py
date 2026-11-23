@@ -26,10 +26,13 @@ def test_a_server_draws_its_own_livekit_pair_and_keeps_the_gateway_on_loopback(t
     assert "PINECALL_GATEWAY_LISTEN" not in values and "LIVEKIT_PUBLIC_URL" not in values
     config = (tmp_path / "livekit.server.yaml").read_text()
     assert f"pinecall: {values['LIVEKIT_API_SECRET']}" in config
-    assert "http://127.0.0.1:8080/v1/livekit/webhook" in config and "use_external_ip: true" in config
+    assert "http://127.0.0.1:8079/v1/livekit/webhook" in config and "use_external_ip: true" in config
     assert (tmp_path / "livekit.server.yaml").stat().st_mode & 0o077 == 0
     caddy = (tmp_path / "Caddyfile").read_text()
-    assert caddy.startswith(f"{NAME} {{") and "/rtc" in caddy and "reverse_proxy 127.0.0.1:8080" in caddy
+    assert caddy.startswith(f"{NAME} {{") and "/rtc" in caddy
+    # Either gateway, whichever is up, for the name and, on a port of loopback, for what runs here.
+    assert caddy.count("reverse_proxy 127.0.0.1:8080 127.0.0.1:8081 {") == 2
+    assert "http://127.0.0.1:8079 {\n\tbind 127.0.0.1\n" in caddy and "health_uri /.well-known/pinecall" in caddy
 
 
 def test_a_second_run_keeps_the_pair(tmp_path: Path) -> None:
@@ -81,6 +84,7 @@ def test_caddy_serves_the_operators_sites_and_the_apps_pages(tmp_path: Path) -> 
     values = env.set(PINECALL_PAGES_DOMAIN="app.example.com")
     server_files.write_files(tmp_path, server_.Server(NAME), values, None)
     caddy = (tmp_path / "Caddyfile").read_text()
-    assert caddy.startswith("{\n\ton_demand_tls {\n\t\task http://127.0.0.1:8080/v1/pages/known\n")
+    assert caddy.startswith("{\n\ton_demand_tls {\n\t\task http://127.0.0.1:8079/v1/pages/known\n")
+    assert caddy.count("reverse_proxy 127.0.0.1:8080 127.0.0.1:8081 {") == 3
     assert "*.app.example.com {\n\ttls {\n\t\ton_demand\n" in caddy
     assert theirs.read_text().startswith("billing.example.com")

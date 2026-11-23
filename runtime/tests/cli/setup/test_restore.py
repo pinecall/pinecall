@@ -34,7 +34,7 @@ def test_a_dump_replaces_the_database_with_every_writer_stopped(
     restore.replace_database(tmp_path, dump)
     up, stop, empty, restored = did
     assert up[-1] == "postgres" and "up" in up
-    assert stop[2] == "stop" and set(stop[3:]) == {"gateway", *restore.WRITERS}
+    assert stop[2] == "stop" and set(stop[3:]) == {"gateway", "gateway-b", *restore.WRITERS}
     assert empty[:3] == ("exec", "-T", "postgres") and empty[-1].startswith("DROP SCHEMA public CASCADE")
     assert restored[3] == "pg_restore" and restored[-1] == "< production.dump"
 

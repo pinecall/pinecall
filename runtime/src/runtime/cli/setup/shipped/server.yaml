@@ -69,6 +69,11 @@ services:
     restart: unless-stopped
     depends_on: [postgres]
 
+  # Two gateways, as a cluster has: a run of `setup` or `local up` starts one again while the other
+  # answers, then the other, so the name does not stop answering through an update (one gateway was
+  # away the half minute it takes to start). Caddy sends each request to one that is up, the
+  # browser's and, on a port of loopback, the workers' and LiveKit's too. Each says it answers
+  # before compose goes on to the next.
   gateway:
     <<: *runtime
     profiles: [server]
@@ -76,10 +81,30 @@ services:
       context: ./runtime
       args: {SPEC: "${PINECALL_RUNTIME_SPEC}"}
     command: ["gateway"]
+    healthcheck: &answers
+      test:
+        - CMD
+        - python
+        - -c
+        - "import os, urllib.request as r; r.urlopen('http://' + os.environ.get('PINECALL_GATEWAY_LISTEN', '127.0.0.1:8080') + '/.well-known/pinecall', timeout=3)"
+      interval: 3s
+      timeout: 5s
+      retries: 60
+
+  gateway-b:
+    <<: *runtime
+    profiles: [server]
+    pull_policy: never
+    command: ["gateway"]
+    environment:
+      PINECALL_GATEWAY_LISTEN: 127.0.0.1:8081
+    healthcheck: *answers
 
   # A worker an environment. Its seats are the env file's: `PINECALL_<ENV>_MAX_JOBS`, else
   # `PINECALL_MAX_JOBS`. Told to stop, it takes no new call and ends when the last one it holds does:
   # ten minutes at most, the worker's own drain, where Docker's ten seconds cut every call in flight.
+  # It keeps one process warm for the next call, as a cluster's does (livekit's own count is one a
+  # core, each a gibibyte), and knocks at whichever gateway is up, through Caddy's port of loopback.
   worker-sandbox:
     <<: *runtime
     profiles: [server]
@@ -87,7 +112,9 @@ services:
     command: ["worker", "start"]
     environment:
       PINECALL_FLEET: pinecall-sandbox
+      PINECALL_GATEWAY_URL: http://127.0.0.1:8079
       PINECALL_MAX_JOBS: "${PINECALL_SANDBOX_MAX_JOBS:-${PINECALL_MAX_JOBS:-4}}"
+      PINECALL_IDLE_PROCESSES: "${PINECALL_IDLE_PROCESSES:-1}"
       PINECALL_WORKER_HTTP_PORT: "8182"
     stop_grace_period: 10m
     depends_on: [gateway]
@@ -100,7 +127,9 @@ services:
     environment:
       PINECALL_FLEET: pinecall
       PINECALL_WORKER_KEY: ${PINECALL_PRODUCTION_FLEET_KEY}
+      PINECALL_GATEWAY_URL: http://127.0.0.1:8079
       PINECALL_MAX_JOBS: "${PINECALL_PRODUCTION_MAX_JOBS:-${PINECALL_MAX_JOBS:-4}}"
+      PINECALL_IDLE_PROCESSES: "${PINECALL_IDLE_PROCESSES:-1}"
       PINECALL_WORKER_HTTP_PORT: "8183"
     stop_grace_period: 10m
     depends_on: [gateway]
@@ -114,6 +143,7 @@ services:
     command: ["worker", "overflow"]
     environment:
       PINECALL_FLEET: pinecall-sandbox
+      PINECALL_GATEWAY_URL: http://127.0.0.1:8079
     stop_grace_period: 2m
     depends_on: [gateway]
 
@@ -125,6 +155,7 @@ services:
     environment:
       PINECALL_FLEET: pinecall
       PINECALL_WORKER_KEY: ${PINECALL_PRODUCTION_FLEET_KEY}
+      PINECALL_GATEWAY_URL: http://127.0.0.1:8079
     stop_grace_period: 2m
     depends_on: [gateway]
 

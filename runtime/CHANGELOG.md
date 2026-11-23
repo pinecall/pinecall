@@ -12,6 +12,13 @@
   `<dir>/sites/*.caddy` are sites of the operator's own; the apps' pages get their certificates one by one, each
   once `GET /v1/pages/known` says the name is a page; and SIP's audio ports are a line of the env file
   (`PINECALL_SIP_RTP_PORTS`). `docs/the-runtime-cli.md`, "A server that carries production".
+- **A server answers through an update.** It ran one gateway, away the half minute it takes to start each time
+  `setup` or `local up` ran (58 s measured on four busy cores). It runs two now, as a cluster does, behind Caddy,
+  which sends a request to one that is up, the browser's and on a port of loopback the workers' and LiveKit's
+  too; they are started again one after the other, the second once the first answers. `local up` writes the files
+  a server's settings decide (the pages' domain, SIP's ports) and has Caddy read its own again, where a changed
+  setting waited for the next `setup`; and each worker keeps one process warm (`PINECALL_IDLE_PROCESSES`), as a
+  cluster's does, where it kept one a core.
 - **A server backs its database up.** It kept none: the database was one Docker volume. With
   `PINECALL_BACKUP_URL` (`s3://…`, `gs://…`) in its env file, Postgres archives every finished WAL segment there
   and a service beside it takes a base backup a night, 35 days kept, with Barman's tools for an object store, the
