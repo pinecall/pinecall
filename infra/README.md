@@ -512,6 +512,17 @@ schema at this release. Not proven on a server: a carrier's call, the overflow a
 past the last seat, and any number of calls at once; what a machine holds is `docs/scaling.md`'s
 arithmetic, measured on a cluster's node.
 
+**Services of your own beside a server.** What "Services of your own" is on a cluster: each runs
+from a compose file of its own on the server, listens on loopback alone, and is reached at a name
+by a file of the runtime's `sites/`. One that calls the gateways calls Caddy's port of loopback,
+`http://127.0.0.1:8079`, which answers by whatever name the caller says (one named 127.0.0.1
+answered a caller that asks as the public name nothing). The MCP server's file is here,
+`server/mcp.yaml`. A service that signs to another cloud as itself does so as the machine: on AWS
+the instance's role, read from its metadata by a container on the host's network. Proven on the AWS
+server on 2026-11-23: the MCP server, and Pinecall's own two (its notifier, signing Android's
+pushes as the instance's role with no key, and its billing), each answering at its name with a
+certificate of its own.
+
 **From a cluster to a server, or back.** A runtime moves as a dump of its database and the settings
 that seal and sign what the dump holds. The server is made and set up with its names still pointing
 at the cluster (`--unpointed`); `PINECALL_VAULT_KEY`, `PINECALL_TOKEN_KEY`, `PINECALL_OPS_KEY` and each
