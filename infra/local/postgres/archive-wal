@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Postgres's archive_command: one finished WAL segment to the backups' place, PINECALL_BACKUP_URL
+# (s3://bucket/path or gs://bucket/path), with the tool a cluster's Postgres archives with, so a
+# backup either made is restored by the same commands. With no place named it archives nothing and
+# says the segment is done: a machine that keeps no backup recycles its WAL as any Postgres does.
+# A segment the place refuses is kept and tried again by Postgres: its disk fills until the place
+# answers, which `pinecall-runtime doctor` reads as its `archive` line.
+set -euo pipefail
+[ -n "${PINECALL_BACKUP_URL:-}" ] || exit 0
+case "$PINECALL_BACKUP_URL" in gs://*) provider=google-cloud-storage ;; *) provider=aws-s3 ;; esac
+exec barman-cloud-wal-archive --gzip --cloud-provider "$provider" "$PINECALL_BACKUP_URL" pinecall "$1"
