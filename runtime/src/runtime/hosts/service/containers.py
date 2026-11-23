@@ -46,6 +46,9 @@ NEVER_STARTED = "0001"
 # One stream, so `logs` reads the lines in the order they were printed.
 INSTALL_SCRIPT = f"{{ tar -xz -C /app && cd /app && {DEPENDENCIES} && {install_cli(CLI_HOME)}; }} 2>&1"
 RUN_SCRIPT = 'exec "$@" 2>&1'
+# Installs under way at once: each may take half a core, so two a core fill the machine and a
+# third would only make all of them late. The rest wait their turn, and their clock with them.
+INSTALLS_AT_ONCE = 2 * (os.cpu_count() or 1)
 # The docker command is given this long past the install's own clock before it is taken away.
 PAST_THE_INSTALL_S = 30
 NO_SANDBOX = "this machine's Docker has no runtime named {runtime}: an app never runs here without its sandbox"
@@ -86,6 +89,18 @@ async def run_docker(
     return Ran(child.returncode or 0, out.decode(errors="replace"), err.decode(errors="replace"))
 
 
+@dataclass
+class _Install:
+    """An install under way: its task, what it installs, and when it was asked for."""
+
+    launch: Launch
+    # When its turn came; until then it waits behind the installs that are under way.
+    began_at: float | None = None
+    # A host of this name was already installed, and well: its volumes are run as they are.
+    is_installed: bool = False
+    task: asyncio.Task[None] | None = None
+
+
 # Nothing is held here but the installs under way: a host is what Docker says it is, so the apps
 # outlive their runner, as a pod does, and the next runner finds them by their labels.
 @dataclass
@@ -102,9 +117,12 @@ class Containers:
     resolvers: Path
     cpus: str = CPUS
     docker: Docker = run_docker
-    installing: dict[str, asyncio.Task[None]] = field(default_factory=dict[str, asyncio.Task[None]])
+    installing: dict[str, _Install] = field(default_factory=dict[str, _Install])
+    turns: asyncio.Semaphore = field(default_factory=lambda: asyncio.Semaphore(INSTALLS_AT_ONCE))
     is_checked: bool = False
 
+    # A host asked for a moment ago has no container yet (its volumes are being made): it is listed
+    # as one that installs, or the next beat would take it for gone and start it again.
     async def list_running(self, env: str) -> list[Container]:
         """Every host of the env on this machine, running or not."""
         named = await self.docker(
@@ -113,16 +131,26 @@ class Containers:
         if named.code != 0:
             raise UpstreamError(REFUSED.format(verb="ps", said=named.err.strip()[:500]))
         names = named.out.split()
-        if not names:
-            return []
-        # One that left between the two commands is an error on the other stream, and not in the list.
-        read = await self.docker(["inspect", *names], None, None)
         by_host: dict[str, list[dict[str, Any]]] = {}
-        for found in json.loads(read.out or "[]"):
-            by_host.setdefault(found["Config"]["Labels"][HOST_LABEL], []).append(found)
-        return [
-            container_of(host, found, installing=host in self.installing) for host, found in sorted(by_host.items())
+        if names:
+            # One that left between the two commands is an error on the other stream, and not in the list.
+            read = await self.docker(["inspect", *names], None, None)
+            for found in json.loads(read.out or "[]"):
+                by_host.setdefault(found["Config"]["Labels"][HOST_LABEL], []).append(found)
+        listed = [container_of(host, found, installing=host in self.installing) for host, found in by_host.items()]
+        asked = [
+            Container(
+                name=host,
+                app=held.launch.app,
+                release=held.launch.release,
+                state="pending",
+                started_at=(held.began_at or time.time()) + INSTALL_WITHIN_S,
+                exits=tuple(held.launch.exits),
+            )
+            for host, held in self.installing.items()
+            if held.launch.env == env and host not in by_host
         ]
+        return sorted([*listed, *asked], key=lambda each: each.name)
 
     async def start(self, launch: Launch, environment: Mapping[str, str]) -> None:
         """The host's volumes made, then its release installed and run on a task of its own."""
@@ -130,29 +158,21 @@ class Containers:
         for name in environment:
             if not A_VARIABLE.match(name):
                 raise UpstreamError(f"{name!r} is not an environment variable's name")
-        await self._remove(launch.host)
-        volumes = _volumes(launch.host)
-        for volume in volumes:
-            await self._do("volume create", ["volume", "create", "--label", f"{HOST_LABEL}={launch.host}", volume])
-        # A new volume is root's. The image's own `chown` gives the three to the app's user, as
-        # root with that one capability and no network: none of the org's code has run yet.
-        await self._do(
-            "run",
-            [
-                *("run", "--rm", "--runtime", self.runtime, "--network", "none", "--user", "0:0", "--read-only"),
-                *("--cap-drop", "ALL", "--cap-add", "CHOWN", "--security-opt", "no-new-privileges"),
-                *_mounts(volumes, read_only=False, home=True),
-                *(self.image, "chown", f"{APP_USER}:{APP_USER}", "/app", CLI_HOME, INSTALL_HOME),
-            ],
-        )
-        self.installing[launch.host] = asyncio.create_task(self._install_then_run(launch, dict(environment)))
+        held = _Install(launch)
+        self.installing[launch.host] = held
+        try:
+            held.is_installed = await self._make_ready(launch.host)
+        except UpstreamError:
+            del self.installing[launch.host]
+            raise
+        held.task = asyncio.create_task(self._install_then_run(launch, dict(environment)))
 
     async def stop(self, name: str, grace_s: int = DRAIN_S) -> None:
         """SIGTERM, then grace_s before the kill; its containers and its volumes go with it."""
-        task = self.installing.pop(name, None)
-        if task is not None:
-            task.cancel()
-            await asyncio.gather(task, return_exceptions=True)
+        held = self.installing.pop(name, None)
+        if held is not None and held.task is not None:
+            held.task.cancel()
+            await asyncio.gather(held.task, return_exceptions=True)
         await self.docker(["stop", "-t", str(grace_s), name], None, None)
         await self._remove(name)
 
@@ -166,7 +186,7 @@ class Containers:
 
     async def close(self) -> None:
         """The runner leaves its hosts running; an install under way is left for the next to judge."""
-        tasks = list(self.installing.values())
+        tasks = [held.task for held in self.installing.values() if held.task is not None]
         self.installing.clear()
         for task in tasks:
             task.cancel()
@@ -183,6 +203,32 @@ class Containers:
             raise UpstreamError(NO_NETWORK.format(network=self.network))
         await asyncio.to_thread(_write_resolvers, self.resolvers)
         self.is_checked = True
+
+    # A host's name says its app and its release, so an install of that name that ended well is this
+    # release installed: a runner started again runs it as it is, and installs nothing twice. A new
+    # volume is root's: the image's own `chown` gives the three to the app's user, as root with that
+    # one capability and no network, before any of the org's code has run.
+    async def _make_ready(self, host: str) -> bool:
+        before = await self.docker(
+            ["inspect", "--format", "{{.State.Status}} {{.State.ExitCode}}", _install_of(host)], None, None
+        )
+        if before.code == 0 and before.out.split() == ["exited", "0"]:
+            await self.docker(["rm", "-f", host], None, None)
+            return True
+        await self._remove(host)
+        volumes = _volumes(host)
+        for volume in volumes:
+            await self._do("volume create", ["volume", "create", "--label", f"{HOST_LABEL}={host}", volume])
+        await self._do(
+            "run",
+            [
+                *("run", "--rm", "--runtime", self.runtime, "--network", "none", "--user", "0:0", "--read-only"),
+                *("--cap-drop", "ALL", "--cap-add", "CHOWN", "--security-opt", "no-new-privileges"),
+                *_mounts(volumes, read_only=False, home=True),
+                *(self.image, "chown", f"{APP_USER}:{APP_USER}", "/app", CLI_HOME, INSTALL_HOME),
+            ],
+        )
+        return False
 
     async def _do(self, verb: str, arguments: Sequence[str]) -> None:
         ran = await self.docker(arguments, None, None)
@@ -205,12 +251,17 @@ class Containers:
             *("-e", f"HOME={INSTALL_HOME}", "-e", f"TMPDIR={SCRATCH}"),
             *(self.image, "timeout", str(INSTALL_WITHIN_S), "sh", "-c", INSTALL_SCRIPT),
         ]
+        held = self.installing.get(launch.host)
         try:
-            installed = await asyncio.wait_for(
-                self.docker(install, launch.source, None), INSTALL_WITHIN_S + PAST_THE_INSTALL_S
-            )
-            if installed.code != 0:
-                return
+            if held is None or not held.is_installed:
+                async with self.turns:
+                    if held is not None:
+                        held.began_at = time.time()
+                    installed = await asyncio.wait_for(
+                        self.docker(install, launch.source, None), INSTALL_WITHIN_S + PAST_THE_INSTALL_S
+                    )
+                if installed.code != 0:
+                    return
             named = [word for name in sorted(environment) for word in ("-e", name)]
             await self.docker(
                 [
@@ -227,7 +278,8 @@ class Containers:
             await self.docker(["kill", _install_of(launch.host)], None, None)
         finally:
             # Held no longer: what the listing says of this host is now Docker's alone to say.
-            if self.installing.get(launch.host) is asyncio.current_task():
+            now = self.installing.get(launch.host)
+            if now is not None and now.task is asyncio.current_task():
                 del self.installing[launch.host]
 
     # What every container of an org's code is run with, the same words a pod's lock-down says: the

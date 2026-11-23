@@ -35,6 +35,8 @@ class _Docker:
     runtimes: tuple[str, ...] = ("runc", "gvisor")
     has_network: bool = True
     install_exit: int = 0
+    # What Docker says of an install of the same name left from before: its state and its exit.
+    installed_before: str = ""
     listed: Sequence[Mapping[str, Any]] = ()
     logs: Mapping[str, str] = field(default_factory=dict[str, str])
     commands: list[list[str]] = field(default_factory=list[list[str]])
@@ -57,6 +59,8 @@ class _Docker:
         if words[0] == "ps":
             names = [each["Name"].lstrip("/") for each in self.listed]
             return Ran(0, "\n".join(names))
+        if words[:2] == ["inspect", "--format"]:
+            return Ran(0, self.installed_before) if self.installed_before else Ran(1, "", "no such object")
         if words[0] == "inspect":
             return Ran(0, json.dumps(list(self.listed)))
         if words[0] == "logs":
@@ -114,7 +118,7 @@ def _found(stage: str, status: str, exit_code: int = 0, exits: str = "") -> dict
 
 async def _started(containers: Containers, environment: Mapping[str, str]) -> None:
     await containers.start(_launch(), environment)
-    await asyncio.gather(*containers.installing.values())
+    await asyncio.gather(*(held.task for held in list(containers.installing.values()) if held.task is not None))
 
 
 def _has(words: Sequence[str], *run: str) -> bool:
@@ -287,3 +291,34 @@ def test_a_pods_share_of_a_core_is_dockers() -> None:
     """`250m` is a quarter of a core; unset, the half core an app may take."""
     assert as_cpus("250m") == "0.25"
     assert as_cpus(None) == "0.5"
+
+
+async def test_a_host_just_asked_for_is_listed_as_installing_before_docker_has_its_container() -> None:
+    """Between the asking and its first container a host is pending, so no beat starts it a second time."""
+    docker = _Docker()
+    containers = _containers(docker)
+    await containers.start(_launch(exits=(1700000000.5,)), {})
+    listed = await containers.list_running("sandbox")
+    assert [(each.name, each.app, each.release, each.state, each.exits) for each in listed] == [
+        (HOST, "acme/front", 3, "pending", (1700000000.5,))
+    ]
+    assert await containers.list_running("production") == []
+    await containers.close()
+
+
+async def test_a_release_already_installed_is_run_as_it_is_and_never_installed_twice() -> None:
+    """An install of the host's name that ended well is kept with its volumes: only the app's container is made."""
+    docker = _Docker(installed_before="exited 0\n")
+    await _started(_containers(docker), {"PINECALL_KEY": "k"})
+    assert not [words for words in docker.ran("run") if "-i" in words]
+    assert not docker.ran("volume")
+    assert docker.ran("rm") == [["rm", "-f", HOST]]
+    assert len([words for words in docker.ran("run") if "-d" in words]) == 1
+
+
+async def test_an_install_that_ended_badly_is_made_again_from_nothing() -> None:
+    """What a failed install left goes, volumes and all, before the release is installed again."""
+    docker = _Docker(installed_before="exited 1\n")
+    await _started(_containers(docker), {})
+    assert docker.ran("rm") == [["rm", "-f", HOST, f"{HOST}-install"]]
+    assert len([words for words in docker.ran("run") if "-i" in words]) == 1
