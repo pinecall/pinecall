@@ -185,8 +185,8 @@ def _serve(flags: Flags, wanted: server.Server, values: dict[str, str], email: s
         out.line("  phone     through your LiveKit's own SIP")
     else:
         out.line("  phone     on: SIP on :5060" if wanted.phone else "  phone     off — `--phone` turns it on")
-    server_files.write_files(flags.where, wanted, values, flags.wheel)
-    server.bring_up(flags.where, wanted, values, flags.wheel)
+    again = server_files.write_files(flags.where, wanted, values, flags.wheel)
+    server.bring_up(flags.where, wanted, values, flags.wheel, again=again)
     if flags.unpointed:
         out.line("\n" + NEXT_UNPOINTED.format(name=wanted.name, email=email))
         return OK

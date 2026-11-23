@@ -6,7 +6,7 @@ import socket
 import sys
 import time
 import urllib.request
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from importlib.metadata import version
 from pathlib import Path
@@ -136,7 +136,15 @@ def settings_of(server: Server, values: dict[str, str]) -> dict[str, str | None]
     return {"PINECALL_DOMAIN": server.name, "PINECALL_GATEWAY_LISTEN": None, IMAGE: server.image, **livekit, **phone}
 
 
-def bring_up(where: Path, server: Server, values: dict[str, str], wheel: Path | None, *, build: bool = True) -> None:
+def bring_up(
+    where: Path,
+    server: Server,
+    values: dict[str, str],
+    wheel: Path | None,
+    *,
+    build: bool = True,
+    again: Sequence[str] = (),
+) -> None:
     """The runtime's image built or pulled and every service up, kept up by Docker across reboots."""
     files = compose_files(where)
     environment = {**values, **image_of(wheel, server.image)}
@@ -168,7 +176,14 @@ def bring_up(where: Path, server: Server, values: dict[str, str], wheel: Path | 
     services += [*(["livekit-server"] if server.livekit is None else []), *(["sip-server"] if server.phone else [])]
     services += ["postgres-backup"] if values.get(BACKUPS) else []
     up = ("--progress", "quiet", "up", "-d", "--wait", "--remove-orphans", *services)
-    Compose(files, profiles, environment).run(*up, failed=UP_FAILED)
+    running = Compose(files, profiles, environment)
+    running.run(*up, failed=UP_FAILED)
+    # Compose starts a service again when what it was made with changed, and a file it only mounts is
+    # not that. Caddy reads its own again with no connection dropped (the pages' name, a site of the
+    # operator's); LiveKit and SIP read theirs once, so one whose config changed is started again.
+    running.run("exec", "-T", "caddy", "caddy", "reload", "--config", "/etc/caddy/Caddyfile", failed=UP_FAILED)
+    if stale := [service for service in again if service in services]:
+        running.run("--progress", "quiet", "restart", *stale, failed=UP_FAILED)
 
 
 # Every profile of the server's compose file, so each service it names exists for compose.

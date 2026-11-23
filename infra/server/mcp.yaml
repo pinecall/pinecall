@@ -1,0 +1,40 @@
+# The hosted MCP server beside a server's runtime: what charts/mcp is on a cluster (mcp/README.md),
+# as one container Docker keeps up. It holds no secret and no state: the CLI's tools over HTTP,
+# signed in through the gateway's own sign-in. On the server, as the user that owns its runtime:
+#
+#   MCP_IMAGE=<registry>/pinecall/mcp:<commit> MCP_NAME=mcp.example.com PINECALL_NAME=voice.example.com \
+#     docker compose -f mcp.yaml up -d
+#
+# and its name is a site of the operator's own in the runtime's folder (`sites/`, which `setup`
+# never writes; `pinecall-runtime local up` reads it):
+#
+#   ~/.pinecall-runtime/local/sites/mcp.caddy
+#     mcp.example.com {
+#         reverse_proxy 127.0.0.1:8787
+#     }
+#
+# It listens on loopback alone: Caddy is its door, with a certificate of its own for the name.
+name: pinecall-mcp
+
+services:
+  mcp:
+    image: ${MCP_IMAGE:?the image, as <registry>/pinecall/mcp:<commit>}
+    environment:
+      PINECALL_MCP_PORT: "8787"
+      PINECALL_MCP_URL: https://${MCP_NAME:?the name the MCP server is reached at}
+      # The gateway by its public name: a link a tool answers points there, and a person approves there.
+      PINECALL_URL: https://${PINECALL_NAME:?the name of the runtime}
+    ports: ["127.0.0.1:8787:8787"]
+    user: "1000:1000"
+    read_only: true
+    # The sources are compiled as they are loaded, into /tmp.
+    tmpfs: ["/tmp:size=256m"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    # A tool call in flight is given the 50 s it may wait.
+    stop_grace_period: 70s
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/health').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 10s
+      retries: 6

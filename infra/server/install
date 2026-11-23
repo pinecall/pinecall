@@ -11,7 +11,8 @@
 # then runs `pinecall-runtime setup --image <image>` with what follows. `setup` keeps what a run
 # before it was told (the name, the phone, the env file), so an update names the image and nothing
 # else. Docker is signed in to the registry already (the machine's own identity:
-# infra/terraform/<provider>/server), and `uv` is on the PATH.
+# infra/terraform/<provider>/server), and `uv` is on the PATH. The first time, the console's
+# password is a line of ~/.pinecall-runtime/console.password (mode 0600), written there beforehand.
 set -euo pipefail
 image=${1:?the image to run, as <registry>/pinecall/runtime:<commit>}
 shift
@@ -23,6 +24,18 @@ held=$(docker create "$image")
 docker cp --quiet "$held:/opt/pinecall/wheel/." "$work/"
 docker rm "$held" >/dev/null
 
-uv tool install --quiet --python 3.13 --force "$(ls "$work"/pinecall_runtime-*.whl)"
+# With the vendors' plugins, as the image has them: `setup` reads each vendor it finds a key for
+# through its plugin, and refuses a key of a vendor the command line does not know.
+uv tool install --quiet --python 3.13 --force "$(ls "$work"/pinecall_runtime-*.whl)[voice]"
 export PATH="$HOME/.local/bin:$PATH"
-exec pinecall-runtime setup --image "$image" "$@"
+
+# A server's console needs a password the first time, and nothing typed here reaches `setup`: the
+# person who signs in writes it to a file only this user reads, in a shell on the machine, and it is
+# read once and removed. A run after the first asks for none.
+password=$HOME/.pinecall-runtime/console.password
+if [ -s "$password" ]; then
+  pinecall-runtime setup --image "$image" --password-stdin "$@" < "$password"
+  unlink "$password"
+else
+  exec pinecall-runtime setup --image "$image" "$@"
+fi

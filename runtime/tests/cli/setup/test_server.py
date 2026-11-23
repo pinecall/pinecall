@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from runtime.cli.setup import server as server_
+from runtime.cli.setup import server_files
 from runtime.cli.setup.compose import Compose
 from runtime.cli.setup.files import write_shipped
 from runtime.exceptions import ValidationError
@@ -40,10 +41,10 @@ def test_a_registrys_image_is_run_as_it_is_and_never_built(tmp_path: Path, monke
 
     monkeypatch.setattr(Compose, "run", record)
     server_.bring_up(tmp_path, server, values, None)
-    assert [verb[2] for verb in ran] == ["rm", "pull", "up"]
+    assert [verb[2] for verb in ran] == ["rm", "pull", "up", "caddy"]
     ran.clear()
     server_.bring_up(tmp_path, server_.Server(NAME), values, None)
-    assert [verb[2] for verb in ran] == ["rm", "build", "up"]
+    assert [verb[2] for verb in ran] == ["rm", "build", "up", "caddy"]
 
 
 def test_a_server_answers_past_its_last_seat_and_runs_the_night(
@@ -57,7 +58,7 @@ def test_a_server_answers_past_its_last_seat_and_runs_the_night(
 
     monkeypatch.setattr(Compose, "run", record)
     server_.bring_up(tmp_path, server_.Server(NAME), {}, None, build=False)
-    started = ran[-1]
+    started = ran[1]
     for service in ("overflow-sandbox", "overflow-production", "retention", "worker-sandbox", "worker-production"):
         assert service in started
     written(tmp_path, server_.Server(NAME))
@@ -81,12 +82,12 @@ def test_a_place_for_the_backups_starts_the_nightly_beside_postgres(
 
     monkeypatch.setattr(Compose, "run", record)
     server_.bring_up(tmp_path, server_.Server(NAME), {server_.BACKUPS: "s3://backups/voice"}, None, build=False)
-    (_, removed), (profiles, up) = ran
+    (_, removed), (profiles, up), _reload = ran
     assert "postgres-backup" not in removed
     assert "server-backups" in profiles and up[-1] == "postgres-backup"
     ran.clear()
     server_.bring_up(tmp_path, server_.Server(NAME), {}, None, build=False)
-    (_, removed), (profiles, up) = ran
+    (_, removed), (profiles, up), _reload = ran
     assert removed[-1] == "postgres-backup" and "server-backups" not in profiles and "postgres-backup" not in up
     # Postgres hands every finished segment to the script that archives it, or says it is done.
     written(tmp_path, server_.Server(NAME))
@@ -127,10 +128,35 @@ def test_what_this_server_does_not_run_is_removed_with_every_profile_on(
 
     monkeypatch.setattr(Compose, "run", record)
     server_.bring_up(tmp_path, server_.Server(NAME), {}, None, build=False)
-    removed, up = ran
+    removed, up, _reload = ran
     assert removed == (
         server_.EVERY_PROFILE,
         ("--progress", "quiet", "rm", "--stop", "--force", "livekit", "sip", "sip-server", "postgres-backup"),
     )
     # What runs is this server's own: its LiveKit's profile on, the phone's off.
     assert up[0] == ("server", "server-livekit") and up[1][-1] == "livekit-server"
+
+
+def test_a_config_that_changed_is_read_again(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Caddy reloads its file on every run; SIP starts again when its ports changed, and only then."""
+    ran: list[tuple[str, ...]] = []
+
+    def record(self: Compose, *verb: str, failed: str) -> None:
+        ran.append(verb)
+
+    monkeypatch.setattr(Compose, "run", record)
+    server = server_.Server(NAME, phone=True)
+    env = write_shipped(tmp_path)
+    values = env.set(**server_.settings_of(server, env.read()))
+    # Written for the first time, a config is read by the service made with it: nothing starts again.
+    assert server_files.write_configs(tmp_path, server, values) == ()
+    assert server_files.write_configs(tmp_path, server, values) == ()
+    again = server_files.write_configs(tmp_path, server, env.set(**{server_files.RTP_PORTS: "10000-10199"}))
+    assert again == ("sip-server",)
+    server_.bring_up(tmp_path, server, values, None, build=False, again=again)
+    assert ran[-2][:6] == ("exec", "-T", "caddy", "caddy", "reload", "--config")
+    assert ran[-1] == ("--progress", "quiet", "restart", "sip-server")
+    # A service this server does not run is never started again for a file it left behind.
+    ran.clear()
+    server_.bring_up(tmp_path, server_.Server(NAME), values, None, build=False, again=again)
+    assert ran[-1][0] == "exec"

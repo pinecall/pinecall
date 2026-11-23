@@ -76,8 +76,12 @@ logging:
 """
 
 
-def write_files(where: Path, server: Server, values: dict[str, str], wheel: Path | None) -> None:
-    """The server's compose, its image's Dockerfile and wheel, the Caddyfile, LiveKit's and SIP's configs."""
+# A service by the file it reads once, as it starts: one whose file changed under it is started again.
+READ_BY = {"livekit.server.yaml": "livekit-server", "sip.server.yaml": "sip-server"}
+
+
+def write_files(where: Path, server: Server, values: dict[str, str], wheel: Path | None) -> tuple[str, ...]:
+    """The server's compose, its image's Dockerfile and wheel, and its configs; the services to start again."""
     for name in FILES:
         target = where / name
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -88,6 +92,13 @@ def write_files(where: Path, server: Server, values: dict[str, str], wheel: Path
         old.unlink()
     if wheel is not None:
         copyfile(wheel, wheels / wheel.name)
+    return write_configs(where, server, values)
+
+
+# Each is what the env file says now, so `local up` writes them too: the pages' domain is a site of
+# Caddy's, the range of SIP's audio a line of its config.
+def write_configs(where: Path, server: Server, values: dict[str, str]) -> tuple[str, ...]:
+    """Caddy's file and LiveKit's and SIP's configs; the services whose config changed under them."""
     (where / "sites").mkdir(exist_ok=True)
     (where / "Caddyfile").write_text(caddyfile_of(server, values.get("PINECALL_PAGES_DOMAIN")), encoding="utf-8")
     said = {
@@ -95,11 +106,17 @@ def write_files(where: Path, server: Server, values: dict[str, str], wheel: Path
         "secret": values["LIVEKIT_API_SECRET"],
         "rtp": values.get(RTP_PORTS) or RTP_PORTS_UNLESS_SAID,
     }
+    changed: list[str] = []
     for name, text in (("livekit.server.yaml", LIVEKIT_CONFIG), ("sip.server.yaml", SIP_CONFIG)):
         target = where / name
+        before = target.read_text(encoding="utf-8") if target.is_file() else None
         target.touch(mode=0o600)
         target.write_text(text.format(**said), encoding="utf-8")
         target.chmod(0o600)
+        # A file written for the first time is read by the service made with it.
+        if before is not None and before != text.format(**said):
+            changed.append(READ_BY[name])
+    return tuple(changed)
 
 
 def caddyfile_of(server: Server, pages: str | None) -> str:
