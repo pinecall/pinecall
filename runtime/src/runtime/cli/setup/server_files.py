@@ -18,8 +18,11 @@ RTP_PORTS_UNLESS_SAID = "10000-10019"
 CADDYFILE = """{options}{name} {{
 {livekit}{gateways}}}
 
-# The gateways for what runs on this machine: the workers' knocks and LiveKit's events.
-http://127.0.0.1:8079 {{
+# The gateways for what runs on this machine: the workers' knocks, LiveKit's events, a service of
+# the operator's own. On loopback alone, and by whatever name the caller says: one that asks as the
+# public name, as a service that also runs in a cluster does, is answered as any other (a site
+# named 127.0.0.1 answered it nothing).
+http://:8079 {{
 	bind 127.0.0.1
 {gateways}}}
 {pages}

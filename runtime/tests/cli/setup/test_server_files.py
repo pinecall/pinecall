@@ -32,7 +32,7 @@ def test_a_server_draws_its_own_livekit_pair_and_keeps_the_gateway_on_loopback(t
     assert caddy.startswith(f"{NAME} {{") and "/rtc" in caddy
     # Either gateway, whichever is up, for the name and, on a port of loopback, for what runs here.
     assert caddy.count("reverse_proxy 127.0.0.1:8080 127.0.0.1:8081 {") == 2
-    assert "http://127.0.0.1:8079 {\n\tbind 127.0.0.1\n" in caddy and "health_uri /.well-known/pinecall" in caddy
+    assert "http://:8079 {\n\tbind 127.0.0.1\n" in caddy and "health_uri /.well-known/pinecall" in caddy
 
 
 def test_a_second_run_keeps_the_pair(tmp_path: Path) -> None:
