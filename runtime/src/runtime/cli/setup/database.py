@@ -73,8 +73,8 @@ async def prepare_database(env: EnvFile, *, server: bool = False) -> schema.Hist
 # password of the database does not become its owner by guessing one. Only on this machine's own
 # Postgres: an operator's database is theirs to give roles in.
 async def _the_roles(engine: AsyncEngine, values: dict[str, str]) -> str | None:
-    owner = urlsplit(values["DATABASE_URL"])
-    if owner.netloc.rpartition("@")[2] != THIS_MACHINES:
+    owner = urlsplit(settings_of(values).database_url.get_secret_value())
+    if owner.netloc.rpartition("@")[2] != THIS_MACHINES or APP_URL not in values:
         return None
     app = urlsplit(values[APP_URL])
     await schema.make_login(engine, app.username or APP_ROLE, app.password or "")
