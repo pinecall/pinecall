@@ -33,7 +33,7 @@ def compose_reply(account: EmailAccount, layout: Layout, answered: whatsapp.Inbo
         "References": " ".join(dict.fromkeys(chain)),
         "Auto-Submitted": "auto-replied",
     }
-    return _composed(layout, answered.caller, reply_subject(answered.subject), text, headers)
+    return _compose(layout, answered.caller, reply_subject(answered.subject), text, headers)
 
 
 # The thread's first message, under the id its thread was opened by (`to.thread`): the contact's reply
@@ -44,7 +44,7 @@ def compose_reply(account: EmailAccount, layout: Layout, answered: whatsapp.Inbo
 def compose_first(layout: Layout, to: whatsapp.Inbound, text: str) -> mail.Email:
     """The first email of a thread the agent opens: to the contact, under the thread's subject and its id."""
     headers = {"Message-ID": to.thread, "Auto-Submitted": "auto-generated"}
-    return _composed(layout, to.caller, (to.subject or "").strip() or NO_SUBJECT, text, headers)
+    return _compose(layout, to.caller, (to.subject or "").strip() or NO_SUBJECT, text, headers)
 
 
 async def send_email(account: EmailAccount, email: mail.Email) -> None:
@@ -53,7 +53,7 @@ async def send_email(account: EmailAccount, email: mail.Email) -> None:
     await mail.deliver(account.outbox, email)
 
 
-def _composed(layout: Layout, to: str, subject: str, text: str, headers: dict[str, str]) -> mail.Email:
+def _compose(layout: Layout, to: str, subject: str, text: str, headers: dict[str, str]) -> mail.Email:
     return mail.Email(
         to=to,
         subject=subject,
