@@ -44,6 +44,17 @@ def test_the_env_file_says_which_server_this_is(tmp_path: Path) -> None:
     assert server_.from_the_env(values) == server_.Server(NAME, phone=True)
 
 
+def test_a_sip_name_of_the_operators_own_is_kept(tmp_path: Path) -> None:
+    """Carriers' trunks name it already: `setup` says the server's name only where the env file says none."""
+    env = write_shipped(tmp_path)
+    server = server_.Server(NAME, phone=True)
+    assert env.set(**server_.settings_of(server, env.read()))["PINECALL_SIP_DOMAIN"] == NAME
+    given = env.set(PINECALL_SIP_DOMAIN="sip.example.com")
+    assert env.set(**server_.settings_of(server, given))["PINECALL_SIP_DOMAIN"] == "sip.example.com"
+    # The phone turned off, the env file names no SIP at all.
+    assert "PINECALL_SIP_DOMAIN" not in env.set(**server_.settings_of(server_.Server(NAME), env.read()))
+
+
 def test_a_registrys_image_is_run_as_it_is_and_never_built(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """`--image`: the env file names it, every service runs it, and it is pulled where a build would be."""
     image = "registry.example.com/pinecall/runtime:1a2b3c4d"

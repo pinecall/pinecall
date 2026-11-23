@@ -132,7 +132,9 @@ def settings_of(server: Server, values: dict[str, str]) -> dict[str, str | None]
             "LIVEKIT_PUBLIC_URL": None,
         }
     # LiveKit and the gateway share the host's network: the gateway stays on loopback, Caddy is the door.
-    phone = {"PINECALL_SIP_DOMAIN": server.name if server.phone else None}
+    # The name carriers send calls to is the server's own unless the env file says another: a
+    # runtime moved here keeps the one its carriers' trunks already name.
+    phone = {"PINECALL_SIP_DOMAIN": (values.get("PINECALL_SIP_DOMAIN") or server.name) if server.phone else None}
     return {"PINECALL_DOMAIN": server.name, "PINECALL_GATEWAY_LISTEN": None, IMAGE: server.image, **livekit, **phone}
 
 

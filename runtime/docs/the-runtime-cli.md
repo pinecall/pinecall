@@ -191,8 +191,10 @@ once on a machine that is not the server.
 
 **Phone calls (`--phone`).** LiveKit's SIP beside the LiveKit `setup` starts, on :5060, its audio on
 :10000-10019/udp, a port a call (`PINECALL_SIP_RTP_PORTS=10000-10199` in the env file for more):
-open them to your carrier alone. One SIP takes both environments' calls: a second name for the
-sandbox's (`PINECALL_SANDBOX_SIP_DOMAIN`) points at the same machine. What needs a SIP an environment is
+open them to your carrier alone. Carriers are told the server's own name; a `PINECALL_SIP_DOMAIN`
+already in the env file is kept, for a runtime whose carriers' trunks name another. One SIP takes
+both environments' calls: a second name for the sandbox's (`PINECALL_SANDBOX_SIP_DOMAIN`) points at
+the same machine. What needs a SIP an environment is
 a cluster's: a simulated caller that rings by phone (`simulate --via sip`) is refused on a server in
 one sentence. A number is then imported or bought as on any
 runtime ([telephony.md](telephony.md)).
