@@ -6,7 +6,7 @@ import socket
 import sys
 import time
 import urllib.request
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from dataclasses import dataclass
 from importlib.metadata import version
 from pathlib import Path
@@ -14,7 +14,7 @@ from pathlib import Path
 from livekit import api
 from livekit.protocol.room import ListRoomsRequest
 
-from runtime.cli.setup.compose import Compose
+from runtime.cli.setup.compose import Compose, compose_files
 from runtime.exceptions import ConfigurationError, UpstreamError, ValidationError
 
 # Where the machine's own public address is read, to say whether the name points here.
@@ -29,6 +29,13 @@ HERE = "here"
 IMAGE = "PINECALL_RUNTIME_IMAGE"
 # Where the database's backups go (s3://… or gs://…): named, the nightly base backups run beside Postgres.
 BACKUPS = "PINECALL_BACKUP_URL"
+# What a server's gateways connect to Postgres as: a role that reads and writes every table's rows and
+# changes none (database.py makes it, the migrations grant it), and the URL with its password.
+APP_ROLE = "pinecall_app"
+APP_URL = "PINECALL_DB_APP_URL"
+# Redis's password on a server, and the URL the gateways reach it at; a laptop's asks none.
+REDIS_PASSWORD = "PINECALL_REDIS_PASSWORD"
+REDIS_AT = "127.0.0.1:56380/0"
 BUILD_FAILED = "the runtime's image did not build:\n{output}"
 PULL_FAILED = "the runtime's image could not be pulled:\n{output}"
 UP_FAILED = "docker compose could not bring the server up:\n{output}"
@@ -135,7 +142,22 @@ def settings_of(server: Server, values: dict[str, str]) -> dict[str, str | None]
     # The name carriers send calls to is the server's own unless the env file says another: a
     # runtime moved here keeps the one its carriers' trunks already name.
     phone = {"PINECALL_SIP_DOMAIN": (values.get("PINECALL_SIP_DOMAIN") or server.name) if server.phone else None}
-    return {"PINECALL_DOMAIN": server.name, "PINECALL_GATEWAY_LISTEN": None, IMAGE: server.image, **livekit, **phone}
+    named = {"PINECALL_DOMAIN": server.name, "PINECALL_GATEWAY_LISTEN": None, IMAGE: server.image}
+    return {**named, **livekit, **phone, **passwords_of(values)}
+
+
+# Drawn once and kept: the gateways' role and its password, Redis's. Each is drawn before anything is
+# brought up, so the services are first started with them; the role itself is made by database.py.
+def passwords_of(values: dict[str, str]) -> dict[str, str | None]:
+    """Redis's password and its URL, the app role's name and URL: the env file's own, else drawn."""
+    redis = values.get(REDIS_PASSWORD) or secrets.token_hex(24)
+    app = values.get(APP_URL) or f"postgresql://{APP_ROLE}:{secrets.token_hex(24)}@127.0.0.1:55433/pinecall"
+    return {
+        REDIS_PASSWORD: redis,
+        "PINECALL_REDIS_URL": f"redis://:{redis}@{REDIS_AT}",
+        "PINECALL_DB_APP_ROLE": APP_ROLE,
+        APP_URL: app,
+    }
 
 
 def bring_up(
@@ -145,7 +167,6 @@ def bring_up(
     wheel: Path | None,
     *,
     build: bool = True,
-    again: Sequence[str] = (),
 ) -> None:
     """The runtime's image built or pulled and every service up, kept up by Docker across reboots."""
     files = compose_files(where)
@@ -179,6 +200,8 @@ def bring_up(
     services += ["postgres-backup"] if values.get(BACKUPS) else []
     up = ("--progress", "quiet", "up", "-d", "--wait")
     running = Compose(files, profiles, environment)
+    # What the processes write made theirs before any of them starts (server.yaml, `own`).
+    running.run("--progress", "quiet", "run", "--rm", "--no-deps", "own", failed=UP_FAILED)
     # In an order that leaves the name answering through an update. Caddy first: compose starts a
     # service again when what it was made with changed, and a file it only mounts is not that, so
     # Caddy is told to read its own again, with no connection dropped (the two gateways, the pages'
@@ -188,10 +211,9 @@ def bring_up(
     running.run("exec", "-T", "caddy", "caddy", "reload", "--config", "/etc/caddy/Caddyfile", failed=UP_FAILED)
     for gateway in GATEWAYS:
         running.run(*up, "--no-deps", gateway, failed=UP_FAILED)
+    # LiveKit's and SIP's configs are said in the compose file from the env file's values: one that
+    # changed is a service compose starts again by itself.
     running.run(*up, "--remove-orphans", *services, failed=UP_FAILED)
-    # LiveKit and SIP read their configs once: one whose config changed under it is started again.
-    if stale := [service for service in again if service in services]:
-        running.run("--progress", "quiet", "restart", *stale, failed=UP_FAILED)
 
 
 # Every profile of the server's compose file, so each service it names exists for compose.
@@ -244,15 +266,13 @@ def from_the_env(values: dict[str, str]) -> Server | None:
 # read, the env file's values and the image.
 def every_service(where: Path, values: dict[str, str], profiles: tuple[str, ...] = EVERY_PROFILE) -> Compose:
     """docker compose on this machine's files with every profile on: what stops, follows or removes any service."""
+    return Compose(compose_files(where), profiles, environment_of(values))
+
+
+def environment_of(values: dict[str, str], wheel: Path | None = None) -> dict[str, str]:
+    """What compose reads the files with: the env file's values, and the image the runtime's services run."""
     serving = from_the_env(values)
-    environment = {**values, **image_of(None, serving.image if serving else None)}
-    return Compose(compose_files(where), profiles, environment)
-
-
-def compose_files(where: Path) -> tuple[Path, ...]:
-    """The services' compose file, and the server's laid over it where this machine is one."""
-    server = where / "server.yaml"
-    return (where / "compose.yaml", *([server] if server.is_file() else []))
+    return {**values, **image_of(wheel, serving.image if serving else None)}
 
 
 def image_of(wheel: Path | None, image: str | None = None) -> dict[str, str]:

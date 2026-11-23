@@ -5,14 +5,13 @@ import ssl
 from collections.abc import Callable
 from pathlib import Path
 
-from runtime.cli.setup.compose import Compose
+from runtime.cli.setup.compose import Compose, compose_files
 from runtime.cli.setup.server import (
     UP_FAILED,
     Here,
     Resolve,
     Server,
-    compose_files,
-    image_of,
+    environment_of,
     resolve_ipv4,
     this_machines_address,
 )
@@ -57,6 +56,6 @@ def ask_again(
         return False
     if here() not in found:
         return False
-    running = Compose(compose_files(where), ("server",), {**values, **image_of(None, server.image)})
+    running = Compose(compose_files(where), ("server",), environment_of(values))
     running.run("--progress", "quiet", "restart", "caddy", failed=UP_FAILED)
     return True

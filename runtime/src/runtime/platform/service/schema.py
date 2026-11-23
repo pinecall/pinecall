@@ -101,6 +101,18 @@ async def grant_rows(engine: AsyncEngine, role: str) -> None:
         )
 
 
+async def make_login(engine: AsyncEngine, role: str, password: str) -> None:
+    """The role made, or kept, as one that signs in with this password and owns nothing."""
+    async with engine.begin() as connection:
+        await SchemaRepository(connection).make_login(role, password)
+
+
+async def set_password(engine: AsyncEngine, role: str, password: str) -> None:
+    """The role's password changed; the connections already open keep theirs."""
+    async with engine.begin() as connection:
+        await SchemaRepository(connection).set_password(role, password)
+
+
 def _sha256(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
 

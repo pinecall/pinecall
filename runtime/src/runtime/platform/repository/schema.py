@@ -87,6 +87,24 @@ class SchemaRepository:
 
     async def grant_rows(self, role: str) -> None:
         """Grant the role every table's rows and nothing else."""
-        quoted = '"' + role.replace('"', '""') + '"'
         for grant in GRANTS:
-            await self.connection.execute(text(grant.format(role=quoted)))
+            await self.connection.execute(text(grant.format(role=_name(role))))
+
+    # A role's statements take no parameter, so the name and the password are quoted here.
+    async def make_login(self, role: str, password: str) -> None:
+        """The role made, or kept, as one that signs in with this password and may do nothing else by itself."""
+        verb = "alter" if await self.has_role(role) else "create"
+        said = f"{verb} role {_name(role)} login nosuperuser nocreatedb nocreaterole password {_literal(password)}"
+        await self.connection.execute(text(said))
+
+    async def set_password(self, role: str, password: str) -> None:
+        """The role's password changed."""
+        await self.connection.execute(text(f"alter role {_name(role)} password {_literal(password)}"))
+
+
+def _name(role: str) -> str:
+    return '"' + role.replace('"', '""') + '"'
+
+
+def _literal(value: str) -> str:
+    return "'" + value.replace("'", "''") + "'"

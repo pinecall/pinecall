@@ -47,11 +47,16 @@ async def local_up(
     compose.docker_or_refuse()
     env = write_shipped(where)
     serving = server.from_the_env(env.read())
-    compose.services_up(where, ("postgres", "redis") if serving else compose.SERVICES, env.read())
-    history = await prepare_database(env, production_fleet=serving is not None)
     if serving is not None:
-        again = server_files.write_configs(where, serving, env.read())
-        server.bring_up(where, serving, env.read(), None, build=False, again=again)
+        # A server set up before its passwords were drawn gets them now, before its services start.
+        env.set(**server.passwords_of(env.read()))
+        server_files.write_configs(where, serving, env.read())
+    compose.services_up(
+        where, ("postgres", "redis") if serving else compose.SERVICES, server.environment_of(env.read())
+    )
+    history = await prepare_database(env, server=serving is not None)
+    if serving is not None:
+        server.bring_up(where, serving, env.read(), None, build=False)
         if certificate.ask_again(where, serving, env.read()):
             context.out.line(f"{serving.name} points here now: Caddy asks for its certificate again")
         server.wait_for_https(serving.name)

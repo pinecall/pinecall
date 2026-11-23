@@ -47,7 +47,7 @@ async def test_a_runner_key_the_database_does_not_know_is_drawn_again_and_kept_a
     assert database.PRODUCTION_FLEET_KEY not in values
     assert values[database.RUNNER_ENGINE[0]] == database.RUNNER_ENGINE[1]
     # Known now: run again, every key kept; a server asks for its production fleet's too.
-    await database.prepare_database(env, production_fleet=True)
+    await database.prepare_database(env, server=True)
     again = env.read()
     assert {name: again[name] for name in values} == values
     assert again[database.PRODUCTION_FLEET_KEY].startswith("pc_fleet_")

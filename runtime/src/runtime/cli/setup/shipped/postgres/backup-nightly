@@ -2,7 +2,8 @@
 # A server's base backups (server.yaml, `postgres-backup`): one when the place holds none yet, then
 # one a night at PINECALL_BACKUP_AT (03:00 UTC), and every backup older than PINECALL_BACKUP_DAYS
 # (35) forgotten with the WAL only it needed. It runs beside Postgres, on its data directory, and
-# asks it over the network to start and end each backup. A night that fails ends the process;
+# asks it through its socket (a volume both mount) to start and end each backup, as its own user:
+# no password is written for it. A night that fails ends the process;
 # Docker starts it again and it waits for the next.
 set -euo pipefail
 : "${PINECALL_BACKUP_URL:?the place the backups go: s3://bucket/path or gs://bucket/path}"
@@ -10,12 +11,12 @@ case "$PINECALL_BACKUP_URL" in gs://*) provider=google-cloud-storage ;; *) provi
 place=(--cloud-provider "$provider" "$PINECALL_BACKUP_URL" pinecall)
 
 back_up() {
-  barman-cloud-backup --gzip -h postgres -U pinecall "${place[@]}"
+  barman-cloud-backup --gzip -h /var/run/postgresql -U pinecall "${place[@]}"
   barman-cloud-backup-delete --retention-policy "RECOVERY WINDOW OF ${PINECALL_BACKUP_DAYS:-35} DAYS" "${place[@]}"
   echo "backed up to $PINECALL_BACKUP_URL at $(date -u +%FT%TZ)"
 }
 
-until pg_isready -q -h postgres -U pinecall -d pinecall; do sleep 2; done
+until pg_isready -q -h /var/run/postgresql -U pinecall -d pinecall; do sleep 2; done
 barman-cloud-backup-list "${place[@]}" | grep -q "^[0-9]\{8\}T" || back_up
 while true; do
   now=$(date -u +%s)

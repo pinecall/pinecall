@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **A server's processes hold what a cluster's pods hold, and no more.** Every process of a server ran as root
+  with Docker's capabilities and a root filesystem it could write; each worker was handed the env file whole,
+  the database's owner, the vault key, the operator's key and the signing key among it; the gateways connected
+  as the owner, whose password was the image's; Redis asked none. Now each runs as a user that is not root
+  (10001, or Postgres's and Redis's own), with no capability (Caddy keeps one, for ports 80 and 443), no
+  privilege to gain and a read-only root; a worker and an overflow are given their reads by name and none of
+  those; the gateways connect as `pinecall_app`, which `setup` makes, grants every table's rows and changes no
+  table with (`PINECALL_DB_APP_URL`); the owner's password is drawn; Redis asks one
+  (`PINECALL_REDIS_PASSWORD`), and LiveKit's and SIP's configs, which held LiveKit's secret in files of their
+  own, are said from the env file's values. A one-shot service, `own`, makes the recordings and Caddy's
+  certificates the runtime's user's. `infra/server/fence`, which `make server` runs as root, keeps the cloud's
+  metadata, and with it the machine's identity, from the runtime's processes. A test now holds the server's
+  compose file and the chart's worker to the line pinecall.io/security says one holds.
 - **A server asks for its certificate as soon as its name arrives.** A server set up with `--unpointed` has a Caddy
   that asked for the certificate while the name was still elsewhere, was refused, and waits longer after each
   refusal: after half an hour, ten minutes between tries. A name that had just been moved went unanswered for

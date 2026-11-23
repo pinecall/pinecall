@@ -6,7 +6,6 @@ from pathlib import Path
 import pytest
 
 from runtime.cli.setup import server as server_
-from runtime.cli.setup import server_files
 from runtime.cli.setup.compose import Compose
 from runtime.cli.setup.files import write_shipped
 from runtime.exceptions import ValidationError
@@ -15,7 +14,8 @@ from tests.cli.setup.test_server_files import written
 NAME = "voice.example.com"
 # The order that keeps the name answering through an update: Caddy and its file read again, one
 # gateway waited for while the other serves, the other, then everything else.
-THE_ROLL = ["up caddy", "reload caddy", "up gateway", "up gateway-b", "up everything"]
+# What the processes write is made theirs before any of them starts.
+THE_ROLL = ["run own", "up caddy", "reload caddy", "up gateway", "up gateway-b", "up everything"]
 
 
 def steps_of(ran: list[tuple[str, ...]]) -> list[str]:
@@ -26,8 +26,8 @@ def steps_of(ran: list[tuple[str, ...]]) -> list[str]:
             steps.append("reload caddy")
         elif verb[2] == "up":
             steps.append(f"up {verb[-1]}" if "--no-deps" in verb else "up everything")
-        elif verb[2] == "restart":
-            steps.append(f"restart {verb[-1]}")
+        elif verb[2] in ("restart", "run"):
+            steps.append(f"{verb[2]} {verb[-1]}")
         else:
             steps.append(verb[2])
     return steps
@@ -169,7 +169,7 @@ def test_what_this_server_does_not_run_is_removed_with_every_profile_on(
 
 
 def test_a_config_that_changed_is_read_again(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Caddy reloads its file on every run; SIP starts again when its ports changed, and only then."""
+    """Caddy reloads its file on every run; LiveKit's and SIP's configs are compose's, so nothing else restarts."""
     ran: list[tuple[str, ...]] = []
 
     def record(self: Compose, *verb: str, failed: str) -> None:
@@ -177,16 +177,6 @@ def test_a_config_that_changed_is_read_again(tmp_path: Path, monkeypatch: pytest
 
     monkeypatch.setattr(Compose, "run", record)
     server = server_.Server(NAME, phone=True)
-    env = write_shipped(tmp_path)
-    values = env.set(**server_.settings_of(server, env.read()))
-    # Written for the first time, a config is read by the service made with it: nothing starts again.
-    assert server_files.write_configs(tmp_path, server, values) == ()
-    assert server_files.write_configs(tmp_path, server, values) == ()
-    again = server_files.write_configs(tmp_path, server, env.set(**{server_files.RTP_PORTS: "10000-10199"}))
-    assert again == ("sip-server",)
-    server_.bring_up(tmp_path, server, values, None, build=False, again=again)
-    assert steps_of(ran) == ["rm", *THE_ROLL, "restart sip-server"]
-    # A service this server does not run is never started again for a file it left behind.
-    ran.clear()
-    server_.bring_up(tmp_path, server_.Server(NAME), values, None, build=False, again=again)
+    values = written(tmp_path, server)
+    server_.bring_up(tmp_path, server, values, None, build=False)
     assert steps_of(ran) == ["rm", *THE_ROLL]

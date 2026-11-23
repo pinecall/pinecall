@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 
 from runtime.cli.setup import compose
+from runtime.cli.setup.compose import compose_files
 from runtime.cli.setup.files import write_shipped
-from runtime.cli.setup.server import compose_files
 from runtime.exceptions import UpstreamError
 
 NO_ACCESS = "permission denied while trying to connect to the docker API at unix:///var/run/docker.sock"

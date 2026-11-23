@@ -494,6 +494,20 @@ $ make runners CLUSTER=<name> TAG=<commit> GATEWAY=https://voice.example.com APP
 $ make server CLUSTER=<name> TAG=<another commit>                     # an update: the commit and nothing else
 ```
 
+The server holds to what the chart holds a pod to. Every process is a user of its own that is not
+root (the runtime's 10001, Postgres's and Redis's images' own), with no capability (Caddy keeps one,
+to take ports 80 and 443), no privilege to gain and a root filesystem it cannot write. Each is handed
+what its verb reads, by name in `server.yaml`: the gateways the env file whole but the database as
+`pinecall_app`, which reads and writes every table's rows and changes none; a worker and an overflow
+their LiveKit, their fleet's key and the recordings store, never the database, Redis, the vault, the
+operator's or the signing key (`tests/cli/setup/test_server_compose.py` holds the file to it, and
+the chart's `pinecall.workerEnv` too); the retention the database as its owner and the vault. Redis
+asks a password, the owner's password is no longer the image's, and LiveKit's and SIP's configs are
+said from the env file's values, so the env file is the one file that holds a secret. `make server`
+then runs `infra/server/fence` as root: the metadata address, and with it the machine's identity
+(the secret store, the backups' bucket), answers root, the operator and Postgres's network, and
+refuses the user 10001 and every other network of Docker.
+
 Terraform's `env` output is what the server's env file is told of what was made
 (`PINECALL_BACKUP_URL`, `PINECALL_SIP_RTP_PORTS`, `PINECALL_PAGES_DOMAIN`); each environment's seats
 are the operator's own lines (`PINECALL_PRODUCTION_MAX_JOBS`, `PINECALL_SANDBOX_MAX_JOBS`). A runner's
@@ -521,7 +535,8 @@ by a file of the runtime's `sites/`. One that calls the gateways calls Caddy's p
 `http://127.0.0.1:8079`, which answers by whatever name the caller says (one named 127.0.0.1
 answered a caller that asks as the public name nothing). The MCP server's file is here,
 `server/mcp.yaml`. A service that signs to another cloud as itself does so as the machine: on AWS
-the instance's role, read from its metadata by a container on the host's network. Proven on the AWS
+the instance's role, read from its metadata by a container on the host's network, as a user that is
+not the runtime's 10001 (the fence refuses that one, and a container on a network of its own). Proven on the AWS
 server on 2026-11-23: the MCP server, and Pinecall's own two (its notifier, signing Android's
 pushes as the instance's role with no key, and its billing), each answering at its name with a
 certificate of its own.

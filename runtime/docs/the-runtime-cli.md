@@ -154,6 +154,25 @@ worker once the calls it holds have ended.
 | the apps' pages | `PINECALL_PAGES_DOMAIN=<domain>` and a wildcard record `*.<domain>` to the machine: each page's certificate is asked for at its first visit, once the gateway says the name is a page of an app that runs (`GET /v1/pages/known`). Let's Encrypt gives a registered domain 50 new certificates a week |
 | the hosted apps | a runner for each environment, on a machine of their own: `pinecall-runtime runner start` with `PINECALL_GATEWAY_URL` (the server's https name), `PINECALL_RUNNER_KEY` (`keys runner <env>`), `PINECALL_RUNNER_ENGINE=containers` and `PINECALL_RUNNER_IMAGE` (the image every app runs in). Each app is a gVisor container, fenced from the machine and from the other apps; `infra/server/runners` sets the machine up (gVisor, the apps' network and its fence). Where every app is the operator's own, `PINECALL_RUNNER_ENGINE=processes` and a `PINECALL_RUNNER_HOME` for each runner run them as plain processes, fenced by nothing |
 
+**What each process of a server holds.** Every process runs as a user of its own that is not root, as
+a cluster's pod does: the runtime's as 10001, Postgres and Redis as their images' users, LiveKit and
+SIP as 10001. None keeps a capability, none may gain a privilege, and none can write its root
+filesystem; Caddy alone keeps one capability, to take ports 80 and 443. What they write goes to
+memory (`/tmp`), a volume, and the recordings' folder; a one-shot service, `own`, run before the
+others with no network and no capability but to change an owner, makes that folder and Caddy's
+certificates theirs. Each is handed what it reads: the gateways the env file whole, with the
+database as `pinecall_app`, a role that reads and writes every table's rows and changes none; a
+worker and an overflow their LiveKit and its pair, their fleet's key and where recordings go, and no
+database, no Redis, no vault key, no operator's key and no signing key; the retention the database as
+its owner, the vault and the recordings. `setup` draws, once, the role's password
+(`PINECALL_DB_APP_URL`), Redis's (`PINECALL_REDIS_PASSWORD`; LiveKit and SIP sign in with it too)
+and a password for the owner in place of the image's, and grants the role every table's rows each
+run. LiveKit's and SIP's configs are said in the compose file from the env file's values, so the
+env file (owner-only) is the one file of the machine that holds a secret. On a cloud's machine,
+`infra/server/fence` (run by `make server`, as root) keeps the metadata address, and with it the
+machine's identity, from the runtime's processes: it answers root, the operator and Postgres's
+network, whose WAL goes to the bucket as the machine.
+
 **Your own LiveKit (`--livekit`).** LiveKit Cloud or a LiveKit you run, instead of one `setup`
 starts: its URL, then its API key and secret, asked once (`--livekit-key`, `--livekit-secret-stdin`
 for a script). The pair is tried before anything is kept. LiveKit must reach the runtime with its

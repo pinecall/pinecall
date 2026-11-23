@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# The server's fence around the cloud's metadata. Run on the server as root, after `install`:
+#
+#   fence
+#
+# The machine's identity reads what a server deployment keeps in the cloud's secret store and writes
+# its backups' bucket (infra/terraform/<provider>/server), and whatever process asks the metadata
+# address for that identity gets it. The runtime's processes run on the host's network as the user
+# 10001 (server.yaml): a worker decodes a caller's audio and runs the vendors' plugins, and it holds
+# no key of the database or the vault, so it must not be able to fetch the identity that reads them.
+# So the address answers root, the runtime's operator (the user that runs `setup`, who reads the
+# secret store) and Postgres's own network (its WAL goes to the bucket as the machine), and nobody
+# else: not the user 10001 on the host's network, not a container on any other network of Docker.
+# Put again each time the machine starts, by a unit of systemd.
+set -euo pipefail
+metadata=169.254.169.254
+
+cat > /usr/local/sbin/pinecall-server-fence <<FENCE
+#!/bin/sh
+set -eu
+iptables -N PINECALL-METADATA 2>/dev/null || iptables -F PINECALL-METADATA
+iptables -A PINECALL-METADATA -j REJECT
+# The runtime's processes, on the host's network.
+iptables -C OUTPUT -d $metadata -m owner --uid-owner 10001 -j PINECALL-METADATA 2>/dev/null \\
+  || iptables -I OUTPUT -d $metadata -m owner --uid-owner 10001 -j PINECALL-METADATA
+# Every container on a network of Docker's own, but Postgres's: its network is the one compose
+# makes for the services (pinecall-local_default), read as it is now.
+postgres=\$(docker network inspect pinecall-local_default -f '{{(index .IPAM.Config 0).Subnet}}' 2>/dev/null || true)
+iptables -F DOCKER-USER-METADATA 2>/dev/null || iptables -N DOCKER-USER-METADATA
+[ -z "\$postgres" ] || iptables -A DOCKER-USER-METADATA -s "\$postgres" -j RETURN
+iptables -A DOCKER-USER-METADATA -j REJECT
+iptables -C DOCKER-USER -d $metadata -j DOCKER-USER-METADATA 2>/dev/null \\
+  || iptables -I DOCKER-USER -d $metadata -j DOCKER-USER-METADATA
+FENCE
+chmod 0755 /usr/local/sbin/pinecall-server-fence
+
+cat > /etc/systemd/system/pinecall-server-fence.service <<'UNIT'
+[Unit]
+Description=Pinecall: the fence around the cloud's metadata on the runtime's server
+After=docker.service
+Requires=docker.service
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/pinecall-server-fence
+
+[Install]
+WantedBy=multi-user.target docker.service
+UNIT
+
+systemctl daemon-reload
+systemctl enable --quiet pinecall-server-fence
+systemctl restart pinecall-server-fence
+echo "fence: $(systemctl is-active pinecall-server-fence) · metadata refused to 10001 and to every network but Postgres's"

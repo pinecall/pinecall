@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from runtime.cli.setup import server
-from runtime.cli.setup.compose import Compose, services_up
+from runtime.cli.setup.compose import Compose, compose_files, services_up
 from runtime.cli.setup.env_file import EnvFile
 from runtime.exceptions import ValidationError
 
@@ -25,8 +25,8 @@ def replace_database(where: Path, dump: Path) -> None:
     if not dump.is_file():
         raise ValidationError(f"{dump} is not a file: a dump made with `pg_dump -Fc`")
     values = EnvFile(where / "env").read()
-    services_up(where, ("postgres",), values)
-    if len(server.compose_files(where)) > 1:
+    services_up(where, ("postgres",), server.environment_of(values))
+    if len(compose_files(where)) > 1:
         server.every_service(where, values).run("--progress", "quiet", "stop", *WRITERS, failed=STOP_FAILED)
     postgres = Compose((where / "compose.yaml",), environment=values)
     postgres.run("exec", "-T", "postgres", *EMPTY, EMPTIED, failed=EMPTY_FAILED)

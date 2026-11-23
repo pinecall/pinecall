@@ -132,6 +132,12 @@ def is_built(image: str) -> bool:
     return asked.returncode == 0
 
 
+def compose_files(where: Path) -> tuple[Path, ...]:
+    """The services' compose file, and the server's laid over it where this machine is one."""
+    server = where / "server.yaml"
+    return (where / "compose.yaml", *([server] if server.is_file() else []))
+
+
 def _read(path: Path) -> str | None:
     return path.read_text(encoding="utf-8") if path.is_file() else None
 
@@ -159,7 +165,9 @@ BUILT_FROM = ".postgres-built"
 # and each run cost a server three seconds of its database.
 def services_up(where: Path, services: Sequence[str], environment: Mapping[str, str]) -> None:
     """The services' `docker compose up`, Postgres built when its files changed, each loopback port answering."""
-    compose = Compose((where / "compose.yaml",), environment=environment)
+    # A server's file is read too: Postgres and Redis are confined there, and read without it they
+    # were started again as root and with no password, then again as the server's, on every run.
+    compose = Compose(compose_files(where), environment=environment)
     files = files_of_postgres(where)
     remembered = where / BUILT_FROM
     if "postgres" in services and not (is_built(POSTGRES_IMAGE) and _read(remembered) == files):

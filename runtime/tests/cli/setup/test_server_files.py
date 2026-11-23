@@ -24,10 +24,11 @@ def test_a_server_draws_its_own_livekit_pair_and_keeps_the_gateway_on_loopback(t
     assert values["LIVEKIT_API_KEY"] == server_.LIVEKIT_KEY
     assert values["LIVEKIT_API_SECRET"] != "a-laptop-only-livekit-secret-0123456789"
     assert "PINECALL_GATEWAY_LISTEN" not in values and "LIVEKIT_PUBLIC_URL" not in values
-    config = (tmp_path / "livekit.server.yaml").read_text()
-    assert f"pinecall: {values['LIVEKIT_API_SECRET']}" in config
-    assert "http://127.0.0.1:8079/v1/livekit/webhook" in config and "use_external_ip: true" in config
-    assert (tmp_path / "livekit.server.yaml").stat().st_mode & 0o077 == 0
+    # LiveKit's config is said in the compose file from the env file's values: no file of its own holds the secret.
+    compose = (tmp_path / "server.yaml").read_text()
+    assert "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}" in compose
+    assert "http://127.0.0.1:8079/v1/livekit/webhook" in compose and "use_external_ip: true" in compose
+    assert not (tmp_path / "livekit.server.yaml").exists()
     caddy = (tmp_path / "Caddyfile").read_text()
     assert caddy.startswith(f"{NAME} {{") and "/rtc" in caddy
     # Either gateway, whichever is up, for the name and, on a port of loopback, for what runs here.
@@ -64,13 +65,29 @@ def test_the_image_installs_this_release_or_the_wheel_given(tmp_path: Path) -> N
 
 def test_the_phones_ports_are_the_env_files(tmp_path: Path) -> None:
     """Twenty RTP ports unless the env file names a range: a call takes one, and the firewall opens the same."""
-    env = write_shipped(tmp_path)
-    server = server_.Server(NAME, phone=True)
-    values = env.set(**server_.settings_of(server, env.read()))
-    server_files.write_files(tmp_path, server, values, None)
-    assert "rtp_port: 10000-10019" in (tmp_path / "sip.server.yaml").read_text()
-    server_files.write_files(tmp_path, server, env.set(**{server_files.RTP_PORTS: "10000-10199"}), None)
-    assert "rtp_port: 10000-10199" in (tmp_path / "sip.server.yaml").read_text()
+    written(tmp_path, server_.Server(NAME, phone=True))
+    assert "rtp_port: ${PINECALL_SIP_RTP_PORTS:-10000-10019}" in (tmp_path / "server.yaml").read_text()
+
+
+def test_the_configs_a_server_wrote_with_a_secret_in_them_are_removed(tmp_path: Path) -> None:
+    """LiveKit's and SIP's files of before held LiveKit's secret: a run takes them off the machine."""
+    for name in server_files.GONE:
+        (tmp_path / name).write_text("keys:\n  pinecall: an-old-secret\n")
+    written(tmp_path, server_.Server(NAME, phone=True))
+    assert not any((tmp_path / name).exists() for name in server_files.GONE)
+
+
+def test_a_servers_passwords_are_drawn_once_and_kept(tmp_path: Path) -> None:
+    """Redis's and the gateways' role's: drawn the first time, the same on every run after, in their URLs."""
+    first = written(tmp_path, server_.Server(NAME))
+    password = first[server_.REDIS_PASSWORD]
+    assert len(password) == 48 and first["PINECALL_REDIS_URL"] == f"redis://:{password}@127.0.0.1:56380/0"
+    assert first["PINECALL_DB_APP_ROLE"] == server_.APP_ROLE
+    assert first[server_.APP_URL].startswith(f"postgresql://{server_.APP_ROLE}:")
+    assert first[server_.APP_URL].endswith("@127.0.0.1:55433/pinecall")
+    again = written(tmp_path, server_.Server(NAME))
+    drawn = server_.passwords_of({})
+    assert {name: again[name] for name in drawn} == {name: first[name] for name in drawn}
 
 
 def test_caddy_serves_the_operators_sites_and_the_apps_pages(tmp_path: Path) -> None:

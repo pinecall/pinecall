@@ -275,12 +275,14 @@ hosting:          ## CLUSTER=…: charts/hosting released where the hosted apps 
 # hosted apps. The runtime is put on each at a commit's image, the one `make image` builds for a
 # cluster, by a script of infra/server/ run on the machine itself as the operator's own login: no
 # port 22, no key. SETUP is what `setup` is told the first time (`--domain <name> --phone
-# --unpointed --yes`); an update names the commit alone.
+# --unpointed --yes`); an update names the commit alone. Then, as root, the fence that keeps the
+# machine's identity from the runtime's own processes (infra/server/fence).
 server_machine = $$($(TF_AUTH) $(TF) output -json machines | python3 -c 'import json, sys; print(json.load(sys.stdin)["$(1)"])')
 server:           ## CLUSTER=… TAG=<commit> [SETUP="--domain <name> …"]: the server set up, or brought to that commit's image
 	@[ -n "$(DIGEST)" ] || \
 	  { echo "make server: no image $(REGISTRY)/runtime:$(TAG); make image TAG=$(TAG) first" >&2; exit 2; }
 	$(call on,$(call server_machine,server),pinecall,$(INFRA)/server/install,$(REGISTRY)/runtime:$(TAG) $(SETUP))
+	$(call on,$(call server_machine,server),root,$(INFRA)/server/fence,)
 
 runners:          ## CLUSTER=… TAG=<commit> GATEWAY=https://<name> APPS=<tag>: the hosted apps' machine's runners, at that commit
 	@[ -n "$(GATEWAY)" ] || { echo "make runners: GATEWAY=https://<the server's name>" >&2; exit 2; }

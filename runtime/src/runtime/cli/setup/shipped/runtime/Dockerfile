@@ -6,3 +6,5 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 ARG SPEC
 COPY wheels/ /wheels/
 RUN pip install --no-cache-dir "${SPEC}"
+# The user every process runs as (server.yaml), with its home: the registry's image has the same one.
+RUN useradd --uid 10001 --create-home --shell /usr/sbin/nologin pinecall

@@ -61,7 +61,9 @@ def test_sip_reads_its_config_where_the_image_looks_for_it(tmp_path: Path) -> No
     """LiveKit's SIP image opens /sip/config.yaml; a file mounted anywhere else left it restarting forever."""
     write_shipped(tmp_path)
     assert "./sip.yaml:/sip/config.yaml:ro" in (tmp_path / "compose.yaml").read_text()
-    assert "./sip.server.yaml:/sip/config.yaml:ro" in find_shipped("server.yaml").read_text(encoding="utf-8")
+    # A server's reads its config from the env file's values instead, so its entrypoint names no file.
+    served = find_shipped("server.yaml").read_text(encoding="utf-8")
+    assert 'entrypoint: ["livekit-sip"]' in served and "SIP_CONFIG_BODY: |" in served
 
 
 # A fleet's key is a setting since R11: the production worker reads its fleet's from the settings file.

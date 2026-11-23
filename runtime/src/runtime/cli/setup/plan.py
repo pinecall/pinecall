@@ -107,16 +107,18 @@ async def carry_out(flags: Flags, out: Printer) -> int:
     if first_run:
         out.line("\n  starting  the first run downloads the services and the models: some minutes")
     env = write_shipped(flags.where)
+    # A server's settings first, its passwords among them: its Postgres and Redis start with them.
+    if wanted is not None:
+        env.set(**server.settings_of(wanted, env.read()))
+        server_files.write_configs(flags.where, wanted, env.read())
     started = ("postgres", "redis") if flags.chat_only or wanted else compose.SERVICES
-    compose.services_up(flags.where, started, env.read())
+    compose.services_up(flags.where, started, server.environment_of(env.read(), flags.wheel))
     if wanted is None:
         named = " · ".join(name for name, (_, service) in compose.PORTS.items() if service in started)
         out.line(f"  services  {named} — this machine only")
-    else:
-        env.set(**server.settings_of(wanted, env.read()))
     # The schema's revisions, one INFO line each, are the operator's to read in `migrate up`, not a setup's.
     logging.getLogger("alembic").setLevel(logging.WARNING)
-    await prepare_database(env, production_fleet=wanted is not None)
+    await prepare_database(env, server=wanted is not None)
     runtime = Context(env.settings(), out)
     async with runtime.stack:
         said, member = await person.make_the_person(runtime, answers, env)
@@ -185,8 +187,8 @@ def _serve(flags: Flags, wanted: server.Server, values: dict[str, str], email: s
         out.line("  phone     through your LiveKit's own SIP")
     else:
         out.line("  phone     on: SIP on :5060" if wanted.phone else "  phone     off — `--phone` turns it on")
-    again = server_files.write_files(flags.where, wanted, values, flags.wheel)
-    server.bring_up(flags.where, wanted, values, flags.wheel, again=again)
+    server_files.write_files(flags.where, wanted, values, flags.wheel)
+    server.bring_up(flags.where, wanted, values, flags.wheel)
     if flags.unpointed:
         out.line("\n" + NEXT_UNPOINTED.format(name=wanted.name, email=email))
         return OK
