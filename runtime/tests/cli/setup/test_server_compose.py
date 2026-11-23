@@ -32,12 +32,14 @@ CHART_ENV = Path(__file__).resolve().parents[4] / "infra" / "charts" / "pinecall
 def blocks() -> dict[str, str]:
     """Each top-level anchor and each service of server.yaml, as its own lines."""
     text = find_shipped("server.yaml").read_text(encoding="utf-8")
-    # The volumes' names at the end (`redis` among them) are no services.
-    text = text.split("\nvolumes:\n", 1)[0]
+    # The anchors before `services:`, each from its own top-level line; the volumes after it are no services.
+    anchors, services = text.split("\nservices:\n", 1)
+    services = services.split("\nvolumes:\n", 1)[0]
     found: dict[str, str] = {}
-    for part in re.split(r"\n(?=x-[a-z-]+: &|  [a-z][a-z-]*:\n)", text):
-        head = part.split(":", 1)[0].strip()
-        found[head] = part
+    for part in re.split(r"\n(?=x-[a-z-]+: &)", anchors)[1:]:
+        found[part.split(":", 1)[0]] = part
+    for part in re.split(r"\n(?=  [a-z][a-z-]*:\n)", "\n" + services)[1:]:
+        found[part.split(":", 1)[0].strip()] = part
     return found
 
 
