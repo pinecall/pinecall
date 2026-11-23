@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Every email the box sends carries a `Date`** (RFC 5322); a relay used to add it, or not.
 - **A server waits for its workers to answer.** A worker or an overflow that died at start was taken as up,
   because none had a health check: a deploy said it had succeeded while no call could be answered (six minutes
   on 2026-11-23). Each now answers its health on a port of loopback (the overflow's is

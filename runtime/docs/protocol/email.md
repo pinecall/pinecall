@@ -62,8 +62,9 @@ thread quiet for two hours is over: its next email opens a new call that carries
 
 Each `turn.agent` of an email call is one email to the contact, from the address written to: its
 subject `Re:` and the subject answered (said once), `In-Reply-To` the email answered (the newest of
-the thread), `References` the chain before it and that email, `Auto-Submitted: auto-replied`, and a
-`Message-ID` of the address's domain. Its HTML is the org's layout with the reply's words set where
+the thread), `References` the chain before it and that email, `Auto-Submitted: auto-replied`, a
+`Message-ID` of the address's domain, and a `Date` (RFC 5322 requires it; every email the box sends
+carries one). Its HTML is the org's layout with the reply's words set where
 it says `{{content}}`; its plain part is the words alone. An org that set `text_only` has no HTML
 part: the email is one `text/plain` part. The words are read for paragraphs, lists (`-`, `1.`),
 `**bold**`, `*italics*`, links (`[words](https://…)` and bare addresses) and images

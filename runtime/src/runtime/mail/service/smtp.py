@@ -3,7 +3,9 @@
 import asyncio
 import smtplib
 import ssl
+from datetime import UTC, datetime
 from email.message import EmailMessage
+from email.utils import format_datetime
 
 from runtime.exceptions import UpstreamError
 from runtime.kit import dns
@@ -19,6 +21,8 @@ async def deliver(mailbox: Mailbox, email: Email, *, within_s: float = TIMEOUT_S
     message["From"] = mailbox.sender
     message["To"] = email.to
     message["Subject"] = email.subject
+    # RFC 5322 §3.6 requires it; a relay that adds it for us (Maddy did) is not every relay.
+    message["Date"] = format_datetime(datetime.now(UTC))
     for name, value in email.headers.items():
         message[name] = value
     message.set_content(email.text)
