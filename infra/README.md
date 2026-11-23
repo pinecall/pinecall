@@ -527,11 +527,25 @@ certificate of its own.
 that seal and sign what the dump holds. The server is made and set up with its names still pointing
 at the cluster (`--unpointed`); `PINECALL_VAULT_KEY`, `PINECALL_TOKEN_KEY`, `PINECALL_OPS_KEY` and each
 environment's fleet key are written into its env file from the cluster's secret store, by the
-machine itself (`reads_secrets` lets it read them, and nothing else there); the cluster's gateways
+server itself (`reads_secrets` lets it read them, and nothing else there); the cluster's gateways
 and workers are stopped, `pg_dump -Fc` taken and `pinecall-runtime local restore` given it; then
 `point_names` and `point_sip` move the names, each taken over in one change, and the cluster's
 Terraform is told to forget the records. An address carriers already know moves with it
 (`kept_address`). The way back is the same dump in the other direction.
+
+**A server's secrets.** A server is one disk, and the keys its database is sealed and signed with
+must outlive it: `keeps_secrets` names them in the cloud's secret store, where Terraform makes each
+name and the operator puts each value, piped, so no state holds one. Nothing reads them while the
+server runs (its env file holds what it runs on); a server made again begins its env file from
+them. The server alone may read them. The apps' machine runs other people's code, and whatever its
+identity may read that code may read, so it reads no secret unless `apps_reads_secrets` names it.
+After a move from a cluster the secrets change owner before the cluster is destroyed, each
+imported into the server's state and then forgotten by the cluster's:
+
+```console
+$ terraform import 'aws_secretsmanager_secret.kept["pinecall-<name>-vault-key"]' <its ARN>      # in the server's root
+$ terraform state rm 'module.secrets.aws_secretsmanager_secret.this["vault-key"]'                # in the cluster's
+```
 
 ## Staging, made and destroyed
 

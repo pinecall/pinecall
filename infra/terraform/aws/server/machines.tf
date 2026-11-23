@@ -46,8 +46,9 @@ data "aws_iam_policy_document" "machine" {
   }
 }
 
-# What either machine may do as itself: be reached by a session of Systems Manager, pull the
-# registry's images, and read the secrets under the prefix named, if one is.
+# What either machine may do as itself: be reached by a session of Systems Manager and pull the
+# registry's images. Nothing of Secrets Manager: the apps' machine runs other people's code, and
+# whatever its role may read, that code may read (the role's credentials are one request away).
 data "aws_iam_policy_document" "both" {
   statement {
     sid       = "SignInToTheRegistry"
@@ -59,6 +60,19 @@ data "aws_iam_policy_document" "both" {
     actions   = ["ecr:BatchCheckLayerAvailability", "ecr:GetDownloadUrlForLayer", "ecr:BatchGetImage"]
     resources = ["arn:aws:ecr:${var.region}:${data.aws_caller_identity.this.account_id}:repository/pinecall/*"]
   }
+}
+
+# The server alone reads the deployment's secrets (secrets.tf), and another deployment's under the
+# prefix named, if one is.
+data "aws_iam_policy_document" "secrets" {
+  dynamic "statement" {
+    for_each = length(aws_secretsmanager_secret.kept) == 0 ? [] : [1]
+    content {
+      sid       = "ReadItsOwnSecrets"
+      actions   = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"]
+      resources = [for secret in aws_secretsmanager_secret.kept : secret.arn]
+    }
+  }
   dynamic "statement" {
     for_each = var.reads_secrets == "" ? [] : [var.reads_secrets]
     content {
@@ -66,6 +80,15 @@ data "aws_iam_policy_document" "both" {
       actions   = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"]
       resources = ["arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.this.account_id}:secret:${statement.value}*"]
     }
+  }
+}
+
+# The apps' machine reads only the secrets named for it, and by default none.
+data "aws_iam_policy_document" "apps_secrets" {
+  statement {
+    sid       = "ReadTheSecretsNamedForIt"
+    actions   = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"]
+    resources = [for name in var.apps_reads_secrets : aws_secretsmanager_secret.kept[name].arn]
   }
 }
 
@@ -98,9 +121,23 @@ resource "aws_iam_role_policy_attachment" "session" {
 
 resource "aws_iam_role_policy" "both" {
   for_each = aws_iam_role.machine
-  name     = "registry-and-secrets"
+  name     = "registry"
   role     = each.value.name
   policy   = data.aws_iam_policy_document.both.json
+}
+
+resource "aws_iam_role_policy" "secrets" {
+  count  = length(var.keeps_secrets) > 0 || var.reads_secrets != "" ? 1 : 0
+  name   = "its-secrets"
+  role   = aws_iam_role.machine["server"].name
+  policy = data.aws_iam_policy_document.secrets.json
+}
+
+resource "aws_iam_role_policy" "apps_secrets" {
+  count  = var.apps && length(var.apps_reads_secrets) > 0 ? 1 : 0
+  name   = "the-secrets-named-for-it"
+  role   = aws_iam_role.machine["apps"].name
+  policy = data.aws_iam_policy_document.apps_secrets.json
 }
 
 resource "aws_iam_role_policy" "backups" {

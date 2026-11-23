@@ -131,11 +131,32 @@ variable "sip_sources" {
   }
 }
 
-# A runtime moved here from a cluster reads what that cluster's secrets hold (the vault's key, the
-# tokens' key, the fleets' and the runners' keys): the machines may read the Secret Manager secrets
-# named here, and nothing else of it. Empty, they read none.
+# The deployment's own secrets in Secret Manager: what its database is sealed and signed with (the
+# vault's key, the tokens' key, the operator's key, the fleets' and the runners' keys) and what its
+# services pay and sign with, kept outside the machine so a server made again begins its env file
+# from them. Terraform makes each name; the operator puts each value, piped, and no state holds one
+# (`gcloud secrets versions add <id> --data-file=-`). The server alone reads them: the apps' machine
+# runs other people's code and reads none it is not named.
+variable "keeps_secrets" {
+  type        = list(string)
+  description = "The ids of the Secret Manager secrets this deployment keeps, as pinecall-production-vault-key."
+  default     = []
+}
+
+# Before a runtime moves here from a cluster, its secrets are still that cluster's: the server may
+# read the Secret Manager secrets named here. After the move the ids go to `keeps_secrets`
+# (infra/README.md, "From a cluster to a server").
 variable "reads_secrets" {
   type        = list(string)
-  description = "The ids of the Secret Manager secrets both machines may read."
+  description = "The ids of another deployment's Secret Manager secrets the server may read."
+  default     = []
+}
+
+# The secrets the apps' machine may read, each one of `keeps_secrets`: none unless named. Whatever is
+# named here is within reach of every hosted app's code, so it is never a key that opens more than
+# those apps already hold.
+variable "apps_reads_secrets" {
+  type        = list(string)
+  description = "The ids, among keeps_secrets, the apps' machine may read. Empty: it reads none."
   default     = []
 }

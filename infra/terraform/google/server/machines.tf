@@ -44,7 +44,7 @@ locals {
 }
 
 # What each machine acts as. Either pulls the registry's images and writes its logs; the server
-# alone writes the backups' bucket (backups.tf), and both read the secrets named, if any are.
+# alone writes the backups' bucket (backups.tf) and reads the deployment's secrets (secrets.tf).
 resource "google_service_account" "machine" {
   for_each     = local.kinds
   account_id   = "pinecall-${var.name}-srv-${each.key}"
@@ -58,11 +58,20 @@ resource "google_project_iam_member" "machine" {
   member   = "serviceAccount:${google_service_account.machine[each.value[0]].email}"
 }
 
+# The server alone reads the deployment's secrets and another's named; the apps' machine, which
+# runs other people's code, reads only the ones named for it, and by default none.
 resource "google_secret_manager_secret_iam_member" "reads" {
-  for_each  = { for pair in setproduct(local.kinds, var.reads_secrets) : "${pair[0]} ${pair[1]}" => pair }
-  secret_id = each.value[1]
+  for_each  = toset(concat(var.reads_secrets, [for secret in google_secret_manager_secret.kept : secret.secret_id]))
+  secret_id = each.key
   role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.machine[each.value[0]].email}"
+  member    = "serviceAccount:${google_service_account.machine["server"].email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "apps_reads" {
+  for_each  = toset(var.apps ? var.apps_reads_secrets : [])
+  secret_id = google_secret_manager_secret.kept[each.key].secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.machine["apps"].email}"
 }
 
 resource "google_compute_instance" "server" {
