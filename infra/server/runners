@@ -1,48 +1,113 @@
 #!/usr/bin/env bash
-# The hosted apps' machine: a runner an environment, each kept up by systemd as the user `pinecall`
-# and each in a home of its own (a runner empties its home when it starts, so two never share one).
+# The hosted apps' machine: a runner an environment, each kept up by systemd as the user `pinecall`.
 # Run on that machine as root:
 #
-#   runners <image> <the server's https address>
+#   runners <the runtime's image> <the server's https address> <the apps' image>
 #
-# The runners run what `pinecall deploy` sends as processes of this machine
-# (`PINECALL_RUNNER_ENGINE=processes`), with nothing fencing one app from another: what this machine
-# keeps apart is the apps from the server, whose database and vault key are not here. A runner calls
-# the server by its public name and nothing calls a runner, so this machine opens no port.
+# The runners run what `pinecall deploy` sends, which is other people's code, so each app is a
+# container of its own under gVisor (`PINECALL_RUNNER_ENGINE=containers`): no root, no capability, a
+# root filesystem it cannot write, a ceiling on its memory and its processes, and a network of the
+# apps' own that reaches the internet and nothing else: not this machine, not its neighbours, not
+# the cloud's metadata, not another app. That is what a cluster's gVisor pod and its network
+# policies are, said to Docker. A runner calls the server by its public name and nothing calls a
+# runner, so this machine opens no port.
 #
 # Before it runs, each environment's runner key is a file only root reads:
 #   /etc/pinecall/runner-sandbox.key   /etc/pinecall/runner-production.key
 # (`pinecall-runtime keys runner <env>` on the server prints one). An environment with no key file
 # gets no runner. The command line is installed from the image's own wheel, as on the server
-# (infra/server/install); run again with another image, it updates and restarts the runners.
+# (infra/server/install); run again with another image, it updates and restarts the runners, and
+# the apps go on running through it.
 set -euo pipefail
 image=${1:?the image to take the command line from, as <registry>/pinecall/runtime:<commit>}
 gateway=${2:?the address of the server, as https://voice.example.com}
+apps=${3:?the image every app runs in, as <registry>/pinecall/app:<tag> (infra/images/app)}
+network=pinecall-apps
+export DEBIAN_FRONTEND=noninteractive
+
+# gVisor, from its own repository, and Docker told of it under the name the runner asks for.
+if ! command -v runsc >/dev/null; then
+  curl -fsSL https://gvisor.dev/archive.key | gpg --dearmor --yes -o /usr/share/keyrings/gvisor-archive-keyring.gpg
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/gvisor-archive-keyring.gpg] https://storage.googleapis.com/gvisor/releases release main" \
+    > /etc/apt/sources.list.d/gvisor.list
+  apt-get update -qq
+  apt-get install -y -qq runsc
+fi
+if ! docker info --format '{{json .Runtimes}}' | grep -q '"gvisor"'; then
+  python3 - <<'PY'
+import json, pathlib
+named = pathlib.Path("/etc/docker/daemon.json")
+said = json.loads(named.read_text()) if named.exists() else {}
+said.setdefault("runtimes", {})["gvisor"] = {"path": "/usr/bin/runsc"}
+named.write_text(json.dumps(said, indent=2) + "\n")
+PY
+  systemctl restart docker
+fi
+
+# The apps' network: a bridge of its own, on which one container cannot reach another.
+docker network inspect "$network" >/dev/null 2>&1 || docker network create --driver bridge --subnet 172.30.0.0/16 \
+  -o com.docker.network.bridge.name="$network" -o com.docker.network.bridge.enable_icc=false "$network" >/dev/null
+
+# The fence around it, put again each time the machine starts: what leaves an app goes to the
+# internet or nowhere. Private networks, the link-local range (the cloud's metadata among it) and
+# this machine itself are closed to it.
+cat > /usr/local/sbin/pinecall-apps-fence <<'FENCE'
+#!/bin/sh
+set -eu
+iptables -N PINECALL-APPS 2>/dev/null || iptables -F PINECALL-APPS
+for closed in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16 100.64.0.0/10 127.0.0.0/8; do
+  iptables -A PINECALL-APPS -d "$closed" -j DROP
+done
+iptables -C DOCKER-USER -i pinecall-apps -j PINECALL-APPS 2>/dev/null || iptables -I DOCKER-USER -i pinecall-apps -j PINECALL-APPS
+iptables -C INPUT -i pinecall-apps -j DROP 2>/dev/null || iptables -I INPUT -i pinecall-apps -j DROP
+FENCE
+chmod 0755 /usr/local/sbin/pinecall-apps-fence
+cat > /etc/systemd/system/pinecall-apps-fence.service <<'UNIT'
+[Unit]
+Description=Pinecall: the fence around the hosted apps' network
+After=docker.service
+Requires=docker.service
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/pinecall-apps-fence
+
+[Install]
+WantedBy=multi-user.target docker.service
+UNIT
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 sudo -iu pinecall docker pull --quiet "$image" >/dev/null
+sudo -iu pinecall docker pull --quiet "$apps" >/dev/null
 held=$(sudo -iu pinecall docker create "$image")
 docker cp --quiet "$held:/opt/pinecall/wheel/." "$work/"
 docker rm "$held" >/dev/null
 chmod -R a+rX "$work"
 sudo -iu pinecall uv tool install --quiet --python 3.13 --force "$(ls "$work"/pinecall_runtime-*.whl)"
 
+# A runner of before ran each app as a process of the user `pinecall`, and stopped them as it
+# stopped: told to stop under the unit it was started with, then whatever it left is ended, so no
+# app goes on running outside a container.
+systemctl stop pinecall-runner@sandbox pinecall-runner@production 2>/dev/null || true
+pkill -KILL -u pinecall -f '/home/pinecall/.pinecall-runtime/apps-' || true
+# A runner never starts without the fence: an app with no fence is an app that reaches this machine.
 cat > /etc/systemd/system/pinecall-runner@.service <<'UNIT'
 [Unit]
 Description=Pinecall: the %i environment's hosted apps
-After=network-online.target
+After=network-online.target docker.service pinecall-apps-fence.service
 Wants=network-online.target
+Requires=docker.service pinecall-apps-fence.service
 
 [Service]
 User=pinecall
 EnvironmentFile=/etc/pinecall/runner-%i.env
-Environment=PINECALL_RUNNER_ENGINE=processes
-Environment=PINECALL_RUNNER_HOME=/home/pinecall/.pinecall-runtime/apps-%i
+Environment=PINECALL_RUNNER_ENGINE=containers
 Environment=PATH=/home/pinecall/.local/bin:/usr/local/bin:/usr/bin:/bin
 ExecStart=/home/pinecall/.local/bin/pinecall-runtime runner start
-# Told to stop, a runner stops its apps, each given its drain.
-TimeoutStopSec=120
+TimeoutStopSec=30
 Restart=always
 RestartSec=5
 
@@ -51,12 +116,19 @@ WantedBy=multi-user.target
 UNIT
 
 systemctl daemon-reload
+systemctl enable --quiet pinecall-apps-fence
+systemctl restart pinecall-apps-fence
 for env in sandbox production; do
   key=/etc/pinecall/runner-$env.key
   [ -s "$key" ] || { echo "runners: no $key, so no runner for $env"; continue; }
-  # The unit reads the address and the key from one file of root's, never from its own text.
-  (umask 077; printf 'PINECALL_GATEWAY_URL=%s\nPINECALL_RUNNER_KEY=%s\n' "$gateway" "$(cat "$key")" > /etc/pinecall/runner-$env.env)
+  # The unit reads the address, the key and the apps' image from one file of root's, never from its own text.
+  (umask 077; printf 'PINECALL_GATEWAY_URL=%s\nPINECALL_RUNNER_KEY=%s\nPINECALL_RUNNER_IMAGE=%s\nPINECALL_RUNNER_NETWORK=%s\n' \
+    "$gateway" "$(cat "$key")" "$apps" "$network" > /etc/pinecall/runner-$env.env)
   systemctl enable --quiet "pinecall-runner@$env"
   systemctl restart "pinecall-runner@$env"
   echo "runners: $env is $(systemctl is-active "pinecall-runner@$env")"
 done
+# What the runners held before each app had a container of its own: every org's sources, in folders
+# of the one user. Nothing reads them now.
+rm -rf /home/pinecall/.pinecall-runtime/apps-sandbox /home/pinecall/.pinecall-runtime/apps-production
+echo "runners: sandbox $(docker info --format '{{range $name, $_ := .Runtimes}}{{$name}} {{end}}')· network $network · fence $(systemctl is-active pinecall-apps-fence)"

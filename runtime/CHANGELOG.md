@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **A server's hosted apps each run in a sandbox.** A server ran what `pinecall deploy` sent as processes of one
+  user (`PINECALL_RUNNER_ENGINE=processes`), which is right only where every app is the operator's own: one org's
+  code could read another's sources and secrets, the runner's key, and whatever the machine's identity could.
+  `PINECALL_RUNNER_ENGINE=containers` runs each app as a container of the machine's Docker under gVisor, as a
+  cluster's pod is: no root, no capability, a root filesystem it cannot write, a ceiling on its memory, its
+  processors and its processes, its release given on the install's input and never a folder of the machine, its
+  environment never on a command line, and a network of the apps' own (`PINECALL_RUNNER_NETWORK`) that
+  `infra/server/runners` fences from the machine, its neighbours, the cloud's metadata and the other apps. It
+  starts no app on a machine whose Docker lacks the sandbox or the network. The apps go on running while their
+  runner is started again. On AWS the apps' machine reads no secret (`apps_reads_secrets` names any it must) and
+  its metadata answers one hop, which a container is not.
 - **A server carries production.** `setup --domain` made a small server: a fifth caller of an environment heard
   silence, an update cut every call in flight, nothing ran the night's erasure, the image could only be built on
   the machine, and the Caddyfile had room for one name. Now each environment has an overflow beside its worker

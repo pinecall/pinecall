@@ -188,7 +188,7 @@ resource "aws_instance" "apps" {
   user_data              = local.first_start["apps"]
   metadata_options {
     http_tokens                 = "required"
-    http_put_response_hop_limit = 2
+    http_put_response_hop_limit = 1
   }
   root_block_device {
     volume_type = "gp3"

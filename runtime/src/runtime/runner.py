@@ -37,6 +37,13 @@ async def run_runner(settings: Settings) -> int:
 async def _open_place(settings: Settings) -> hosts.Hosts:
     if settings.runner_engine == "processes":
         return hosts.Processes(settings.runner_home)
+    if settings.runner_engine == "containers":
+        return hosts.Containers(
+            image=settings.runner_image,
+            runtime=settings.runner_runtime_class,
+            network=settings.runner_network,
+            cpus=hosts.as_cpus(settings.runner_app_cpu),
+        )
     engine = hosts.Engine(
         image=settings.runner_image,
         runtime_class=settings.runner_runtime_class,

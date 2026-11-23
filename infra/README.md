@@ -471,8 +471,11 @@ the runtime knows which shape it runs in. What a server gives up is what a clust
 are fixed (a caller past the last one hears the overflow's sentence, no node is added), one machine
 is one place to fail (its two gateways are started again one after the other, so an update leaves
 the name answering, and a worker drains for ten minutes; a machine that stops takes everything with
-it until it is back), and the apps are kept from the server but not from one another (processes of
-one machine, where a cluster gives each a gVisor pod).
+it until it is back). The apps are fenced as a cluster fences them: each is a gVisor container of
+the apps' machine, with no root and no capability, on a network that reaches the internet and
+nothing else (not that machine, not the server's private address, not the cloud's metadata, not
+another app), and the machine's own identity reads no secret. What a cluster gives that a server
+does not is a ceiling on each app's disk.
 
 | | cluster | server |
 |---|---|---|
@@ -487,7 +490,7 @@ one machine, where a cluster gives each a gVisor pod).
 $ make tf-init tf-plan tf-apply CLUSTER=<name>                       # ROOT = server: the machines, unpointed
 $ make image TAG=<commit>
 $ make server CLUSTER=<name> TAG=<commit> SETUP="--domain voice.example.com --phone --unpointed --yes --email you@example.com"
-$ make runners CLUSTER=<name> TAG=<commit> GATEWAY=https://voice.example.com
+$ make runners CLUSTER=<name> TAG=<commit> GATEWAY=https://voice.example.com APPS=<the tag of images/app>
 $ make server CLUSTER=<name> TAG=<another commit>                     # an update: the commit and nothing else
 ```
 

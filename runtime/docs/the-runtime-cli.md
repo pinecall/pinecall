@@ -27,10 +27,13 @@ and a server's gateway stays on loopback behind Caddy). `worker start` is a work
 the fleet is full. `runner start` keeps the hosted apps of the environment its `PINECALL_RUNNER_KEY`
 opens running. On the hosting cluster it runs one gVisor pod each and is itself a pod there
 (`charts/hosting`), outside the runtime's own cluster ([../infra/README.md](../../infra/README.md),
-"Hosting"); with `PINECALL_RUNNER_ENGINE=processes`, as `local up` runs it, each release is a
-process of this machine under `PINECALL_RUNNER_HOME`, installed with the machine's own npm and uv
-and fenced by nothing, since the code there is the machine owner's, and its apps stop with it. Every
-variable they read is
+"Hosting"); with `PINECALL_RUNNER_ENGINE=containers`, on a server that runs other people's code,
+each release is a container of the machine's Docker under gVisor, with no root, no capability, a
+root filesystem it cannot write and a network of the apps' own, and the apps go on running while
+their runner is started again; with `PINECALL_RUNNER_ENGINE=processes`, as `local up` runs it, each
+release is a process of this machine under `PINECALL_RUNNER_HOME`, installed with the machine's own
+npm and uv and fenced by nothing, since the code there is the machine owner's, and its apps stop
+with it. Every variable they read is
 [the-environment.md](the-environment.md).
 
 ## `setup`
@@ -149,7 +152,7 @@ worker once the calls it holds have ended.
 | the database's backups | `PINECALL_BACKUP_URL=s3://<bucket>/<path>` (or `gs://…`): Postgres archives every finished WAL segment there, five minutes apart at most, and a service beside it takes a base backup when the place holds none and one a night (`PINECALL_BACKUP_AT`, 03:00 UTC), keeping `PINECALL_BACKUP_DAYS` (35) of them. The tool is Barman's, the one a cluster's Postgres backs up with. The machine's own identity signs for the bucket (an instance profile, a service account); where it has none, the store's variables go in `<dir>/backups.env` (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`). "A server's backups", below |
 | sites of your own on :443 | a file in `<dir>/sites/`, `<name>.caddy`, as Caddy writes a site: `setup` writes the Caddyfile whole on every run and never a file of that folder |
 | the apps' pages | `PINECALL_PAGES_DOMAIN=<domain>` and a wildcard record `*.<domain>` to the machine: each page's certificate is asked for at its first visit, once the gateway says the name is a page of an app that runs (`GET /v1/pages/known`). Let's Encrypt gives a registered domain 50 new certificates a week |
-| the hosted apps | a runner for each environment, on this machine or another: `pinecall-runtime runner start` with `PINECALL_GATEWAY_URL` (the server's https name), `PINECALL_RUNNER_KEY` (`keys runner <env>`), `PINECALL_RUNNER_ENGINE=processes` and a `PINECALL_RUNNER_HOME` of its own. Two runners never share a home: each empties it when it starts |
+| the hosted apps | a runner for each environment, on a machine of their own: `pinecall-runtime runner start` with `PINECALL_GATEWAY_URL` (the server's https name), `PINECALL_RUNNER_KEY` (`keys runner <env>`), `PINECALL_RUNNER_ENGINE=containers` and `PINECALL_RUNNER_IMAGE` (the image every app runs in). Each app is a gVisor container, fenced from the machine and from the other apps; `infra/server/runners` sets the machine up (gVisor, the apps' network and its fence). Where every app is the operator's own, `PINECALL_RUNNER_ENGINE=processes` and a `PINECALL_RUNNER_HOME` for each runner run them as plain processes, fenced by nothing |
 
 **Your own LiveKit (`--livekit`).** LiveKit Cloud or a LiveKit you run, instead of one `setup`
 starts: its URL, then its API key and secret, asked once (`--livekit-key`, `--livekit-secret-stdin`

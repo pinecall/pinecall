@@ -282,9 +282,10 @@ server:           ## CLUSTER=… TAG=<commit> [SETUP="--domain <name> …"]: the
 	  { echo "make server: no image $(REGISTRY)/runtime:$(TAG); make image TAG=$(TAG) first" >&2; exit 2; }
 	$(call on,$(call server_machine,server),pinecall,$(INFRA)/server/install,$(REGISTRY)/runtime:$(TAG) $(SETUP))
 
-runners:          ## CLUSTER=… TAG=<commit> GATEWAY=https://<name>: the hosted apps' machine's runners, at that commit
+runners:          ## CLUSTER=… TAG=<commit> GATEWAY=https://<name> APPS=<tag>: the hosted apps' machine's runners, at that commit
 	@[ -n "$(GATEWAY)" ] || { echo "make runners: GATEWAY=https://<the server's name>" >&2; exit 2; }
-	$(call on,$(call server_machine,apps),root,$(INFRA)/server/runners,$(REGISTRY)/runtime:$(TAG) $(GATEWAY))
+	@[ -n "$(APPS)" ] || { echo "make runners: APPS=<the tag of the image every app runs in, infra/images/app>" >&2; exit 2; }
+	$(call on,$(call server_machine,apps),root,$(INFRA)/server/runners,$(REGISTRY)/runtime:$(TAG) $(GATEWAY) $(REGISTRY)/app:$(APPS))
 
 # The hosted MCP server (mcp/ in the repository, charts/mcp): the CLI's tools over HTTP at a name of
 # its own (`mcp.name` in the operator's values, a name of the cluster in Terraform's `names`), so an
