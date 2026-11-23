@@ -496,6 +496,22 @@ Terraform's `env` output is what the server's env file is told of what was made
 are the operator's own lines (`PINECALL_PRODUCTION_MAX_JOBS`, `PINECALL_SANDBOX_MAX_JOBS`). A runner's
 key is a file of the apps' machine, `/etc/pinecall/runner-<env>.key`, put there before `make runners`.
 
+**Proven.** On 2026-11-23, on both clouds, by this road and nothing typed on a machine: a server
+of two machines made by Terraform (Google, 16 resources; AWS, 96, most of them the carriers'
+networks), set up unpointed at a commit's image and its names pointed after, Caddy's certificate
+issued by itself; WAL and a base backup in the bucket as the machine's own identity; a runner on the
+second machine; a project deployed from a laptop and run there, a written call and a spoken call to
+its agent (1.4 s and 1.7 s from the caller's last word to the agent's first sound), and its page
+with a certificate asked for at its first visit (5 to 8 s, then 0.3 s; a name that is no page gets
+none). An update that names the commit alone, then both gateways started again twice while the
+name was asked every second: 64 of 64 answered, each time. On a machine by hand, the same week: a
+restore of the bucket to a moment (what was written after it gone, archiving again on the new
+timeline) and `local restore` of a dump. The rehearsal of a move: a cluster's database of 255 214
+log entries restored on the AWS server in 55 s with its runtime stopped, every row there and its
+schema at this release. Not proven on a server: a carrier's call, the overflow answering a caller
+past the last seat, and any number of calls at once; what a machine holds is `docs/scaling.md`'s
+arithmetic, measured on a cluster's node.
+
 **From a cluster to a server, or back.** A runtime moves as a dump of its database and the settings
 that seal and sign what the dump holds. The server is made and set up with its names still pointing
 at the cluster (`--unpointed`); `PINECALL_VAULT_KEY`, `PINECALL_TOKEN_KEY`, `PINECALL_OPS_KEY` and each
