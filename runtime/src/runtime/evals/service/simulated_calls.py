@@ -26,10 +26,10 @@ from runtime.evals.service.callers import (
 )
 from runtime.evals.service.leg import Spoken
 from runtime.evals.service.phone import PhoneLine
-from runtime.evals.service.slots import NoSeat
 from runtime.evals.service.spoken import SpokenLine
 from runtime.evals.service.turns import NextLine, is_call_over
 from runtime.evals.service.written import WrittenLine
+from runtime.exceptions import ServiceUnavailable
 from runtime.judging import service as judging
 from runtime.kit.link import LinkShape
 from runtime.kit.text import Json, JsonObject
@@ -104,9 +104,9 @@ async def play_spoken(parts: Harness, simulation: Simulation) -> Played:
     line = on_the_line(parts, dispatch, voice, spoken, waits_for_slot=simulation.waits_for_slot)
     try:
         return await play(parts, simulation, line, voice)
-    except (NoSeat, TimeoutError) as never:
-        # No seat in the whole wait, or no agent in its room: a call that never began has nobody to end
-        # it, its row would stay open and whoever follows it would wait for good. It ends, saying why.
+    except ServiceUnavailable as never:
+        # No seat in the whole wait, or a line that could not be held: a call that never began has nobody
+        # to end it, its row would stay open and whoever follows it would wait for good. It ends, saying why.
         if not any(entry.type == "call.started" for entry in await parts.store.whole_of(simulation.call)):
             await parts.apps.end_never_served(simulation.call, simulation.agent, str(never))
         raise

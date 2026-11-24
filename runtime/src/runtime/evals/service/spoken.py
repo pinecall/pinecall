@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import time
 from collections.abc import Sequence
 from contextlib import AbstractAsyncContextManager, AsyncExitStack
 from types import TracebackType
@@ -15,7 +16,7 @@ from runtime.evals.parts import Harness
 from runtime.evals.service import ambience, turns
 from runtime.evals.service.hearing import Said
 from runtime.evals.service.leg import CallerLeg, Spoken, synthesize
-from runtime.evals.service.slots import take_fleet_seat
+from runtime.evals.service.slots import WAITED_S, NoSeat, take_fleet_seat
 from runtime.exceptions import ServiceUnavailable
 from runtime.fleet import service as fleet
 from runtime.kit.retry import until
@@ -40,6 +41,10 @@ HANGS_UP_WITHIN_S = 10.0
 # A cold worker has been measured at 15 s before it publishes its audio. Past the fleet's last offer and
 # the overflow's joining: a caller that gave up before them heard nobody.
 THE_AGENT_MAY_TAKE_S = fleet.AN_AGENT_JOINS_WITHIN_S
+# A seat answers within the fleet's second offer and the two seconds a worker takes to open a call. One
+# that has not is a job LiveKit gave to nobody (it had not heard the worker free yet): the caller gives
+# the seat back and takes another, in its turn, instead of waiting out a room nobody was sent to.
+A_SEAT_ANSWERS_WITHIN_S = fleet.OFFERED_AGAIN_AFTER_S + 8.0
 # What a café's tables say, read once in the caller's own voice and then eight of it at once: a murmur
 # nobody follows. A television is a broadcast of its own (ambience.py).
 A_TABLES_TALK = (
@@ -130,7 +135,17 @@ class SpokenLine:
         self._stack.push_async_exit(self._wait_for_the_end)
         await self._ring(seat)
         await self._join(call, self.env, speech, interferer)
-        await self._wait_for_the_agent()
+        began = time.monotonic()
+        while seat is not None and not await self._hears_the_agent(A_SEAT_ANSWERS_WITHIN_S):
+            if time.monotonic() - began > WAITED_S:
+                raise NoSeat(self.env, time.monotonic() - began)
+            await parts.offering.forget(call)
+            seat = await self._take_a_seat(again=True)
+            if await self._hears_the_agent(0.0):
+                break
+            await self._ring(seat)
+        if seat is None:
+            await self._wait_for_the_agent()
 
     def _open_voice(self) -> AbstractAsyncContextManager[tts.TTS[Never]]:
         return providers.voice_outside_a_call(self._voice)
@@ -140,7 +155,7 @@ class SpokenLine:
     # nothing open. A golden said out loud takes none: its room is offered as a caller's is, and a full
     # fleet answers it with the overflow's sentence. The seat is given back if the line breaks before
     # its room is rung, or the sweep would ring a room nobody is in.
-    async def _take_a_seat(self) -> fleet.Seat | None:
+    async def _take_a_seat(self, *, again: bool = False) -> fleet.Seat | None:
         if not self._waits_for_slot:
             return None
         parts, call = self._parts, self._spoken.call
@@ -149,7 +164,8 @@ class SpokenLine:
         seat = await take_fleet_seat(
             parts.sessions, parts.offering, parts.roster, parts.logs, self.env, the_fleet, call, self._dispatch
         )
-        self._stack.push_async_callback(parts.offering.forget, call)
+        if not again:
+            self._stack.push_async_callback(parts.offering.forget, call)
         return seat
 
     async def _ring(self, seat: fleet.Seat | None) -> None:
@@ -217,6 +233,12 @@ class SpokenLine:
 
     # The agent joins before its session is built; its published audio means it listens.
     async def _wait_for_the_agent(self) -> None:
+        if not await self._hears_the_agent(THE_AGENT_MAY_TAKE_S):
+            raise TimeoutError(
+                f"no agent joined room {self._spoken.call} in {THE_AGENT_MAY_TAKE_S:.0f}s: is the env's fleet up?"
+            )
+
+    async def _hears_the_agent(self, within_s: float) -> bool:
         async def probe() -> bool | None:
             listens = any(
                 publication.kind == rtc.TrackKind.KIND_AUDIO
@@ -225,10 +247,7 @@ class SpokenLine:
             )
             return True if listens else None
 
-        if await until(probe, every_s=turns.A_BEAT_S, within_s=THE_AGENT_MAY_TAKE_S) is None:
-            raise TimeoutError(
-                f"no agent joined room {self._spoken.call} in {THE_AGENT_MAY_TAKE_S:.0f}s: is the env's fleet up?"
-            )
+        return await until(probe, every_s=turns.A_BEAT_S, within_s=within_s) is not None
 
     # Only a call that was hung up waits for its end: one that broke has its room deleted at once.
     async def _wait_for_the_end(
