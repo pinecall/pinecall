@@ -21,8 +21,8 @@ async def test_a_label_for_a_judge_nobody_wrote_is_a_404_and_is_not_kept(
     gateway: Gateway, tenant: Tenant, agent: str
 ) -> None:
     """F F7: `no-such-judge labelled 1` stayed in the listing for ever, and no endpoint removes a label."""
-    async with holding(gateway, tenant, agent):
-        call = await a_finished_call(gateway, tenant, agent)
+    async with holding(gateway, tenant, agent) as app:
+        call = await a_finished_call(gateway, tenant, agent, app)
         refused = await labelled(gateway, tenant, call, "no-such-judge", True)
         assert refused.status_code == 404, refused.text
         assert f"{agent} has no judge called no-such-judge" in refused.json()["detail"]
@@ -31,8 +31,8 @@ async def test_a_label_for_a_judge_nobody_wrote_is_a_404_and_is_not_kept(
 
 @needs_the_services
 async def test_held_is_a_boolean_and_a_word_for_it_is_a_422(gateway: Gateway, tenant: Tenant, agent: str) -> None:
-    async with holding(gateway, tenant, agent):
-        call = await a_finished_call(gateway, tenant, agent)
+    async with holding(gateway, tenant, agent) as app:
+        call = await a_finished_call(gateway, tenant, agent, app)
         for held in ("yes", "true", 1, None):
             assert (await labelled(gateway, tenant, call, "consent", held)).status_code == 422
         assert await judges_labelled(gateway, tenant, agent) == []
@@ -42,8 +42,8 @@ async def test_held_is_a_boolean_and_a_word_for_it_is_a_422(gateway: Gateway, te
 async def test_a_judge_that_scores_or_chooses_takes_no_label_and_one_that_answers_a_verdict_does(
     gateway: Gateway, tenant: Tenant, agent: str
 ) -> None:
-    async with holding(gateway, tenant, agent):
-        call = await a_finished_call(gateway, tenant, agent)
+    async with holding(gateway, tenant, agent) as app:
+        call = await a_finished_call(gateway, tenant, agent, app)
         own = {"question": "How warm was the agent?", "answer": "score"}
         written = await gateway.http.put(f"/v1/agents/{agent}/judges/warmth", json=own, headers=tenant.server)
         assert written.status_code == 200, written.text

@@ -54,8 +54,8 @@ async def test_a_judge_tried_on_the_agents_own_judge_model_is_the_orgs_to_pay_an
         await versions.add_version(
             session, versions.SETTINGS, scope, agent, judge, versions.Written(author="the suite")
         )
-    async with holding(gateway, tenant, agent):
-        call = await a_finished_call(gateway, tenant, agent)
+    async with holding(gateway, tenant, agent) as app:
+        call = await a_finished_call(gateway, tenant, agent, app)
         body = {"name": "polite", "question": "Was the agent polite?", "calls": [call]}
         tried = await gateway.http.post(f"/v1/agents/{agent}/judges/try", json=body, headers=tenant.server)
         assert tried.status_code == 200, tried.text

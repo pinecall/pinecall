@@ -231,10 +231,20 @@ async def used_of(gateway: Gateway, tenant: Tenant, quota: str) -> float:
     return float(answer.json()[quota]["used"])
 
 
-async def a_finished_call(gateway: Gateway, tenant: Tenant, agent: str) -> str:
+# The app that holds the agent says what the call opens with, as an SDK does on `call.started`: a call
+# waits `APP_OPENS_WITHIN_S` for it before its first request to the model. Until 2026-11-24 the tests'
+# app said nothing, a call a test chatted on waited the eight seconds out, and its test stood a second
+# from the suite's ten: run alone, with the session's start to pay as well, it timed out.
+async def say_the_opening(app: ClientConnection, agent: str, call: str) -> None:
+    """The holding app's word that the call opens with nothing of its own: the last command of an opening."""
+    await app.send(json.dumps({"type": "tools.set", "agent": agent, "call": call, "data": {"tools": []}}))
+
+
+async def a_finished_call(gateway: Gateway, tenant: Tenant, agent: str, app: ClientConnection) -> str:
     """One line chatted and the caller gone, the call waited for until its log is sealed."""
     async with gateway.socket(f"/v1/chat?agent={agent}", tenant.server) as chat:
         call = str((await received(chat, "call.started"))["call"])
+        await say_the_opening(app, agent, call)
         await chat.send(json.dumps({"text": "hola"}))
         await received(chat, "turn.agent")
     for _ in range(100):

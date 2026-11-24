@@ -16,7 +16,7 @@ from runtime.billing.service import quotas, usage
 from runtime.enums import Env
 from runtime.insights.models import DriftCall
 from runtime.kit.text import JsonObject
-from tests.conftest import Gateway, Tenant, holding, needs_the_services, received, used_of
+from tests.conftest import Gateway, Tenant, holding, needs_the_services, received, say_the_opening, used_of
 from tests.fakes import acme
 
 # The seal runs after the caller hangs up: the log is read until it says the call is over.
@@ -148,8 +148,12 @@ async def test_a_written_chat_spends_the_orgs_messages_and_none_of_its_minutes(
     gateway: Gateway, tenant: Tenant, agent: str, sessions: async_sessionmaker[AsyncSession]
 ) -> None:
     """J F9: minutes are what is spoken; a chat of a few seconds is turns, and the meter says so."""
-    async with holding(gateway, tenant, agent), gateway.socket(f"/v1/chat?agent={agent}", tenant.server) as chat:
+    async with (
+        holding(gateway, tenant, agent) as app,
+        gateway.socket(f"/v1/chat?agent={agent}", tenant.server) as chat,
+    ):
         call = str((await received(chat, "call.started"))["call"])
+        await say_the_opening(app, agent, call)
         await chat.send(json.dumps({"text": "quiero un turno"}))
         await received(chat, "turn.agent")
     await sealed_log(gateway, tenant, call)
@@ -163,8 +167,12 @@ async def test_a_written_call_is_answered_sealed_and_metered(
     gateway: Gateway, tenant: Tenant, agent: str, sessions: async_sessionmaker[AsyncSession]
 ) -> None:
     """Two lines answered by the model, the call ended by the caller, its log sealed with its cost."""
-    async with holding(gateway, tenant, agent), gateway.socket(f"/v1/chat?agent={agent}", tenant.server) as chat:
+    async with (
+        holding(gateway, tenant, agent) as app,
+        gateway.socket(f"/v1/chat?agent={agent}", tenant.server) as chat,
+    ):
         call = str((await received(chat, "call.started"))["call"])
+        await say_the_opening(app, agent, call)
         for line in ("quiero un turno", "el martes por la mañana"):
             await chat.send(json.dumps({"text": line}))
             assert (await received(chat, "turn.user"))["data"]["text"] == line
@@ -181,8 +189,15 @@ async def test_a_written_call_is_answered_sealed_and_metered(
     spent = replies * (acme.PROMPT_TOKENS * 1.0 + acme.COMPLETION_TOKENS * 2.0) / 1_000_000
     assert summary["cost"]["usd"] == pytest.approx(spent)
     # The seal counts the call into its day's drift; a fold that breaks is only logged, so it is asked here.
-    async with sessions() as session:
-        counted = await session.get(DriftCall, call)
+    # It is folded after the log is sealed, so the row is waited for: asked at once, a test alone on its
+    # gateway read the table before the fold wrote it.
+    deadline = time.monotonic() + SEALED_WITHIN_S
+    while True:
+        async with sessions() as session:
+            counted = await session.get(DriftCall, call)
+        if counted is not None or time.monotonic() > deadline:
+            break
+        await asyncio.sleep(0.05)
     assert counted is not None and counted.env is Env.sandbox
 
 
@@ -193,11 +208,12 @@ async def test_a_call_opened_as_a_contact_is_theirs_on_the_log_the_state_and_the
     """`chat --as +1415…`: the contact is the caller of the entry and the state, and "delete my data" finds the call."""
     contact = "+14155550198"
     async with (
-        holding(gateway, tenant, agent),
+        holding(gateway, tenant, agent) as app,
         gateway.socket(f"/v1/chat?agent={agent}&contact={quote(contact)}", tenant.server) as chat,
     ):
         started = await received(chat, "call.started")
         call = str(started["call"])
+        await say_the_opening(app, agent, call)
         assert started["data"]["caller"] == {"id": contact}
         assert str(started["data"]["from"]).startswith("web_")
         await chat.send(json.dumps({"text": "hola"}))
