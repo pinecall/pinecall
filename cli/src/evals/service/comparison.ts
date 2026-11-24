@@ -90,13 +90,14 @@ export async function simulateAgainst(ctx: Context, agent: string, written: Pers
 }
 
 /**
- * The persona against the agent under each of the values, placed together; every call followed to its
+ * The persona, and every other caller named, against the agent under each of the values, placed together; every call followed to its
  * end, then the table read until every call is judged or the judges' time is up.
  */
 export async function compare(ctx: Context, agent: string, written: Persona, input: SimulateInput, against: readonly api.AgentValues[], onPlaced?: (started: api.ComparisonStarted) => void): Promise<Compared> {
   const persona = playedBy(written, input);
   const repeated = input.repeats > 1 ? { repeats: input.repeats } : {};
-  const started = await api.startComparison(ctx.gateway(), { ...wanted(agent, persona, input), against: [...against], ...repeated });
+  const more = input.morePersonas.length > 0 ? { more_personas: input.morePersonas } : {};
+  const started = await api.startComparison(ctx.gateway(), { ...wanted(agent, persona, input), against: [...against], ...more, ...repeated });
   onPlaced?.(started);
   // Nothing placed and nothing waiting, there is no table to read: the gateway's reasons are the answer.
   if (started.calls.length === 0 && (started.waiting ?? 0) === 0) throw new UsageError(nonePlaced(started.refused));

@@ -6,6 +6,12 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **`pinecall simulate` takes several callers and says what a completed call cost.** `--persona` said again is another
+  caller, each against every `--against` configuration, the rows read caller by caller. Several runs, by `--repeats` or
+  by several callers, end in a table by configuration, the one that did the most first: how many of each caller's runs
+  did its task, all of them with their share, the middle reply, what the calls cost, and what one completed call cost
+  (everything the configuration's calls cost over the ones that did the task). It replaces the count `llm=…: 4 of 5
+  runs`. The MCP tool `simulate` takes `more_personas` the same way.
 - **`pinecall text` writes the first email of a thread** when the contact is an address: under `--subject`, from an
   address the agent answers email at, its words given or, left out, written by the agent on `--instruction`; the
   contact's reply lands on the same conversation. `--metadata` and `--instruction` are `dial`'s, for an SMS too. The

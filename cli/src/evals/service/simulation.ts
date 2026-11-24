@@ -27,6 +27,7 @@ const A_RATE = "--rate is the kilobits a second the caller's network carries, 8 
 export const VIAS = ["webrtc", "sip"] as const;
 export const ONLY_SPOKEN = "--via, --delay, --jitter and --rate are about a spoken call: add --voice";
 const A_REPEAT = "--repeats is how many times the caller rings under each configuration, 1 to 10";
+const A_CALLER = "--persona names ten callers at most";
 
 // Background TV at 15 dB below the caller: measured to leak into `turn.user`.
 const DEFAULT_NOISE_DB = 15;
@@ -60,6 +61,8 @@ export const SimulateInput = z.object({
   callerVoice: z.string().min(1).optional(),
   // How many times the caller rings under each configuration: once tells whether the agent can do it, more how often it does.
   repeats: z.number().int(A_REPEAT).min(1, A_REPEAT).max(10, A_REPEAT).default(1),
+  // More callers beside `persona`, each against every configuration: several callers are a comparison.
+  morePersonas: z.array(z.string().min(1)).max(9, A_CALLER).default([]),
 });
 export type SimulateInput = z.infer<typeof SimulateInput>;
 

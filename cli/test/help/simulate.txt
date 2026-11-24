@@ -6,7 +6,7 @@ hang-up
 
 Options:
   --persona <name>         one of the agent's personas: pinecall personas lists
-                           them
+                           them; again for another caller, compared
   --judge                  read back the call.score the log seals on, and print
                            every judge
   --turns <n>              how many turns the caller improvises before hanging
@@ -63,7 +63,9 @@ commas, as the console's test room does; said twice or more, every configuration
 once against the same caller and the table reads them best first: the judges, then the reply time,
 then the cost. In the sandbox only, with a key that edits the pipeline. --repeats rings the caller
 that many times under each configuration, 1 to 10, with or without --against: one call tells whether
-the agent can do it, several how often it does, and the table ends with that count. A comparison
+the agent can do it, several how often it does. --persona said again is another caller, each
+against every configuration. Several runs end in a table by configuration: how many did each
+caller's task, the middle reply, what they cost, and what one completed call cost. A comparison
 larger than the org's simulated calls at once runs whole: the calls past it wait their turn.
 
 Examples
@@ -71,4 +73,5 @@ Examples
   $ pinecall simulate --persona hurried --voice --tts google --caller-voice Puck
   $ pinecall simulate --persona hurried --voice --judge --against llm=groq/openai/gpt-oss-120b       --against llm=google/gemini-3.5-flash-lite --against llm=anthropic/claude-haiku-5-5,tts=deepgram
   $ pinecall simulate --persona books-a-visit --judge --repeats 5
+  $ pinecall simulate --persona books-a-visit --persona hurried --voice --judge --repeats 5       --against llm=google/gemini-3.5-flash-lite --against llm=anthropic/claude-haiku-5-5
 

@@ -194,6 +194,7 @@ export const simulate = tool({
       .optional()
       .describe("the agent on these values for this run alone — {stt, llm, tts, voice, language, temperature}, each `vendor/model` — the sandbox's, with a key that edits the pipeline; two or more are a comparison: every configuration placed at once against the same caller, answered as a table best first"),
     repeats: z.number().int().min(1).max(10).optional().describe("how many times the caller rings under each configuration; more than once is a comparison, with or without `against`, answered with how often each did the caller's task"),
+    more_personas: z.array(z.string()).max(9).optional().describe("more of the agent's personas beside `persona`, each against every configuration: several callers are a comparison, answered caller by caller"),
     wait_s: WAIT,
   },
   manual:
@@ -227,10 +228,13 @@ export const simulate = tool({
       rateKbps: args.rate_kbps,
       goal: args.goal,
       repeats: args.repeats,
+      morePersonas: args.more_personas,
     });
     const named = args.against ?? [];
-    const against = named.length === 0 && input.repeats > 1 ? [{}] : named;
-    if (against.length > 1 || input.repeats > 1) {
+    const several = input.repeats > 1 || input.morePersonas.length > 0;
+    const against = named.length === 0 && several ? [{}] : named;
+    if (against.length > 1 || several) {
+      if (input.goal !== undefined && input.morePersonas.length > 0) throw new ToolRefused("goal is what one caller phones about: with several callers, each phones about its own");
       let placed: (started: unknown) => void = () => undefined;
       const begun = new Promise<unknown>((known) => (placed = known));
       const pending = service.compare(ctx, reached.slug, persona, input, against, (started) => placed(started)).then((done) => ({ comparison: done.comparison, refused: done.refused, rows: done.table.rows, env: ctx.env }));

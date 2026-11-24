@@ -53,7 +53,7 @@ export function register(program: Command, ctx: Context): void {
   program
     .command("simulate")
     .description("a model plays one persona against the agent, live, and the call is scored at hang-up")
-    .requiredOption("--persona <name>", "one of the agent's personas: pinecall personas lists them")
+    .requiredOption("--persona <name>", "one of the agent's personas: pinecall personas lists them; again for another caller, compared", repeated)
     .option("--judge", "read back the call.score the log seals on, and print every judge")
     .option("--turns <n>", "how many turns the caller improvises before hanging up", String(service.TURNS))
     .option("--voice", "a real line: a room, and the caller in a person's voice")
@@ -79,7 +79,8 @@ export function register(program: Command, ctx: Context): void {
       const listen = flags.listen === true;
       if (listen && flags.voice !== true) ctx.io.info("--listen is a call with audio in it: --voice is on");
       const input = service.SimulateInput.parse({
-        persona: flags.persona,
+        persona: flags.persona[0],
+        morePersonas: flags.persona.slice(1),
         judge: flags.judge === true,
         voice: flags.voice === true || listen,
         turns: numberOf("--turns", flags.turns),
@@ -100,9 +101,10 @@ export function register(program: Command, ctx: Context): void {
       // The gateway places the call and keeps the personas: an agent with no folder (one built in Studio) is its slug.
       const agent = ctx.slug("simulate", { file: flags.file, agent: flags.agent });
       const against = (flags.against ?? []).map(service.parseAgainst);
-      // Several configurations, or one rung several times, are several calls: placed together, read as one table.
-      if (against.length > 1 || input.repeats > 1) {
+      // Several configurations, several callers, or one rung several times, are several calls: placed together, read as one table.
+      if (against.length > 1 || input.repeats > 1 || input.morePersonas.length > 0) {
         if (listen) throw new UsageError("--listen plays one call: a comparison runs several at once");
+        if (input.goal !== undefined && input.morePersonas.length > 0) throw new UsageError("--goal is what one caller phones about: with several callers, each phones about its own");
         await compareAtTheTerminal(ctx, agent, input, against.length === 0 ? [{}] : against);
         return;
       }

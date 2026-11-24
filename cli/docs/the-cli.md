@@ -767,7 +767,7 @@ your desk and red in CI until it is deployed (or `agent set … --team` gives it
 ## `simulate`
 
 ```
-pinecall simulate --persona <name> [--judge] [--turns n (15, 1 to 40)] [--voice] [--listen]
+pinecall simulate --persona <name>… [--judge] [--turns n (15, 1 to 40)] [--voice] [--listen]
                   [--background-noise dB] [--ambience cafe] [--packet-loss 0.05] [--pause 0]
                   [--via webrtc|sip] [--delay ms] [--jitter ms] [--rate kbps]
                   [--goal "I want to move my Tuesday visit"] [--llm vendor/model] [--tts vendor] [--caller-voice id]
@@ -854,7 +854,8 @@ feed's `caller_cost_usd`; a written run keeps who played its caller too (`runs` 
 
 `--against` runs **the agent** on other values for this run alone — `stt=`, `llm=`, `tts=`,
 `voice=`, `language=`, `temperature=`, `end_of_turn=` (`stt`, `livekit`, `smart-turn`), joined by commas: `--against llm=groq/openai/gpt-oss-120b,tts=deepgram`
-— as the console's test room does; the agent's saved settings do not change, and the call keeps what
+— as the console's test room does, whoever set what the agent runs on, the org or its class; a model or
+a voice named on another vendor leaves the first one's voice and options behind. The agent's saved settings do not change, and the call keeps what
 it ran on. In the sandbox only, with a key that edits the pipeline (`403` otherwise); a knob the test
 room does not have is refused. The gateway plays the caller then, written or spoken, and this
 terminal follows the call's log. Said **twice or more, it is a comparison**: the same caller against
@@ -879,9 +880,25 @@ hurried against receptionist · 3 calls · best first
 `--repeats n` rings the caller that many times under each configuration, 1 to 10, with or without
 `--against`: `pinecall simulate --persona books-a-visit --judge --repeats 5` puts the same caller to
 the agent five times as it stands. One call tells whether the agent can do a task; several tell how
-often it does, and the table ends with that count, by configuration (`llm=…: 4 of 5 runs`). A caller
-is a task: its run is done when the judge of what it `expects` held (`expected-outcome`), or, for a
-caller that expects nothing, when every judge did. A comparison places a round of every
+often it does. **`--persona` said again is another caller** (ten at most), each against every
+configuration, the rows read caller by caller; `--goal` is one caller's, and refused with several. A caller
+is a task: its run is done when the judge of what it `expects` held (`expected-outcome`, a judge the
+agent has to have on), or, for a caller that expects nothing, when every judge did.
+
+Several runs, by `--repeats` or by several callers, end in a second table, **by configuration, the one
+that did the most first**: how many of each caller's runs did its task, all of them with their share,
+the middle reply, what the configuration's calls cost, and **what one completed call cost** — everything
+those calls cost over the ones that did the task, since a call that failed was paid for too:
+
+```console
+$ pinecall simulate --persona books-a-cleaning --persona in-a-rush --voice --judge --repeats 5 \
+    --against llm=google/gemini-3.5-flash-lite --against llm=anthropic/claude-haiku-5-5
+…
+how often each did the callers' tasks, and what a completed call cost
+THE AGENT RUNS ON                    BOOKS-A-CLEANING  IN-A-RUSH  ALL             REPLY   COST     A COMPLETED CALL
+thinks anthropic/claude-haiku-5-5    5 of 5            4 of 5     9 of 10 · 90%   1.31 s  $0.4120  $0.0458
+thinks google/gemini-3.5-flash-lite  5 of 5            3 of 5     8 of 10 · 80%   1.22 s  $0.3980  $0.0498
+``` A comparison places a round of every
 configuration before the next round, and one larger than the org's simulated calls at once runs
 whole: the calls past it **wait their turn**, the first line saying how many (`12 calls placed · 8
 waiting their turn`), and the gateway places each as the ones before it end. How many calls the org
