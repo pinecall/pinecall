@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+from collections.abc import Mapping
 
 import httpx
 import pytest
@@ -11,8 +12,9 @@ from runtime.calls.service import lists
 from runtime.exceptions import UpstreamError
 from runtime.jobs.service import call_client
 from runtime.jobs.service.call_client import CallClient, open_call
-from runtime.jobs.service.client import GatewayClient
+from runtime.jobs.service.client import GatewayClient, unavailable
 from runtime.kit import sse
+from runtime.kit.text import Json
 from runtime.session.service import ToolUse
 from runtime.session.writing import Writing
 from runtime.wire.base import Command
@@ -71,6 +73,40 @@ async def test_an_open_asked_again_is_the_same_call_and_a_seal_asked_again_is_do
     await worker.seal([], "done")
     kinds = [entry.type for entry in await store.whole_of(worker.call)]
     assert kinds.count("call.ringing") == 1
+    assert kinds.count("call.summary") == 1
+
+
+# 2026-11-24: sixty calls ended together, and ten seals outlasted the worker's thirty seconds. The
+# gateway sealed every one; the worker, which asked once, wrote each down as an error.
+@needs_the_services
+async def test_a_seal_whose_answer_never_came_is_asked_again_and_found_done(
+    fleet: GatewayClient, tenant: Tenant, agent: str, store: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    worker = await open_call(fleet, opening_of(tenant, agent))
+    asked: list[str] = []
+    read = GatewayClient.read
+
+    async def lose_the_first_answer(
+        self: GatewayClient,
+        method: str,
+        path: str,
+        data: Json = None,
+        *,
+        wait_s: float | None = None,
+        params: Mapping[str, str] | None = None,
+    ) -> Json:
+        sealing = path.endswith("/sealed")
+        if sealing:
+            asked.append(path)
+        answer = await read(self, method, path, data, wait_s=wait_s, params=params)
+        if sealing and len(asked) == 1:
+            raise unavailable(f"{method} {path}: the answer never came")
+        return answer
+
+    monkeypatch.setattr(GatewayClient, "read", lose_the_first_answer)
+    await worker.seal([], "done")
+    assert len(asked) == 2, "asked again, and the second answer said it was over"
+    kinds = [entry.type for entry in await store.whole_of(worker.call)]
     assert kinds.count("call.summary") == 1
 
 

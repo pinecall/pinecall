@@ -35,9 +35,13 @@ from runtime.wire.worker import (
 
 # A caller is waiting on the line while the open is asked again.
 OPENED_WITHIN_S = 15.0
-# One request waits all of it: a seal writes memory and asks the judges, which outlast TIMEOUT_S.
-# What does not seal within it the gateway's reaper seals.
+# One request waits this long: a seal writes memory and asks the judges, which outlast TIMEOUT_S. Under
+# load they outlast this too, and the gateway goes on sealing whoever stopped waiting for it: of sixty
+# calls ending together (2026-11-24) ten seals answered late, every one of them done, and each was an
+# error on the worker's log. The seal is asked again within SEALED_WITHIN_S: one the gateway finished
+# answers that it is over, which is this seal done. What is not sealed within it the reaper seals.
 A_SEAL_S = 30.0
+SEALED_WITHIN_S = 120.0
 # A tool whose declaration names no wait.
 A_TOOL_S = 30.0
 # How long a tool's answer is held for the stream to say the commands before it came: they cross Redis
@@ -157,7 +161,8 @@ class CallClient:
         )
         path = f"/v1/calls/{self.call}/sealed"
         try:
-            await self._ask_again(lambda: self._on_the_call("POST", path, sealing.dump(), A_SEAL_S), A_SEAL_S, path)
+            ask = partial(self._on_the_call, "POST", path, sealing.dump(), A_SEAL_S)
+            await self._ask_again(ask, SEALED_WITHIN_S, path)
         except UpstreamError as refused:
             if refused.answered not in (ALREADY_OVER, TAKEN_UP):
                 raise

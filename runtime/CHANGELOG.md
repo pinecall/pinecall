@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **A seal that answers late is asked again, not written down as an error.** The worker waited thirty seconds for
+  `POST /v1/calls/{call}/sealed` and asked once; under load the gateway's seal, which judges the call before it
+  answers, outlasts that, and went on to seal the call all the same. The worker asks again within two minutes, and a
+  seal the gateway finished answers that it is over, which is that seal done.
 - **Simulated callers placed together no longer take each other's seat.** A spoken simulation asked whether
   the fleet had a seat and offered its room seconds later, so every caller of a comparison waiting on a full
   fleet saw the same free seat: the ones past it were answered by the overflow's sentence and counted as calls
