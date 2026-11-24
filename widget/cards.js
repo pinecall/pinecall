@@ -241,15 +241,31 @@ function form(widget, data) {
   return form;
 }
 
+/** The link to a product's own page, from its `url`: on this site it opens here, on another in a new tab. */
+function pageLink(widget, url, className) {
+  const link = document.createElement("a");
+  link.className = className;
+  link.href = url;
+  link.textContent = widget.words.openPage;
+  if (!url.startsWith(location.origin)) {
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+  }
+  return link;
+}
+
 /**
  * One product card: the photo, the name and colour, the price and the sizes left; a tap opens it. An
- * item with no `sizes` at all is a product without sizes; an empty list is one sold out.
+ * item with no `sizes` at all is a product without sizes; an empty list is one sold out. An item with
+ * a `url` (https) carries the link to its own page under it, and in the viewer.
  */
 function product(widget, one) {
   const words = widget.words;
+  const url = https(text(one.url)) ? text(one.url) : "";
   const card = document.createElement("button");
   card.type = "button";
-  card.className = "product";
+  // With a link under it the card is the two of them, and the button is the part that opens the photo.
+  card.className = url ? "product-open" : "product";
   const image = text(one.image);
   if (https(image)) {
     const frame = document.createElement("span");
@@ -279,10 +295,14 @@ function product(widget, one) {
   const large = text(one.large);
   const big = https(large) ? large : image;
   if (https(big)) {
-    const shown = { name: text(one.name), color: text(one.color), title: name.textContent, price: price.textContent, sized, sizes: left };
+    const shown = { name: text(one.name), color: text(one.color), title: name.textContent, price: price.textContent, sized, sizes: left, url };
     card.addEventListener("click", () => viewer(widget, big, shown));
   } else card.disabled = true;
-  return card;
+  if (!url) return card;
+  const both = document.createElement("div");
+  both.className = "product linked";
+  both.append(card, pageLink(widget, url, "product-url"));
+  return both;
 }
 
 /**
@@ -371,6 +391,7 @@ function viewer(widget, src, product) {
     out.textContent = words.soldOut;
     sheet.append(out);
   }
+  if (product.url) sheet.append(pageLink(widget, product.url, "viewer-url"));
   viewer.append(close, img, sheet);
   // Only the backdrop and × close it: the sizes and the button are hers to tap.
   viewer.addEventListener("click", (event) => {

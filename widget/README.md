@@ -303,7 +303,7 @@ text is shown. The keys, with their English words:
 | the button and the header | `assistant` (the name when `name` is left out), `open` "Talk to {name}", `close`, `call` "Call {name}", `hangUpToChat`, `more` "More", `fresh` "New conversation", `maximize`, `restore`, `resize`, `toLight` "Light theme", `toDark` "Dark theme" |
 | the conversation | `write` "Write to {name}…", `send`, `typing` "{name} is typing…", `connecting`, `reconnecting`, `live` "Online", `listening` "{name} is listening", `ended`, `tapToHear`, `micRefused`, `failed` |
 | dictation | `dictate`, `stopDictating`, `hearing` "Listening…", `dictationFailed` |
-| products | `addToCart` "Add to cart", `pickSize`, `sizes` "Sizes {sizes}", `added` "Added to cart", `notAdded`, `tapHint`, `soldOut` |
+| products | `addToCart` "Add to cart", `pickSize`, `sizes` "Sizes {sizes}", `added` "Added to cart", `notAdded`, `tapHint`, `soldOut`, `openPage` "See its page" |
 | the form | `formSent`, `formUpdate`, `required` |
 | your conversations | `history` "Your conversations", `clear`, `backToChat`, `carryOn`, `forget`, `aCall`, `aChat`, `callWord`, `chatWord`, `endedWord`, `justNow`, `minAgo` "{n} min ago", `hAgo` "{n} h ago" |
 | call us | `talkHere`, `talkHereSub`, `callUs` "Call us", `callUsSub`, `callUsByCode`, `callName` "Call {name}", `dial`, `keyCode`, `anyTime`, `theCode` "the code: {digits}", `showsHere`, `waiting`, `expiresIn` "expires in {left}", `codeExpired`, `newCode`, `gettingCode`, `onTheLine`, `callTheNumber`, `yourCall`, `callFrom` "☎ a call from {who}", `endedWhy` "— ended: {why}", `showTools` |
@@ -394,7 +394,9 @@ starts speaking.
   price as it is written, and the sizes left. A tap shows the photo large (`large`, else `image`)
   over the chat, its sizes to pick and **Add to cart**, which sends the agent the event `cart.add`
   `{ name, color, size }` and closes. `sizes: []` is sold out; an item with no `sizes` has none, and
-  adds without one. A newer row in the same answer replaces the one waiting.
+  adds without one. An item with a `url` (https) carries a link to its own page, under its card and
+  in the viewer (`openPage`): on the page's own site it opens there, elsewhere in a new tab. A newer
+  row in the same answer replaces the one waiting.
 - `{ type: "form", event, id?, title?, note?, submit?, fields }` draws a form. `fields` are
   `{ name, label, type: "text" | "tel" | "email" | "choice", value?, required?, autocomplete?,
   half?, shownFor? }`; a `choice` has `options: [{ value, label, detail?, needs? }]`, and a field

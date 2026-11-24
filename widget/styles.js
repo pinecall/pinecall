@@ -159,6 +159,12 @@ export const STYLE = `
   .product span { font-size: 13px; padding: 0 1px; }
   .product small { font-size: 11.5px; color: var(--_muted); padding: 0 1px; }
   .lines li.products:has(.product:only-child) .product { flex-basis: min(220px, 70%); }
+  /* A card with a link to its own page: the button that opens the photo, and the link under it. */
+  .product.linked { cursor: default; }
+  .product-open { display: flex; flex-direction: column; gap: 1px; padding: 0; border: 0; background: none; color: inherit; font: inherit;
+                  text-align: left; cursor: pointer; }
+  .product-url { margin: 5px 1px 0; align-self: flex-start; font-size: 12.5px; font-weight: 500; color: var(--_accent); text-decoration: none; }
+  .product-url:hover { text-decoration: underline; }
   .viewer { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
             padding: 52px 16px 20px; background: rgb(20 18 16 / .9); color: #fff; opacity: 0; transition: opacity .18s ease; border-radius: inherit; }
   .viewer.on { opacity: 1; }
@@ -174,6 +180,9 @@ export const STYLE = `
   .viewer-add { width: 100%; height: 46px; border: 0; border-radius: 999px; background: #fff; color: #1a1917; font: inherit; font-size: 14.5px; font-weight: 500; cursor: pointer; }
   .viewer-add:disabled { background: rgb(255 255 255 / .25); color: rgb(255 255 255 / .8); cursor: default; }
   .viewer-out { opacity: .8; }
+  .viewer-url { width: 100%; height: 46px; box-sizing: border-box; display: grid; place-items: center; border: 1px solid rgb(255 255 255 / .45);
+                border-radius: 999px; color: #fff; font-size: 14.5px; font-weight: 500; text-decoration: none; }
+  .viewer-url:hover { border-color: #fff; }
   .viewer-close { position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgb(255 255 255 / .14);
                   color: #fff; font-size: 24px; line-height: 1; cursor: pointer; }
   .viewer-close:hover { background: rgb(255 255 255 / .24); }
