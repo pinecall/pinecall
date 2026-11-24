@@ -34,6 +34,11 @@ THREADS_CHANNELS = frozenset(channel.value for channel in Channel if channel.is_
 # `pinecall start` is seconds, a release registers within two minutes (hosting), and a caller left
 # talking to nobody for longer than that has been let down already.
 PARKED_WAITS_S = 120.0
+# A simulated caller is given its call when it is placed and waits for a seat of the fleet with nothing
+# on its log, as long as a comparison goes on placing its calls (`evals.service.slots.WAITED_S`, 45
+# minutes): it is quiet and nobody's worker runs it, and it is not left. Past that wait and a margin it
+# is one its gateway dropped. Until 2026-11-24 it was ended as drained after five minutes in the queue.
+A_SIMULATION_WAITS_S = 50 * 60.0
 
 
 # What a pass asks first. The box's reaper asks it of every org (`calls.list_quiet_spoken`,
@@ -64,6 +69,8 @@ async def reap(
     for server, named in _rooms_by_livekit(live.servers, quiet).items():
         existing |= await rooms_with_an_agent(server, named)
     for orphan in quiet:
+        if _waits_for_a_seat(orphan, now):
+            continue
         if orphan.call not in existing and await _try(live, orphan, "drained"):
             # The room goes too, so whoever is still in it hears the call end.
             with survive("the reaper's closing of the room", orphan.call):
@@ -150,6 +157,10 @@ def _livekits_of(servers: Servers, orphan: calls.Unsealed) -> list[api.LiveKitAP
     if orphan.env is not None:
         return [servers[orphan.env]]
     return list(dict.fromkeys(servers.values()))
+
+
+def _waits_for_a_seat(orphan: calls.Unsealed, now: float) -> bool:
+    return orphan.simulated and orphan.started_at is None and now - orphan.last_at < A_SIMULATION_WAITS_S
 
 
 # A call the reaper cannot end is said and left; the calls behind it are reaped all the same, and

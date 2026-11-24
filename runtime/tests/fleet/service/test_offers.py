@@ -243,3 +243,33 @@ async def test_a_simulated_callers_room_waits_for_a_seat_where_a_callers_is_sent
         await offering.forget(real)
         for server in servers.values():
             await server.aclose()
+
+
+# A room that was rung and that nobody opened waits for the sweep to ring it again. A caller that only
+# waits must not take the seat that frees first: on 2026-11-24 three callers that had lost theirs were
+# passed by every caller behind them, and gave up.
+async def test_a_caller_that_waits_lets_a_room_that_lost_its_seat_go_first(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    servers, roster = per_world(), Roster()
+    offering = Offering(sessions, servers=servers, roster=roster)
+    only = f"w_{uuid4().hex}"
+    fleet = f"fleet-{uuid4().hex}"
+    roster.workers[(fleet, only)] = a_worker(only, active=0, max_jobs=2, fleet=fleet)
+    lost, behind = f"room_{uuid4().hex}", f"room_{uuid4().hex}"
+    late = time.time() - OFFERED_AGAIN_AFTER_S - 1
+    try:
+        async with sessions.begin() as session:
+            offers = OfferRepository(session)
+            assert await offers.open(lost, fleet, Dispatch(agent="recepcion", persona="hurried").dump(), late)
+            assert await offers.claim(lost, 0, agent_name(fleet, only), late)
+            assert await offers.count_due(fleet, time.time() - OFFERED_AGAIN_AFTER_S) == 1
+            await offers.mark_opened(lost, time.time())
+            assert await offers.count_due(fleet, time.time() - OFFERED_AGAIN_AFTER_S) == 0, (
+                "opened: it waits for nobody"
+            )
+    finally:
+        await offering.forget(lost)
+        await offering.forget(behind)
+        for server in servers.values():
+            await server.aclose()

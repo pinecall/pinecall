@@ -55,6 +55,13 @@ class OfferRepository(Repository[Offer]):
         )
         return await self.all(statement)
 
+    async def count_due(self, fleet: str, before: float) -> int:
+        """How many of the fleet's rooms no worker opened and nobody offered since `before`."""
+        due = self.statement().where(
+            Offer.fleet == fleet, Offer.opened_at.is_(None), (Offer.offered_at.is_(None)) | (Offer.offered_at < before)
+        )
+        return await self.count(due)
+
     async def list_in_flight(self, since: float) -> list[tuple[str, float | None]]:
         """Each room offered to a worker since `since` or opened by it since: the worker, and when it opened."""
         statement = select(Offer.worker, Offer.opened_at).where(

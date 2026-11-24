@@ -52,7 +52,9 @@ already on it, and on a fleet that does not grow the wait is a queue. It waits a
 goes on placing its calls, 45 minutes, before it gives up: the call then ends, `error` on its log
 (`never_served`, `every seat of the sandbox's fleet held a call for 2700 s: the simulation did not
 start`) and `call.ended` with reason `error` after it, so whoever follows it stops waiting. A seat that
-answers nothing in twenty seconds (LiveKit gave the room's job to nobody) is given back and another taken. Spoken, the caller
+answers nothing (LiveKit gave the room's job to nobody) is rung again by the gateway's sweep, to the same
+worker when it is the only one, while the caller waits in its room; the reaper leaves a call that waits
+for its seat. Spoken, the caller
 acts as its `behavior` says: it talks over that share of the agent's answers (`interrupts`, 0 to
 1) some way into them, as a person cutting in does, so the agent's barge-in is what is tested; it
 murmurs an "mm-hmm" in its language into that share of them (`backchannels`, 0 to 1) a few

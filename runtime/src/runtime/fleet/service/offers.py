@@ -41,6 +41,8 @@ UNSWEPT_AFTER_S = 60.0
 
 # Past any offer: a caller who waited this long has hung up, and the SIP leg is gone.
 FORGOTTEN_AFTER_S = 120.0
+# As a domain above names it: how long a room that was rung stays in the table, offered again.
+A_ROOM_IS_KEPT_S = FORGOTTEN_AFTER_S
 
 SWEPT_AT_MOST = 100
 
@@ -152,6 +154,10 @@ class Offering:
         async with self.sessions.begin() as session:
             offers = OfferRepository(session)
             await offers.take_turns(fleet)
+            # A room that was rung and that nobody opened is offered again by the sweep, and it was here
+            # first: a seat that frees is its own, a caller that only waits lets it go.
+            if await offers.count_due(fleet, now - OFFERED_AGAIN_AFTER_S) > 0:
+                return None
             flying = await count_in_flight(session, time.time(), workers)
             chosen = slots.choose_worker(workers, flying, now, not_these=self.roster.list_gone(fleet, now))
             if chosen is None or chosen.agent_name is None:

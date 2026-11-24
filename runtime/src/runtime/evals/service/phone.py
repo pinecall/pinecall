@@ -50,7 +50,7 @@ class PhoneLine(SpokenLine):
 
     # The caller's own room holds its leg alone: the agent is asked for where it sits, in the call's.
     @override
-    async def _wait_for_the_agent(self) -> None:
+    async def _wait_for_the_agent(self, within_s: float = THE_AGENT_MAY_TAKE_S) -> None:
         server, call = self._parts.servers[self.env], self._spoken.call
 
         async def probe() -> bool | None:
@@ -61,5 +61,5 @@ class PhoneLine(SpokenLine):
             )
             return True if listens else None
 
-        if await until(probe, every_s=turns.A_BEAT_S, within_s=THE_AGENT_MAY_TAKE_S) is None:
-            raise TimeoutError(f"no agent joined room {call} in {THE_AGENT_MAY_TAKE_S:.0f}s: is the env's fleet up?")
+        if await until(probe, every_s=turns.A_BEAT_S, within_s=within_s) is None:
+            raise TimeoutError(f"no agent joined room {call} in {within_s:.0f}s: is the env's fleet up?")

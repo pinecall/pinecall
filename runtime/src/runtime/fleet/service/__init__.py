@@ -11,16 +11,16 @@ from runtime.fleet.service.dispatches import (
 )
 from runtime.fleet.service.envs import Fleets, fleet_of, fleet_of_env, get_fleets
 from runtime.fleet.service.metrics import FleetMetrics
-from runtime.fleet.service.offers import AN_AGENT_JOINS_WITHIN_S, OFFERED_AGAIN_AFTER_S, Offering, Seat
+from runtime.fleet.service.offers import A_ROOM_IS_KEPT_S, AN_AGENT_JOINS_WITHIN_S, Offering, Seat
 from runtime.fleet.service.roster import Roster
 from runtime.fleet.service.slots import HEARTBEAT_S, REFUSED_AT
 from runtime.fleet.service.totals import totals_of
 
 __all__ = [
     "AN_AGENT_JOINS_WITHIN_S",
+    "A_ROOM_IS_KEPT_S",
     "A_VISITOR_RETURNS_S",
     "HEARTBEAT_S",
-    "OFFERED_AGAIN_AFTER_S",
     "REFUSED_AT",
     "FleetMetrics",
     "Fleets",

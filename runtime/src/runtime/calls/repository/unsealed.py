@@ -21,6 +21,8 @@ class Unsealed:
     channel: str | None
     # None for a log no scope ever claimed.
     env: Env | None
+    # Placed by the gateway as a simulated caller: one that has not started may be waiting for a seat.
+    simulated: bool = False
 
 
 # call_log is joined on log, its primary key's first column, never on call, which scans it.
@@ -32,7 +34,7 @@ UNSEALED_SPOKEN = text("""
 select head.log as call, head.agent,
        head.started_at,
        coalesce(max(entry.ts), head.started_at, extract(epoch from opening.opened_at)) as last_at,
-       null as channel, head.env
+       null as channel, head.env, f.persona is not null as simulated
 from call_log_head head
 left join call_facts f on f.call = head.log
 left join call_openings opening on opening.call = head.log
@@ -41,7 +43,7 @@ where head.call is not null and not head.sealed
   and (coalesce(f.spoken, false)
        or not exists (select 1 from call_log began
                        where began.log = head.log and began.type = 'call.started'))
-group by head.log, head.agent, head.started_at, head.env, opening.opened_at
+group by head.log, head.agent, head.started_at, head.env, opening.opened_at, f.persona
 having coalesce(max(entry.ts), head.started_at, extract(epoch from opening.opened_at)) < :quiet_since
 order by last_at
 limit :limit
@@ -50,14 +52,15 @@ limit :limit
 UNSEALED_WRITTEN = text("""
 select head.log as call, head.agent,
        head.started_at,
-       coalesce(max(entry.ts), head.started_at, 0) as last_at, f.channel, head.env
+       coalesce(max(entry.ts), head.started_at, 0) as last_at, f.channel, head.env,
+       f.persona is not null as simulated
 from call_log_head head
 join call_facts f on f.call = head.log
 left join call_log entry on entry.log = head.log
 where head.call is not null and not head.sealed and not coalesce(f.spoken, false)
   and exists (select 1 from call_log began
                where began.log = head.log and began.type = 'call.started')
-group by head.log, head.agent, head.started_at, head.env, f.channel
+group by head.log, head.agent, head.started_at, head.env, f.channel, f.persona
 having coalesce(max(entry.ts), head.started_at, 0) < :quiet_since
 order by last_at
 limit :limit
@@ -90,6 +93,7 @@ class UnsealedRepository(Repository[CallLogHead]):
                 last_at=float(row.last_at),
                 channel=row.channel,
                 env=None if row.env is None else Env(row.env),
+                simulated=bool(row.simulated),
             )
             for row in rows
         ]

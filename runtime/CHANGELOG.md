@@ -19,10 +19,14 @@
   above had it for an afternoon (2026-11-24), held sockets while it queued: twenty of them took every one of the 1,024 files Docker gives a
   container, and a gateway refused whatever needed a new one. The seat is taken first, with nothing open,
   and the room is rung once the caller is ready; `server.yaml` raises the limit for every runtime process.
-- **A simulated caller whose seat answers nothing takes another.** A job LiveKit gave to nobody left the caller
-  in its room for 46 seconds, after which it gave up and its call stayed open. It gives the seat back after twenty
-  and takes another in its turn; and a simulation that never began ends whatever stopped it, not only for want
-  of a seat.
+- **Only the sweep rings a room again.** A simulated caller whose seat answered nothing took another itself, as
+  an earlier cut of this change had it for an hour: it could ring a room whose call a worker had already opened,
+  and the second job ended the first one's call in the middle (one call of sixty). The caller waits for its agent
+  as long as the fleet keeps its room, the sweep rings it again, and the callers still waiting let a room that
+  lost its seat go first. A simulation that never began ends whatever stopped it, not only for want of a seat.
+- **The reaper leaves a simulated call that waits for a seat.** It has a call id, nothing on its log and no agent
+  in a room, and was ended as `drained` after five minutes in a queue. It is left for as long as a simulation
+  waits (45 minutes, and a margin).
 - **A test room's values run its call whatever the agent's class declares.** `tuning` (the console's test room,
   `pinecall simulate --against`, a comparison) was laid over the org's settings, under the class: on an agent whose
   class declares `llm`, `stt` or `voice` it changed nothing and said nothing, so a comparison of four models ran four

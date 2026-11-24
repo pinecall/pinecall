@@ -166,6 +166,25 @@ async def test_a_call_another_gateway_is_sealing_is_left_and_the_ones_behind_it_
     assert (end["reason"], end["ended_by"], end["duration_s"]) == ("drained", "platform", 0.0)
 
 
+# 2026-11-24: sixty simulated calls on eight seats. The ones that waited over five minutes for a seat
+# had a call id, nothing on their log and no agent in a room: the reaper ended them as drained.
+@needs_the_database
+async def test_a_simulated_call_that_waits_for_a_seat_is_left_to_its_wait_and_ended_past_it(
+    live: LiveParts, tenant: Tenant, agent: str
+) -> None:
+    waiting, dropped = new_call_id(), new_call_id()
+    for call in (waiting, dropped):
+        await claim_call(live.store, call, agent, Claim(Scope(tenant.org, Env.sandbox)))
+    now = time.time()
+    in_the_queue = Unsealed(waiting, agent, None, now - 6 * 60, None, Env.sandbox, simulated=True)
+    long_gone = Unsealed(
+        dropped, agent, None, now - reaper.A_SIMULATION_WAITS_S - 60, None, Env.sandbox, simulated=True
+    )
+    ended = await reaper.reap(live, now, spoken=these(in_the_queue, long_gone), written=these())
+    assert ended == [dropped]
+    assert not await live.store.is_sealed(waiting)
+
+
 async def a_seal_that_breaks(usage: list[ModelUsage], outcome: str) -> None:
     """The gateway's seal of a written call, on a day it does not answer."""
     del usage, outcome
