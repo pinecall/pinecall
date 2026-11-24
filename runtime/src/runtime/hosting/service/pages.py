@@ -28,8 +28,10 @@ INDEX = "index.html"
 LARGEST_PAGE = 20 * 1024 * 1024
 # The pages kept unpacked in one process: the newest asked for, up to this many bytes of files.
 PAGES_KEPT_BYTES = 64 * 1024 * 1024
-# How many tickets and codes one address is given in a minute.
-TICKETS_A_MINUTE = 6
+# How many tickets and codes one address is given in a minute. A widget asks for one on every page of a
+# site it carries a conversation across, and a phone network's customers share an address: six refused a
+# visitor who browsed seven pages in a minute (2026-11-24).
+TICKETS_A_MINUTE = 30
 
 
 @dataclass(frozen=True, slots=True)
