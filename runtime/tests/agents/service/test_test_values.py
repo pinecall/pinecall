@@ -1,24 +1,109 @@
-"""A test room's own voice and models lie over the settings for its call alone, and ask for nothing else."""
+"""A test room's own voice and models lie over the agent for its call alone, its class's as the org's."""
 
 import pytest
 
+from runtime.agents.declaration import Declaration
 from runtime.agents.service import settings
-from runtime.agents.settings import AgentSettings
-from runtime.enums import Env
+from runtime.agents.service.resolution import lay_test_values, resolve
+from runtime.agents.service.setting_names import TEST_FIELDS
+from runtime.agents.settings import AgentSettings, Lexicon, read_settings
+from runtime.enums import Env, Stage
 from runtime.exceptions import Forbidden, ValidationError
+from runtime.providers.stage import Model, Voice
+from tests.fakes import acme
+from tests.fakes.acme import ACME
+
+DEFAULTS: dict[Stage, str] = {Stage.llm: ACME, Stage.stt: ACME, Stage.tts: ACME}
+
+
+def _tried(running: Declaration, **asked: object) -> Declaration:
+    return lay_test_values(running, read_settings(asked), defaults=DEFAULTS)
 
 
 def test_the_values_a_room_asked_for_win_knob_by_knob_and_the_rest_stay() -> None:
-    standing = AgentSettings(llm="acme/acme-1", voice="ana", language="es", temperature=0.4)
-    tried = settings.overlay_test_values(standing, {"voice": "lucia", "temperature": 0.9})
-    assert (tried.voice, tried.temperature) == ("lucia", 0.9)
-    assert (tried.llm, tried.language) == ("acme/acme-1", "es")
+    running = Declaration(
+        slug="kala", llm=Model(ACME, "acme-1", temperature=0.4), voice=Voice(ACME, voice_id="ana"), language="es"
+    )
+    tried = _tried(running, voice="lucia", temperature=0.9)
+    assert tried.voice == Voice(ACME, voice_id="lucia")
+    assert tried.llm == Model(ACME, "acme-1", temperature=0.9)
+    assert tried.language == "es"
 
 
-def test_no_values_leave_the_settings_as_they_are() -> None:
-    standing = AgentSettings(voice="ana")
-    assert settings.overlay_test_values(standing, None) is standing
-    assert settings.overlay_test_values(standing, {}) is standing
+def test_a_rooms_model_runs_its_call_whatever_the_class_declares() -> None:
+    """Four models asked for were four calls on the class's one until 2026-11-24: the class won over the room."""
+    declared = Declaration(slug="kala", llm=Model(ACME, "acme-1"), fixed=frozenset({"llm"}))
+    running = resolve(declared, AgentSettings(llm=f"{ACME}/the-orgs"), Lexicon(), defaults=DEFAULTS)
+    assert running.llm == Model(ACME, "acme-1")
+    assert _tried(running, llm=f"{ACME}/acme-2").llm == Model(ACME, "acme-2")
+
+
+def test_a_temperature_alone_keeps_the_model_the_class_declares() -> None:
+    running = Declaration(slug="kala", llm=Model(ACME, "acme-1", options={"seed": 7}), fixed=frozenset({"llm"}))
+    assert _tried(running, temperature=0.2).llm == Model(ACME, "acme-1", temperature=0.2, options={"seed": 7})
+
+
+def test_a_model_on_another_vendor_leaves_the_first_ones_plugin_and_options_behind() -> None:
+    other = acme.install("acme-two")
+    running = Declaration(
+        slug="kala",
+        llm=Model(ACME, "acme-1", temperature=0.3, builds="OtherLLM", options={"seed": 7}),
+        stt=Model(ACME, "acme-ears", options={"keyterms": ["kala"]}, end_of_turn="livekit"),
+    )
+    tried = _tried(running, llm=f"{other}/big", stt=other)
+    assert tried.llm == Model(other, "big", temperature=0.3)
+    assert tried.stt == Model(other, "", end_of_turn="livekit")
+
+
+def test_a_voice_on_another_vendor_leaves_the_agents_voice_behind_unless_the_room_names_one() -> None:
+    other = acme.install("acme-two")
+    running = Declaration(slug="kala", voice=Voice(ACME, model="acme-voice", voice_id="ana", options={"speed": 1.1}))
+    assert _tried(running, tts=other).voice == Voice(other)
+    assert _tried(running, tts=other, voice="lucia").voice == Voice(other, voice_id="lucia")
+    assert _tried(running, tts_model="acme-voice-2").voice == Voice(
+        ACME, model="acme-voice-2", voice_id="ana", options={"speed": 1.1}
+    )
+
+
+def test_an_agent_with_nothing_named_takes_the_rooms_values_on_the_boxs_vendors() -> None:
+    tried = _tried(Declaration(slug="kala"), temperature=0.5, end_of_turn="livekit", voice="lucia")
+    assert tried.llm == Model(ACME, "", temperature=0.5)
+    assert tried.stt == Model(ACME, "", end_of_turn="livekit")
+    assert tried.voice == Voice(ACME, voice_id="lucia")
+
+
+# A value for every field a room may set: one added to the table and not laid here would be asked for
+# and run nowhere, in silence, as the class's fields were.
+A_VALUE: dict[str, object] = {
+    "llm": f"{ACME}/acme-2",
+    "temperature": 0.9,
+    "stt": f"{ACME}/acme-ears-2",
+    "end_of_turn": "livekit",
+    "tts": f"{ACME}/acme-voice-2",
+    "tts_model": "acme-voice-3",
+    "voice": "lucia",
+    "language": "fr",
+    "smart_interruptions": False,
+}
+
+
+def test_every_field_a_room_may_set_changes_its_call_over_a_class_that_fixes_it() -> None:
+    assert set(A_VALUE) == TEST_FIELDS
+    running = Declaration(
+        slug="kala",
+        llm=Model(ACME, "acme-1", temperature=0.1),
+        stt=Model(ACME, "acme-ears", end_of_turn="stt"),
+        voice=Voice(ACME, model="acme-voice", voice_id="ana"),
+        language="es",
+        fixed=frozenset({"llm", "stt", "voice", "language", "smart_interruptions"}),
+    )
+    for name, value in A_VALUE.items():
+        assert _tried(running, **{name: value}) != running, name
+
+
+def test_no_values_leave_the_agent_as_it_runs() -> None:
+    running = Declaration(slug="kala", llm=Model(ACME, "acme-1"), voice=Voice(ACME, voice_id="ana"))
+    assert _tried(running) == running
 
 
 def test_the_sandbox_takes_a_voice_and_the_models_and_hands_back_what_it_checked() -> None:

@@ -6,7 +6,8 @@ what the ears must know — is the org's to set here, **per environment, per sco
 and a call's head row says which versions it ran on. The class declares the contract, the tools,
 the state, the endpoints, and may declare any of this too: **what the class declares wins** over
 these settings for its agent (the wire's `AgentConfig`), so a setting it declares is listed under
-`fixed` and refused here with `409`. The environment is put on the declaration at the one place
+`fixed` and refused here with `409`. One thing is laid over the class too: a test room's own values,
+for its call alone (`tuning`, [tokens.md](tokens.md)). The environment is put on the declaration at the one place
 every call is built, and a knob nobody set is the runtime's default.
 
 **Two kinds of key open them.** A key that opens `pipeline` (a developer's, an admin's) may set

@@ -1,4 +1,4 @@
-"""An agent resolved for a call: the org's settings laid under what its class declares, and a model named in a word."""
+"""An agent resolved for a call: the org's settings under what its class declares, a test room's values over both."""
 
 import dataclasses
 from collections.abc import Mapping
@@ -72,6 +72,33 @@ def resolve(
     )
 
 
+# A test room's values are its call's own, over what the class declares as over what the org set: the
+# same caller meets the agent on another model whoever fixed the one it runs on. Laid under the class,
+# as they were until 2026-11-24, a comparison of four models ran four calls on the class's one.
+def lay_test_values(resolved: Declaration, values: AgentSettings, *, defaults: Mapping[Stage, str]) -> Declaration:
+    """The agent as a call runs it with a test room's values over it, knob by knob, for that call alone."""
+    thinking = _swap_model(resolved.llm, values.llm, Stage.llm, defaults)
+    if values.temperature is not None:
+        thinking = dataclasses.replace(
+            thinking or Model(vendor=defaults[Stage.llm], model=""), temperature=values.temperature
+        )
+    if thinking is not None:
+        providers.refuse_realtime_as_llm(thinking.vendor, thinking.model or None, thinking.builds)
+    ears = _swap_model(resolved.stt, values.stt, Stage.stt, defaults)
+    if values.end_of_turn is not None:
+        ears = dataclasses.replace(ears or Model(vendor=defaults[Stage.stt], model=""), end_of_turn=values.end_of_turn)
+    return dataclasses.replace(
+        resolved,
+        llm=thinking,
+        stt=ears,
+        voice=_swap_voice(resolved.voice, values, defaults),
+        language=resolved.language if values.language is None else values.language,
+        smart_interruptions=(
+            resolved.smart_interruptions if values.smart_interruptions is None else values.smart_interruptions
+        ),
+    )
+
+
 def name_model(text: str | None, stage: Stage, *, in_use: str) -> Model | None:
     """`vendor/model`, a vendor alone (never for `llm`), or a model on the vendor in use; None when none is named."""
     if text is None:
@@ -106,6 +133,35 @@ def check_realtime(named: Model) -> Model:
 def _taking_over(named: tuple[str, ...] | None, stage: Stage, defaults: Mapping[Stage, str]) -> tuple[Model, ...]:
     found = (name_model(word, stage, in_use=defaults[stage]) for word in named or ())
     return tuple(model for model in found if model is not None)
+
+
+# A plugin's class and its options are one vendor's: a model named on another vendor leaves them behind,
+# and keeps the agent's own knobs (how freely it words, who ends the caller's turn).
+def _swap_model(running: Model | None, word: str | None, stage: Stage, defaults: Mapping[Stage, str]) -> Model | None:
+    in_use = defaults[stage] if running is None else running.vendor
+    named = name_model(word, stage, in_use=in_use)
+    if named is None:
+        return running
+    if running is None:
+        return named
+    if named.vendor == running.vendor:
+        return dataclasses.replace(running, model=named.model)
+    return dataclasses.replace(named, temperature=running.temperature, end_of_turn=running.end_of_turn)
+
+
+# A voice is one vendor's too: named on another, the agent's voice, its model and its options stay behind.
+def _swap_voice(running: Voice | None, values: AgentSettings, defaults: Mapping[Stage, str]) -> Voice | None:
+    if values.tts is None and values.voice is None and values.tts_model is None:
+        return running
+    in_use = defaults[Stage.tts] if running is None else running.vendor
+    named = name_model(values.tts, Stage.tts, in_use=in_use)
+    vendor = in_use if named is None else named.vendor
+    kept = running if running is not None and running.vendor == vendor else Voice(vendor=vendor)
+    return dataclasses.replace(
+        kept,
+        model=values.tts_model or (None if named is None else named.model or None) or kept.model,
+        voice_id=values.voice or kept.voice_id,
+    )
 
 
 def _voice(declaration: Declaration, settings: AgentSettings, defaults: Mapping[Stage, str]) -> Voice | None:

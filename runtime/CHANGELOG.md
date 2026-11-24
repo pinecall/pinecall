@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **A test room's values run its call whatever the agent's class declares.** `tuning` (the console's test room,
+  `pinecall simulate --against`, a comparison) was laid over the org's settings, under the class: on an agent whose
+  class declares `llm`, `stt` or `voice` it changed nothing and said nothing, so a comparison of four models ran four
+  calls on the class's one under four names. It is laid over the agent as the call would run it now, knob by knob, for
+  that call alone. A model or a voice named on another vendor leaves the first one's voice, plugin and options behind.
 - **Every email the box sends carries a `Date`** (RFC 5322); a relay used to add it, or not.
 - **The agent writes the first email.** `POST /v1/agents/{slug}/text` with `to` an address sends the first email
   of a thread from an address the agent answers email at, under `subject` (required), its `text` said as an SMS's

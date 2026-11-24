@@ -135,7 +135,7 @@ drops the persona's voice for one of that vendor's the agent does not have. A mo
 voice the deployment lacks is `400` before the answer, as when a persona is written.
 
 `against` `{stt?, llm?, tts?, voice?, language?, temperature?, end_of_turn?, smart_interruptions?}` runs **the agent** on another
-voice or model for this call alone, over its settings, as the console's test room does: each stage as
+voice or model for this call alone, over its settings and over what its class declares, as the console's test room does: each stage as
 `vendor/model`, a voice of the voice vendor's, a language, a temperature, who ends the caller's turn
 (`stt`, `livekit`, `smart-turn`), and whether a caller speaking over the agent stops it by the model that hears a floor-take
 in their voice or by the transcript's words (`smart_interruptions`); nothing named is the agent's own. The sandbox's alone (`403` in production), those knobs alone (`422` for any other), and a

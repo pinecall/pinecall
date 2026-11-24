@@ -13,7 +13,7 @@ from runtime.agents.declaration import Declaration
 from runtime.agents.repository import AgentConfigRepository, LexiconRepository
 from runtime.agents.service import canaries, versions
 from runtime.agents.service.declaration import agent_of
-from runtime.agents.service.resolution import resolve
+from runtime.agents.service.resolution import lay_test_values, resolve
 from runtime.agents.service.setting_names import (
     TEST_FIELDS,
 )
@@ -124,7 +124,8 @@ async def current_settings(session: AsyncSession, scope: Scope, agent: str, pick
     )
 
 
-# `test` is a test room's own values, checked at its token, laid over the settings for this call alone.
+# `test` is a test room's own values, checked at its token, laid over the agent for this call alone:
+# over what its class declares too, which no setting of the org's ever is.
 async def resolve_for_call(
     session: AsyncSession,
     declaration: Declaration,
@@ -135,8 +136,9 @@ async def resolve_for_call(
 ) -> Resolved:
     """The declaration over the scope's current settings, for a call: as it runs, and the versions it runs on."""
     current = await current_settings(session, scope, declaration.slug, picked)
-    settings = overlay_test_values(current.settings, test)
-    resolved = resolve(declaration, settings, current.lexicon, defaults=catalog.default_vendors)
+    resolved = resolve(declaration, current.settings, current.lexicon, defaults=catalog.default_vendors)
+    if test:
+        resolved = lay_test_values(resolved, read_settings(test), defaults=catalog.default_vendors)
     return Resolved(resolved, current.versions)
 
 
@@ -243,13 +245,6 @@ def check_test_values(body: Mapping[str, Any] | None, *, env: Env) -> dict[str, 
     for name, value in body.items():
         _check_test_kind(name, value)
     return dump_settings(parse_settings(body))
-
-
-def overlay_test_values(settings: AgentSettings, values: Mapping[str, Any] | None) -> AgentSettings:
-    """The settings with a test room's values over them, field by field."""
-    if not values:
-        return settings
-    return read_settings({**dump_settings(settings), **dump_settings(parse_settings(values))})
 
 
 def parse_settings(body: Mapping[str, Any]) -> AgentSettings:
