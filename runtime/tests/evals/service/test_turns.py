@@ -66,6 +66,24 @@ def test_the_agent_having_spoken_and_back_to_listening_is_the_signal() -> None:
     assert has_answer_landed(log, 1, since=0.0)
 
 
+# 2026-11-24: a realtime model's session says `listening` an instant before its turn is written, where
+# a pipeline's writes the turn first. The caller asked for the pipeline's order, so on a realtime call
+# it answered nothing until the agent's idle line.
+def test_a_turn_written_an_instant_after_the_agent_went_back_to_listening_is_an_answer_all_the_same() -> None:
+    log = a_log(
+        ("agent.state", "speaking"),
+        "turn.user",
+        ("agent.state", "listening"),
+        "turn.agent",
+    )
+    assert has_answer_landed(log, 1, since=0.0)
+
+
+def test_a_greeting_written_an_instant_after_the_agent_went_back_to_listening_opens_the_line() -> None:
+    log = a_log(("agent.state", "listening"), ("agent.state", "speaking"), ("agent.state", "listening"), "turn.agent")
+    assert is_line_open(log, now=4.0)
+
+
 # The disaster of 2026-10-10: an agent that looked something up twice was talked over between
 # the two, since livekit publishes `listening` while a tool runs and between one and the next.
 def test_an_agent_listening_between_one_tool_and_the_next_has_not_answered() -> None:

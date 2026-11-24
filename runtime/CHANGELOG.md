@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **A simulated caller answers a realtime model's turn when it ends.** The caller read the agent's answer off the log
+  as a turn followed by `listening`; a realtime model's session says `listening` an instant before its turn is written,
+  so no answer ever landed and the caller stood silent until the agent's idle line ("Are you still there?" five times
+  a call). Which of the two landed first is no longer asked.
 - **A seal that answers late is asked again, not written down as an error.** The worker waited thirty seconds for
   `POST /v1/calls/{call}/sealed` and asked once; under load the gateway's seal, which judges the call before it
   answers, outlasts that, and went on to seal the call all the same. The worker asks again within two minutes, and a

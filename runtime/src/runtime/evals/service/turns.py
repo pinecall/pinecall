@@ -61,9 +61,9 @@ def is_line_open(entries: Sequence[Entry], now: float, *, notice: bool = False) 
     if not states:
         return False
     spoke = [index for index, entry in enumerate(entries) if entry.type == "turn.agent"]
-    index, last = states[-1]
+    last = states[-1][1]
     if spoke:
-        listens = _state_of(last) == LISTENING and index > spoke[-1]
+        listens = _state_of(last) == LISTENING
         # "This call may be recorded." is a turn of its own, said before the greeting: a caller that took it
         # for the opening spoke over the greeting. One turn is the notice until the greeting follows, or
         # until the agent has listened long enough to have none.
@@ -76,8 +76,13 @@ def is_line_open(entries: Sequence[Entry], now: float, *, notice: bool = False) 
 
 # Turn counts lie: livekit speaks a tool's preamble as a turn of its own, and some ears end a
 # turn per sentence. A state alone lies too: livekit publishes `listening` while a tool runs, and
-# between one tool and the next. The agent having SPOKEN since the caller's last line, and being
-# back to listening after it with no tool running, is the signal.
+# between one tool and the next. The agent having SPOKEN since the caller's last line, and
+# listening now with no tool running, is the signal. Which of the two landed first is not asked:
+# a turn is written as its speech ends, in the instant the agent goes back to listening, and a
+# realtime model's session says `listening` first. Until 2026-11-24 the state had to follow the
+# turn: on a realtime call no answer ever landed, the caller stood silent until the agent's idle
+# line, which is said the other way round, and answered that ("Are you still there?" five times a
+# call, where the same callers on a pipeline heard it none).
 def has_answer_landed(entries: Sequence[Entry], lines: int, *, since: float) -> bool:
     """Whether every line reached the agent, and it spoke and listens again after the last."""
     heard = [index for index, entry in enumerate(entries) if entry.type == "turn.user"]
@@ -89,11 +94,8 @@ def has_answer_landed(entries: Sequence[Entry], lines: int, *, since: float) -> 
     spoke = [index for index, entry in enumerate(entries) if entry.type == "turn.agent"]
     if not spoke or spoke[-1] < heard[-1]:
         return False
-    states = [(index, entry) for index, entry in enumerate(entries) if entry.type == "agent.state"]
-    if not states:
-        return False
-    index, last = states[-1]
-    return index > spoke[-1] and _state_of(last) == LISTENING
+    states = [entry for entry in entries if entry.type == "agent.state"]
+    return bool(states) and _state_of(states[-1]) == LISTENING
 
 
 def is_agent_busy(entries: Sequence[Entry]) -> bool:
