@@ -179,18 +179,29 @@ class Offering:
 
     # The worker chosen; the overflow when the offers ran out or the workers heard have no slot;
     # nobody while no worker of the fleet was heard yet.
+    # LiveKit hears a worker's load every 2.5 s, and the gateway its calls every 5: a seat the heartbeat
+    # says free may still be full to LiveKit, which then gives the room's job to nobody. The room is
+    # offered again, to another worker first and to the same one when it is the only one with a slot:
+    # on a fleet of one worker, the second offer went to the overflow (2026-11-24, ten of sixty calls).
+    # A simulated caller is never sent the overflow's sentence: it waits for a seat, as it did to get one.
     async def _target(self, session: AsyncSession, offer: Offer, now: float) -> Target:
-        if offer.offers >= OFFERS:
+        waits = Dispatch.parse(offer.dispatch).persona is not None
+        if offer.offers >= OFFERS and not waits:
             return Target(dispatches.overflow_name(offer.fleet), f"no worker opened it in {OFFERS} offers")
         workers = self.roster.workers_of(offer.fleet, now)
         flying = await count_in_flight(session, now, workers)
         tried = () if offer.worker is None else (offer.worker,)
-        chosen = slots.choose_worker(workers, flying, now, not_these=(*tried, *self.roster.list_gone(offer.fleet, now)))
+        gone = self.roster.list_gone(offer.fleet, now)
+        chosen = slots.choose_worker(workers, flying, now, not_these=(*tried, *gone)) or slots.choose_worker(
+            workers, flying, now, not_these=gone
+        )
         if chosen is not None and chosen.agent_name is not None:
             free = slots.free_slots(chosen, flying)
             return Target(chosen.agent_name, f"{free} slots free, heard {now - chosen.seen_at:.0f} s ago")
         if not slots.is_any_heard(workers, now) and now - offer.seen_at < WAITS_FOR_A_WORKER_S:
             return Target(None, f"no worker of the fleet heard in {slots.OFFERABLE_WITHIN_S:.0f} s")
+        if waits:
+            return Target(None, "no worker of the fleet has a slot, and a simulated caller waits for one")
         return Target(dispatches.overflow_name(offer.fleet), "no worker of the fleet has a slot")
 
 

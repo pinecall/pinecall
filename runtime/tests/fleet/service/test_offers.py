@@ -12,7 +12,7 @@ from runtime.fleet.models import Offer
 from runtime.fleet.repository import OfferRepository
 from runtime.fleet.schemas import WorkerStatus
 from runtime.fleet.service import slots
-from runtime.fleet.service.dispatches import agent_name
+from runtime.fleet.service.dispatches import agent_name, overflow_name
 from runtime.fleet.service.envs import PRODUCTION, SANDBOX
 from runtime.fleet.service.offers import OFFERED_AGAIN_AFTER_S, Offering
 from runtime.fleet.service.roster import Roster
@@ -197,3 +197,47 @@ def test_an_offer_takes_its_workers_slot_until_opened_and_then_until_the_next_be
     offered: list[tuple[str, float | None]] = [(name, None), (name, 99.0), (name, 101.0)]
     assert slots.count_in_flight(offered, [worker]) == {name: 2}
     assert slots.count_in_flight([(name, 99.0)], [worker]) == {}
+
+
+# 2026-11-24: the gateway's heartbeat said a seat free before LiveKit heard its worker available, the
+# room's job went to nobody, and twelve seconds later the room was sent to the overflow: its one
+# worker had been tried. Ten of sixty simulated calls of a comparison heard "all our lines are busy".
+async def test_a_room_its_only_worker_did_not_open_is_offered_to_it_again(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    servers, roster = per_world(), Roster()
+    offering = Offering(sessions, servers=servers, roster=roster)
+    only = f"w_{uuid4().hex}"
+    roster.workers[(SANDBOX, only)] = a_worker(only, active=0, max_jobs=2, fleet=SANDBOX)
+    room, late = f"room_{uuid4().hex}", time.time() - OFFERED_AGAIN_AFTER_S - 1
+    try:
+        async with sessions.begin() as session:
+            offers = OfferRepository(session)
+            assert await offers.open(room, SANDBOX, Dispatch(agent="recepcion").dump(), late)
+            assert await offers.claim(room, 0, agent_name(SANDBOX, only), late)
+        kept = await _kept(sessions, room)
+        assert kept is not None
+        assert await offering.offer_again(kept) == agent_name(SANDBOX, only)
+    finally:
+        await offering.forget(room)
+        for server in servers.values():
+            await server.aclose()
+
+
+async def test_a_simulated_callers_room_waits_for_a_seat_where_a_callers_is_sent_the_overflow(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    servers, roster = per_world(), Roster()
+    offering = Offering(sessions, servers=servers, roster=roster)
+    full = f"w_{uuid4().hex}"
+    roster.workers[(SANDBOX, full)] = a_worker(full, active=2, max_jobs=2, fleet=SANDBOX)
+    simulated, real = f"room_{uuid4().hex}", f"room_{uuid4().hex}"
+    try:
+        assert await offering.offer(simulated, SANDBOX, Dispatch(agent="recepcion", persona="hurried")) is None
+        assert await _kept(sessions, simulated) is not None, "it waits in the table for the next sweep"
+        assert await offering.offer(real, SANDBOX, Dispatch(agent="recepcion")) == overflow_name(SANDBOX)
+    finally:
+        await offering.forget(simulated)
+        await offering.forget(real)
+        for server in servers.values():
+            await server.aclose()

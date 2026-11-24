@@ -10,6 +10,10 @@
   (`offers.opened_at`, migration 000034), which also keeps a real call from being offered to a worker that just
   filled. A simulation waits for a seat as long as a comparison places its calls (45 minutes; it was three),
   and one that never gets a seat ends, saying why on its log, where it was left with no entry and no end.
+- **A room its worker did not open is offered to that worker again when it is the only one with a seat.** On
+  a fleet of one worker the second offer went to the overflow, so a job LiveKit gave to nobody (it had not yet
+  heard the worker free) ended in "all our lines are busy". A simulated caller's room is never sent to the
+  overflow: it waits for a seat. A simulation no agent ever joined ends too, saying why.
 - **A test room's values run its call whatever the agent's class declares.** `tuning` (the console's test room,
   `pinecall simulate --against`, a comparison) was laid over the org's settings, under the class: on an agent whose
   class declares `llm`, `stt` or `voice` it changed nothing and said nothing, so a comparison of four models ran four

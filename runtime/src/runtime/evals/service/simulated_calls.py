@@ -104,9 +104,11 @@ async def play_spoken(parts: Harness, simulation: Simulation) -> Played:
     line = on_the_line(parts, dispatch, voice, spoken, waits_for_slot=simulation.waits_for_slot)
     try:
         return await play(parts, simulation, line, voice)
-    except NoSeat as never:
-        # Its row would never end, and whoever follows it would wait for good: the call ends, saying why.
-        await parts.apps.end_never_served(simulation.call, simulation.agent, str(never))
+    except (NoSeat, TimeoutError) as never:
+        # No seat in the whole wait, or no agent in its room: a call that never began has nobody to end
+        # it, its row would stay open and whoever follows it would wait for good. It ends, saying why.
+        if not any(entry.type == "call.started" for entry in await parts.store.whole_of(simulation.call)):
+            await parts.apps.end_never_served(simulation.call, simulation.agent, str(never))
         raise
 
 
