@@ -1,4 +1,4 @@
-"""A spoken simulation with no slot free waits for the fleet to grow, saying `fleet.full` on the agent's log once."""
+"""A spoken simulation takes a seat of the fleet, waiting for one when none is free and saying `fleet.full` once."""
 
 import time
 from collections.abc import Awaitable, Callable
@@ -10,28 +10,45 @@ from runtime.enums import Channel, Env
 from runtime.exceptions import ServiceUnavailable
 from runtime.fleet import service as fleet
 from runtime.kit.retry import until
+from runtime.wire.dispatch import Dispatch
 from runtime.wire.events import FleetFull
 
-# A simulation the console or the CLI starts waits for a slot instead of being refused: the fleet grows
+# A simulation the console or the CLI starts waits for a seat instead of being refused: the fleet grows
 # on the calls already on it (a scaled worker's node takes a minute or two), and ten placed together on
-# a sandbox of two slots were refused eight times before the node came (2026-11-04).
-WAITED_S = 180.0
+# a sandbox of two slots were refused eight times before the node came (2026-11-04). On a fleet that
+# does not grow the wait is a queue: sixty calls placed on eight seats (2026-11-24) had the last of them
+# wait past three minutes, which was the whole wait then, and those never started. A call waits as long
+# as a comparison goes on placing its own.
+WAITED_S = 45 * 60.0
 ASKED_EVERY_S = 2.0
 
 
-async def wait_for_fleet_slot(
+class NoSeat(ServiceUnavailable):
+    """Every seat of the env's fleet held a call for the whole wait: the simulation did not start."""
+
+    def __init__(self, env: Env, waited_s: float) -> None:
+        super().__init__(
+            f"every seat of the {env.value}'s fleet held a call for {waited_s:.0f} s: the simulation did not start"
+        )
+
+
+# The seat is asked for and taken in one step (`Offering.offer_when_free`): a caller that only asked
+# and offered its room later shared the answer with every caller that asked at the same moment.
+async def take_fleet_seat(
     sessions: async_sessionmaker[AsyncSession],
     offering: fleet.Offering,
     roster: fleet.Roster,
     logs: Logs,
     env: Env,
-    agent: str,
     the_fleet: str,
+    room: str,
+    dispatch: Dispatch,
 ) -> float:
-    """Wait for a slot of the fleet, saying `fleet.full` on the agent's log once; the seconds waited."""
+    """Offer the room to a worker with a slot, waiting for one and saying `fleet.full` once; the seconds waited."""
+    agent = dispatch.agent or ""
 
     async def asks() -> bool:
-        return await offering.has_a_slot(the_fleet)
+        return await offering.offer_when_free(room, the_fleet, dispatch)
 
     async def full() -> None:
         async with sessions.begin() as session:
@@ -60,8 +77,5 @@ async def wait_for_slot(
         return True if await asks() else None
 
     if await until(probe, every_s=every_s, within_s=within_s) is None:
-        waited = time.monotonic() - began
-        raise ServiceUnavailable(
-            f"every seat of the {env.value}'s fleet held a call for {waited:.0f} s: the simulation did not start"
-        )
+        raise NoSeat(env, time.monotonic() - began)
     return time.monotonic() - began

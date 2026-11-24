@@ -26,6 +26,7 @@ from runtime.evals.service.callers import (
 )
 from runtime.evals.service.leg import Spoken
 from runtime.evals.service.phone import PhoneLine
+from runtime.evals.service.slots import NoSeat
 from runtime.evals.service.spoken import SpokenLine
 from runtime.evals.service.turns import NextLine, is_call_over
 from runtime.evals.service.written import WrittenLine
@@ -101,7 +102,12 @@ async def play_spoken(parts: Harness, simulation: Simulation) -> Played:
     spoken = Spoken(simulation.call, simulation.acts, voice.language, notice, simulation.network)
     on_the_line = SpokenLine if simulation.rings is None else PhoneLine
     line = on_the_line(parts, dispatch, voice, spoken, waits_for_slot=simulation.waits_for_slot)
-    return await play(parts, simulation, line, voice)
+    try:
+        return await play(parts, simulation, line, voice)
+    except NoSeat as never:
+        # Its row would never end, and whoever follows it would wait for good: the call ends, saying why.
+        await parts.apps.end_never_served(simulation.call, simulation.agent, str(never))
+        raise
 
 
 async def play_written(parts: Harness, running: session.Session, simulation: Simulation) -> Played:

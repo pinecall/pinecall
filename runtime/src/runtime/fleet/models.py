@@ -8,7 +8,7 @@ from runtime.kit.db import Kept, Model
 
 # The room is named by its call's id, so the row is found by the call; it never outlives two minutes.
 class Offer(Model):
-    """Kept from the caller's arrival until a worker opens the call; offered again when nobody did."""
+    """Kept from the caller's arrival until its worker says the call itself; offered again when nobody opened it."""
 
     __tablename__ = "offers"
     __table_args__ = (Index("offers_due", "offered_at"), Index("offers_by_age", "seen_at"))
@@ -25,3 +25,5 @@ class Offer(Model):
     worker: Mapped[str | None] = mapped_column(Text)
     offers: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     offered_at: Mapped[float | None] = mapped_column(Float)
+    # When the worker opened the call: the row then takes its slot until that worker's next heartbeat.
+    opened_at: Mapped[float | None] = mapped_column(Float)

@@ -57,18 +57,19 @@ def sum_fleet(
 
 async def totals_of(session: AsyncSession, roster: Roster, fleet: str, now: float) -> FleetTotals:
     """One fleet summed now, the offers in flight and the rooms waiting read from the table."""
-    in_flight = await offers.count_in_flight(session, now)
+    workers = roster.workers_of(fleet, now)
+    in_flight = await offers.count_in_flight(session, now, workers)
     waiting = await offers.count_waiting(session, now)
-    return sum_fleet(fleet, roster.workers_of(fleet, now), in_flight, waiting.get(fleet, 0), now)
+    return sum_fleet(fleet, workers, in_flight, waiting.get(fleet, 0), now)
 
 
 async def list_fleets(session: AsyncSession, roster: Roster, now: float) -> Listing:
     """Every worker heard from, of both envs' fleets, and each fleet summed over the ones up."""
     named = await envs.get_fleets(session)
     both = list(dict.fromkeys((named.production, named.sandbox)))
-    in_flight = await offers.count_in_flight(session, now)
-    waiting = await offers.count_waiting(session, now)
     of_each = {fleet: roster.workers_of(fleet, now) for fleet in both}
+    in_flight = await offers.count_in_flight(session, now, [worker for fleet in both for worker in of_each[fleet]])
+    waiting = await offers.count_waiting(session, now)
     return Listing(
         now=now,
         stale_after_s=slots.STALE_AFTER_S,

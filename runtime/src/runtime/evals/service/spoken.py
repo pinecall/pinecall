@@ -15,7 +15,7 @@ from runtime.evals.parts import Harness
 from runtime.evals.service import ambience, turns
 from runtime.evals.service.hearing import Said
 from runtime.evals.service.leg import CallerLeg, Spoken, synthesize
-from runtime.evals.service.slots import wait_for_fleet_slot
+from runtime.evals.service.slots import take_fleet_seat
 from runtime.exceptions import ServiceUnavailable
 from runtime.fleet import service as fleet
 from runtime.kit.retry import until
@@ -123,33 +123,30 @@ class SpokenLine:
 
     async def _open(self) -> None:
         parts, call = self._parts, self._spoken.call
-        the_fleet = await self._wait_for_a_slot()
         speech = await self._stack.enter_async_context(self._open_voice())
         interferer = await self._make_room_sound(speech)
         self._stack.push_async_callback(close_room, parts.servers[self.env], call)
         self._stack.push_async_exit(self._wait_for_the_end)
-        await parts.offering.offer(call, the_fleet, self._dispatch)
+        await self._take_a_seat()
         await self._join(call, self.env, speech, interferer)
         await self._wait_for_the_agent()
 
     def _open_voice(self) -> AbstractAsyncContextManager[tts.TTS[Never]]:
         return providers.voice_outside_a_call(self._voice)
 
-    async def _wait_for_a_slot(self) -> str:
-        parts = self._parts
+    # The room is offered to a worker here: at once for a golden said out loud, which a full fleet
+    # answers with the overflow's sentence as it answers a caller, and only where a seat is for a
+    # simulation, which waits for one.
+    async def _take_a_seat(self) -> None:
+        parts, call = self._parts, self._spoken.call
         async with parts.sessions.begin() as session_:
             the_fleet = await fleet.fleet_of_env(session_, self.env)
-        if self._waits_for_slot:
-            await wait_for_fleet_slot(
-                parts.sessions,
-                parts.offering,
-                parts.roster,
-                parts.logs,
-                self.env,
-                self._dispatch.agent or "",
-                the_fleet,
-            )
-        return the_fleet
+        if not self._waits_for_slot:
+            await parts.offering.offer(call, the_fleet, self._dispatch)
+            return
+        await take_fleet_seat(
+            parts.sessions, parts.offering, parts.roster, parts.logs, self.env, the_fleet, call, self._dispatch
+        )
 
     # The caller's seat in a room of an env's LiveKit: its leg published and carrying from here on.
     async def _join(self, room: str, env: Env, speech: tts.TTS[Never], interferer: bytes) -> None:

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Simulated callers placed together no longer take each other's seat.** A spoken simulation asked whether
+  the fleet had a seat and offered its room seconds later, so every caller of a comparison waiting on a full
+  fleet saw the same free seat: the ones past it were answered by the overflow's sentence and counted as calls
+  (twenty-nine of sixty, on 2026-11-24). A seat is asked for and taken in one step now, the fleet's seats held
+  for it, and an offer keeps its seat from the call's opening until its worker's next heartbeat says the call
+  (`offers.opened_at`, migration 000034), which also keeps a real call from being offered to a worker that just
+  filled. A simulation waits for a seat as long as a comparison places its calls (45 minutes; it was three),
+  and one that never gets a seat ends, saying why on its log, where it was left with no entry and no end.
 - **A test room's values run its call whatever the agent's class declares.** `tuning` (the console's test room,
   `pinecall simulate --against`, a comparison) was laid over the org's settings, under the class: on an agent whose
   class declares `llm`, `stt` or `voice` it changed nothing and said nothing, so a comparison of four models ran four

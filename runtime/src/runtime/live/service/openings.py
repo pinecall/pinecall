@@ -252,8 +252,8 @@ async def open_call(session: AsyncSession, live: LiveParts, actor: Actor, arriva
     resolved = await _resolve(session, scope, arrival.agent, context.call, arrival.test_values)
     # Asked again by a worker whose gateway died with the answer: the same call, one ringing.
     again = await calls.opening_of(session, context.call) is not None
-    # A worker opened the room's call: nothing is left to offer it to another.
-    await live.offering.forget(context.call)
+    # A worker opened the room's call: nothing is left to offer it to another, and its slot is that worker's.
+    await live.offering.say_opened(context.call)
     opener = Opener.fleet if actor.is_fleet else Opener.app
     owner = None if registration is None else registration.owner
     served = await open_served(live, Opening(context, resolved.declaration, scope, opener, owner), resolved.versions)

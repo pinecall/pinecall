@@ -47,9 +47,11 @@ answer is in, until the caller hangs up (sixty seconds with no answer end the ca
 the persona expects rides the call, which is sealed and judged like any other. Spoken with every
 seat of the environment's fleet holding a call, it is not refused as `POST /v1/evals/voice` is: the
 call is claimed and counted, `fleet.full` is written on the agent's log once, and the caller waits
-up to three minutes for a seat — the fleet grows on the calls already on it — before it gives up
-(`every seat of the sandbox's fleet held a call for 180 s: the simulation did not start`, on no
-log; `GET /v1/simulations` lists the call with no start). Spoken, the caller
+for a seat, asking every two seconds and taking the first one free: the fleet grows on the calls
+already on it, and on a fleet that does not grow the wait is a queue. It waits as long as a comparison
+goes on placing its calls, 45 minutes, before it gives up: the call then ends, `error` on its log
+(`never_served`, `every seat of the sandbox's fleet held a call for 2700 s: the simulation did not
+start`) and `call.ended` with reason `error` after it, so whoever follows it stops waiting. Spoken, the caller
 acts as its `behavior` says: it talks over that share of the agent's answers (`interrupts`, 0 to
 1) some way into them, as a person cutting in does, so the agent's barge-in is what is tested; it
 murmurs an "mm-hmm" in its language into that share of them (`backchannels`, 0 to 1) a few

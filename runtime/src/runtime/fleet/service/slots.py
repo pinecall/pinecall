@@ -94,6 +94,20 @@ def free_slots(worker: WorkerStatus, in_flight: Mapping[str, int]) -> int:
     return worker.max_jobs - worker.active - offered
 
 
+# A worker's heartbeat says its calls every five seconds. An offer it opened is one of them, and its
+# heartbeat says so only at its next beat: until then the offer still takes the slot, or the slot reads
+# as free and the next call is sent to a worker that is full. Counted past that beat, it would take
+# the slot twice.
+def count_in_flight(offered: Iterable[tuple[str, float | None]], workers: Iterable[WorkerStatus]) -> dict[str, int]:
+    """Each worker's slots its offers take: the rooms it has not opened, and the ones it opened since it last beat."""
+    heard = {worker.agent_name: worker.seen_at for worker in workers if worker.agent_name is not None}
+    taken: dict[str, int] = {}
+    for worker, opened_at in offered:
+        if opened_at is None or opened_at > heard.get(worker, 0.0):
+            taken[worker] = taken.get(worker, 0) + 1
+    return taken
+
+
 def choose_worker(
     workers: Collection[WorkerStatus], in_flight: Mapping[str, int], now: float, not_these: Collection[str] = ()
 ) -> WorkerStatus | None:

@@ -1,4 +1,4 @@
-"""The offers: a room of no env's fleet is let go at once, and the sweep goes on past a room it cannot offer."""
+"""The offers: a room of no env's fleet is let go, the sweep passes a room it cannot offer, a seat is taken once."""
 
 import time
 from uuid import uuid4
@@ -11,6 +11,7 @@ from runtime.enums import Env
 from runtime.fleet.models import Offer
 from runtime.fleet.repository import OfferRepository
 from runtime.fleet.schemas import WorkerStatus
+from runtime.fleet.service import slots
 from runtime.fleet.service.dispatches import agent_name
 from runtime.fleet.service.envs import PRODUCTION, SANDBOX
 from runtime.fleet.service.offers import OFFERED_AGAIN_AFTER_S, Offering
@@ -123,3 +124,76 @@ async def test_a_room_its_worker_left_is_offered_to_another_worker_even_with_few
         await offering.forget(another)
         for server in servers.values():
             await server.aclose()
+
+
+# 2026-11-24: sixty simulated calls placed on a sandbox of eight seats. Every caller waiting asked
+# `has_a_slot` at the same moment, saw the one seat that had freed, and offered its room: the ones past
+# the seat were answered by the overflow's sentence, twenty-nine of them, as calls of the comparison.
+async def test_two_callers_that_ask_for_the_one_seat_together_are_not_both_seated(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    servers, roster = per_world(), Roster()
+    offering = Offering(sessions, servers=servers, roster=roster)
+    only = f"w_{uuid4().hex}"
+    roster.workers[(SANDBOX, only)] = a_worker(only, active=1, max_jobs=2, fleet=SANDBOX)
+    first, second = f"room_{uuid4().hex}", f"room_{uuid4().hex}"
+    try:
+        assert await offering.offer_when_free(first, SANDBOX, Dispatch(agent="recepcion"))
+        assert not await offering.offer_when_free(second, SANDBOX, Dispatch(agent="recepcion"))
+        assert await _kept(sessions, second) is None, "a caller that got no seat keeps no room: it asks again"
+        kept = await _kept(sessions, first)
+        assert kept is not None and kept.worker == agent_name(SANDBOX, only)
+    finally:
+        await offering.forget(first)
+        for server in servers.values():
+            await server.aclose()
+
+
+# The worker's heartbeat says its calls every five seconds: between a call's opening and that beat the
+# offer was gone and the heartbeat still said the slot free, so the next caller in the queue took it.
+async def test_a_seat_stays_taken_from_its_calls_opening_until_its_worker_says_the_call(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    servers, roster = per_world(), Roster()
+    offering = Offering(sessions, servers=servers, roster=roster)
+    heard, only = time.time() - 3, f"w_{uuid4().hex}"
+    roster.workers[(SANDBOX, only)] = a_worker(only, active=1, max_jobs=2, seen_at=heard, fleet=SANDBOX)
+    room = f"room_{uuid4().hex}"
+    try:
+        assert await offering.offer_when_free(room, SANDBOX, Dispatch(agent="recepcion"))
+        await offering.say_opened(room)
+        assert not await offering.has_a_slot(SANDBOX), "opened since the worker last beat: the seat is its call's"
+        # The worker beats, its call counted: the offer takes nothing more, and the slot is not taken twice.
+        roster.workers[(SANDBOX, only)] = a_worker(only, active=2, max_jobs=3, fleet=SANDBOX)
+        assert await offering.has_a_slot(SANDBOX)
+    finally:
+        await offering.forget(room)
+        for server in servers.values():
+            await server.aclose()
+
+
+# A room is offered again only when the worker that opened its call left it: the row its opening kept
+# must not stand in the way, or a call whose worker died would go to nobody.
+async def test_a_room_a_worker_opened_is_kept_anew_when_it_is_offered_again(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    room, now = f"room_{uuid4().hex}", time.time()
+    async with sessions.begin() as session:
+        offers = OfferRepository(session)
+        assert await offers.open(room, SANDBOX, Dispatch(agent="recepcion").dump(), now)
+        assert await offers.claim(room, 0, agent_name(SANDBOX, "w1"), now)
+        assert await offers.open(room, SANDBOX, Dispatch(agent="recepcion").dump(), now) is None
+        await offers.mark_opened(room, now + 1)
+        due = [offer.room for offer in await offers.list_due(now + 60, 1000)]
+        assert room not in due, "a room a worker opened is offered to nobody else"
+        again = await offers.open(room, SANDBOX, Dispatch(agent="recepcion").dump(), now + 2)
+        assert again is not None and (again.worker, again.offers, again.opened_at) == (None, 0, None)
+        await offers.forget(room)
+
+
+def test_an_offer_takes_its_workers_slot_until_opened_and_then_until_the_next_beat() -> None:
+    worker = a_worker("w1", active=0, seen_at=100.0)
+    name = worker.agent_name or ""
+    offered: list[tuple[str, float | None]] = [(name, None), (name, 99.0), (name, 101.0)]
+    assert slots.count_in_flight(offered, [worker]) == {name: 2}
+    assert slots.count_in_flight([(name, 99.0)], [worker]) == {}

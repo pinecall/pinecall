@@ -267,8 +267,11 @@ makes them. So **the
 gateway needs LiveKit's webhook** (`livekit.yaml`'s `webhook.urls`), each environment's naming its environment
 (`?world=sandbox`), so the gateway asks the LiveKit the room is on: a deployment without it places no
 call. A room is dispatched on the LiveKit of its fleet's environment, which the `fleets` row says. The gateway offers it to the worker of the fleet heard in the last 12 s
-with the most seats free, counting the calls offered to it and not opened yet, by its LiveKit name
-(`<fleet>/<worker>`, above): no other worker can take it. A room no worker opened 12 s after its
+with the most seats free, by its LiveKit name (`<fleet>/<worker>`, above): no other worker can take it.
+A seat is taken from the moment a room is offered to its worker: the offer counts until the worker opens
+the call, and from then until that worker's next heartbeat, which is the first to say the call itself. A
+caller that can wait (a simulated one) is seated only where a seat is, asked for and taken in one step
+with the fleet's seats held for it, so several that ask at once are never sent to the same seat. A room no worker opened 12 s after its
 offer is offered to another (LiveKit waits 10 s on a worker that does not answer; a live one opens a
 call in about 2 s). After three offers, or when the workers of the fleet heard lately have no seat,
 the room goes to the fleet's overflow (`<fleet>/overflow`, below): the caller hears one sentence and

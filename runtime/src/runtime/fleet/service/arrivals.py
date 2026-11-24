@@ -39,10 +39,13 @@ async def offer_arrival(offering: Offering, server: api.LiveKitAPI, event: Webho
 # A dispatch creates the room it names again if it is gone: a room offered after its caller hung
 # up, or after the worker sent to say the sentence closed it, would be a job on an empty room.
 async def forget_settled(offering: Offering, event: WebhookEvent) -> None:
-    """Let a room go that an agent joined or that ended: nothing is left to offer it to."""
-    agent_in = event.event == JOINED and event.participant.kind == ParticipantInfo.Kind.AGENT
-    if event.room.name and (agent_in or event.event == FINISHED):
+    """Let a room go that ended, and count one an agent joined as that agent's: nothing is left to offer it to."""
+    if not event.room.name:
+        return
+    if event.event == FINISHED:
         await offering.forget(event.room.name)
+    elif event.event == JOINED and event.participant.kind == ParticipantInfo.Kind.AGENT:
+        await offering.say_opened(event.room.name)
 
 
 # LiveKit's own automatic dispatch names no agent (""): it goes to the workers registered with no

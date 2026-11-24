@@ -2,6 +2,7 @@
 
 import logging
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -13,6 +14,7 @@ from runtime.fleet.service.roster import Roster
 from runtime.kit.loops import survive
 from runtime.livekit import Servers
 from runtime.wire.dispatch import Dispatch
+from runtime.wire.signal import WorkerStatus
 
 logger = logging.getLogger(__name__)
 
@@ -115,14 +117,50 @@ class Offering:
     async def has_a_slot(self, fleet: str) -> bool:
         """Whether a call offered now would find a worker with a slot; True while no worker was heard."""
         now = time.time()
+        workers = self.roster.workers_of(fleet, now)
         async with self.sessions.begin() as session:
-            flying = await count_in_flight(session, now)
-        return slots.has_a_slot(self.roster.workers_of(fleet, now), flying, now)
+            flying = await count_in_flight(session, now, workers)
+        return slots.has_a_slot(workers, flying, now)
+
+    # A caller that can wait is seated only where a slot is, the asking and the taking one step: the
+    # fleet's seats are held for the transaction, so two callers that ask together, on one gateway or
+    # two, are never both sent to the one slot. Until 2026-11-24 a simulated caller asked `has_a_slot`
+    # and offered its room seconds later: twenty placed together all saw the one free slot, and the
+    # ones past it were answered by the overflow's sentence and counted as calls of their comparison.
+    async def offer_when_free(self, room: str, fleet: str, dispatch: Dispatch) -> bool:
+        """Offer the room if a worker has a slot now, and say whether it was; nothing is kept when none has."""
+        now = time.time()
+        workers = self.roster.workers_of(fleet, now)
+        async with self.sessions.begin() as session:
+            env = envs.env_of_fleet(await envs.get_fleets(session), fleet)
+        if env is None or not slots.is_any_heard(workers, now):
+            # No env's fleet, or a gateway that heard no worker yet: kept as any room is, and the sweep's from here.
+            await self.offer(room, fleet, dispatch)
+            return True
+        async with self.sessions.begin() as session:
+            offers = OfferRepository(session)
+            await offers.take_turns(fleet)
+            flying = await count_in_flight(session, time.time(), workers)
+            chosen = slots.choose_worker(workers, flying, now, not_these=self.roster.list_gone(fleet, now))
+            if chosen is None or chosen.agent_name is None:
+                return False
+            kept = await offers.open(room, fleet, dispatch.dump(), now)
+            if kept is None:
+                return True
+            await offers.claim(room, kept.offers, chosen.agent_name, now)
+        await dispatches.dispatch_into(self.servers[env], room, chosen.agent_name, dispatch)
+        logger.info("room %s: seated on %s, which had a slot", room, chosen.agent_name)
+        return True
 
     async def forget(self, room: str) -> None:
-        """The room is done with: its call opened, the overflow sent, or the room gone."""
+        """The room is done with: the overflow sent, or the room gone."""
         async with self.sessions.begin() as session:
             await OfferRepository(session).forget(room)
+
+    async def say_opened(self, room: str) -> None:
+        """A worker opened the room's call: nothing is left to offer, and its slot is that worker's."""
+        async with self.sessions.begin() as session:
+            await OfferRepository(session).mark_opened(room, time.time())
 
     async def sweep(self) -> list[str]:
         """Offer again every room nobody opened in time; the rooms offered."""
@@ -144,9 +182,9 @@ class Offering:
     async def _target(self, session: AsyncSession, offer: Offer, now: float) -> Target:
         if offer.offers >= OFFERS:
             return Target(dispatches.overflow_name(offer.fleet), f"no worker opened it in {OFFERS} offers")
-        flying = await count_in_flight(session, now)
-        tried = () if offer.worker is None else (offer.worker,)
         workers = self.roster.workers_of(offer.fleet, now)
+        flying = await count_in_flight(session, now, workers)
+        tried = () if offer.worker is None else (offer.worker,)
         chosen = slots.choose_worker(workers, flying, now, not_these=(*tried, *self.roster.list_gone(offer.fleet, now)))
         if chosen is not None and chosen.agent_name is not None:
             free = slots.free_slots(chosen, flying)
@@ -163,9 +201,10 @@ async def count_waiting(session: AsyncSession, now: float) -> dict[str, int]:
     return await OfferRepository(session).count_waiting(now - WAITING_COUNTED_S)
 
 
-async def count_in_flight(session: AsyncSession, now: float) -> dict[str, int]:
-    """Each worker's rooms offered to it lately that it has not opened: the slots those offers take."""
-    return await OfferRepository(session).count_in_flight(now - OFFERED_AGAIN_AFTER_S)
+async def count_in_flight(session: AsyncSession, now: float, workers: Iterable[WorkerStatus]) -> dict[str, int]:
+    """Each worker's slots its offers take now: the rooms it has not opened, and the ones opened since it last beat."""
+    offered = await OfferRepository(session).list_in_flight(now - OFFERED_AGAIN_AFTER_S)
+    return slots.count_in_flight(offered, workers)
 
 
 async def examine(session: AsyncSession, now: float) -> str | None:
