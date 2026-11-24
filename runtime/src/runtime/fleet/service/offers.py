@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from runtime.enums import Env
 from runtime.fleet.models import Offer
 from runtime.fleet.repository import OfferRepository
 from runtime.fleet.service import dispatches, envs, slots
@@ -42,6 +43,15 @@ UNSWEPT_AFTER_S = 60.0
 FORGOTTEN_AFTER_S = 120.0
 
 SWEPT_AT_MOST = 100
+
+
+@dataclass(frozen=True, slots=True)
+class Seat:
+    """A seat taken for a room: its worker and the env whose LiveKit holds the room; no worker where none was heard."""
+
+    room: str
+    env: Env | None = None
+    worker: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -127,8 +137,10 @@ class Offering:
     # two, are never both sent to the one slot. Until 2026-11-24 a simulated caller asked `has_a_slot`
     # and offered its room seconds later: twenty placed together all saw the one free slot, and the
     # ones past it were answered by the overflow's sentence and counted as calls of their comparison.
-    async def offer_when_free(self, room: str, fleet: str, dispatch: Dispatch) -> bool:
-        """Offer the room if a worker has a slot now, and say whether it was; nothing is kept when none has."""
+    # The seat is taken before the room is rung (`ring`), so a caller holds nothing open while it
+    # waits: twenty that opened their voice first and then waited took every file their gateway had.
+    async def take_seat(self, room: str, fleet: str, dispatch: Dispatch) -> Seat | None:
+        """Take a seat for the room on a worker that has a slot now; None, and nothing kept, when none has."""
         now = time.time()
         workers = self.roster.workers_of(fleet, now)
         async with self.sessions.begin() as session:
@@ -136,21 +148,26 @@ class Offering:
         if env is None or not slots.is_any_heard(workers, now):
             # No env's fleet, or a gateway that heard no worker yet: kept as any room is, and the sweep's from here.
             await self.offer(room, fleet, dispatch)
-            return True
+            return Seat(room)
         async with self.sessions.begin() as session:
             offers = OfferRepository(session)
             await offers.take_turns(fleet)
             flying = await count_in_flight(session, time.time(), workers)
             chosen = slots.choose_worker(workers, flying, now, not_these=self.roster.list_gone(fleet, now))
             if chosen is None or chosen.agent_name is None:
-                return False
+                return None
             kept = await offers.open(room, fleet, dispatch.dump(), now)
             if kept is None:
-                return True
+                return Seat(room)
             await offers.claim(room, kept.offers, chosen.agent_name, now)
-        await dispatches.dispatch_into(self.servers[env], room, chosen.agent_name, dispatch)
-        logger.info("room %s: seated on %s, which had a slot", room, chosen.agent_name)
-        return True
+        return Seat(room, env, chosen.agent_name)
+
+    async def ring(self, seat: Seat, dispatch: Dispatch) -> None:
+        """Send the room to the worker its seat is on; nothing where the seat names none, which the sweep offers."""
+        if seat.env is None or seat.worker is None:
+            return
+        await dispatches.dispatch_into(self.servers[seat.env], seat.room, seat.worker, dispatch)
+        logger.info("room %s: seated on %s, which had a slot", seat.room, seat.worker)
 
     async def forget(self, room: str) -> None:
         """The room is done with: the overflow sent, or the room gone."""

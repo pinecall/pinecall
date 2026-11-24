@@ -28,6 +28,10 @@ x-runtime: &runtime
   network_mode: host
   tmpfs: ["/tmp:size=1g"]
   volumes: ["${PINECALL_RECORDINGS}:${PINECALL_RECORDINGS}", "home:/home/pinecall"]
+  # Every socket a gateway holds is a file: its callers' logs followed, its apps, its vendors, the
+  # rooms of the callers it simulates. Docker's own limit is 1024, which one gateway ran out of on
+  # 2026-11-24 and refused everything that needed a new one for thirteen minutes.
+  ulimits: { nofile: { soft: 65536, hard: 65536 } }
   restart: unless-stopped
 
 # A worker or an overflow answers on its health port once LiveKit has it (as a cluster's startup and

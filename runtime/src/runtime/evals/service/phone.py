@@ -35,6 +35,7 @@ class PhoneLine(SpokenLine):
     @override
     async def _open(self) -> None:
         parts, call = self._parts, self._spoken.call
+        seat = await self._take_a_seat()
         speech = await self._stack.enter_async_context(self._open_voice())
         interferer = await self._make_room_sound(speech)
         self._stack.push_async_callback(close_room, parts.servers[telephony.RINGS_FROM], telephony.callers_room(call))
@@ -43,7 +44,7 @@ class PhoneLine(SpokenLine):
         await self._join(telephony.callers_room(call), telephony.RINGS_FROM, speech, interferer)
         ringing = asyncio.ensure_future(telephony.ring_simulated_caller(parts.servers, parts.names, self.env, call))
         self._stack.push_async_callback(aio.cancel_and_wait, ringing)
-        await self._take_a_seat()
+        await self._ring(seat)
         await ringing
         await self._wait_for_the_agent()
 

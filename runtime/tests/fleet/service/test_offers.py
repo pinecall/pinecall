@@ -138,11 +138,13 @@ async def test_two_callers_that_ask_for_the_one_seat_together_are_not_both_seate
     roster.workers[(SANDBOX, only)] = a_worker(only, active=1, max_jobs=2, fleet=SANDBOX)
     first, second = f"room_{uuid4().hex}", f"room_{uuid4().hex}"
     try:
-        assert await offering.offer_when_free(first, SANDBOX, Dispatch(agent="recepcion"))
-        assert not await offering.offer_when_free(second, SANDBOX, Dispatch(agent="recepcion"))
+        seat = await offering.take_seat(first, SANDBOX, Dispatch(agent="recepcion"))
+        assert seat is not None and seat.worker == agent_name(SANDBOX, only)
+        assert await offering.take_seat(second, SANDBOX, Dispatch(agent="recepcion")) is None
         assert await _kept(sessions, second) is None, "a caller that got no seat keeps no room: it asks again"
         kept = await _kept(sessions, first)
-        assert kept is not None and kept.worker == agent_name(SANDBOX, only)
+        assert kept is not None and kept.worker == agent_name(SANDBOX, only), "taken before the room is rung"
+        await offering.ring(seat, Dispatch(agent="recepcion"))
     finally:
         await offering.forget(first)
         for server in servers.values():
@@ -160,7 +162,7 @@ async def test_a_seat_stays_taken_from_its_calls_opening_until_its_worker_says_t
     roster.workers[(SANDBOX, only)] = a_worker(only, active=1, max_jobs=2, seen_at=heard, fleet=SANDBOX)
     room = f"room_{uuid4().hex}"
     try:
-        assert await offering.offer_when_free(room, SANDBOX, Dispatch(agent="recepcion"))
+        assert await offering.take_seat(room, SANDBOX, Dispatch(agent="recepcion")) is not None
         await offering.say_opened(room)
         assert not await offering.has_a_slot(SANDBOX), "opened since the worker last beat: the seat is its call's"
         # The worker beats, its call counted: the offer takes nothing more, and the slot is not taken twice.

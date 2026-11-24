@@ -271,7 +271,8 @@ with the most seats free, by its LiveKit name (`<fleet>/<worker>`, above): no ot
 A seat is taken from the moment a room is offered to its worker: the offer counts until the worker opens
 the call, and from then until that worker's next heartbeat, which is the first to say the call itself. A
 caller that can wait (a simulated one) is seated only where a seat is, asked for and taken in one step
-with the fleet's seats held for it, so several that ask at once are never sent to the same seat.
+with the fleet's seats held for it, so several that ask at once are never sent to the same seat; it
+takes the seat before it opens its voice or its room, so a queue of callers holds nothing open.
 LiveKit hears a worker's load every 2.5 s and the gateway its calls every 5 s, so a seat the heartbeat
 says free may still be full to LiveKit, which then gives the room's job to nobody: such a room is offered
 again, to another worker first and to the same one when no other has a seat. A simulated caller's room is

@@ -11,7 +11,7 @@ from runtime.fleet.service.dispatches import (
 )
 from runtime.fleet.service.envs import Fleets, fleet_of, fleet_of_env, get_fleets
 from runtime.fleet.service.metrics import FleetMetrics
-from runtime.fleet.service.offers import AN_AGENT_JOINS_WITHIN_S, Offering
+from runtime.fleet.service.offers import AN_AGENT_JOINS_WITHIN_S, Offering, Seat
 from runtime.fleet.service.roster import Roster
 from runtime.fleet.service.slots import HEARTBEAT_S, REFUSED_AT
 from runtime.fleet.service.totals import totals_of
@@ -25,6 +25,7 @@ __all__ = [
     "Fleets",
     "Offering",
     "Roster",
+    "Seat",
     "agent_name",
     "client_named_agent",
     "dispatch_into",

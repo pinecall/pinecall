@@ -123,30 +123,43 @@ class SpokenLine:
 
     async def _open(self) -> None:
         parts, call = self._parts, self._spoken.call
+        seat = await self._take_a_seat()
         speech = await self._stack.enter_async_context(self._open_voice())
         interferer = await self._make_room_sound(speech)
         self._stack.push_async_callback(close_room, parts.servers[self.env], call)
         self._stack.push_async_exit(self._wait_for_the_end)
-        await self._take_a_seat()
+        await self._ring(seat)
         await self._join(call, self.env, speech, interferer)
         await self._wait_for_the_agent()
 
     def _open_voice(self) -> AbstractAsyncContextManager[tts.TTS[Never]]:
         return providers.voice_outside_a_call(self._voice)
 
-    # The room is offered to a worker here: at once for a golden said out loud, which a full fleet
-    # answers with the overflow's sentence as it answers a caller, and only where a seat is for a
-    # simulation, which waits for one.
-    async def _take_a_seat(self) -> None:
+    # A simulation waits for a seat and takes it before it opens anything: its voice, its room's sound
+    # and its place in the room are held only once a worker is to answer, so a queue of callers holds
+    # nothing open. A golden said out loud takes none: its room is offered as a caller's is, and a full
+    # fleet answers it with the overflow's sentence. The seat is given back if the line breaks before
+    # its room is rung, or the sweep would ring a room nobody is in.
+    async def _take_a_seat(self) -> fleet.Seat | None:
+        if not self._waits_for_slot:
+            return None
         parts, call = self._parts, self._spoken.call
         async with parts.sessions.begin() as session_:
             the_fleet = await fleet.fleet_of_env(session_, self.env)
-        if not self._waits_for_slot:
-            await parts.offering.offer(call, the_fleet, self._dispatch)
-            return
-        await take_fleet_seat(
+        seat = await take_fleet_seat(
             parts.sessions, parts.offering, parts.roster, parts.logs, self.env, the_fleet, call, self._dispatch
         )
+        self._stack.push_async_callback(parts.offering.forget, call)
+        return seat
+
+    async def _ring(self, seat: fleet.Seat | None) -> None:
+        parts, call = self._parts, self._spoken.call
+        if seat is not None:
+            await parts.offering.ring(seat, self._dispatch)
+            return
+        async with parts.sessions.begin() as session_:
+            the_fleet = await fleet.fleet_of_env(session_, self.env)
+        await parts.offering.offer(call, the_fleet, self._dispatch)
 
     # The caller's seat in a room of an env's LiveKit: its leg published and carrying from here on.
     async def _join(self, room: str, env: Env, speech: tts.TTS[Never], interferer: bytes) -> None:

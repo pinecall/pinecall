@@ -14,6 +14,11 @@
   a fleet of one worker the second offer went to the overflow, so a job LiveKit gave to nobody (it had not yet
   heard the worker free) ended in "all our lines are busy". A simulated caller's room is never sent to the
   overflow: it waits for a seat. A simulation no agent ever joined ends too, saying why.
+- **A simulated caller takes its seat before it opens anything, and a server's processes may hold 65,536
+  files.** A caller that waited for a seat with its voice already open, as the first cut of the change
+  above had it for an afternoon (2026-11-24), held sockets while it queued: twenty of them took every one of the 1,024 files Docker gives a
+  container, and a gateway refused whatever needed a new one. The seat is taken first, with nothing open,
+  and the room is rung once the caller is ready; `server.yaml` raises the limit for every runtime process.
 - **A test room's values run its call whatever the agent's class declares.** `tuning` (the console's test room,
   `pinecall simulate --against`, a comparison) was laid over the org's settings, under the class: on an agent whose
   class declares `llm`, `stt` or `voice` it changed nothing and said nothing, so a comparison of four models ran four

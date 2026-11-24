@@ -32,8 +32,8 @@ class NoSeat(ServiceUnavailable):
         )
 
 
-# The seat is asked for and taken in one step (`Offering.offer_when_free`): a caller that only asked
-# and offered its room later shared the answer with every caller that asked at the same moment.
+# The seat is asked for and taken in one step (`Offering.take_seat`): a caller that only asked and
+# offered its room later shared the answer with every caller that asked at the same moment.
 async def take_fleet_seat(
     sessions: async_sessionmaker[AsyncSession],
     offering: fleet.Offering,
@@ -43,12 +43,16 @@ async def take_fleet_seat(
     the_fleet: str,
     room: str,
     dispatch: Dispatch,
-) -> float:
-    """Offer the room to a worker with a slot, waiting for one and saying `fleet.full` once; the seconds waited."""
+) -> fleet.Seat:
+    """Take a seat of the fleet for the room, waiting for one and saying `fleet.full` once; the seat."""
     agent = dispatch.agent or ""
+    taken: list[fleet.Seat] = []
 
     async def asks() -> bool:
-        return await offering.offer_when_free(room, the_fleet, dispatch)
+        seat = await offering.take_seat(room, the_fleet, dispatch)
+        if seat is not None:
+            taken.append(seat)
+        return seat is not None
 
     async def full() -> None:
         async with sessions.begin() as session:
@@ -56,7 +60,8 @@ async def take_fleet_seat(
         said = FleetFull(channel=Channel.web, workers=totals.workers, active=totals.active)
         await logs.agent(agent).append("fleet.full", said.dump())
 
-    return await wait_for_slot(asks, full, env=env)
+    await wait_for_slot(asks, full, env=env)
+    return taken[0]
 
 
 async def wait_for_slot(
