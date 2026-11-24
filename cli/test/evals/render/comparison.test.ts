@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { ComparisonRow } from "../../../src/api/evals.js";
-import { comparison, verdictOf } from "../../../src/evals/render/index.js";
+import { comparison, verdictOf } from "../../../src/evals/render/comparison.js";
 
 const A_ROW: ComparisonRow = {
   call: "call_1",

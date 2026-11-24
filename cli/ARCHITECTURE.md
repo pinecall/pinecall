@@ -198,7 +198,8 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `evals/commands/index.ts` | 105 | `pinecall test | simulate | eval | runs | cases | personas`: the goldens, simulated callers, a call checked again, the runs, the dataset. |
 | `evals/commands/terminal.ts` | 158 | The evals verbs that hold a terminal: a suite drawn as it goes, watched for changes, and a simulation printed as it happens. |
 | `evals/help.ts` | 92 | The prose under each evals verb's `--help`: what the flags cannot say. |
-| `evals/render/index.ts` | 298 | Evals as a terminal reads them: the matrix, progress, runs, cases and groups, personas, a simulation, a replay. |
+| `evals/render/comparison.ts` | 115 | A comparison as a terminal reads it: one row a call, then several runs summed by configuration with what a completed call cost. |
+| `evals/render/index.ts` | 301 | Evals as a terminal reads them: the matrix, progress, runs, cases and groups, personas, a simulation, a replay. |
 | `evals/render/matrix.ts` | 116 | A run as a terminal reads it: one line per golden with where it came from, details under each that broke, the divergences, the footer. |
 | `evals/render/progress.ts` | 117 | Live progress of a suite on a terminal: the header, a line per golden as it is judged, a bar, redrawn in place. |
 | `evals/service/dataset.ts` | 203 | The org's dataset: real calls kept as cases — read, decided, pulled into the repository, kept, forgotten — a golden written by hand added, and the groups they fall into. |
