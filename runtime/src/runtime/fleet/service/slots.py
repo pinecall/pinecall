@@ -31,6 +31,8 @@ FORGOTTEN_AFTER_S = 3600.0
 # slots to both, and LiveKit stopped at 0.7 of them while the gateway still counted slots free.
 REFUSED_AT = 0.7
 EVERY_SLOT = 1.0
+# The share of a fleet's seats kept for people: what a caller that can wait leaves free (`count_kept_for_people`).
+KEPT_FOR_PEOPLE = 0.25
 
 # A worker up but bad: at least half the calls that ended in its last minute ended in an error,
 # judged on four calls at least, or its callers waited over five seconds for first audio at the
@@ -112,7 +114,36 @@ def choose_worker(
     workers: Collection[WorkerStatus], in_flight: Mapping[str, int], now: float, not_these: Collection[str] = ()
 ) -> WorkerStatus | None:
     """The worker to offer a call to, or None when no worker of the fleet has a slot."""
-    candidates = [
+    candidates = _list_with_a_slot(workers, in_flight, now, not_these)
+    return max(candidates, key=lambda worker: (free_slots(worker, in_flight), -worker.load), default=None)
+
+
+def count_free(
+    workers: Collection[WorkerStatus], in_flight: Mapping[str, int], now: float, not_these: Collection[str] = ()
+) -> int:
+    """The slots the fleet has free now, over the workers a call would be offered to."""
+    return sum(free_slots(worker, in_flight) for worker in _list_with_a_slot(workers, in_flight, now, not_these))
+
+
+# A person does not wait for a seat: one that finds none is sent the overflow's sentence. A simulated
+# caller waits, so it is the one that leaves seats free. On 2026-11-24 simulations held every seat of
+# production's sandbox and seventy callers of a quarter of an hour found none; Bernardo's line that
+# day is six of eight: a quarter of a fleet's seats is never a simulation's. A fleet under four seats
+# keeps none, and neither does one whose workers count no seats (a laptop's, gated on its CPU).
+def count_kept_for_people(workers: Iterable[WorkerStatus], now: float) -> int:
+    """The seats of the fleet a caller that can wait never takes: a quarter of what its workers count."""
+    seats = sum(
+        worker.max_jobs or 0
+        for worker in workers
+        if is_heard(worker, now) and not worker.cordoned and not worker.draining
+    )
+    return int(seats * KEPT_FOR_PEOPLE)
+
+
+def _list_with_a_slot(
+    workers: Collection[WorkerStatus], in_flight: Mapping[str, int], now: float, not_these: Collection[str]
+) -> list[WorkerStatus]:
+    return [
         worker
         for worker in accepting_of(workers, now)
         if worker.agent_name is not None
@@ -120,7 +151,6 @@ def choose_worker(
         and is_heard(worker, now, OFFERABLE_WITHIN_S)
         and free_slots(worker, in_flight) > 0
     ]
-    return max(candidates, key=lambda worker: (free_slots(worker, in_flight), -worker.load), default=None)
 
 
 # The one answer to "is there room for a call": a visitor's token, a simulation and the dispatcher

@@ -159,7 +159,11 @@ class Offering:
             if await offers.count_due(fleet, now - OFFERED_AGAIN_AFTER_S) > 0:
                 return None
             flying = await count_in_flight(session, time.time(), workers)
-            chosen = slots.choose_worker(workers, flying, now, not_these=self.roster.list_gone(fleet, now))
+            gone = self.roster.list_gone(fleet, now)
+            # The seats kept for people are never this caller's: it waits, and a person does not.
+            if slots.count_free(workers, flying, now, gone) <= slots.count_kept_for_people(workers, now):
+                return None
+            chosen = slots.choose_worker(workers, flying, now, not_these=gone)
             if chosen is None or chosen.agent_name is None:
                 return None
             kept = await offers.open(room, fleet, dispatch.dump(), now)

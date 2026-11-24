@@ -151,6 +151,42 @@ async def test_two_callers_that_ask_for_the_one_seat_together_are_not_both_seate
             await server.aclose()
 
 
+# 2026-11-24: simulations held every seat of production's sandbox, and the people who called in that
+# quarter of an hour were sent the overflow's sentence. A caller that can wait leaves a quarter of the
+# fleet's seats free; a person's room is offered the worker all the same.
+async def test_a_caller_that_can_wait_leaves_a_quarter_of_the_fleets_seats_to_people(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    servers, roster = per_world(), Roster()
+    offering = Offering(sessions, servers=servers, roster=roster)
+    only = f"w_{uuid4().hex}"
+    roster.workers[(SANDBOX, only)] = a_worker(only, active=0, max_jobs=8, fleet=SANDBOX)
+    seated = [f"room_{uuid4().hex}" for _ in range(6)]
+    one_more, a_person = f"room_{uuid4().hex}", f"room_{uuid4().hex}"
+    try:
+        for room in seated:
+            assert await offering.take_seat(room, SANDBOX, Dispatch(agent="recepcion")) is not None
+        assert await offering.take_seat(one_more, SANDBOX, Dispatch(agent="recepcion")) is None, "six of eight"
+        assert await offering.has_a_slot(SANDBOX), "two seats are free, and they are a person's"
+        assert await offering.offer(a_person, SANDBOX, Dispatch(agent="recepcion")) == agent_name(SANDBOX, only)
+    finally:
+        for room in (*seated, a_person):
+            await offering.forget(room)
+        for server in servers.values():
+            await server.aclose()
+
+
+def test_a_small_fleet_and_one_that_counts_no_seats_keep_none_for_people() -> None:
+    now = time.time()
+    assert (
+        slots.count_kept_for_people([a_worker("a", active=0, max_jobs=8), a_worker("b", active=0, max_jobs=4)], now)
+        == 3
+    )
+    assert slots.count_kept_for_people([a_worker("a", active=0, max_jobs=3)], now) == 0
+    counts_none = a_worker("a", active=0).model_copy(update={"max_jobs": None})
+    assert slots.count_kept_for_people([counts_none], now) == 0
+
+
 # The worker's heartbeat says its calls every five seconds: between a call's opening and that beat the
 # offer was gone and the heartbeat still said the slot free, so the next caller in the queue took it.
 async def test_a_seat_stays_taken_from_its_calls_opening_until_its_worker_says_the_call(

@@ -1,6 +1,6 @@
 """What evals starts and does not await: the runs this gateway plays, and the simulated calls on the line."""
 
-from collections.abc import AsyncGenerator, Coroutine
+from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine
 from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -93,6 +93,19 @@ class Runner:
 async def renew_leases(runner: Runner) -> None:
     """One pass: every run this gateway plays keeps its agent a minute more."""
     await runner.renew()
+
+
+# A comparison is played by the gateway that took its request, which says so every twenty seconds; one
+# nobody said anything of for forty went with its gateway (a release, a crash). Every gateway looks,
+# and the one that finds it goes on with it. What a take-up does is the service's (`placing`), handed
+# in: this module is what the service's own modules import.
+TAKEN_UP_EVERY_S = 10.0
+
+
+@loop("comparisons-left", every_s=TAKEN_UP_EVERY_S)
+async def take_up_comparisons(take_up_left: Callable[[], Awaitable[None]]) -> None:
+    """One pass: every comparison its gateway left is taken up by this one."""
+    await take_up_left()
 
 
 # Each gateway counts the calls it plays and says the count on the signal, as the calls at once

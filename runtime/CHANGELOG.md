@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **A comparison its gateway left is taken up by another.** A comparison was coroutines of the gateway that took
+  its request: a release ended it and said so to nobody, its waiting calls never placed and the command following it
+  never returning. Its plan now keeps what each call is placed with, each caller's brief and the key that asked; the
+  gateway that plays it says so until its last call ended, and one that stops saying so has the comparison taken up
+  by another, which places again every call that had not ended and goes on with the rest.
+- **A quarter of a fleet's seats is never a simulation's.** A simulated caller, which waits for a seat where a person
+  is sent the overflow's sentence, takes one only while a quarter of the fleet's seats would stay free (two of eight).
 - **A simulated caller answers a realtime model's turn when it ends.** The caller read the agent's answer off the log
   as a turn followed by `listening`; a realtime model's session says `listening` an instant before its turn is written,
   so no answer ever landed and the caller stood silent until the agent's idle line ("Are you still there?" five times

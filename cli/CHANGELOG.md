@@ -6,6 +6,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **`simulate` follows a comparison whose gateway was started again.** The table is read until none of its rows is on
+  the line: a call another gateway placed again is waited for like the ones this command placed.
 - **`pinecall simulate` takes several callers and says what a completed call cost.** `--persona` said again is another
   caller, each against every `--against` configuration, the rows read caller by caller. Several runs, by `--repeats` or
   by several callers, end in a table by configuration, the one that did the most first: how many of each caller's runs

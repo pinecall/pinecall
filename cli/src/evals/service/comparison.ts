@@ -106,8 +106,10 @@ export async function compare(ctx: Context, agent: string, written: Persona, inp
   const again = (): Promise<void> => new Promise((wake) => setTimeout(wake, WAITING_ASKED_EVERY_MS));
   let table = await readTable();
   // The calls past the org's calls at once wait their turn in the gateway, which places each as the
-  // ones before it end: the table says how many still wait, and whether their gateway left them.
-  while (stillPlacing(table) || ((table.waiting ?? 0) === 0 && (started.waiting ?? 0) > 0 && table.rows.some((row) => row.ended_at === null))) {
+  // ones before it end: the table says how many still wait, and whether their gateway left them. A
+  // gateway started again mid-comparison has its calls placed again by another, so a row may be a
+  // call this command never followed: the table is read until none of its rows is on the line.
+  while (stillPlacing(table) || (table.abandoned !== true && table.rows.some((row) => row.ended_at === null))) {
     await again();
     table = await readTable();
   }

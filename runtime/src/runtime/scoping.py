@@ -27,6 +27,19 @@ def box_wide() -> Generator[None]:
         SCOPED_ORG.reset(token)
 
 
+# The mirror of `box_wide`: a loop is the box's, and what it goes on with was begun by a request of
+# one org (a comparison its gateway left). A task started inside the block keeps the org, as a
+# request's does.
+@contextmanager
+def within_org(org: str) -> Generator[None]:
+    """Name the org for the block: a loop going on with what a request of that org began."""
+    token = SCOPED_ORG.set(org)
+    try:
+        yield
+    finally:
+        SCOPED_ORG.reset(token)
+
+
 def box_task[T](work: Coroutine[object, object, T]) -> asyncio.Task[T]:
     """Start the work as a task of the box's, whatever org the request starting it acts for."""
     context = contextvars.copy_context()

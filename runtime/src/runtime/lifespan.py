@@ -24,6 +24,7 @@ from runtime.calls.service.prompts import Prompts
 from runtime.config import load_settings
 from runtime.evals import tasks as evals_tasks
 from runtime.evals.parts import Harness
+from runtime.evals.service.placing import take_up_left
 from runtime.evals.service.simulations import ChatSimulations
 from runtime.fleet import service as fleet
 from runtime.fleet.service.offers import Offering
@@ -161,6 +162,7 @@ async def lifespan(app: FastAPI, outside: Outside = THE_INTERNET) -> AsyncGenera
         loops.start(flows_tasks.wake_runs.bind(sessions))
         harness = await builders.build_harness(handles, live, signer, roster, stack)
         loops.start(evals_tasks.renew_leases.bind(harness.runner))
+        loops.start(evals_tasks.take_up_comparisons.bind(partial(take_up_left, harness)))
         loops.start(hosting_tasks.count_serving.bind(sessions, live.sockets))
         codes = builders.build_codes(handles, logs)
         # The agents built in Studio: held off the lifespan, by the loop's first look, so the gateway answers

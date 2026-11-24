@@ -186,10 +186,15 @@ judge held, then the most held, then the fastest reply, then the cheapest, a cal
 last. The table also says what was asked for, so a call not placed yet has its place on it:
 `against` (each configuration, in the order named), `repeats`, `planned` (every call it was to
 place), `waiting` (those still without a place on the line), `refused` (each call that could not be
-placed, and why, the ones refused after the answer among them) and `abandoned`, true when calls still
-wait and the gateway placing them stopped (it was restarted): those are never placed, and the board
-says so rather than waiting. A call that waits more than forty-five minutes for a place is refused
-with that sentence. A comparison made before these were kept reads `against: []`, `repeats: 1` — and `404` for an id of nobody's in this key's org and env.
+placed, and why, the ones refused after the answer among them) and `abandoned`. A comparison is
+played by the gateway that took its request, which says so every twenty seconds until its last call
+ended. One whose gateway stops saying so for forty (a release, a crash) is taken up by another
+gateway: a call that had not ended is placed again, the one that never began ended with why on its
+log and the one on the line hung up, and the calls still waiting are placed as they would have
+been; a call placed again is the table's row, and the one it stands for is none. `abandoned` is true
+only for a comparison no gateway took up, with calls still waiting: those are never placed, and the
+board says so rather than waiting. A call that waits more than forty-five minutes for a place is
+refused with that sentence. A comparison made before these were kept reads `against: []`, `repeats: 1` — and `404` for an id of nobody's in this key's org and env.
 `GET /v1/simulations?comparison=` pages the same calls as runs.
 
 ## Personas — `GET /v1/agents/{slug}/personas`, `PUT` · `DELETE /v1/agents/{slug}/personas/{name}`, `GET /v1/agents/{slug}/personas/{name}/runs`

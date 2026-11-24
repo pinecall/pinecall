@@ -137,6 +137,16 @@ class ComparisonRepository(Repository[Comparison]):
             self.statement().where(Comparison.id == comparison, Comparison.org == org, Comparison.env == env)
         )
 
+    # Every gateway passes: the row is locked by the one that finds it and skipped by the others until
+    # that one's transaction ends, in which it writes that it has it. A comparison made before
+    # 2026-11-24 says nothing of `done` and is never found.
+    async def find_left(self, before: float) -> Comparison | None:
+        """A comparison of any org still to be played that no gateway said anything of since `before`, locked."""
+        undone = Comparison.document["done"].as_boolean().is_(False)
+        quiet = Comparison.document["heard_at"].as_float() < before
+        oldest = self.statement().where(undone, quiet).order_by(Comparison.started_at).limit(1)
+        return await self.one_or_none(oldest.with_for_update(skip_locked=True))
+
 
 class LabelRepository(Repository[JudgeLabel]):
     """One label per call and judge: what a person said the judge should have answered."""

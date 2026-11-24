@@ -273,6 +273,10 @@ the call, and from then until that worker's next heartbeat, which is the first t
 caller that can wait (a simulated one) is seated only where a seat is, asked for and taken in one step
 with the fleet's seats held for it, so several that ask at once are never sent to the same seat; it
 takes the seat before it opens its voice or its room, so a queue of callers holds nothing open.
+A person does not wait for a seat and a simulated caller does, so it is the one that leaves seats
+free: it takes a seat only while a quarter of the fleet's seats would still be free after it (two of
+eight, one of four; a fleet under four seats, or one whose workers count none, keeps none), and
+simulations never hold more than the other three quarters while a person's call finds a seat.
 LiveKit hears a worker's load every 2.5 s and the gateway its calls every 5 s, so a seat the heartbeat
 says free may still be full to LiveKit, which then gives the room's job to nobody: such a room is offered
 again, to another worker first and to the same one when no other has a seat. A simulated caller's room is
