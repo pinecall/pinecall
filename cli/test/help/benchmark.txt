@@ -1,0 +1,45 @@
+$ pinecall benchmark --help
+Usage: pinecall benchmark [options] <comparison...>
+
+the report of comparisons already played: each setup against two bars, every
+call with its recording and its log
+
+Arguments:
+  comparison                the comparisons, as pinecall simulate named them
+                            (cmp_…): several are one table
+
+Options:
+  --out <dir>               the folder the report is written into (default:
+                            "benchmark")
+  --floor <share>           the share of counted calls a setup must complete, 0
+                            to 1 (0.9)
+  --ceiling <seconds>       the middle reply a setup may take, in seconds (1.5)
+  --baseline <report.json>  an earlier report: each setup is held against its
+                            own row there
+  --gate                    exit 1 when no setup clears both bars, or one fell
+                            against the baseline
+  -h, --help                display help for command
+
+The report of comparisons `pinecall simulate` already played, written as a folder to open or
+publish: index.html (the page), report.json (every number of it), report.data.js (the same, for
+the page opened from the disk) and calls/ (each call's recording, as the gateway kept it). Several
+comparisons are one table: a caller rung again under the same setup is another round of it.
+
+Each setup is held to two bars: --floor, the share of its counted calls in which the caller got
+what it came for, and --ceiling, the middle of its calls' replies in seconds. With several setups
+the one to take is the cheapest per completed call of those that clear both; with one, the agent
+passes or fails each bar. A share comes with the range it plausibly sits in after that many calls
+(95%), and each round's count beside it shows how far one run moves from the next. A call its
+vendor refused, the platform lost or whose own caller broke is listed and counted in nothing.
+
+--gate exits 1 when no setup clears both bars, and 2 when nobody judged a call. --baseline holds
+each setup against its row in an earlier report.json: a setup regressed when its share fell by more
+than that report's own rounds moved among themselves, and with --gate that fails too. --json prints
+report.json. `pinecall simulate … --report` places the calls and writes the report in one go.
+
+Examples
+  $ pinecall benchmark cmp_4f1c2a9be07d
+  $ pinecall benchmark cmp_4f1c2a9be07d cmp_91aa03c7d2e1 --out reports/november
+  $ pinecall benchmark cmp_4f1c2a9be07d --floor 0.95 --ceiling 1.2 --gate
+  $ pinecall benchmark cmp_4f1c2a9be07d --baseline reports/october/report.json --gate
+

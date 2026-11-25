@@ -23,6 +23,30 @@ Examples
   $ pinecall test --voice --background-noise 15 --ambience cafe
   $ pinecall test --case promises-youll-call-me-tomorrow-29d7c7
 `,
+  benchmark: `
+The report of comparisons \`pinecall simulate\` already played, written as a folder to open or
+publish: index.html (the page), report.json (every number of it), report.data.js (the same, for
+the page opened from the disk) and calls/ (each call's recording, as the gateway kept it). Several
+comparisons are one table: a caller rung again under the same setup is another round of it.
+
+Each setup is held to two bars: --floor, the share of its counted calls in which the caller got
+what it came for, and --ceiling, the middle of its calls' replies in seconds. With several setups
+the one to take is the cheapest per completed call of those that clear both; with one, the agent
+passes or fails each bar. A share comes with the range it plausibly sits in after that many calls
+(95%), and each round's count beside it shows how far one run moves from the next. A call its
+vendor refused, the platform lost or whose own caller broke is listed and counted in nothing.
+
+--gate exits 1 when no setup clears both bars, and 2 when nobody judged a call. --baseline holds
+each setup against its row in an earlier report.json: a setup regressed when its share fell by more
+than that report's own rounds moved among themselves, and with --gate that fails too. --json prints
+report.json. \`pinecall simulate … --report\` places the calls and writes the report in one go.
+
+Examples
+  $ pinecall benchmark cmp_4f1c2a9be07d
+  $ pinecall benchmark cmp_4f1c2a9be07d cmp_91aa03c7d2e1 --out reports/november
+  $ pinecall benchmark cmp_4f1c2a9be07d --floor 0.95 --ceiling 1.2 --gate
+  $ pinecall benchmark cmp_4f1c2a9be07d --baseline reports/october/report.json --gate
+`,
   simulate: `
 A model in the gateway plays the caller: every turn improvised from the persona's goal, its style
 and its own facts — there is no script. The agent is whoever holds it — your \`pinecall start\`, a
@@ -46,6 +70,10 @@ the agent can do it, several how often it does. --persona said again is another 
 against every configuration. Several runs end in a table by configuration: how many did each
 caller's task, the middle reply, what they cost, and what one completed call cost. A comparison
 larger than the org's simulated calls at once runs whole: the calls past it wait their turn.
+--report writes the agent's benchmark when the calls end, into ./benchmark or the folder named: a
+page to open or publish, report.json and each call's recording, each setup held to --floor and
+--ceiling (\`pinecall benchmark --help\` reads them); it turns --judge on, and --gate makes it exit 1
+when no setup clears both bars.
 
 Examples
   $ pinecall simulate --persona hurried --listen --turns 2
@@ -53,6 +81,7 @@ Examples
   $ pinecall simulate --persona hurried --voice --judge --against llm=groq/openai/gpt-oss-120b \
       --against llm=google/gemini-3.5-flash-lite --against llm=anthropic/claude-haiku-5-5,tts=deepgram
   $ pinecall simulate --persona books-a-visit --judge --repeats 5
+  $ pinecall simulate --persona books-a-visit --persona hurried --voice --repeats 5 --report --gate
   $ pinecall simulate --persona books-a-visit --persona hurried --voice --judge --repeats 5 \
       --against llm=google/gemini-3.5-flash-lite --against llm=anthropic/claude-haiku-5-5
   $ pinecall simulate --persona books-a-visit --voice --judge --repeats 5 \

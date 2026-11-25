@@ -45,6 +45,7 @@ path end to end, with every output under it.
 | [`prompt`](#prompt) | the exact prompt a state would produce, offline | **no** |
 | [`test`](#test) | the goldens (said out loud with `--voice`), through the agent wherever it is held | yes |
 | [`simulate`](#simulate) | a model plays one caller, live, and the call is judged at hang-up | yes |
+| [`benchmark`](#benchmark) | the report of comparisons already played: each setup against two bars, every call with its recording and its log | yes |
 | [`eval`](#eval) | one real call re-checked by code | yes |
 | [`sessions`](#sessions) | the calls this agent has run, one of them whole, and its log entry by entry | yes |
 | [`runs`](#runs) | the suites: list, show, diff, promote a call, watch the drift | yes |
@@ -941,6 +942,57 @@ looked at must never open a gate.
 A refusal ends the command at once: the gateway's own sentence on stderr — a vendor nobody keyed is
 its 503, a model or vendor the runtime does not have its 400 — and exit 2, as for every refusal; a call `simulate` had
 already opened is hung up, never left holding one of the org's seats.
+
+## `benchmark`
+
+The benchmark of an agent, as a folder to open or to publish. It is made of calls `simulate` placed:
+either as they end (`simulate … --report`) or of comparisons already played (`benchmark cmp_…`).
+
+```console
+$ pinecall simulate --persona books-a-visit --persona hurried --voice --repeats 5 --report
+$ pinecall simulate --persona books-a-visit --voice --repeats 5 --report reports/gemini \
+    --against llm=google/gemini-3.5-flash-lite --against realtime=google/gemini-3.8-live
+$ pinecall benchmark cmp_4f1c2a9be07d cmp_91aa03c7d2e1 --out reports/november
+```
+
+From nothing, the steps are three. Write the callers beside the agent (`agents/<name>/test/personas.ts`,
+[`personas`](#personas)), each with what it `expects`: that line is what a completed call means, and the
+`expected-outcome` judge reads every finished call against it. Run them several times (`--repeats`): one call
+of a caller says little, and the report shows each round apart so that the difference between two runs of the
+same callers is seen. Read the report.
+
+**The folder.** `index.html` is the page: the verdict, a row a setup, how each setup heard its callers, what
+each judge answered, a grid of every caller under every setup round by round, the calls that failed with their
+judge's reason, the calls that do not count, and every call to play with its lines, its tools and what each
+tool answered. `report.json` holds every number of the page (`version: 1`; `bars`, `verdict`, `callers`,
+`setups[]`, `calls[]`, `refused[]`, `comparisons[]`, the `command` that made it, the `gateway` and `made_at`).
+`report.data.js` is the same for the page opened from the disk, and `calls/<call>.ogg` is each recording as the
+gateway kept it (Ogg Opus, two sides: Chrome, Edge and Firefox play it; a browser that does not says so, and the
+lines are still read). The folder is static: any web server publishes it.
+
+**The bars.** `--floor` is the share of a setup's counted calls in which the caller got what it came for (0.9)
+and `--ceiling` the middle of its calls' replies, in seconds (1.5). With several setups (`--against`, again for
+each) the one to take is the cheapest per completed call of those that clear both; with one, the agent as it is
+passes or fails each bar. A share is printed with the range it plausibly sits in after that many calls (Wilson's
+interval at 95%): `19 of 20 · 95%` is `76%–99%`, and twenty calls cannot tell a 95% from an 85%.
+
+**What does not count.** A call a vendor of the agent refused or failed, one the platform lost, and one whose
+own simulated caller broke are listed with whose fault and why, and are in no number. A gateway since
+2026-11-26 says it on each row (`valid`, `invalid`); from an earlier one the same is read off the call's log.
+
+**A gate.** `--gate` exits 1 when no setup clears both bars and 2 when nobody judged a call. `--baseline
+<report.json>` holds each setup against its row in an earlier report: it regressed when its share fell by more
+than that report's own rounds moved among themselves, and `--gate` fails on that too. `--json` prints
+`report.json` in place of the table.
+
+```console
+$ pinecall simulate --persona books-a-visit --persona hurried --voice --repeats 5 \
+    --report reports/today --baseline reports/main/report.json --gate
+```
+
+Several comparisons named together are one table: a caller rung again under the same setup is another round
+of it. A model the gateway priced nothing for is said beside its cost, and a setup with one is never "the
+cheapest".
 
 ## `personas`
 
@@ -3202,6 +3254,7 @@ code can call — over HTTP, in any language, with the same key.
 | `supervise` | `POST /v1/calls/{call}/verbs` — with the **org key**: a desk that only reads and types needs no seat. A seat (`POST …/supervise`) is for audio, and that is the console's |
 | `simulate --listen` | `POST /v1/calls/{call}/listen`, then the LiveKit room |
 | `simulate --voice` · `test --voice` | `POST /v1/evals/voice`; `simulate` then follows the call's events (SSE) |
+| `benchmark` · `simulate --report` | `GET /v1/simulations/compare/{comparison}`, then each call's `GET /v1/calls/{call}/events` and `GET /v1/calls/{call}/recording`; `--report` places its calls as a comparison first (`POST /v1/simulations/compare`) |
 | `test` · `runs` | `POST /v1/evals/run`, `GET /v1/events` (the org's feed, `run.changed`) while `test` follows it, `GET /v1/evals/runs[/{id}]`; `runs promote` is `GET /v1/calls/{call}/golden?name=&from_seq=` |
 | `cases` | `GET /v1/evals/cases?agent=&status=` (a case is found by its name there), `PATCH`·`DELETE /v1/evals/cases/{id}`, `POST /v1/evals/cases`; `add` is `PUT /v1/agents/{slug}/cases/{name}`, one per golden; the groups are `GET /v1/evals/groups?agent=`, `GET`·`PATCH /v1/evals/groups/{id}`, `POST …/{id}/propose` · `…/apply` · `…/persona` |
 | `runs drift` | `GET /v1/agents/{slug}/sessions` — a held-rate is counted off the verdicts the calls already carry, so it asks the sessions endpoint and no evals endpoint at all |

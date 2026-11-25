@@ -8,6 +8,7 @@ import { latencyLine } from "./matrix.js";
 
 export { BottomBlock, header, progress, type Watched } from "./progress.js";
 export { against, comparison, verdictOf } from "./comparison.js";
+export { benchmark } from "./benchmark.js";
 export { cellOf, latencyLine, matrix, suite } from "./matrix.js";
 
 const NOTHING = "—";

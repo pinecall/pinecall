@@ -1,0 +1,92 @@
+<!doctype html>
+<!-- A benchmark of a Pinecall agent: the page `pinecall benchmark` writes beside report.json. It reads report.data.js and nothing else. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Benchmark</title>
+    <link rel="stylesheet" href="benchmark.css" />
+  </head>
+  <body>
+    <header class="top">
+      <span class="brand" id="agent"></span>
+      <span class="kicker" id="when"></span>
+    </header>
+
+    <section class="hero">
+      <h1 id="title"></h1>
+      <p class="lead" id="lead"></p>
+      <div class="bars">
+        <div><u>THE FLOOR</u><b class="good" id="floor"></b><span>of the calls end with the caller getting everything it called for</span></div>
+        <div><u>THE CEILING</u><b class="hi" id="ceiling"></b><span>the middle reply: the caller's last word to the agent's first</span></div>
+        <div><u>THE VERDICT</u><b id="verdict"></b><span id="says"></span></div>
+      </div>
+    </section>
+
+    <section class="winner" id="winner" hidden></section>
+
+    <section>
+      <h2>The table</h2>
+      <p class="note">Best first. Completed is the share of counted calls in which the caller got everything it asked for, as a judge read the finished call, with the range the true share plausibly sits in after this many calls (95%). Reply is the middle of the calls' own middle replies; p90 is the reply nine in ten were faster than.</p>
+      <div class="table" id="table"></div>
+    </section>
+
+    <section id="quality-part" hidden>
+      <h2>How each heard its callers</h2>
+      <p class="note">What a simulation knows and a real call does not: what the caller really said, and when. Counted over each setup's calls.</p>
+      <div class="table" id="quality"></div>
+    </section>
+
+    <section id="judges-part" hidden>
+      <h2>The judges</h2>
+      <p class="note">Each judge that read the calls, by setup: held, broken, and the calls it did not apply to.</p>
+      <div class="grid" id="judges"></div>
+    </section>
+
+    <section>
+      <h2>The callers</h2>
+      <p class="note">Who rang, what each wanted, and how it behaves on the line.</p>
+      <div class="callers" id="callers"></div>
+    </section>
+
+    <section>
+      <h2>Every call</h2>
+      <p class="note">A dot is one call: green when the caller got everything, red when not, hollow when it does not count. The last column is each round: one call of every caller, so a row shows how far one run moves from the next.</p>
+      <div class="grid" id="grid"></div>
+    </section>
+
+    <section id="failures-part" hidden>
+      <h2>The calls that failed</h2>
+      <p class="note">Each one with its judge's reason. Open it to hear it and read its log.</p>
+      <div class="list" id="failures"></div>
+    </section>
+
+    <section id="out-part" hidden>
+      <h2>Not counted</h2>
+      <p class="note">Calls that measured nothing of the agent: its vendor refused them, the platform lost them, or their own caller broke. They are in none of the numbers above.</p>
+      <div class="list" id="out"></div>
+    </section>
+
+    <section>
+      <h2>The calls, one by one</h2>
+      <p class="note">Open one to hear it and read its log: what the caller said, what the agent said, every tool it called and what came back.</p>
+      <div class="filters" id="filters"></div>
+      <div class="list" id="list"></div>
+    </section>
+
+    <section class="player" id="player" hidden>
+      <div class="head">
+        <div><b id="p-title"></b><span id="p-facts"></span></div>
+        <button id="p-close" type="button">Close</button>
+      </div>
+      <p class="verdict" id="p-why"></p>
+      <audio id="audio" controls preload="none"></audio>
+      <p class="verdict" id="p-audio" hidden></p>
+      <div class="lines" id="p-lines"></div>
+    </section>
+
+    <footer id="foot"></footer>
+    <script src="report.data.js"></script>
+    <script src="benchmark.js"></script>
+  </body>
+</html>

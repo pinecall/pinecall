@@ -42,6 +42,11 @@ export function accountsGateway(url: string, key = ""): GatewayClient {
   return new GatewayClient(url, key, "production");
 }
 
+/** The version the gateway runs, as it says to anybody; null from one that does not say. */
+export async function getVersion(gw: GatewayClient): Promise<string | null> {
+  return (await gw.get<{ version?: string } | null>("/.well-known/pinecall").catch(() => null))?.version ?? null;
+}
+
 export function getWhoami(gw: GatewayClient): Promise<Whoami> {
   return gw.get<Whoami>("/v1/whoami");
 }

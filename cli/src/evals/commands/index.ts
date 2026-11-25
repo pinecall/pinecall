@@ -15,6 +15,7 @@ import { HELP } from "../help.js";
 
 import { registerCases, registerPersonas, registerRuns } from "./dataset.js";
 import { numberOf, repeated } from "../../kit/flags.js";
+import { A_FOLDER, benchmarkTheRun, namesTheReport, registerBenchmark, REPORT_FLAGS, type ReportFlags } from "./benchmark.js";
 import { compareAtTheTerminal, simulateAtTheTerminal, test } from "./terminal.js";
 
 export function register(program: Command, ctx: Context): void {
@@ -72,16 +73,25 @@ export function register(program: Command, ctx: Context): void {
     .option("--caller-voice <id>", "the caller's voice this run: pinecall voices list names them")
     .option("--against <values>", "the agent on these for this run: stt=, llm=, tts=, voice=, language=, temperature=, end_of_turn=, or realtime= for a model that hears and speaks; again for another, compared", repeated)
     .option("--repeats <n>", "how many times the caller rings under each configuration, 1 to 10: more than once is a comparison, read as how often each got it done")
+    .option("--report [dir]", `the benchmark written when the calls end, into this folder (${A_FOLDER}): turns --judge on`)
+    .option(REPORT_FLAGS[0]![0], `with --report: ${REPORT_FLAGS[0]![1]}`)
+    .option(REPORT_FLAGS[1]![0], `with --report: ${REPORT_FLAGS[1]![1]}`)
+    .option(REPORT_FLAGS[2]![0], `with --report: ${REPORT_FLAGS[2]![1]}`)
+    .option(REPORT_FLAGS[3]![0], `with --report: ${REPORT_FLAGS[3]![1]}`)
     .option("--agent <name>")
     .option("--file <agent.tsx>")
     .addHelpText("after", HELP.simulate)
     .action(async (flags) => {
       const listen = flags.listen === true;
       if (listen && flags.voice !== true) ctx.io.info("--listen is a call with audio in it: --voice is on");
+      const reported = flags.report !== undefined;
+      const reportFlags = flags as ReportFlags;
+      if (!reported && namesTheReport(reportFlags)) throw new UsageError("--floor, --ceiling, --baseline and --gate are the report's: add --report");
+      if (reported && flags.judge !== true) ctx.io.info("--report is the calls as their judges read them: --judge is on");
       const input = service.SimulateInput.parse({
         persona: flags.persona[0],
         morePersonas: flags.persona.slice(1),
-        judge: flags.judge === true,
+        judge: flags.judge === true || reported,
         voice: flags.voice === true || listen,
         turns: numberOf("--turns", flags.turns),
         backgroundNoise: numberOf("--background-noise", flags.backgroundNoise),
@@ -101,6 +111,12 @@ export function register(program: Command, ctx: Context): void {
       // The gateway places the call and keeps the personas: an agent with no folder (one built in Studio) is its slug.
       const agent = ctx.slug("simulate", { file: flags.file, agent: flags.agent });
       const against = (flags.against ?? []).map(service.parseAgainst);
+      if (reported) {
+        if (listen) throw new UsageError("--listen plays one call: a report is of calls placed together");
+        if (input.goal !== undefined && input.morePersonas.length > 0) throw new UsageError("--goal is what one caller phones about: with several callers, each phones about its own");
+        await benchmarkTheRun(ctx, agent, input, against.length === 0 ? [{}] : against, flags.report === true || flags.report === undefined ? A_FOLDER : flags.report, reportFlags);
+        return;
+      }
       // Several configurations, several callers, or one rung several times, are several calls: placed together, read as one table.
       if (against.length > 1 || input.repeats > 1 || input.morePersonas.length > 0) {
         if (listen) throw new UsageError("--listen plays one call: a comparison runs several at once");
@@ -110,6 +126,8 @@ export function register(program: Command, ctx: Context): void {
       }
       service.requireHeld(await simulateAtTheTerminal(ctx, agent, input, listen, against[0]));
     });
+
+  registerBenchmark(program, ctx);
 
   program
     .command("eval")

@@ -6,6 +6,15 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **The benchmark of an agent, from one command.** `pinecall simulate … --report [dir]` writes it when the calls
+  end, and `pinecall benchmark <comparison…>` of comparisons already played: a folder with a page to open or
+  publish (`index.html`), every number of it (`report.json`) and each call's recording. Each setup is held to two
+  bars, `--floor` (the share of counted calls completed, 0.9) and `--ceiling` (the middle reply, 1.5 s), its share
+  printed with the range it plausibly sits in after that many calls and each round apart; the page adds how each
+  setup heard its callers, every judge, the calls that failed with their reason, the ones that do not count and
+  every call with its lines and tools. `--gate` exits 1 when no setup clears both bars, `--baseline <report.json>`
+  marks a setup that fell by more than the earlier report's own rounds moved, and the MCP's `simulate` takes
+  `report`.
 - **A call that does not count is said, and left out of every count.** `pinecall simulate`'s comparison shows a call
   a vendor, the platform or its own caller broke as `not counted:` with whose fault, says why under the table, and
   leaves it out of how often each configuration did the task, its reply and what a completed call cost; one

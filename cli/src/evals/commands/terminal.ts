@@ -170,6 +170,13 @@ export async function simulateAtTheTerminal(ctx: Context, agent: string, input: 
 
 // Nothing of the calls is printed as they happen, several run at once: what was placed, then the table.
 export async function compareAtTheTerminal(ctx: Context, agent: string, input: service.SimulateInput, against: readonly api.AgentValues[]): Promise<service.Compared> {
+  const done = await placeComparison(ctx, agent, input, against);
+  ctx.io.result(done, render.comparison);
+  return done;
+}
+
+/** The comparison placed and followed to its table, each caller and what was placed said as it happens; the table is the caller's to print. */
+export async function placeComparison(ctx: Context, agent: string, input: service.SimulateInput, against: readonly api.AgentValues[]): Promise<service.Compared> {
   const persona = await service.getPersona(ctx, agent, input.persona);
   ctx.io.print(`${persona.name} · ${input.goal ?? persona.goal}`);
   // Every other caller is read before anything is placed: a name the agent has not is refused here, with no call made.
@@ -177,10 +184,8 @@ export async function compareAtTheTerminal(ctx: Context, agent: string, input: s
     const other = await service.getPersona(ctx, agent, name);
     ctx.io.print(`${other.name} · ${other.goal}`);
   }
-  const done = await service.compare(ctx, agent, persona, input, against, (started) => {
+  return await service.compare(ctx, agent, persona, input, against, (started) => {
     const waiting = (started.waiting ?? 0) === 0 ? "" : ` · ${String(started.waiting)} waiting their turn`;
     ctx.io.print(`${started.comparison} · ${count(started.calls.length, "call")} placed${waiting}${started.refused.length === 0 ? "" : ` · ${count(started.refused.length, "refusal")}`} · judged as each one ends`);
   });
-  ctx.io.result(done, render.comparison);
-  return done;
 }

@@ -1,8 +1,9 @@
-/** The calls endpoints: an agent's calls, one call's state, its log paged or followed, the supervisor's verbs, a listen seat, the chat socket. */
+/** The calls endpoints: an agent's calls, one call's state, its log paged or followed, its recording, the supervisor's verbs, a listen seat, the chat socket. */
 
 import { observe } from "@pinecall/agents/client";
 import type { SessionLine, Verb } from "@pinecall/agents/wire";
 
+import { GatewayError } from "../errors.js";
 import { seg, type GatewayClient } from "./client.js";
 
 export type { SessionLine, Verb } from "@pinecall/agents/wire";
@@ -87,6 +88,16 @@ export async function listCallEntries(gw: GatewayClient, call: string, query: En
     types: query.types === undefined ? undefined : query.types.join(","),
   });
   return { entries: page?.entries ?? [], next: page?.next ?? null };
+}
+
+/** The call's recording as the gateway kept it (Ogg Opus, the caller on the left); null for a call that kept none. */
+export async function getRecording(gw: GatewayClient, call: string): Promise<Uint8Array | null> {
+  try {
+    return new Uint8Array(await (await gw.fetch(`/v1/calls/${seg(call)}/recording`)).arrayBuffer());
+  } catch (failed) {
+    if (failed instanceof GatewayError && failed.status === 404) return null;
+    throw failed;
+  }
 }
 
 /** Each entry of a call's log (or the org's feed) from the cursor on, reconnecting by itself, until `signal` aborts. */
