@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **A realtime model reads the agent's view.** The view (what `render()` returns: the day, who calls, what the
+  agent holds for them) is sent with each request to a pipeline's model; a realtime model takes no request of
+  the agent's, and was given the static blocks alone. Its session's instructions carry the view now, and are
+  written again when it changes. Until then a realtime call's model knew nothing of the call's state: it asked a
+  patient for the id of a visit the agent held, or booked a second visit where it was asked to move one.
 - **A simulation's values name a realtime model.** `against: {realtime: "vendor/model"}` on `POST /v1/simulations`
   and `/v1/simulations/compare`, and in a test room's values, runs that call on a model that hears and speaks itself,
   as the agent's own `realtime` setting would: a comparison places the pipeline's models and the realtime ones

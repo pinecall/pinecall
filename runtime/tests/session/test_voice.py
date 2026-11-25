@@ -62,6 +62,20 @@ async def test_a_realtime_model_that_says_given_words_is_the_calls_only_voice(bo
     assert [type(stage).__name__ for stage in session.built] == ([] if says else ["AcmeTTS"])
 
 
+# 2026-11-25: on a realtime model the view never left the gateway. Its session's instructions carry
+# every block; a pipeline's keep to the static ones, the view going with each request.
+@needs_the_database
+async def test_a_realtime_calls_instructions_carry_every_block_and_a_pipelines_the_static_ones(box: Box) -> None:
+    talks = spoken_call(box, NOBODY, realtime=talker.install())
+    talks.blocks.set("identity", "Sos la recepción.")
+    talks.blocks.set("view", "Hoy es miércoles. En la línea: Ana.")
+    assert talks.blocks.instructions == "Sos la recepción.\n\nHoy es miércoles. En la línea: Ana."
+    thinks = spoken_call(box, Declaration(slug="clinica-norte"))
+    thinks.blocks.set("identity", "Sos la recepción.")
+    thinks.blocks.set("view", "Hoy es miércoles. En la línea: Ana.")
+    assert thinks.blocks.instructions == "Sos la recepción."
+
+
 @needs_the_database
 async def test_a_spoken_call_is_built_with_the_ears_the_voice_and_the_model_it_asked_for(
     box: Box,

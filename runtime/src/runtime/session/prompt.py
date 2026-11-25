@@ -35,16 +35,24 @@ class Blocks:
 
     # The knowledge is set here and never by the app, so it lands in the cached prefix as the
     # operator's text (docs/security/prompt-injection.md).
-    def __init__(self, layout: Sequence[PromptBlock] = DEFAULT_LAYOUT, knowledge: str = "") -> None:
+    #
+    # `whole` is a call on a model no request of ours reaches: a realtime model answers from its
+    # session's instructions alone, so the view goes there with the rest and is said again when it
+    # changes. Until 2026-11-25 such a model was given the static blocks alone and never read the view:
+    # the day, who calls and what the agent holds for them were known to the app and not to the model.
+    def __init__(
+        self, layout: Sequence[PromptBlock] = DEFAULT_LAYOUT, knowledge: str = "", *, whole: bool = False
+    ) -> None:
         """Every block of the layout, empty but the knowledge."""
         self.layout = tuple(layout)
+        self.whole = whole
         self.texts: dict[str, str] = {block.name: "" for block in self.layout}
         if knowledge and KNOWLEDGE_BLOCK in self.texts:
             self.texts[KNOWLEDGE_BLOCK] = knowledge
 
     # Identical static text is not resent: even the same bytes cost the provider a cache write.
     def set(self, name: str, text: str) -> bool:
-        """Replace a block's text; True when the static instructions changed."""
+        """Replace a block's text; True when the instructions changed."""
         if name not in self.texts:
             raise ValidationError(
                 f"the prompt has no block named {name!r}: this agent's blocks are {', '.join(self.texts)}"
@@ -55,7 +63,9 @@ class Blocks:
 
     @property
     def instructions(self) -> str:
-        """The static blocks written so far, joined, in layout order."""
+        """The static blocks written so far, joined, in layout order; every block of a call that is `whole`."""
+        if self.whole:
+            return BETWEEN_BLOCKS.join(self.texts[block.name] for block in self.layout if self.texts[block.name])
         return BETWEEN_BLOCKS.join(self.of("static"))
 
     def of(self, region: PromptRegion) -> tuple[str, ...]:

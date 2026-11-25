@@ -95,6 +95,18 @@ def test_a_block_nobody_wrote_is_not_sent_and_leaves_no_blank_between_the_others
     assert blocks.instructions == "uno\n\ntres"
 
 
+# 2026-11-25: a realtime model was given the static blocks alone, so on its calls the view (the day, who
+# calls, what the agent holds for them) reached nobody: it asked a patient for the id of a visit the
+# agent had in its state.
+def test_a_call_no_request_reaches_carries_the_view_in_its_instructions_and_says_so_when_it_changes() -> None:
+    blocks = Blocks(LAYOUT, whole=True)
+    assert blocks.set("identity", "Sos la recepción.")
+    assert blocks.set("view", "Hoy es miércoles.")
+    assert blocks.instructions == "Sos la recepción.\n\nHoy es miércoles."
+    assert not blocks.set("view", "Hoy es miércoles.")
+    assert blocks.set("view", "Hoy es jueves.")
+
+
 def test_writing_a_static_block_says_the_instructions_moved_and_a_dynamic_one_does_not() -> None:
     blocks = Blocks(LAYOUT)
     assert blocks.set("identity", "Sos la recepción.")

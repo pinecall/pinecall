@@ -117,7 +117,10 @@ class Session:
         # Who ends the caller's turn on a spoken call, said on the log as it opens; a written call has none.
         self.turn = turn
         self.on_ended = on_ended
-        self.blocks = prompt.Blocks(call.declaration.prompt, call.declaration.knowledge or "")
+        # A realtime model reads its session's instructions and no request of the agent's: the view is
+        # written there for it.
+        talks_alone = isinstance(live.llm, llm.RealtimeModel)  # pyright: ignore[reportUnknownMemberType]
+        self.blocks = prompt.Blocks(call.declaration.prompt, call.declaration.knowledge or "", whole=talks_alone)
         toolbox = Toolbox(lookups, line, leave=lambda: self.hang_up("agent_hung_up", "agent"))
         self.agent = CallAgent(live, self.blocks, lookups, toolbox.tools(call, spoken=medium is Medium.voice), line)
         self.started_at = time.time()
@@ -292,7 +295,8 @@ class Session:
     # ── what the app and a supervisor ask of it ──
 
     # Only a change of the static text rewrites the instructions: identical bytes would still
-    # cost a cache write. The dynamic blocks are read by each request.
+    # cost a cache write. The dynamic blocks are read by each request; a realtime model takes no
+    # request of ours, so its instructions carry them and are rewritten when one changes.
     async def set_prompt(self, name: str, text: str) -> None:
         """Rewrite one block; the log keeps its hash."""
         if self.blocks.set(name, text):
