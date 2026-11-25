@@ -1002,8 +1002,8 @@ answers at `0.6` passes with none cut one time in sixteen, and `1` cuts every on
 `turn.agent` with `interrupted: true` — and `--pause 2` leaves two seconds of silence before each of their lines.
 `--backchannels 0.3` has them murmur an "mm-hmm", in their language, into that share of the
 answers a few seconds in, keeping their turn, so an agent that stops for a listener's noise is
-found out; `--speed 0.8` slows their voice to that much of the vendor's tempo (`1.3` hurries it),
-the pitch kept; `--ambience cafe` says what plays behind them — `television`, `cafe`, `office`
+found out; `--speed 0.8` makes them a slower talker, their words a little slower and the pauses between their phrases
+longer, and `1.3` hurries their voice to that much of the vendor's tempo, the pitch kept; `--ambience cafe` says what plays behind them — `television`, `cafe`, `office`
 or `street`, each the same sound every run — at the `--background-noise` dB under them, and
 without a level nothing plays. `show` prints one a label a line — about, goal, style, how they speak,
 their facts, what they expect (and says so when they expect nothing) — with the models that play them

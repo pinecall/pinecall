@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **A slow simulated caller pauses, where it was stretched.** A persona's `speed` below 1 slowed its whole line, the
+  pitch kept: every syllable drawn out and not one pause. Its words are now said a third of the way slower and the
+  rest of its slowness is silence held where the voice already breaks, between phrases, a little more or less each
+  time. A `speed` above 1 is the tempo it was.
 - **A realtime model reads the agent's view.** The view (what `render()` returns: the day, who calls, what the
   agent holds for them) is sent with each request to a pipeline's model; a realtime model takes no request of
   the agent's, and was given the static blocks alone. Its session's instructions carry the view now, and are

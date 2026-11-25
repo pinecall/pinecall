@@ -44,6 +44,13 @@ CUT_IN_AFTER_S = (0.8, 2.5)
 MURMUR_AFTER_S = (1.5, 3.5)
 # A voice at this tempo is the vendor's own: nothing is stretched.
 AS_READ = 1.0
+# A caller slower than read says its words a third of the way slower and leaves the rest of its
+# slowness as silence where the voice already breaks: this long at half speed, a little more or less
+# each time, wherever the voice was quiet for as long as a gap between two phrases is.
+A_THIRD = 3
+A_PAUSE_AT_HALF_SPEED_S = 0.9
+A_PAUSE_VARIES = (0.6, 1.4)
+A_BREAK_FRAMES = 9
 # What a listener murmurs while the other speaks, without taking the turn, by language.
 MURMURS: Mapping[str, tuple[str, ...]] = {
     "es": ("ajá", "mm", "sí, sí"),
@@ -218,8 +225,9 @@ class CallerLeg:
     # is said once the last of its frames has left.
     async def _speak(self, text: str) -> None:
         async with self.voice.synthesize(text) as stream:
-            pieces = at_tempo(resample(piece.frame async for piece in stream), self.spoken.acts.speed)
-            async for frame in in_frames(pieces, SAMPLE_RATE, FRAME_MS):
+            speed = self.spoken.acts.speed
+            pieces = at_tempo(resample(piece.frame async for piece in stream), tempo_of(speed))
+            async for frame in with_pauses(in_frames(pieces, SAMPLE_RATE, FRAME_MS), speed, self.dice):
                 self.silent.clear()
                 self.waiting.append(frame)
         # A line that broke before the last frame was handed to it will never say it.
@@ -262,6 +270,36 @@ async def synthesize(voice: tts.TTS[Never], text: str) -> bytes:
     async with voice.synthesize(text) as stream:
         pieces = resample(piece.frame async for piece in stream)
         return b"".join([piece async for piece in pieces])
+
+
+# A person who talks slowly is not a recording played slowly: the words come almost as anybody says
+# them, and the time goes into the silences between them. Until 2026-11-25 a caller at `speed` 0.8 was
+# its whole line stretched to five quarters, every syllable drawn out and not one pause: slow, and
+# like nobody.
+def tempo_of(speed: float) -> float:
+    """How fast a caller at this speed says its words: as asked when faster, a third of the way when slower."""
+    return speed if speed >= AS_READ else AS_READ - (AS_READ - speed) / A_THIRD
+
+
+async def with_pauses(frames: AsyncIterable[bytes], speed: float, dice: randomness.Random) -> AsyncIterator[bytes]:
+    """The line's frames, each break the voice made held longer for a caller slower than read."""
+    if speed >= AS_READ:
+        async for frame in frames:
+            yield frame
+        return
+    held_s = A_PAUSE_AT_HALF_SPEED_S * (AS_READ / speed - AS_READ)
+    spoke, quiet = False, 0
+    async for frame in frames:
+        yield frame
+        if rms_of(frame) >= A_GAP_RMS:
+            spoke, quiet = True, 0
+            continue
+        quiet += 1
+        # Once a break: the silence the voice left goes on after the pause, and before the line's first
+        # word there is nothing to hold.
+        if spoke and quiet == A_BREAK_FRAMES:
+            for _ in range(round(held_s * dice.uniform(*A_PAUSE_VARIES) * 1000 / FRAME_MS)):
+                yield SILENCE
 
 
 # The vendor's audio is stretched as it arrives, the pitch kept, so a slow caller is slow and not

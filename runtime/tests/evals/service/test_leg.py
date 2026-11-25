@@ -23,10 +23,12 @@ from runtime.evals.service.leg import (
     describe,
     pick_murmur,
     resample,
+    tempo_of,
+    with_pauses,
 )
 from runtime.judging import service as judging
 from runtime.kit.link import LinkShape
-from runtime.kit.pcm import QUIET, frames_of, mix_under, rms_of
+from runtime.kit.pcm import QUIET, frames_of, in_frames, mix_under, rms_of
 from tests.calls.factories import logs_on
 from tests.conftest import needs_the_database
 from tests.fakes.acme import AcmeTTS
@@ -116,6 +118,23 @@ async def test_a_faster_caller_says_the_same_line_in_less_time() -> None:
     voice = tone_of(SAMPLE_RATE, 8000)
     quick = await joined(at_tempo(pieces_of(voice), 2.0))
     assert abs(len(quick) / len(voice) - 0.5) < 0.03
+
+
+# 2026-11-25: a slow caller was its line stretched whole, with no pause in it.
+async def test_a_slow_caller_says_its_words_nearly_as_read_and_holds_the_breaks_between_them() -> None:
+    word, a_break = tone_of(SAMPLE_RATE // 2, 8000), SILENCE * 20
+    frames = [piece async for piece in in_frames(pieces_of(word + a_break + word), SAMPLE_RATE, FRAME_MS)]
+
+    async def said() -> AsyncIterator[bytes]:
+        for frame in frames:
+            yield frame
+
+    slow = [frame async for frame in with_pauses(said(), 0.5, random.Random(7))]
+    held = len(slow) - len(frames)
+    assert 54 <= held <= 126
+    assert [frame for frame in slow if frame != SILENCE] == [frame for frame in frames if frame != SILENCE]
+    assert [frame async for frame in with_pauses(said(), 1.0, random.Random(7))] == frames
+    assert tempo_of(0.7) == pytest.approx(0.9) and tempo_of(1.3) == 1.3
 
 
 # ── the caller's voice ──
