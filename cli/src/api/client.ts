@@ -74,7 +74,7 @@ export class GatewayClient {
    */
   async fetch(path: string, options: RequestOptions = {}): Promise<Response> {
     const method = options.method ?? "GET";
-    for (let asked = 1; ; asked += 1) {
+    for (let tries = 1; ; tries += 1) {
       const answered = await fetch(this.urlOf(path, options.query), {
         method,
         headers: { ...this.headers(options.body), ...options.headers },
@@ -83,7 +83,7 @@ export class GatewayClient {
       });
       if (answered.ok) return answered;
       const text = await answered.text();
-      const wait = method === "GET" && asked < A_READ_IS_ASKED ? comeBackAfter(answered, asked) : null;
+      const wait = method === "GET" && tries < A_READ_IS_ASKED ? comeBackAfter(answered, tries) : null;
       if (wait === null || options.signal?.aborted === true) {
         const detail = detailOf(text);
         // A body with no `detail` (a proxy's page, nothing) is not a sentence of the gateway's: the status is named.
@@ -108,10 +108,10 @@ export class GatewayClient {
 }
 
 /** How long to wait before a busy gateway is asked again: what it said, doubled each time; null when it named no time. */
-function comeBackAfter(answered: Response, asked: number): number | null {
+function comeBackAfter(answered: Response, tries: number): number | null {
   const said = answered.headers.get("retry-after");
   if (answered.status !== 503 || said === null || !/^\d+$/.test(said)) return null;
-  return Math.min(Number(said) * 1_000 * 2 ** (asked - 1), LONGEST_WAIT_MS);
+  return Math.min(Number(said) * 1_000 * 2 ** (tries - 1), LONGEST_WAIT_MS);
 }
 
 function encoded(body: unknown): Uint8Array | string {
