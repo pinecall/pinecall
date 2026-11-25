@@ -147,6 +147,8 @@ describe("pinecall simulate --judge", () => {
   function sealed(score: Record<string, unknown>): void {
     answer("get", "/v1/agents/:slug/personas", { personas: [A_PERSONA] });
     answer("post", "/v1/evals/voice", { call: "call_s1", turns: 2, line: "a clean line" });
+    // The call's own row says whether it counted: one the gateway lists none of counts as before.
+    answer("get", "/v1/simulations", { runs: [] });
     const entries = [{ seq: 1, type: "call.score", data: { judges: [], judge_calls: 0, evals: 0, ...score } }];
     server.use(http.get(`${GATEWAY}/v1/calls/:call/events`, ({ request }) => (request.headers.get("accept")?.includes("text/event-stream") === true ? new HttpResponse(null, { status: 204 }) : HttpResponse.json({ entries, next: null }))));
   }
