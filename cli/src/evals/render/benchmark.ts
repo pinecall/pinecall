@@ -47,10 +47,14 @@ export function benchmark(made: Benchmarked): string[] {
   );
   lines.push(report.verdict.says);
   const out = report.calls.filter((call) => call.not_counted !== null);
-  for (const kind of ["vendor", "platform", "caller"] as const) {
-    const its = out.filter((call) => call.not_counted?.kind === kind);
-    if (its.length > 0) lines.push(`not counted, ${count(its.length, "call")} (${kind}): ${its[0]?.not_counted?.why ?? ""}`);
+  // One line a setup and a reason: seventeen calls two vendors failed for two reasons were once said
+  // under the first one's words (2026-11-26).
+  const reasons = new Map<string, number>();
+  for (const call of out) {
+    const said = `${call.setup} (${call.not_counted?.kind ?? ""}): ${call.not_counted?.why ?? ""}`;
+    reasons.set(said, (reasons.get(said) ?? 0) + 1);
   }
+  for (const [said, calls] of [...reasons].sort((one, other) => other[1] - one[1])) lines.push(`not counted, ${count(calls, "call")} of ${said}`);
   if (report.on_the_line > 0) lines.push(`${count(report.on_the_line, "call")} still on the line: in none of this`);
   if (made.folder !== null) lines.push(formatHint(`open ${made.folder}/index.html`, "report.json beside it holds every number"));
   return lines;
