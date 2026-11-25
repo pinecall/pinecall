@@ -166,6 +166,8 @@ export const AgentValuesSchema = z.strictObject({
   language: z.string().optional(),
   temperature: z.number().optional(),
   end_of_turn: z.enum(["stt", "livekit", "smart-turn"]).optional(),
+  /** A model that hears and speaks itself, `vendor/model`, in the place of the three: a spoken call's alone. */
+  realtime: z.string().optional(),
   /** Whether a caller speaking over the agent stops it by the model's word or by the transcript's words. */
   smart_interruptions: z.boolean().optional(),
 });

@@ -9,6 +9,7 @@ from runtime.billing import service as billing
 from runtime.billing.service import quotas
 from runtime.enums import Env
 from tests.conftest import Gateway, Tenant, holding, needs_the_services, used_of
+from tests.fakes import talker
 from tests.fakes.acme import UNKNOWN
 
 
@@ -246,6 +247,26 @@ async def listed_calls(gateway: Gateway, tenant: Tenant, calls: list[str]) -> li
             break
         await asyncio.sleep(0.05)
     return runs
+
+
+# 2026-11-25: a realtime model is a value of the run, as the pipeline's models are. It hears and speaks,
+# so a written call asked for on it is refused before it is placed; whose key it runs on is
+# `providers.talking_of`'s, tested with it.
+@needs_the_services
+async def test_a_realtime_model_asked_of_a_written_call_is_refused_before_a_call_opens(
+    gateway: Gateway, tenant: Tenant, agent: str
+) -> None:
+    talks = {"realtime": f"{talker.install()}/voice-3"}
+    body = {"agent": agent, "persona": "in-a-hurry", "voice": False, "turns": 1}
+    async with holding(gateway, tenant, agent):
+        compared = await gateway.http.post(
+            "/v1/simulations/compare", json={**body, "against": [talks]}, headers=tenant.person
+        )
+        assert compared.status_code == 400 and "runs a spoken call" in compared.text, compared.text
+        one = await gateway.http.post("/v1/simulations", json={**body, "against": talks}, headers=tenant.person)
+        assert one.status_code == 400 and "runs a spoken call" in one.text, one.text
+        assert await used_of(gateway, tenant, "concurrent_calls") == 0
+    assert await used_of(gateway, tenant, "simulations") == 0
 
 
 async def test_a_simulated_call_is_placed_again_as_it_was_on_a_new_call(

@@ -155,8 +155,9 @@ export function setupKey(against: AgentValues): string {
 
 const modelOf = (word: string): string => word.slice(word.indexOf("/") + 1);
 
-/** A column's name: the model it thinks with, else what else it changes, or that it is the agent as it stands. */
+/** A column's name: the model that talks or the one it thinks with, else what else it changes, or that it is the agent as it stands. */
 export function setupName(against: AgentValues): string {
+  if (against.realtime !== undefined) return modelOf(against.realtime);
   if (against.llm !== undefined) return modelOf(against.llm);
   const named = [against.stt, against.tts].flatMap((word) => (word === undefined ? [] : [modelOf(word)]));
   return named.length === 0 ? "The agent as it is" : named.join(" · ");
@@ -165,7 +166,7 @@ export function setupName(against: AgentValues): string {
 /** What a column changes beside its name, in a line: `hears nova-3 · speaks sonic-2`; empty when nothing. */
 export function setupUnder(against: AgentValues): string {
   const interruptions = against.smart_interruptions === undefined ? null : against.smart_interruptions ? "smart interruptions on" : "smart interruptions off";
-  const parts = [interruptions, against.llm === undefined ? null : against.stt === undefined ? null : `hears ${modelOf(against.stt)}`, against.llm === undefined ? null : against.tts === undefined ? null : `speaks ${modelOf(against.tts)}`, against.voice === undefined ? null : `voice ${against.voice}`];
+  const parts = [against.realtime === undefined ? null : "speech to speech", interruptions, against.llm === undefined ? null : against.stt === undefined ? null : `hears ${modelOf(against.stt)}`, against.llm === undefined ? null : against.tts === undefined ? null : `speaks ${modelOf(against.tts)}`, against.voice === undefined ? null : `voice ${against.voice}`];
   return parts.filter((part) => part !== null).join(" · ");
 }
 

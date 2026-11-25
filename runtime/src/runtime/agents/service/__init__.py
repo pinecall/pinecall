@@ -14,7 +14,7 @@ from runtime.agents.service.declaration import (
 from runtime.agents.service.hold_audio import forget_melodies
 from runtime.agents.service.kinds import BUILT_IN_STUDIO, is_studio_key, kind_of
 from runtime.agents.service.lexicon import put_lexicon
-from runtime.agents.service.resolution import name_model
+from runtime.agents.service.resolution import name_model, name_realtime
 from runtime.agents.service.sentences import read_sentences, sentences_in
 from runtime.agents.service.setting_names import NAME_IN_DECLARATION, refuse_what_the_class_sets
 from runtime.agents.service.setting_writes import SettingsPlan, keep_settings, plan_settings, put_settings, try_settings
@@ -60,6 +60,7 @@ __all__ = [
     "list_noted_versions",
     "list_settings",
     "name_model",
+    "name_realtime",
     "parse_settings",
     "plan_settings",
     "put_declaration",

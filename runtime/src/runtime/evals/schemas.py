@@ -146,6 +146,8 @@ class AgentValues(Schema):
     language: str | None = None
     temperature: float | None = None
     end_of_turn: EndOfTurn | None = None
+    # A model that hears and speaks itself, in the place of the three: a spoken call's alone.
+    realtime: str | None = None
     # Whether a caller speaking over the agent stops it by the model's word or by the ears' words.
     smart_interruptions: bool | None = None
 

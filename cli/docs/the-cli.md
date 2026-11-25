@@ -771,7 +771,7 @@ pinecall simulate --persona <name>… [--judge] [--turns n (15, 1 to 40)] [--voi
                   [--background-noise dB] [--ambience cafe] [--packet-loss 0.05] [--pause 0]
                   [--via webrtc|sip] [--delay ms] [--jitter ms] [--rate kbps]
                   [--goal "I want to move my Tuesday visit"] [--llm vendor/model] [--tts vendor] [--caller-voice id]
-                  [--against stt=…,llm=…,tts=…,voice=…,end_of_turn=…]… [--repeats n (1, 1 to 10)]
+                  [--against stt=…,llm=…,tts=…,voice=…,end_of_turn=… | realtime=…]… [--repeats n (1, 1 to 10)]
                   [--agent <name>] [--file agent.tsx]
 ```
 
@@ -855,7 +855,12 @@ feed's `caller_cost_usd`; a written run keeps who played its caller too (`runs` 
 `--against` runs **the agent** on other values for this run alone — `stt=`, `llm=`, `tts=`,
 `voice=`, `language=`, `temperature=`, `end_of_turn=` (`stt`, `livekit`, `smart-turn`), joined by commas: `--against llm=groq/openai/gpt-oss-120b,tts=deepgram`
 — as the console's test room does, whoever set what the agent runs on, the org or its class; a model or
-a voice named on another vendor leaves the first one's voice and options behind. The agent's saved settings do not change, and the call keeps what
+a voice named on another vendor leaves the first one's voice and options behind. `realtime=vendor/model` runs the
+call on a model that hears and speaks itself, in the place of the three (`--against realtime=google/gemini-3.8-live`):
+a spoken call's alone (`400` without `--voice`), on the org's own key for that vendor as `agent set --realtime` is
+(`409` on a key Pinecall lends, `503` where nobody holds one), both said before a call is placed. So a pipeline's
+models and the realtime ones are compared in one command, a `--against` each; a `llm=` named on an agent set on a
+realtime model takes that call off it. The agent's saved settings do not change, and the call keeps what
 it ran on. In the sandbox only, with a key that edits the pipeline (`403` otherwise); a knob the test
 room does not have is refused. The gateway plays the caller then, written or spoken, and this
 terminal follows the call's log. Said **twice or more, it is a comparison**: the same caller against

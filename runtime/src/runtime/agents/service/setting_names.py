@@ -54,7 +54,7 @@ SETTINGS: tuple[SettingNames, ...] = (
         (Stage.stt,),
         in_a_test=("stt", "end_of_turn"),
     ),
-    SettingNames("realtime", "realtime", ("realtime", "realtime_options")),
+    SettingNames("realtime", "realtime", ("realtime", "realtime_options"), in_a_test=("realtime",)),
     SettingNames("judge", "judge", ("judge", "judge_builds", "judge_options")),
     SettingNames("turn", "turn", ("turn",), (Stage.stt,)),
     SettingNames("stt_fallbacks", "stt_fallbacks", ("stt_fallbacks",), (Stage.stt,)),
@@ -101,8 +101,8 @@ JUDGE_FIELDS: tuple[str, ...] = next(one.set_by for one in SETTINGS if one.name 
 # A `words` key sets the opening's words, what is remembered and the knowledge; the rest is the pipeline's.
 WORDS_FIELDS: frozenset[str] = frozenset(name for one in SETTINGS if one.words for name in one.set_by)
 PIPELINE_ONLY: tuple[str, ...] = tuple(name for name in FIELDS if name not in WORDS_FIELDS)
-# What a test room may change for its own call: the voice, the models, the language they run in, and
-# whether the model that says who takes the floor has its say.
+# What a test room may change for its own call: the voice, the models, the realtime model that takes
+# their place, the language they run in, and whether the model that says who takes the floor has its say.
 TEST_FIELDS: frozenset[str] = frozenset(name for one in SETTINGS for name in one.in_a_test)
 
 

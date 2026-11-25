@@ -119,6 +119,8 @@ async def place_simulation(
     scope = actor.scope
     if wanted.by_phone and not wanted.spoken:
         raise ValidationError("a written call rings nobody: a caller reaches the agent by phone on a spoken call")
+    if comparison is None:
+        await check_talking(parts, scope, against, spoken=wanted.spoken)
     async with parts.sessions.begin() as session_:
         persona = await _get_persona(session_, scope, wanted)
         quotas = await billing.get_quotas(session_, scope.org, scope.env)
@@ -173,6 +175,24 @@ async def place_simulation(
 
 # The request as it was said, never what the persona filled in: a caller edited since is played as it
 # is now, on the line the call had.
+# A realtime model hears and speaks: it runs a spoken call, on the org's own key for its vendor. Both
+# are said before anything is placed, a comparison's once for all its calls: left to the call, each one
+# of them would open, find no model to run on and end in error.
+async def check_talking(parts: Harness, scope: Scope, against: Mapping[str, Any], *, spoken: bool) -> None:
+    """Refuse a realtime model asked of a written call, or one the org holds no key of its own for."""
+    named = against.get("realtime")
+    if named is None:
+        return
+    if not spoken:
+        raise ValidationError(
+            f"{named} hears and speaks, so it runs a spoken call: ask for the voice (--voice), "
+            "or name an llm for a written one"
+        )
+    async with parts.sessions.begin() as session_:
+        keys = await providers.keys_of(session_, parts.vault, scope)
+    providers.talking_of(agents.name_realtime(str(named)), keys)
+
+
 def as_placed(wanted: Wanted) -> JsonObject:
     """What a simulation is placed with beside its agent and caller, as its call's facts keep it."""
     played, scenario = wanted.played_by, wanted.scenario

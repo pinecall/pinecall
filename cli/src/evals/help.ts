@@ -37,7 +37,8 @@ phones this agent about, in the agent's own terms, and keeps its manner; --goal 
 for any persona, and nobody is briefed. The caller runs on the runtime's keys unless the org brought that vendor's; each run counts
 as one simulation, and what its caller cost is kept with the call. --against runs THE AGENT on
 other values for this run alone — stt=, llm=, tts=, voice=, language=, temperature=, joined by
-commas, as the console's test room does; said twice or more, every configuration is placed at
+commas, as the console's test room does, or realtime=vendor/model for a model that hears and speaks
+in the place of the three (a spoken call, on the org's own key for that vendor); said twice or more, every configuration is placed at
 once against the same caller and the table reads them best first: the judges, then the reply time,
 then the cost. In the sandbox only, with a key that edits the pipeline. --repeats rings the caller
 that many times under each configuration, 1 to 10, with or without --against: one call tells whether
@@ -54,6 +55,8 @@ Examples
   $ pinecall simulate --persona books-a-visit --judge --repeats 5
   $ pinecall simulate --persona books-a-visit --persona hurried --voice --judge --repeats 5 \
       --against llm=google/gemini-3.5-flash-lite --against llm=anthropic/claude-haiku-5-5
+  $ pinecall simulate --persona books-a-visit --voice --judge --repeats 5 \
+      --against llm=google/gemini-3.5-flash-lite --against realtime=google/gemini-3.8-live
 `,
   eval: `
 One finished call rebuilt from its log and answered by the runtime's six CODE checks — consent,

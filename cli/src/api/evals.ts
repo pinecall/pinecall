@@ -209,13 +209,15 @@ export function replayCall(gw: GatewayClient, call: string, policy: ReplayPolicy
 
 /**
  * The voice and models a run puts the agent on over its settings, as a test room asks them: each
- * stage as `vendor/model`, a voice of the voice vendor's, a language, a temperature; nothing named
+ * stage as `vendor/model`, a voice of the voice vendor's, a language, a temperature, or a realtime
+ * model that hears and speaks in the place of the three (a spoken call's alone); nothing named
  * is the agent's own. The sandbox's alone, with a key that edits the pipeline.
  */
 export interface AgentValues {
   stt?: string | undefined;
   llm?: string | undefined;
   tts?: string | undefined;
+  realtime?: string | undefined;
   voice?: string | undefined;
   language?: string | undefined;
   temperature?: number | undefined;

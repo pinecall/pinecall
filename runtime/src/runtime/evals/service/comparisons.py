@@ -17,7 +17,7 @@ from runtime.evals.repository import ComparisonRepository
 from runtime.evals.service.placing import place_as_planned, play_to_the_end
 from runtime.evals.service.plans import Pair, Plan, Refused, is_left, keep_plan, read_plan, say_who_asked
 from runtime.evals.service.simulated_calls import Scored, score_of
-from runtime.evals.service.simulations import Scenario, Wanted, as_placed, write_scenario
+from runtime.evals.service.simulations import Scenario, Wanted, as_placed, check_talking, write_scenario
 from runtime.evals.tasks import TooManyAtOnce
 from runtime.exceptions import NotFound, PinecallError, ValidationError
 from runtime.kit.crypto import random_id
@@ -127,6 +127,8 @@ async def start_comparison(
             f"a comparison of this org places {quotas.compared_at_most} calls at most: {len(personas)} callers "
             f"against {len(against)} configurations, {repeats} times each, is {asked}"
         )
+    for values in against:
+        await check_talking(parts, actor.scope, values, spoken=wanted.spoken)
     briefed = await _brief_each(parts, actor, wanted, list(personas))
     plan = Plan(
         comparison=random_id(COMPARISON_PREFIX, 6),

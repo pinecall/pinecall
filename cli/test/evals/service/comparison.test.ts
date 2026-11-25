@@ -53,3 +53,11 @@ describe("a comparison whose calls wait their turn", () => {
     expect(placed.map((sent) => "repeats" in (sent.body as object))).toEqual([false]);
   });
 });
+
+describe("the values --against takes", () => {
+  it("takes a realtime model as it takes the model to think with, and refuses a knob no test has", () => {
+    expect(comparison.parseAgainst("realtime=google/gemini-3.8-live")).toEqual({ realtime: "google/gemini-3.8-live" });
+    expect(comparison.parseAgainst("llm=acme/small,temperature=0.2")).toEqual({ llm: "acme/small", temperature: 0.2 });
+    expect(() => comparison.parseAgainst("record=false")).toThrow(UsageError);
+  });
+});

@@ -139,13 +139,17 @@ run alone, over the persona's own; each unsaid stays the persona's, and a `tts` 
 drops the persona's voice for one of that vendor's the agent does not have. A model, a vendor or a
 voice the deployment lacks is `400` before the answer, as when a persona is written.
 
-`against` `{stt?, llm?, tts?, voice?, language?, temperature?, end_of_turn?, smart_interruptions?}` runs **the agent** on another
+`against` `{stt?, llm?, tts?, voice?, language?, temperature?, end_of_turn?, smart_interruptions?, realtime?}` runs **the agent** on another
 voice or model for this call alone, over its settings and over what its class declares, as the console's test room does: each stage as
 `vendor/model`, a voice of the voice vendor's, a language, a temperature, who ends the caller's turn
 (`stt`, `livekit`, `smart-turn`), and whether a caller speaking over the agent stops it by the model that hears a floor-take
 in their voice or by the transcript's words (`smart_interruptions`); nothing named is the agent's own. The sandbox's alone (`403` in production), those knobs alone (`422` for any other), and a
 key that opens `pipeline` (`403` otherwise); a model the deployment lacks or nobody keyed is refused as
-the settings would refuse it. The call keeps what it ran on: the runs' rows carry it as `against`.
+the settings would refuse it. `realtime` names a model that hears and speaks itself, `vendor/model`, and the call
+runs on it in the place of the three, as on the agent's own `realtime` setting: a spoken call's alone (`400` for a
+written one), on the org's own key for its vendor (`409` on a lent key, `503` with none), each said before a call is
+placed; an `llm` named takes the call off the agent's own realtime model. The call keeps what it ran on: the runs'
+rows carry it as `against`.
 
 `POST /v1/simulations/compare` `{agent, persona, more_personas?, repeats?, voice?, turns?, interferer_db?,
 packet_loss?, ambience?, via?, delay_ms?, jitter_ms?, rate_kbps?, played_by?, against: [{…}, …]}` puts each caller — `persona`, then each of

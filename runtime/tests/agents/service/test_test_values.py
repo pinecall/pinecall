@@ -10,7 +10,7 @@ from runtime.agents.settings import AgentSettings, Lexicon, read_settings
 from runtime.enums import Env, Stage
 from runtime.exceptions import Forbidden, ValidationError
 from runtime.providers.stage import Model, Voice
-from tests.fakes import acme
+from tests.fakes import acme, talker
 from tests.fakes.acme import ACME
 
 DEFAULTS: dict[Stage, str] = {Stage.llm: ACME, Stage.stt: ACME, Stage.tts: ACME}
@@ -84,10 +84,12 @@ A_VALUE: dict[str, object] = {
     "voice": "lucia",
     "language": "fr",
     "smart_interruptions": False,
+    "realtime": f"{talker.TALKER}/voice-3",
 }
 
 
 def test_every_field_a_room_may_set_changes_its_call_over_a_class_that_fixes_it() -> None:
+    talker.install()
     assert set(A_VALUE) == TEST_FIELDS
     running = Declaration(
         slug="kala",
@@ -99,6 +101,21 @@ def test_every_field_a_room_may_set_changes_its_call_over_a_class_that_fixes_it(
     )
     for name, value in A_VALUE.items():
         assert _tried(running, **{name: value}) != running, name
+
+
+# 2026-11-25: a comparison took the pipeline's models in one command and a realtime model in two more,
+# the agent set on it and run apart.
+def test_a_rooms_realtime_model_runs_its_call_and_a_model_to_think_with_takes_it_off_the_agents() -> None:
+    vendor = talker.install()
+    running = Declaration(slug="kala", llm=Model(ACME, "acme-1"))
+    assert _tried(running, realtime=f"{vendor}/voice-3").realtime == Model(vendor, "voice-3")
+    assert _tried(running, realtime=f"{vendor}/voice-3").llm == Model(ACME, "acme-1")
+    talks = Declaration(slug="kala", llm=Model(ACME, "acme-1"), realtime=Model(vendor, "voice-1"))
+    assert _tried(talks, voice="lucia").realtime == Model(vendor, "voice-1")
+    assert _tried(talks, llm=f"{ACME}/acme-2").realtime is None
+    assert _tried(talks, realtime=f"{vendor}/voice-3").realtime == Model(vendor, "voice-3")
+    with pytest.raises(ValidationError, match="no model that hears and speaks itself"):
+        _tried(running, realtime=f"{ACME}/acme-1")
 
 
 def test_no_values_leave_the_agent_as_it_runs() -> None:

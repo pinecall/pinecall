@@ -6,6 +6,11 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **`simulate --against realtime=vendor/model` runs the agent on a realtime model for that run.** A model that hears
+  and speaks itself is a value of the run like `llm=`: a pipeline's models and the realtime ones are compared in one
+  command, a `--against` each, and the table names the row `talks google/gemini-3.8-live`. Until now a realtime model
+  was set on the agent first (`agent set --realtime`) and its callers run apart. The MCP tool `simulate` takes
+  `realtime` in `against` the same way.
 - **`simulate` follows a comparison whose gateway was started again.** The table is read until none of its rows is on
   the line: a call another gateway placed again is waited for like the ones this command placed.
 - **`pinecall simulate` takes several callers and says what a completed call cost.** `--persona` said again is another

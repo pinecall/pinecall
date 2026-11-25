@@ -75,6 +75,10 @@ def resolve(
 # A test room's values are its call's own, over what the class declares as over what the org set: the
 # same caller meets the agent on another model whoever fixed the one it runs on. Laid under the class,
 # as they were until 2026-11-24, a comparison of four models ran four calls on the class's one.
+# A realtime model named runs the spoken call in the pipeline's place, as the agent's own would; a
+# model to think with named takes the call off the agent's realtime one, so a table that says
+# "thinks X" is of calls X thought. Until 2026-11-25 a realtime model was no value of a test: it was
+# set on the agent and run apart, two commands where the pipeline's models took one.
 def lay_test_values(resolved: Declaration, values: AgentSettings, *, defaults: Mapping[Stage, str]) -> Declaration:
     """The agent as a call runs it with a test room's values over it, knob by knob, for that call alone."""
     thinking = _swap_model(resolved.llm, values.llm, Stage.llm, defaults)
@@ -87,9 +91,11 @@ def lay_test_values(resolved: Declaration, values: AgentSettings, *, defaults: M
     ears = _swap_model(resolved.stt, values.stt, Stage.stt, defaults)
     if values.end_of_turn is not None:
         ears = dataclasses.replace(ears or Model(vendor=defaults[Stage.stt], model=""), end_of_turn=values.end_of_turn)
+    talking = None if values.llm is not None else resolved.realtime
     return dataclasses.replace(
         resolved,
         llm=thinking,
+        realtime=talking if values.realtime is None else _talking(values),
         stt=ears,
         voice=_swap_voice(resolved.voice, values, defaults),
         language=resolved.language if values.language is None else values.language,
@@ -114,6 +120,12 @@ def name_model(text: str | None, stage: Stage, *, in_use: str) -> Model | None:
             raise ValidationError(f"{named} alone names no model: name it, `--llm {named}/<model>`")
         return Model(vendor=providers.vendor_doing(named, stage), model="")
     return Model(vendor=providers.vendor_doing(in_use, stage), model=word)
+
+
+def name_realtime(text: str, options: Mapping[str, Any] | None = None) -> Model:
+    """`vendor/model`, or a vendor alone for its plugin's own, as the realtime model a voice call runs on."""
+    vendor, _, model = text.strip().partition(SEPARATOR)
+    return check_realtime(Model(vendor=vendor.lower(), model=model, options=dict(options or {})))
 
 
 def check_realtime(named: Model) -> Model:
@@ -239,5 +251,4 @@ def _talking(settings: AgentSettings) -> Model | None:
                 "as `pinecall providers` lists them; its options go with it"
             )
         return None
-    vendor, _, model = settings.realtime.strip().partition(SEPARATOR)
-    return check_realtime(Model(vendor=vendor.lower(), model=model, options=dict(settings.realtime_options or {})))
+    return name_realtime(settings.realtime, settings.realtime_options)

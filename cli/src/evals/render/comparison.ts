@@ -12,9 +12,9 @@ function seconds(value: number | null): string {
   return value >= 1 ? `${value.toFixed(2)} s` : `${String(Math.round(value * 1000))} ms`;
 }
 
-/** The agent's values in a few words: `thinks groq/openai/gpt-oss-120b · speaks deepgram`; its own settings when none. */
+/** The agent's values in a few words: `thinks groq/openai/gpt-oss-120b · speaks deepgram`, `talks google/gemini-3.8-live` for a realtime model; its own settings when none. */
 export function against(values: AgentValues): string {
-  const pairs: [string, string | number | undefined][] = [["hears", values.stt], ["thinks", values.llm], ["speaks", values.tts], ["voice", values.voice], ["language", values.language], ["temperature", values.temperature], ["end of turn", values.end_of_turn]];
+  const pairs: [string, string | number | undefined][] = [["talks", values.realtime], ["hears", values.stt], ["thinks", values.llm], ["speaks", values.tts], ["voice", values.voice], ["language", values.language], ["temperature", values.temperature], ["end of turn", values.end_of_turn]];
   const said = pairs.flatMap(([name, value]) => (value === undefined ? [] : [`${name} ${String(value)}`]));
   return said.length === 0 ? "the agent's own settings" : said.join(" · ");
 }

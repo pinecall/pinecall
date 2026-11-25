@@ -19,6 +19,18 @@ const A_ROW: ComparisonRow = {
   why: null,
 };
 
+describe("what a row of a comparison ran on", () => {
+  it("names a realtime model as the one that talks, beside the rows of the models that think", () => {
+    const rows = [
+      { ...A_ROW, call: "call_2", against: { realtime: "google/gemini-3.8-live" }, end_reason: "caller_hung_up" },
+      { ...A_ROW, call: "call_3", against: { llm: "google/gemini-3.5-flash-lite" }, end_reason: "caller_hung_up" },
+    ];
+    const lines = comparison({ comparison: "cmp_1", refused: [], table: { comparison: "cmp_1", agent: "dentist", persona: "booking-ar", personas: ["booking-ar"], voice: true, rows } });
+    expect(lines.some((line) => line.includes("talks google/gemini-3.8-live") && line.includes("call_2"))).toBe(true);
+    expect(lines.some((line) => line.includes("thinks google/gemini-3.5-flash-lite") && line.includes("call_3"))).toBe(true);
+  });
+});
+
 describe("the judges column of a comparison", () => {
   it("says a call ended in error even when a judge held on what little it had", () => {
     expect(verdictOf(A_ROW)).toBe("ended in error");

@@ -12,12 +12,13 @@ import { lineOf, playedBy, ranOn, scoreOf, type Simulated, type SimulateInput, t
 import { mediansOf } from "./suite.js";
 
 /** The knobs `--against` takes, the test room's: each stage as vendor/model, a voice, a language, a temperature, who ends the turn. */
-export const AGAINST_KNOBS = ["stt", "llm", "tts", "voice", "language", "temperature", "end_of_turn"] as const;
+export const AGAINST_KNOBS = ["stt", "llm", "tts", "realtime", "voice", "language", "temperature", "end_of_turn"] as const;
 
 export const AgentValuesInput = z.strictObject({
   stt: z.string().min(1).optional(),
   llm: z.string().min(1).optional(),
   tts: z.string().min(1).optional(),
+  realtime: z.string().min(1).optional(),
   voice: z.string().min(1).optional(),
   language: z.string().min(1).optional(),
   temperature: z.number().optional(),
@@ -25,7 +26,7 @@ export const AgentValuesInput = z.strictObject({
 });
 export type AgentValuesInput = z.infer<typeof AgentValuesInput>;
 
-const A_PAIR = `--against takes knob=value pairs joined by commas — ${AGAINST_KNOBS.join(", ")} — as in llm=groq/openai/gpt-oss-120b,tts=deepgram`;
+const A_PAIR = `--against takes knob=value pairs joined by commas — ${AGAINST_KNOBS.join(", ")} — as in llm=groq/openai/gpt-oss-120b,tts=deepgram, or realtime=google/gemini-3.8-live`;
 // How long the table is asked for after every call ended: the judges answer after the hang-up.
 const JUDGED_WITHIN_MS = 90_000;
 const ASKED_EVERY_MS = 1500;

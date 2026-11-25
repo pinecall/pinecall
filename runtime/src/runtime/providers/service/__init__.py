@@ -6,7 +6,13 @@ from runtime.providers.service.dictation import mint_for_a_page
 from runtime.providers.service.health import VendorHealth
 from runtime.providers.service.keyring import Keyring, keys_of, parse_lending, running_on
 from runtime.providers.service.languages import Suited, choose_for, list_suited
-from runtime.providers.service.pipeline import build_pipeline, refuse_what_cannot_run, stage_on_its_key, thinking_of
+from runtime.providers.service.pipeline import (
+    build_pipeline,
+    refuse_what_cannot_run,
+    stage_on_its_key,
+    talking_of,
+    thinking_of,
+)
 from runtime.providers.service.plugins import (
     hears_and_speaks,
     is_installed,
@@ -89,6 +95,7 @@ __all__ = [
     "speak",
     "stage_named_in",
     "stage_on_its_key",
+    "talking_of",
     "telemetry_of",
     "thinking_of",
     "thinking_outside_a_call",

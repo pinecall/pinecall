@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **A simulation's values name a realtime model.** `against: {realtime: "vendor/model"}` on `POST /v1/simulations`
+  and `/v1/simulations/compare`, and in a test room's values, runs that call on a model that hears and speaks itself,
+  as the agent's own `realtime` setting would: a comparison places the pipeline's models and the realtime ones
+  together. Asked of a written call it is refused (`400`), and on a key that is not the org's own (`409`, `503`),
+  before anything is placed. A model to think with named for a call takes it off the agent's realtime one.
 - **A comparison its gateway left is taken up by another.** A comparison was coroutines of the gateway that took
   its request: a release ended it and said so to nobody, its waiting calls never placed and the command following it
   never returning. Its plan now keeps what each call is placed with, each caller's brief and the key that asked; the
