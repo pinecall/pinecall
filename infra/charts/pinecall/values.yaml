@@ -108,6 +108,16 @@ gateway:
   # request never). Required.
   podNetwork: ""
 
+# The callers of spoken simulations (templates/callers.yaml): pods beside the gateways, each several
+# processes that claim callers off their rows and play them, three at once a process unless said. With
+# one pod or more the gateways only place callers (PINECALL_CALLERS_SERVICE); with none, each gateway
+# plays what it can on time itself. A pod of two processes plays six callers at once and asks its node
+# for 1.2 cores; every process may hold `perProcess` + 2 connections of Postgres.
+callers:
+  replicas: 1
+  processes: 2
+  perProcess: 3
+
 # staging or production: the cluster this release is (modules/edge labels its addresses by it).
 cluster: ""
 

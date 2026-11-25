@@ -11,6 +11,7 @@ from runtime.calls import folds
 from runtime.calls import service as calls
 from runtime.evals.parts import Harness
 from runtime.evals.repository import ComparisonRepository
+from runtime.evals.service import caller_jobs
 from runtime.evals.service.plans import (
     PICKED_UP_AFTER_S,
     STILL_PLACING_EVERY_S,
@@ -138,9 +139,39 @@ async def play_to_the_end(
         await asyncio.sleep(STILL_PLACING_EVERY_S)
         plan.heard_at = parts.store.clock()
         await when_free(say)
+        await _place_again_what_a_process_left(parts, plan, place, say)
+    # A call may be lost as the last one ends: looked for once more before the comparison is said done.
+    while await _place_again_what_a_process_left(parts, plan, place, say):
+        while await when_free(lambda: _is_any_on_the_line(parts, plan)):
+            await asyncio.sleep(STILL_PLACING_EVERY_S)
+            plan.heard_at = parts.store.clock()
+            await when_free(say)
     plan.done = True
     plan.heard_at = parts.store.clock()
     await when_free(say)
+
+
+# A spoken call's caller is played by a process that may stop under it (a release that outlasts its
+# drain, a crash): the call is over then, its caller not played whole, and its job's row says so
+# (`caller_jobs`). It stands for nothing in the table, as a call lost with its gateway does not, and
+# is placed again.
+async def _place_again_what_a_process_left(
+    parts: Harness, plan: Plan, place: Callable[[Pair], Awaitable[object]], say: Callable[[], Awaitable[None]]
+) -> bool:
+    async def read() -> list[tuple[str, Pair]]:
+        async with parts.sessions.begin() as session_:
+            lost = await caller_jobs.list_lost(session_, plan.comparison)
+        return [(job.call, Pair(*caller_jobs.pair_of(job))) for job in lost if job.call not in plan.replaced]
+
+    lost = await when_free(read)
+    if not lost:
+        return False
+    plan.replaced += [call for call, _ in lost]
+    plan.waiting = len(lost)
+    plan.heard_at = parts.store.clock()
+    await when_free(say)
+    await place_waiting(plan, [pair for _, pair in lost], place, say, clock=parts.store.clock)
+    return True
 
 
 # ── taken up ──
@@ -167,20 +198,31 @@ async def take_up_left(parts: Harness) -> None:
         parts.simulations.place_later(take_up(parts, plan, last_said))
 
 
-# A call that had not ended when its gateway last said the comparison was played went with that
-# gateway, its caller a task of the process: the one that never began is ended, saying why, the one
-# on the line has its room closed, which ends it and frees its seat, and each is placed again. A call
-# that ended in the seconds after is placed again too: that it was played whole is not known.
+# A call whose caller was a task of the gateway that left (a written call, and every call a gateway
+# of the release before 2026-11-25 placed) went with it when it had not ended as that gateway last
+# said the comparison was played: the one that never began is ended, saying why, the one on the line
+# has its room closed, which ends it and frees its seat, and each is placed again. A call that ended in
+# the seconds after is placed again too: that it was played whole is not known. A spoken call's caller
+# is a job of a process, which the gateway leaving changes nothing for: the call stands for its place
+# in the table whatever it is doing, unless its own process left it, which its row says.
 async def take_up(parts: Harness, plan: Plan, last_said: float) -> None:
     """Go on with a comparison another gateway left: place again what was lost with it, then the rest."""
     scope = plan.scope
     async with parts.sessions.begin() as session_:
         asked = calls.PersonaRunFilters(comparison=plan.comparison, holders=None)
         found = await calls.list_persona_runs(session_, scope, asked, limit=CALLS_READ_AT_MOST)
+        jobs = await caller_jobs.list_of_calls(session_, [run.facts.call for run in found.runs])
     played: list[Pair] = []
     for run in found.runs:
         facts = folds.facts_of(run.facts)
         if facts.call in plan.replaced:
+            continue
+        job = jobs.get(facts.call)
+        if job is not None:
+            if job.lost:
+                plan.replaced.append(facts.call)
+            else:
+                played.append(Pair(facts.persona or "", dict(run.facts.against or {})))
             continue
         if facts.ended_at is not None and facts.ended_at <= last_said:
             played.append(Pair(facts.persona or "", dict(run.facts.against or {})))
@@ -215,8 +257,14 @@ async def _end_lost(parts: Harness, plan: Plan, call: str) -> None:
         await parts.apps.end_never_served(call, plan.agent, LOST_WITH_ITS_GATEWAY)
 
 
+# A spoken call is a run of the table once a worker opened it, and its caller may wait before that: for
+# a process to claim it, then for a seat of the fleet, three quarters of an hour at most. Its job's row
+# says so from the moment it is placed. Until 2026-11-25 a comparison whose calls all waited read as
+# having none on the line, and was said done with calls still to be played.
 async def _is_any_on_the_line(parts: Harness, plan: Plan) -> bool:
     async with parts.sessions.begin() as session_:
+        if await caller_jobs.count_open_of(session_, plan.comparison) > 0:
+            return True
         asked = calls.PersonaRunFilters(comparison=plan.comparison, holders=None)
         found = await calls.list_persona_runs(session_, plan.scope, asked, limit=CALLS_READ_AT_MOST)
     return any(run.facts.call not in plan.replaced and folds.facts_of(run.facts).ended_at is None for run in found.runs)

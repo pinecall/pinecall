@@ -15,7 +15,7 @@ writes an agent, nothing there issues a key.
 | `fleet` · `orgs move` · `kill` | a running gateway, over `/v1/ops/*` with `PINECALL_OPS_KEY` ([protocol/operator-api.md](protocol/operator-api.md)): the roster, its cordons and which app holds which agent live in the gateways' memory |
 | `load` | a running gateway's sandbox, over the worker's own call endpoints with the sandbox fleet's key (`PINECALL_WORKER_KEY`) |
 
-## `gateway` · `worker start` · `worker overflow` · `runner start`
+## `gateway` · `worker start` · `worker overflow` · `callers start` · `runner start`
 
 `gateway` serves both environments: in a pod on the address `PINECALL_GATEWAY_LISTEN` names, behind the
 cluster's load balancer; elsewhere on the loopback address `PINECALL_GATEWAY_URL` names, and a URL
@@ -24,7 +24,14 @@ every interface, so the LiveKit container's webhooks reach it, and the console a
 8080 to the whole network: the machine's firewall is the fence; `setup --domain` takes it out again,
 and a server's gateway stays on loopback behind Caddy). `worker start` is a worker of the fleet
 `PINECALL_FLEET` names, until told to stop or cordoned; `worker overflow` the one that answers when
-the fleet is full. `runner start` keeps the hosted apps of the environment its `PINECALL_RUNNER_KEY`
+the fleet is full. `callers start` is the service that plays the callers of spoken simulations
+(`scaling.md`, "The simulated callers are a plane of their own"): it starts
+`PINECALL_CALLER_PROCESSES` processes (unset, half the cores it is given), each of which is
+`callers play`, claims callers off their rows and plays three at once; one that ends on its own is
+started again, and told to stop the service waits for every process to end the calls it plays,
+eleven minutes at most. It reads the database, Redis, the vault and LiveKit as a gateway does and
+answers nothing; the gateways beside it are told it exists with `PINECALL_CALLERS_SERVICE`, and
+play no caller themselves. `runner start` keeps the hosted apps of the environment its `PINECALL_RUNNER_KEY`
 opens running. On the hosting cluster it runs one gVisor pod each and is itself a pod there
 (`charts/hosting`), outside the runtime's own cluster ([../infra/README.md](../../infra/README.md),
 "Hosting"); with `PINECALL_RUNNER_ENGINE=containers`, on a server that runs other people's code,
@@ -146,6 +153,7 @@ worker once the calls it holds have ended.
 | what | how |
 |---|---|
 | the seats of each environment | `PINECALL_SANDBOX_MAX_JOBS` and `PINECALL_PRODUCTION_MAX_JOBS`, each its worker's; `PINECALL_MAX_JOBS` is what either reads when it has no line of its own. A spoken call was measured at about a third of a core, the platform's part included |
+| the simulations at once | `PINECALL_CALLER_PROCESSES`, the processes of the `callers` service, each playing three simulated callers at once (`PINECALL_CALLERS_PER_PROCESS`); unset, half the machine's cores. A spoken simulation is a seat of the sandbox's worker and a third of one of these: sixteen at once are six processes and sixteen seats and more, about 6.4 cores between them (`scaling.md`, "The simulated callers are a plane of their own") |
 | the image | `--image <ref>`: every process of the runtime runs that image of a registry, the one a cluster of the same commit runs, pulled and never built here (the machine signs in to the registry itself). `setup` alone keeps it; `--image here` builds on the machine again |
 | a server made ready before its name moves | `--unpointed`: the name is not checked and https is not waited for. Once the name points here, `local up` has Caddy ask for the certificate at once and waits for it: left alone, a Caddy that was refused while the name was elsewhere waits longer after each refusal, ten minutes between tries after half an hour |
 | a database from another machine | `local restore <dump>`, below |
@@ -161,7 +169,9 @@ filesystem; Caddy alone keeps one capability, to take ports 80 and 443. What the
 memory (`/tmp`), a volume, and the recordings' folder; a one-shot service, `own`, run before the
 others with no network and no capability but to change an owner, makes that folder and Caddy's
 certificates theirs. Each is handed what it reads: the gateways the env file whole, with the
-database as `pinecall_app`, a role that reads and writes every table's rows and changes none; a
+database as `pinecall_app`, a role that reads and writes every table's rows and changes none; the
+simulated callers that database as the same role, Redis, the vault's key, the token key and LiveKit's
+pair, and no operator's key and no fleet's; a
 worker and an overflow their LiveKit and its pair, their fleet's key and where recordings go, and no
 database, no Redis, no vault key, no operator's key and no signing key; the retention the database as
 its owner, the vault and the recordings. `setup` draws, once, the role's password

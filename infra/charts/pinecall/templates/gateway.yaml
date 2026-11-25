@@ -34,6 +34,10 @@ spec:
               value: {{ .Values.gateway.trustedProxies | quote }}
             - name: PINECALL_METRICS_FROM
               value: {{ printf "127.0.0.1,::1,%s" (required "gateway.podNetwork" .Values.gateway.podNetwork) | quote }}
+            {{- if gt (int .Values.callers.replicas) 0 }}
+            - name: PINECALL_CALLERS_SERVICE
+              value: "true"
+            {{- end }}
             {{- with .Values.billingUrl }}
             - name: PINECALL_BILLING_URL
               value: {{ . | quote }}

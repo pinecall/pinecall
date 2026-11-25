@@ -6,8 +6,9 @@ from runtime.accounts import service as accounts
 from runtime.actor import Actor
 from runtime.billing import service as billing
 from runtime.evals.parts import Harness
+from runtime.evals.service import caller_jobs
 from runtime.evals.service.leg import describe
-from runtime.evals.service.simulated_calls import Simulation, play_spoken
+from runtime.evals.service.simulated_calls import Simulation, ending_what_never_began, holder_of, play_spoken
 from runtime.evals.service.simulations import (
     act_as_asked,
     admit_simulation,
@@ -68,12 +69,16 @@ async def place_voice_call(parts: Harness, actor: Actor, asked: VoiceCall) -> Vo
             await find_persona(session_, scope, asked.agent, persona.name)
         judging.check_persona_models(await providers.get_catalog(session_), persona.llm, persona.tts, persona.voice)
         quotas = await billing.get_quotas(session_, scope.org, scope.env)
+        placed_elsewhere = await caller_jobs.count_placed(session_, scope)
         await refuse_an_opened_call(session_, asked.call)
     # A ring with nobody to answer it would wait forty seconds for an agent that never joins.
     parts.apps.get(scope, asked.agent)
     acts = act_as_asked(persona.behavior, asked.interferer_db, asked.packet_loss, asked.ambience, asked.pause_s)
     network = LinkShape(acts.packet_loss, asked.delay_ms, asked.jitter_ms, asked.rate_kbps)
-    async with parts.simulations.hold_place(asked.call, scope, quotas.simulating_at_most):
+    # Held to its end by the request that asked for it, so played by this gateway: the one spoken caller
+    # that is no job of a process, as a golden said out loud is none.
+    at_most = quotas.simulating_at_most
+    async with parts.simulations.hold_place(asked.call, scope, at_most, beside=placed_elsewhere):
         async with parts.sessions.begin() as session_:
             await admit_simulation(session_, parts, scope, asked.agent, persona, spoken=True)
             rings = await get_number_to_ring(session_, parts, scope, asked.agent) if asked.by_phone else None
@@ -89,7 +94,9 @@ async def place_voice_call(parts: Harness, actor: Actor, asked: VoiceCall) -> Vo
             state=dict(asked.state),
             network=network,
             rings=rings,
+            held_by=holder_of(parts, scope, asked.agent),
         )
-        played = await play_spoken(parts, simulation)
+        async with ending_what_never_began(parts, simulation):
+            played = await play_spoken(parts.playing, simulation)
     line = describe(acts, network, by_phone=asked.by_phone)
     return VoicePlayed(asked.call, played.turns, line, played.spending.usd, played.spending.is_over)

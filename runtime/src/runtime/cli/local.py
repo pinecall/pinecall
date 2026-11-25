@@ -116,7 +116,9 @@ async def local_restore(
 @verb
 async def local_logs(
     ctx: typer.Context,
-    service: Annotated[str | None, typer.Argument(help="gateway, worker-sandbox, worker-production, caddy…")] = None,
+    service: Annotated[
+        str | None, typer.Argument(help="gateway, callers, worker-sandbox, worker-production, caddy…")
+    ] = None,
 ) -> int:
     """Follow a server's logs, every service's or one's; a laptop's are in the terminal `setup` runs in."""
     where = _where(ctx)

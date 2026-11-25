@@ -1,4 +1,4 @@
-"""The processes: the gateway, a worker of the fleet, the fleet's overflow, the runner of hosted apps."""
+"""The processes: the gateway, a worker of the fleet, its overflow, the simulated callers, the runner of hosted apps."""
 
 from types import FrameType
 from typing import override
@@ -7,7 +7,7 @@ import typer
 import uvicorn
 from livekit.agents.utils import http_context
 
-from runtime import runner, worker
+from runtime import callers, runner, worker
 from runtime.app import announce_closing, app
 from runtime.cli.command import OK, context_of, verb
 from runtime.providers.service import plugins
@@ -19,6 +19,7 @@ KEEP_ALIVE_S = 620
 
 worker_app = typer.Typer(help="a worker of the fleet PINECALL_FLEET names", no_args_is_help=True)
 runner_app = typer.Typer(help="the runner of the env PINECALL_RUNNER_KEY opens", no_args_is_help=True)
+callers_app = typer.Typer(help="the processes that play the callers of spoken simulations", no_args_is_help=True)
 
 
 # A stream never ends on its own: told nothing, a stop waits out uvicorn's grace and cuts it.
@@ -77,3 +78,17 @@ async def worker_overflow(ctx: typer.Context) -> int:
 async def runner_start(ctx: typer.Context) -> int:
     """Keep the env's hosted apps running, until told to stop."""
     return await runner.run_runner(context_of(ctx).settings)
+
+
+@callers_app.command("start")
+@verb
+async def callers_start(ctx: typer.Context) -> int:
+    """Run the callers service: its processes, each playing the simulated callers it claims, until told to stop."""
+    return await callers.run_callers_service(context_of(ctx).settings)
+
+
+@callers_app.command("play")
+@verb
+async def callers_play(ctx: typer.Context) -> int:
+    """One process of the callers service: what `callers start` runs several of."""
+    return await callers.run_callers(context_of(ctx).settings)

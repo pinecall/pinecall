@@ -1,4 +1,4 @@
-"""The harness's parts: one of each thing a test call reaches, built once and handed to evals' use cases."""
+"""The harness's parts: one of each thing a test call reaches, and the ones of them a caller is played with."""
 
 from dataclasses import dataclass
 
@@ -16,6 +16,26 @@ from runtime.live import service as live
 from runtime.livekit import Servers
 from runtime.platform import service as platform
 from runtime.telephony import service as telephony
+
+
+# A simulated caller is played by whichever process claimed it: a gateway, or a callers process beside
+# the gateways, which serves no agent and holds no socket. What playing one needs is this and no more:
+# the database and the vault for the caller's own keys, the log to hear the agent on, the fleet to
+# take a seat of and ring, LiveKit and what signs the caller's way into its room.
+@dataclass(frozen=True, slots=True)
+class CallerParts:
+    """What plays a simulated caller on a line: the process's connections, the logs, the fleet, a room's token."""
+
+    settings: Settings
+    vault: Vault
+    servers: Servers
+    names: telephony.SipNames
+    sessions: async_sessionmaker[AsyncSession]
+    store: Store
+    logs: Logs
+    signer: live.Signer
+    offering: fleet.Offering
+    roster: fleet.Roster
 
 
 # A test call is placed as a real one is, by the gateway playing the caller: it reaches the logs, the
@@ -48,3 +68,19 @@ class Harness:
     simulations: Simulations
     # A caller's line is a model call: an org asks for so many a minute and no more.
     caller_lines: platform.AttemptThrottle
+
+    @property
+    def playing(self) -> CallerParts:
+        """The parts of these a caller is played with, as a callers process holds them."""
+        return CallerParts(
+            settings=self.settings,
+            vault=self.vault,
+            servers=self.servers,
+            names=self.names,
+            sessions=self.sessions,
+            store=self.store,
+            logs=self.logs,
+            signer=self.signer,
+            offering=self.offering,
+            roster=self.roster,
+        )

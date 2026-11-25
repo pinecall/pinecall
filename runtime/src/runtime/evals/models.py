@@ -1,9 +1,9 @@
-"""The evals tables: eval_runs, run_leases, comparisons, judge_labels."""
+"""The evals tables: eval_runs, run_leases, comparisons, caller_jobs, judge_labels."""
 
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import TIMESTAMP, Boolean, Float, ForeignKey, Index, Text
+from sqlalchemy import TIMESTAMP, Boolean, Float, ForeignKey, Index, Integer, Text, false
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -69,6 +69,45 @@ class Comparison(Model):
     agent: Mapped[str] = mapped_column(Text, nullable=False)
     started_at: Mapped[float] = mapped_column(Float, nullable=False)
     document: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+
+
+# A spoken simulation's caller is played by whichever process claims its row: the gateway that placed
+# it, or a callers process beside the gateways. Until 2026-11-25 it was a coroutine of the gateway that
+# took the request: nineteen of them on that one loop were late with their frames, and a release ended
+# them all. The row is the caller from the moment its call has a place on its org's line until an hour
+# after it ended; what an org wrote of it (who calls, about what) is its call's own, in `call_facts`.
+class CallerJob(Model):
+    """A simulated caller to play on a spoken call: placed by a gateway, claimed and played by one process."""
+
+    __tablename__ = "caller_jobs"
+    __table_args__ = (Index("caller_jobs_by_scope", "org", "env"), Index("caller_jobs_by_age", "placed_at"))
+    __kept__ = Kept(
+        call="call",
+        agent="agent",
+        not_exported="a caller's turn at a process, gone an hour after its call ended: nothing its call does not keep",
+    )
+
+    call: Mapped[str] = mapped_column(Text, primary_key=True)
+    org: Mapped[str] = mapped_column(ForeignKey("orgs.id", ondelete="CASCADE"), nullable=False)
+    env: Mapped[Env] = mapped_column(StringEnum(Env), nullable=False)
+    agent: Mapped[str] = mapped_column(Text, nullable=False)
+    comparison: Mapped[str | None] = mapped_column(Text)
+    # The simulation as it was placed (`evals.service.caller_jobs`); NULL while its call is being
+    # placed, when the row is the call's place on its org's line and nothing a process may claim.
+    document: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    placed_at: Mapped[float] = mapped_column(Float, nullable=False)
+    # The process that plays it, and when it last said so: one that stopped saying so left the call.
+    claimed_by: Mapped[str | None] = mapped_column(Text)
+    heard_at: Mapped[float | None] = mapped_column(Float)
+    # How many processes took it: one let go before its call began is played whole by another, once.
+    played: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    # Why its caller could not be played, said by its process before the call began: a gateway, which
+    # has the live side, ends the call saying it.
+    broke: Mapped[str | None] = mapped_column(Text)
+    # When the job was over; and whether the call was left on the line by a process that stopped, which
+    # a comparison places again.
+    ended_at: Mapped[float | None] = mapped_column(Float)
+    lost: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
 
 
 class JudgeLabel(Model):

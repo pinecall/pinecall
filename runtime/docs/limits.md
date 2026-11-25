@@ -58,13 +58,18 @@ in both environments.
   reaches the limit stops where it is. A simulated call never counts minutes, and neither does a call an eval run
   opened. Besides the month's count, **an org has a most of simulated calls on the line at
   once in each environment**, ten unless it was given another (`simulations_at_once`, below), on every
-  gateway of the platform together: a simulation takes a
-  seat of the fleet beside the real callers and a share of the gateway that plays its caller — ten
-  are ~2.5 vCPU of a worker machine (`scaling.md`), nothing for a scaled worker, and the fleet's
-  seats, not this line, are what a burst waits on: a simulation with no seat is refused at once.
+  gateway of the platform together: a spoken simulation's place is a row (`caller_jobs`), counted and
+  taken in one step under the org's lock, held until its caller's job is over; a written one's is the
+  count of the gateway that plays it, said to the others each second. A spoken simulation takes a
+  seat of the fleet beside the real callers and a third of a callers process — ten are ~2.2 vCPU of a
+  worker machine and ~1.8 of the callers' (`scaling.md`, "The simulated callers are a plane of their
+  own"), and the fleet's seats, not this line, are what a burst waits on: a spoken simulation with no
+  seat waits for one in its fleet's line.
   The one past it is refused `429` with `Retry-After` (`the org has 10 simulated calls on the line in
   sandbox, the most at once: wait for one to end`), counted from the moment a simulation is
-  placed until its caller hangs up; the console's Simulations starts what it can and says so. A
+  placed until its caller hangs up; the console's Simulations starts what it can and says so.
+  `on_the_line` is read from those rows and counts, so it is the same on every gateway and goes back
+  to nothing when the calls do. A
   comparison is the one thing that waits instead: its calls past the most at once are placed by the
   gateway as the ones before them end ([protocol/personas.md](protocol/personas.md)). A
   simulated call the worker opens is a call like any other to `concurrent_calls`. **The most at once

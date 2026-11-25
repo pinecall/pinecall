@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- **A simulated caller is played by a callers process, and a gateway only places it.** Every simulated caller
+  of a spoken call was a task of the gateway that took its request. Nineteen at once on that one loop were late
+  with their frames: the room heard 20 to 100 ms of silence inside the caller's words, 36 to 55 times a minute, in
+  101 of 140 calls of one run, whose table was thrown away; and a gateway started again ended every one on the
+  line. Now (1) a spoken simulation's caller is a row (`caller_jobs`, migration 000036), written by the gateway
+  with the simulation whole, and claimed by one process (`for update skip locked`), the caller of the org that
+  holds the fewest first; (2) `pinecall-runtime callers start` is that process's service: several processes,
+  each a loop with nothing on it but three callers (`PINECALL_CALLER_PROCESSES`, `PINECALL_CALLERS_PER_PROCESS`),
+  which claims nothing for ten seconds after its loop woke 50 ms late, and which, told to stop, claims no other
+  caller and ends with the calls it plays, eleven minutes at most; (3) a caller that breaks before its call began
+  says why on its row and a gateway ends the call with it; one its process left is played whole by another when
+  its call never began, once, else the call is over and its comparison places it again; (4) an org's place on its
+  line is that row, counted under the org's lock, so `GET /v1/simulations/limits` reads the same `on_the_line` on
+  every gateway and goes back to nothing when the calls do; (5) each caller's leg counts the frames it handed to
+  the room late and keeps the count with the call (`call_facts.caller_line`); (6) a gateway told nothing of a
+  callers service (`PINECALL_CALLERS_SERVICE` unset) claims and plays callers itself, three at once, by the same
+  rows. A server's compose runs the service as `callers` and the chart as `pinecall-callers`. A gateway of the
+  release before plays its own callers and writes no row: both run side by side through a rollout. No wire change.
 - **A job outlasts a busy gateway, and a room it leaves unopened is offered again.** Thirty simulated calls played
   by one gateway on a pool of eight connections: for two seconds none came free, three jobs of twenty were answered
   `503` on the read of their agent, each ended on that one answer, and their rooms, held for their worker since the

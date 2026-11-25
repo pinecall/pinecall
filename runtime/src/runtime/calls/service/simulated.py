@@ -35,6 +35,11 @@ async def keep_caller_heard(session: AsyncSession, call: str, hearing: Mapping[s
     await FactsRepository(session).keep(call, hearing=dict(hearing))
 
 
+async def keep_caller_line(session: AsyncSession, call: str, line: Mapping[str, Any]) -> None:
+    """Keep how a simulated caller's leg kept to the clock (frames carried, frames late) with the call's facts."""
+    await FactsRepository(session).keep(call, caller_line=dict(line))
+
+
 # The caller is kept with it: the row exists before the call's first entry folds into it.
 async def keep_how_placed(session: AsyncSession, call: str, placed: Mapping[str, Any], *, persona: str) -> None:
     """Keep what a simulation was placed with beside its agent and caller, so it can be placed again as it was."""

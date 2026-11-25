@@ -61,7 +61,7 @@ FOUNDATIONS = frozenset(
     }
 )
 # Above every domain: wiring only.
-ENTRYPOINTS = frozenset({"app", "lifespan", "builders", "api", "worker", "runner", "cli"})
+ENTRYPOINTS = frozenset({"app", "lifespan", "builders", "api", "worker", "runner", "callers", "cli"})
 # A domain's value objects, read by any domain as its models are. Each is named in CONTRIBUTING.md.
 VALUE_OBJECTS: frozenset[str] = frozenset(
     {

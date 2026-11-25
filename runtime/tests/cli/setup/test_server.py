@@ -92,6 +92,8 @@ def test_a_server_answers_past_its_last_seat_and_runs_the_night(
     started = ran[-1]
     for service in ("overflow-sandbox", "overflow-production", "retention", "worker-sandbox", "worker-production"):
         assert service in started
+    # And the service that plays the callers of spoken simulations, which a server's gateways only place.
+    assert "callers" in started
     written(tmp_path, server_.Server(NAME))
     compose = (tmp_path / "server.yaml").read_text()
     # A worker told to stop ends when its last call does: Docker's ten seconds cut every call in flight.

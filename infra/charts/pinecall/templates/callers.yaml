@@ -1,0 +1,46 @@
+# The callers of spoken simulations, played here and by no gateway: a pod is several processes, each
+# one loop with nothing on it but the few callers it claimed off their rows, so a caller's voice
+# reaches its room on time however many calls are simulated at once, and a gateway that rolls ends
+# none of them. It answers nothing and has no Service. It reaches Postgres and the gateways' Redis as
+# a gateway does (the caller's own keys, the log it hears the agent on, the fleet's roster) and both
+# envs' LiveKit. A pod told to stop claims no other caller and ends with the calls it plays, eleven
+# minutes at most; what it could not finish says so on its row, and is played again or says why.
+{{- if gt (int .Values.callers.replicas) 0 }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pinecall-callers
+spec:
+  replicas: {{ .Values.callers.replicas }}
+  selector: { matchLabels: { app: pinecall-callers } }
+  strategy:
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  template:
+    metadata:
+      labels: { app: pinecall-callers, pinecall.io/reaches-postgres: "true", pinecall.io/reaches-redis: "true" }
+    spec:
+      nodeSelector: { pinecall.io/pool: core }
+      {{- include "pinecall.podSecurity" . | nindent 6 }}
+      terminationGracePeriodSeconds: 720
+      containers:
+        - name: callers
+          image: {{ include "pinecall.image" . }}
+          args: ["callers", "start"]
+          {{- include "pinecall.containerSecurity" . | nindent 10 }}
+          env:
+            {{- include "pinecall.env" . | nindent 12 }}
+            {{- include "pinecall.livekits" . | nindent 12 }}
+            - name: PINECALL_CALLER_PROCESSES
+              value: {{ .Values.callers.processes | quote }}
+            - name: PINECALL_CALLERS_PER_PROCESS
+              value: {{ .Values.callers.perProcess | quote }}
+          volumeMounts:
+            {{- include "pinecall.scratchMounts" . | nindent 12 }}
+          resources:
+            # A process at its most is about half a core (0.18 a caller, three callers) and a quarter gibibyte.
+            requests:
+              cpu: {{ printf "%dm" (mul (int .Values.callers.processes) 600) }}
+              memory: {{ printf "%dMi" (mul (int .Values.callers.processes) 256) }}
+      volumes:
+        {{- include "pinecall.scratchVolumes" . | nindent 8 }}
+{{- end }}

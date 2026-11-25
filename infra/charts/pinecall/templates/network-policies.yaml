@@ -3,8 +3,9 @@
 # written and wait. Each names every client its store has, and no default deny is set elsewhere:
 # a policy that forgot a client would cut it the day enforcement comes on.
 #
-# The gateways' Redis: the gateways alone (a worker holds no PINECALL_REDIS_URL, rule 24). The
-# envs' own Redis are LiveKit's and SIP's, on the node's network, and are left as they are.
+# The gateways' Redis: the gateways and the pods labelled as reaching it (the simulated callers,
+# which hear the fleet's roster and a call's log on it); a worker holds no PINECALL_REDIS_URL (rule
+# 24). The envs' own Redis are LiveKit's and SIP's, on the node's network, and are left as they are.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -15,10 +16,11 @@ spec:
   ingress:
     - from:
         - podSelector: { matchLabels: { app: pinecall-gateway } }
+        - podSelector: { matchLabels: { pinecall.io/reaches-redis: "true" } }
       ports: [{ port: 6379, protocol: TCP }]
 ---
 # Postgres: the gateways, the pods labelled as reaching it (the migrations, the fleets' keys, the
-# retention, a suite's Job), its own instances, CloudNativePG's operator and backup plugin, and
+# retention, the simulated callers, a suite's Job), its own instances, CloudNativePG's operator and backup plugin, and
 # the metrics' collector to the metrics' port.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

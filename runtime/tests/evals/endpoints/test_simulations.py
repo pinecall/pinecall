@@ -1,19 +1,30 @@
 """A simulation through the gateway: the agent's and the library's personas, who plays a run, what refuses it."""
 
 import asyncio
+import json
+import time
+from collections.abc import Callable
 from functools import partial
+from typing import Any
 
 import httpx
 import pytest
+from sqlalchemy import select
 from sqlalchemy.exc import TimeoutError as PoolTimeout
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from runtime.billing import service as billing
 from runtime.billing.service import quotas
 from runtime.enums import Env
-from runtime.evals.service import placing, simulated_calls
+from runtime.evals.models import CallerJob
+from runtime.evals.parts import Harness
+from runtime.evals.repository import CallerJobRepository
+from runtime.evals.service import caller_jobs, placing, simulated_calls
+from runtime.evals.service.simulated_calls import Simulation
+from runtime.evals.tasks import LEFT_AFTER_S, Callers
+from runtime.exceptions import ServiceUnavailable
 from runtime.postgres import when_free
-from tests.conftest import Gateway, Tenant, holding, needs_the_services, used_of
+from tests.conftest import Gateway, Tenant, holding, needs_the_services, until, used_of
 from tests.fakes import talker
 from tests.fakes.acme import UNKNOWN
 
@@ -437,3 +448,215 @@ async def test_a_comparisons_call_the_database_never_has_a_connection_for_is_a_r
         rows = table["rows"]  # type: ignore[assignment]
         assert sorted(str(row["persona"]) for row in rows) == ["asks-for-a-person"] * 2
         assert table["planned"] == len(rows) + int(str(table["waiting"])) + len(refused) == 4
+
+
+# ── a spoken call's caller is a job a process claims ──
+
+
+async def a_spoken_call(gateway: Gateway, tenant: Tenant, agent: str) -> str:
+    body = {"agent": agent, "persona": "in-a-hurry", "voice": True, "turns": 1}
+    placed_one = await gateway.http.post("/v1/simulations", json=body, headers=tenant.server)
+    assert placed_one.status_code == 200, placed_one.text
+    return str(placed_one.json()["call"])
+
+
+async def on_the_line(gateway: Gateway, tenant: Tenant) -> int:
+    limits = await gateway.http.get("/v1/simulations/limits", headers=tenant.server)
+    return int(limits.json()["on_the_line"])
+
+
+async def job_of(sessions: async_sessionmaker[AsyncSession], call: str) -> CallerJob:
+    async with sessions.begin() as session:
+        found = await CallerJobRepository(session).find(call)
+    assert found is not None, "a spoken simulation is its caller's row from the moment it is placed"
+    return found
+
+
+# 2026-11-25: the caller of a spoken simulation was a task of the gateway that took the request, with
+# every other caller and everything else that gateway does: nineteen at once were late with their
+# frames, and a release ended them all. The gateway writes the caller's row and plays nothing: the row
+# is the call's place on its org's line, and whichever process claims it plays it as it was placed.
+@needs_the_services
+@pytest.mark.usefixtures("the_callers_to_itself")
+async def test_a_spoken_simulation_is_placed_as_its_callers_row_and_played_by_the_process_that_claims_it(
+    gateway: Gateway, tenant: Tenant, agent: str, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    played: list[tuple[str, Simulation]] = []
+
+    async def play(job: CallerJob, process: str) -> None:
+        played.append((process, caller_jobs.load(job)))
+
+    async with holding(gateway, tenant, agent):
+        call = await a_spoken_call(gateway, tenant, agent)
+        placed_as = await job_of(sessions, call)
+        assert (placed_as.org, placed_as.agent, placed_as.claimed_by, placed_as.ended_at) == (
+            tenant.org,
+            agent,
+            None,
+            None,
+        )
+        assert await on_the_line(gateway, tenant) == 1
+        # No gateway of the suite plays it: it waits until a process claims it.
+        await asyncio.sleep(1.5)
+        assert (await job_of(sessions, call)).claimed_by is None
+        process = Callers(sessions, play, name="a callers process", at_once=3)
+        await process.claim()
+        await until(lambda: len(played) == 1)
+        by, simulation = played[0]
+        assert (by, simulation.call, simulation.agent, simulation.spoken) == ("a callers process", call, agent, True)
+        assert (simulation.persona.name, simulation.turns, simulation.waits_for_slot) == ("in-a-hurry", 1, True)
+        # The app that holds the agent is said on the row: the process that plays the caller serves none.
+        assert simulation.held_by is not None and simulation.held_by.org == tenant.org
+        await process.stop(0.0)
+
+
+# What a process that plays callers leaves to a gateway is settled every two seconds by each of them:
+# a test asks the suite's own gateway now, and the others' passes change nothing it waits for.
+async def settled(gateway: Gateway) -> None:
+    await caller_jobs.settle(gateway.state["harness"])
+
+
+# A process that plays callers has no live side: it cannot end a call. One whose caller breaks before
+# the call began says why on the row, and a gateway ends the call with that reason: the reader of the
+# call is told what a gateway's own task told it until now.
+@needs_the_services
+@pytest.mark.usefixtures("the_callers_to_itself")
+async def test_a_caller_its_process_could_not_play_ends_its_call_saying_why_and_gives_its_place_back(
+    gateway: Gateway, tenant: Tenant, agent: str, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    parts: Harness = gateway.state["harness"]
+
+    async def breaks(*_: object) -> None:
+        raise ServiceUnavailable("the simulated call could not be held: no agent joined room in 110s")
+
+    async with holding(gateway, tenant, agent):
+        call = await a_spoken_call(gateway, tenant, agent)
+        process = Callers(sessions, partial(caller_jobs.play_claimed, parts.playing), name="a process", at_once=1)
+        with pytest.MonkeyPatch.context() as patched:
+            patched.setattr(caller_jobs, "play_spoken", breaks)
+            await process.claim()
+            await process.stop(5.0)
+        await settled(gateway)
+        run = await summarized(gateway, tenant, call)
+        assert run["end_reason"] == "error", run
+        assert run["outcome"] == "the simulated call could not be held: no agent joined room in 110s"
+        ended = await job_of(sessions, call)
+        for _ in range(100):
+            if ended.ended_at is not None:
+                break
+            await asyncio.sleep(0.05)
+            ended = await job_of(sessions, call)
+        assert ended.ended_at is not None and not ended.lost
+        assert await on_the_line(gateway, tenant) == 0, "a job that is over holds no place on its org's line"
+
+
+# A process that stops saying it plays a caller is gone, with the caller's leg. Before the call began,
+# another process plays it whole, once; a second process gone, the call ends saying so.
+@needs_the_services
+@pytest.mark.usefixtures("the_callers_to_itself")
+async def test_a_caller_whose_process_is_gone_is_another_ones_to_play_once_and_then_its_call_says_why(
+    gateway: Gateway, tenant: Tenant, agent: str, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    async def gone(job: CallerJob, _process: str) -> None:
+        # Taken, and never said again: long ago, as far as its row tells.
+        async with sessions.begin() as session:
+            found = await CallerJobRepository(session).find(job.call)
+            assert found is not None
+            found.heard_at = time.time() - 4 * LEFT_AFTER_S
+
+    async def taken_up(done: Callable[[CallerJob], bool]) -> CallerJob:
+        row = await job_of(sessions, call)
+        for _ in range(100):
+            if done(row):
+                break
+            await settled(gateway)
+            await asyncio.sleep(0.05)
+            row = await job_of(sessions, call)
+        return row
+
+    async with holding(gateway, tenant, agent):
+        call = await a_spoken_call(gateway, tenant, agent)
+        first = Callers(sessions, gone, name="gone first", at_once=1)
+        await first.claim()
+        await first.stop(5.0)
+        left = await taken_up(lambda row: row.claimed_by is None)
+        assert (left.claimed_by, left.ended_at, left.played) == (None, None, 1)
+        second = Callers(sessions, gone, name="gone second", at_once=1)
+        await second.claim()
+        await second.stop(5.0)
+        ended = await taken_up(lambda row: row.ended_at is not None)
+        assert ended.ended_at is not None and ended.lost and ended.played == 2
+        run = await summarized(gateway, tenant, call)
+        assert run["end_reason"] == "error", run
+        assert "stopped before the call began, twice" in str(run["outcome"])
+
+
+# A comparison counts a call for each pair it was asked for. One whose caller's process left it on the
+# line is over and stands for nothing: it leaves the table and is placed again, and the table still
+# says every call asked for, once.
+@needs_the_services
+@pytest.mark.usefixtures("the_callers_to_itself")
+async def test_a_comparisons_call_its_process_left_is_placed_again_and_the_table_counts_each_call_once(
+    gateway: Gateway,
+    tenant: Tenant,
+    agent: str,
+    sessions: async_sessionmaker[AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(placing, "STILL_PLACING_EVERY_S", 0.1)
+    against: list[dict[str, object]] = [{"llm": "acme/acme-1"}, {"temperature": 0.2}]
+    body = {"agent": agent, "persona": "in-a-hurry", "voice": True, "turns": 1, "against": against}
+
+    # Read as the person who asked for it: a spoken call is claimed in the scope of whoever placed it.
+    async def table() -> dict[str, Any]:
+        read = await gateway.http.get(f"/v1/simulations/compare/{started['comparison']}", headers=tenant.person)
+        return dict(read.json())
+
+    async def breaks(job: CallerJob, process: str) -> None:
+        async with sessions.begin() as session:
+            await CallerJobRepository(session).say_broke(job.call, process, "nobody plays in a test")
+
+    async def jobs_of_comparison() -> list[CallerJob]:
+        placed_in = select(CallerJob).where(CallerJob.comparison == started["comparison"])
+        async with sessions.begin() as session:
+            return list((await session.execute(placed_in)).scalars())
+
+    async with holding(gateway, tenant, agent):
+        answer = await gateway.http.post("/v1/simulations/compare", json=body, headers=tenant.person)
+        assert answer.status_code == 200, answer.text
+        started = answer.json()
+        both = sorted(str(one["call"]) for one in started["calls"])
+        assert len(both) == 2
+        # One of the two is left on the line by its process: its job is over, and its row says lost.
+        async with sessions.begin() as session:
+            taken = await CallerJobRepository(session).claim("a process", time.time())
+            assert taken is not None
+            lost = taken.call
+            taken.ended_at, taken.lost = time.time(), True
+        (other,) = [call for call in both if call != lost]
+        # It is placed again: a third call, for the pair the lost one stood for.
+        replacement = ""
+        for _ in range(100):
+            new = [job.call for job in await jobs_of_comparison() if job.call not in both and job.document]
+            if new:
+                replacement = new[0]
+                break
+            await asyncio.sleep(0.05)
+        assert replacement, "the call its process left is placed again"
+        # The two that stand are played to an end, here by a process that says it cannot play them.
+        process = Callers(sessions, breaks, name="a process", at_once=2)
+        await process.claim()
+        await process.stop(5.0)
+        read: dict[str, Any] = {}
+        for _ in range(100):
+            await settled(gateway)
+            read = await table()
+            if read["waiting"] == 0 and len(read["rows"]) == 2 and all(row["ended_at"] for row in read["rows"]):
+                break
+            await asyncio.sleep(0.05)
+        # The lost one is no row of the table: the two that stand for the two pairs asked for are.
+        assert sorted(str(row["call"]) for row in read["rows"]) == sorted([other, replacement])
+        assert (await jobs_of_comparison()) and all(job.ended_at for job in await jobs_of_comparison())
+        placed_on = sorted(json.dumps(row["against"], sort_keys=True) for row in read["rows"])
+        assert placed_on == sorted(json.dumps(values, sort_keys=True) for values in against)
+        assert read["planned"] == len(read["rows"]) + int(read["waiting"]) + len(read["refused"]) == 2

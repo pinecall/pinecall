@@ -49,6 +49,7 @@ app = typer.Typer(
 app.command("gateway")(processes.gateway)
 app.add_typer(processes.worker_app, name="worker")
 app.add_typer(processes.runner_app, name="runner")
+app.add_typer(processes.callers_app, name="callers")
 app.add_typer(migrate.app, name="migrate")
 app.command("doctor")(doctor.doctor)
 app.command("reach")(reach.reach)

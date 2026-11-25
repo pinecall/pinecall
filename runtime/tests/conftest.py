@@ -31,6 +31,11 @@ os.environ.setdefault("PINECALL_SANDBOX_FLEET_KEY", "the-suites-own-sandbox-flee
 os.environ.setdefault("PINECALL_PRODUCTION_FLEET_KEY", "the-suites-own-production-fleet-key")
 os.environ.setdefault("LIVEKIT_API_KEY", "devkey")
 os.environ.setdefault("LIVEKIT_API_SECRET", "a-suite-only-livekit-secret-0123456789")
+# The suite's gateways place the callers of spoken simulations and play none: every worker of the suite
+# is on the one database, and a gateway that claimed callers would claim another test's. A test that
+# plays a caller builds the process that does (`runtime.evals.tasks.Callers`) and takes the callers to
+# itself while it does (`tests/evals/conftest.py`).
+os.environ.setdefault("PINECALL_CALLERS_SERVICE", "1")
 # The suite's box serves its apps' pages, each under a name of its own below this one.
 os.environ.setdefault("PINECALL_PAGES_DOMAIN", "pages.test")
 

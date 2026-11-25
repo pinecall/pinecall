@@ -2,6 +2,8 @@
 
 import functools
 import logging
+import os
+import socket
 from contextlib import AsyncExitStack
 from pathlib import Path
 
@@ -20,16 +22,17 @@ from runtime.calls.recordings import Bucket, Disk, Recordings
 from runtime.calls.service.prompts import Prompts
 from runtime.config import Settings
 from runtime.enums import Env
-from runtime.evals.parts import Harness
+from runtime.evals.parts import CallerParts, Harness
 from runtime.evals.service.briefs import Describers
+from runtime.evals.service.caller_jobs import play_claimed
 from runtime.evals.service.simulations import LINES_A_MINUTE as CALLER_LINES_A_MINUTE
-from runtime.evals.tasks import Runner, Simulations
+from runtime.evals.tasks import Callers, Runner, Simulations
 from runtime.exceptions import ConfigurationError, PinecallError
 from runtime.fleet import tasks as fleet_tasks
 from runtime.fleet.service.offers import Offering
 from runtime.fleet.service.roster import Roster
 from runtime.handles import THE_INTERNET, Handles, Outside
-from runtime.kit.crypto import Vault
+from runtime.kit.crypto import Vault, random_id
 from runtime.kit.loops import Loops
 from runtime.kit.s3 import Credentials, ObjectStore
 from runtime.knowledge.service.embedder import box_embedder
@@ -206,6 +209,21 @@ async def build_harness(
     )
 
 
+# The callers a process plays, claimed off their rows: a gateway's own, when no callers service plays
+# them, and each process of that service. Named for the machine and the process, with a word drawn now:
+# a process started again is another, and what the one before it claimed is taken up as left.
+def build_callers(settings: Settings, parts: CallerParts) -> Callers:
+    """What claims and plays simulated callers in this process, as many at once as the settings say."""
+    name = f"{socket.gethostname().split('.')[0]}.{os.getpid()}.{random_id('', 3)}"
+    return Callers(
+        parts.sessions,
+        functools.partial(play_claimed, parts),
+        name=name,
+        at_once=settings.callers_per_process,
+        clock=parts.store.clock,
+    )
+
+
 # What waited on WhatsApp when this process started is read back off the agents' logs before the first
 # app registers, and the messages other gateways hand on are taken from then on.
 async def build_threads(live: LiveParts, stack: AsyncExitStack) -> Threads:
@@ -229,10 +247,12 @@ def read_sip_names(settings: Settings) -> SipNames:
     )
 
 
-async def open_connections(settings: Settings, stack: AsyncExitStack, outside: Outside = THE_INTERNET) -> Handles:
+async def open_connections(
+    settings: Settings, stack: AsyncExitStack, outside: Outside = THE_INTERNET, *, pool: int | None = None
+) -> Handles:
     """Open the process's connections, out by the outside given; the stack closes them in reverse."""
     vault = Vault(None if settings.vault_key is None else settings.vault_key.get_secret_value())
-    engine = create_engine(settings, pool_size=settings.db_pool - len(LANES))
+    engine = create_engine(settings, pool_size=pool or settings.db_pool - len(LANES))
     stack.push_async_callback(engine.dispose)
     http = await stack.enter_async_context(httpx.AsyncClient(transport=outside.transport))
     servers = await stack.enter_async_context(open_servers(settings))

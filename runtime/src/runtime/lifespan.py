@@ -24,6 +24,7 @@ from runtime.calls.service.prompts import Prompts
 from runtime.config import load_settings
 from runtime.evals import tasks as evals_tasks
 from runtime.evals.parts import Harness
+from runtime.evals.service.caller_jobs import settle
 from runtime.evals.service.placing import take_up_left
 from runtime.evals.service.simulations import ChatSimulations
 from runtime.fleet import service as fleet
@@ -163,6 +164,16 @@ async def lifespan(app: FastAPI, outside: Outside = THE_INTERNET) -> AsyncGenera
         harness = await builders.build_harness(handles, live, signer, roster, stack)
         loops.start(evals_tasks.renew_leases.bind(harness.runner))
         loops.start(evals_tasks.take_up_comparisons.bind(partial(take_up_left, harness)))
+        # A spoken simulation's caller is a row some process claims. Every gateway settles what a
+        # process cannot (a call that never began ended, a caller its process left taken up); and with
+        # no callers service, each gateway plays what it can on time itself, cut when it stops.
+        loops.start(evals_tasks.settle_callers.bind(partial(settle, harness)))
+        if not handles.settings.callers_service:
+            callers = builders.build_callers(handles.settings, harness.playing)
+            stack.push_async_callback(callers.stop, 0.0)
+            loops.start(evals_tasks.claim_callers.bind(callers))
+            loops.start(evals_tasks.say_callers.bind(callers))
+            loops.start(evals_tasks.watch_the_clock.bind(callers))
         loops.start(hosting_tasks.count_serving.bind(sessions, live.sockets))
         codes = builders.build_codes(handles, logs)
         # The agents built in Studio: held off the lifespan, by the loop's first look, so the gateway answers

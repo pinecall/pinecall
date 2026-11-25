@@ -3,6 +3,7 @@
 import asyncio
 import math
 import random as randomness
+import time
 from collections import deque
 from collections.abc import AsyncIterable, AsyncIterator, Mapping
 from dataclasses import dataclass, field
@@ -88,6 +89,47 @@ class SpokenLevel:
         return math.sqrt(self.power / self.frames)
 
 
+# The room plays what it was handed at the clock's rate, `AHEAD_MS` of it in hand. A frame handed after
+# the moment the one before it ran out found the room with nothing to play: it heard that long of
+# nothing, inside a word when the caller was speaking. A loop that plays many callers does this to all
+# of them at once: on 2026-11-25 nineteen on one gateway left thirty-six to fifty-five such gaps a
+# minute in each caller's speech. Under this long the room's own buffer covers it.
+A_GAP_IS_HEARD_S = 0.005
+
+
+@dataclass(slots=True)
+class Pace:
+    """How a line kept to the clock: the frames it carried, and those handed to the room after their moment."""
+
+    frames: int = 0
+    late_frames: int = 0
+    late_ms: float = 0.0
+    worst_ms: float = 0.0
+    # The moment the next frame is due at the room at the latest: when the last one handed runs out.
+    due: float | None = None
+
+    def hand(self, now: float) -> None:
+        """Count one frame handed to the room at this moment, by a clock that only goes forward."""
+        due = now if self.due is None else self.due
+        late = now - due
+        if late >= A_GAP_IS_HEARD_S:
+            self.late_frames += 1
+            self.late_ms += late * 1000
+            self.worst_ms = max(self.worst_ms, late * 1000)
+        # A room that ran out goes on from when it was handed something again.
+        self.due = max(due, now) + FRAME_MS / 1000
+        self.frames += 1
+
+    def dump(self) -> dict[str, float]:
+        """What the line measured of itself, as a call's facts keep it."""
+        return {
+            "frames": self.frames,
+            "late_frames": self.late_frames,
+            "late_ms": round(self.late_ms, 1),
+            "worst_ms": round(self.worst_ms, 1),
+        }
+
+
 @dataclass(frozen=True, slots=True)
 class Spoken:
     """A spoken call as its caller acts on it: the call, how the caller behaves, in what language, behind a notice."""
@@ -148,6 +190,8 @@ class CallerLeg:
         self.cutting_in = False
         # Set when the caller leaves: the line is carried until then.
         self.closed = False
+        # How the line kept to the clock, for the call's facts.
+        self.pace = Pace()
 
     # The line is spoken as the vendor sends it, never held until it is whole: a caller that
     # waited for its last word before its first was seconds late on every turn.
@@ -232,6 +276,7 @@ class CallerLeg:
     async def _carry(self) -> None:
         while not self.closed:
             frame = self.next_frame()
+            self.pace.hand(time.monotonic())
             await self.source.capture_frame(rtc.AudioFrame(frame, SAMPLE_RATE, CHANNELS, len(frame) // 2))
 
     # The voice is handed to the line as it arrives and the line says it at the clock's rate: a line

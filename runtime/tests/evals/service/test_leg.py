@@ -18,6 +18,7 @@ from runtime.evals.service.leg import (
     SAMPLE_RATE,
     SILENCE,
     CallerLeg,
+    Pace,
     Spoken,
     SpokenLevel,
     at_tempo,
@@ -277,3 +278,39 @@ async def test_a_caller_that_cuts_in_asks_for_its_line_as_the_agent_begins_and_s
     (kept,) = leg.spoke
     assert (kept.kind, kept.text, kept.cut_in) == ("line", "wait, the Tuesday one", True)
     assert kept.began_at <= kept.ended_at
+
+
+# ── how the line kept to the clock ──
+
+
+# 2026-11-25: nineteen callers on one loop, and each one's room heard twenty to a hundred milliseconds
+# of nothing inside its words, dozens of times a minute. The leg knows when it happens: it hands the
+# room ten milliseconds a hundred times a second, a tenth of a second ahead, and a frame handed after
+# the one before it ran out found the room with nothing to play.
+def test_a_line_that_keeps_to_the_clock_hands_no_frame_late() -> None:
+    pace = Pace()
+    # The first frames are handed at once (the room takes a tenth of a second ahead), then one each ten milliseconds.
+    for frame in range(300):
+        pace.hand(100.0 + max(0, frame - 10) * 0.010)
+    assert pace.dump() == {"frames": 300, "late_frames": 0, "late_ms": 0.0, "worst_ms": 0.0}
+
+
+def test_a_loop_that_stalls_past_what_the_room_holds_is_counted_once_for_each_time_the_room_ran_out() -> None:
+    pace = Pace()
+    for frame in range(100):
+        pace.hand(100.0 + frame * 0.010)
+    # The loop is away 150 ms: the room had the frame's ten milliseconds, and heard nothing for the rest.
+    pace.hand(100.99 + 0.150)
+    # It goes on from there, on time again: the stall is one gap, not every frame after it.
+    for frame in range(1, 100):
+        pace.hand(100.99 + 0.150 + frame * 0.010)
+    kept = pace.dump()
+    assert (kept["frames"], kept["late_frames"]) == (200, 1)
+    assert kept["late_ms"] == kept["worst_ms"] == 140.0
+
+
+def test_a_frame_a_moment_late_is_nothing_the_room_hears() -> None:
+    pace = Pace()
+    for frame in range(100):
+        pace.hand(100.0 + frame * 0.010 + (0.003 if frame == 50 else 0.0))
+    assert pace.dump()["late_frames"] == 0

@@ -220,8 +220,10 @@ def bring_up(
 EVERY_PROFILE = ("server", "server-livekit", "server-phone", "server-backups")
 # A server's two gateways, in the order an update starts them again.
 GATEWAYS = ("gateway", "gateway-b")
-# What runs on the runtime's image beside the gateway: each environment's worker and overflow, and the night.
+# What runs on the runtime's image beside the gateway: each environment's worker and overflow, the
+# simulated callers, and the night.
 RUNTIME_BESIDE_THE_GATEWAY = (
+    "callers",
     "worker-sandbox",
     "worker-production",
     "overflow-sandbox",

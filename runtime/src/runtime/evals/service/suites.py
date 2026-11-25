@@ -365,13 +365,13 @@ async def _say_out_loud(parts: Harness, suite: Suite, golden: Golden, opened: Op
     )
     # What a golden's line loses is lost on its network, as a simulation's is.
     spoken = Spoken(opened.call, acts, voice.language, notice, LinkShape(loss=acts.packet_loss))
-    line = SpokenLine(parts, dispatch, voice, spoken, waits_for_slot=False)
+    line = SpokenLine(parts.playing, dispatch, voice, spoken, waits_for_slot=False)
     spending = Spending(suite.catalog)
     try:
         await lines.play(line, len(script), next_line, spending.count)
     finally:
-        await keep_cost(parts, opened.call, spending)
-        await keep_heard(parts, opened.call, line.list_said())
+        await keep_cost(parts.sessions, opened.call, spending)
+        await keep_heard(parts.sessions, parts.store, opened.call, line.list_said())
     await _wait_for_the_seal(parts, opened.call)
     return Played(held=True, requests=())
 

@@ -24,7 +24,7 @@ NEVER_A_WORKERS = frozenset(
     }
 )
 WORKERS = ("worker-sandbox", "worker-production", "overflow-sandbox", "overflow-production")
-RUNTIME = ("gateway", "gateway-b", *WORKERS, "retention")
+RUNTIME = ("gateway", "gateway-b", "callers", *WORKERS, "retention")
 THIRD_PARTY = ("postgres", "redis", "livekit-server", "sip-server", "postgres-backup")
 CHART_ENV = Path(__file__).resolve().parents[4] / "infra" / "charts" / "pinecall" / "templates" / "_env.tpl"
 
@@ -101,6 +101,26 @@ def test_the_gateways_reach_postgres_as_the_role_that_changes_no_table() -> None
     for gateway in ("gateway", "gateway-b"):
         assert "env_file: ./env" in found[gateway]
         assert 'DATABASE_URL: "${PINECALL_DB_APP_URL:?' in found[gateway], gateway
+
+
+# 2026-11-25: the callers of spoken simulations were tasks of a gateway, nineteen at once on its one
+# loop, and their voices broke up. They are a service of their own, and a server's gateways play none.
+def test_a_servers_callers_are_played_by_their_own_service_and_handed_what_playing_one_reads() -> None:
+    """The gateways only place callers; the service that plays them holds no operator's key and no fleet's."""
+    found = blocks()
+    for gateway in ("gateway", "gateway-b"):
+        assert 'PINECALL_CALLERS_SERVICE: "1"' in found[gateway], gateway
+    callers = found["callers"]
+    assert 'command: ["callers", "start"]' in callers and "env_file" not in callers and "ports" not in callers
+    handed = named_in(callers)
+    # The caller's vendors' keys are sealed in the database; its way into a room is signed with the token key.
+    assert {"DATABASE_URL", "PINECALL_REDIS_URL", "PINECALL_VAULT_KEY", "PINECALL_TOKEN_KEY"} <= handed
+    assert {"LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET", "PINECALL_CALLER_PROCESSES"} <= handed
+    assert 'DATABASE_URL: "${PINECALL_DB_APP_URL:?' in callers, "as the role that changes no table"
+    never = {"PINECALL_OPS_KEY", "PINECALL_RUNNER_KEY", "PINECALL_SMTP_URL", "PINECALL_TURNSTILE_SECRET"}
+    assert handed.isdisjoint(never | {"PINECALL_SANDBOX_FLEET_KEY", "PINECALL_PRODUCTION_FLEET_KEY"})
+    # Told to stop, it ends with the calls its processes play: Docker's ten seconds would cut every one.
+    assert "stop_grace_period: 12m" in callers
 
 
 def test_the_night_reads_the_database_the_vault_and_the_recordings_alone() -> None:

@@ -30,7 +30,7 @@ laptop. The charts name no cloud; a cloud is a tree of Terraform and one file of
 | `images/cloudbuild.yaml` | how an image is built: by Cloud Build, as the builds' own identity |
 | `charts/postgres/` | the cluster's Postgres under CloudNativePG: its WAL to a bucket as it is written and a base backup each night (the Barman Cloud plugin), 35 days kept |
 | `manifests/suite.yaml` | the suites' Job, with a Redis made for the run |
-| `charts/pinecall/` | the runtime: two gateways and Redis on the shared core pool; each environment's LiveKit, SIP and a few workers on its media node, and its scaled workers on its own pool (KEDA, on the gateway's own number); the overflow, the migrations, the nightly retention |
+| `charts/pinecall/` | the runtime: two gateways, the simulated callers and Redis on the shared core pool; each environment's LiveKit, SIP and a few workers on its media node, and its scaled workers on its own pool (KEDA, on the gateway's own number); the overflow, the migrations, the nightly retention |
 | `charts/hosting/` | the hosting cluster's workloads: a runner per environment and the namespace their apps run in, fenced (`make hosting`) |
 | `charts/edge/` | the front endpoint, released apart and first: the Gateway (Google's HTTPS load balancer, the Gateway API) with Certificate Manager's certificate, its routes, the HTTP redirect and the backends' policies; its load balancer takes minutes to make, so a reinstall of the runtime never makes it again |
 | `values/example.yaml` · `hosting-example.yaml` | an operator's values for the charts, every one an example: copied into `OPS` (below) and filled in; CI renders and scans the charts with them |
@@ -470,8 +470,12 @@ where the database and the vault's key are. It is the same package and the same 
 the runtime knows which shape it runs in. What a server gives up is what a cluster is for: its seats
 are fixed (a caller past the last one hears the overflow's sentence, no node is added), one machine
 is one place to fail (its two gateways are started again one after the other, so an update leaves
-the name answering, and a worker drains for ten minutes; a machine that stops takes everything with
-it until it is back). The apps are fenced as a cluster fences them: each is a gVisor container of
+the name answering, a worker drains for ten minutes and the simulated callers for twelve; a machine
+that stops takes everything with it until it is back). The callers of spoken simulations are a
+service of their own beside the gateways (`callers`: `PINECALL_CALLER_PROCESSES` processes, half the
+machine's cores unless said, three callers each), so a test run of many calls at once costs the
+gateways nothing and a gateway started again ends none of them; on a cluster the same service is the
+Deployment `pinecall-callers` (`callers.replicas`, `callers.processes` in the chart's values). The apps are fenced as a cluster fences them: each is a gVisor container of
 the apps' machine, with no root and no capability, on a network that reaches the internet and
 nothing else (not that machine, not the server's private address, not the cloud's metadata, not
 another app), and the machine's own identity reads no secret. What a cluster gives that a server
@@ -498,7 +502,8 @@ The server holds to what the chart holds a pod to. Every process is a user of it
 root (the runtime's 10001, Postgres's and Redis's images' own), with no capability (Caddy keeps one,
 to take ports 80 and 443), no privilege to gain and a root filesystem it cannot write. Each is handed
 what its verb reads, by name in `server.yaml`: the gateways the env file whole but the database as
-`pinecall_app`, which reads and writes every table's rows and changes none; a worker and an overflow
+`pinecall_app`, which reads and writes every table's rows and changes none; the simulated callers the
+same role, Redis, the vault's key and what signs a caller into its room; a worker and an overflow
 their LiveKit, their fleet's key and the recordings store, never the database, Redis, the vault, the
 operator's or the signing key (`tests/cli/setup/test_server_compose.py` holds the file to it, and
 the chart's `pinecall.workerEnv` too); the retention the database as its owner and the vault. Redis

@@ -63,6 +63,7 @@ class CallFact(Model):
             "against",
             "comparison",
             "hearing",
+            "caller_line",
             "placed",
             "line",
         ),
@@ -118,6 +119,10 @@ class CallFact(Model):
     # How a simulated spoken call was heard, measured against what its caller really said and when
     # (evals' `Hearing`): kept when the simulation ends. NULL for any other call.
     hearing: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # How a simulated caller's leg kept to the clock, as the process that played it measured: the
+    # frames it carried, how many it handed to the room late, by how much (evals' `Pace`). A call whose
+    # line ran late was heard broken. NULL for any other call, and for one played before 2026-11-25.
+    caller_line: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     # What a simulation was placed with besides its agent and its caller (evals' `Wanted`): the line,
     # its turns, the room behind the caller, who played it, what it phoned about. Kept as it is placed,
     # so the call can be placed again as it was. NULL for any other call, and for one simulated before

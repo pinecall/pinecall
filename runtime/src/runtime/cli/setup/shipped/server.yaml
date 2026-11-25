@@ -1,7 +1,7 @@
 # The runtime as a server: laid over compose.yaml by `pinecall-runtime setup --domain <name>`. Everything
 # runs in Docker and comes back after a reboot: Caddy answers the name with a certificate it renews
 # itself and hands /rtc to LiveKit and the rest to the gateway; the gateway, a worker and an overflow
-# per environment and the night's retention run one image, this release of the package built here or
+# per environment, the simulated callers and the night's retention run one image, this release of the package built here or
 # the image `--image` named. Each one is on the host's network, so the services' loopback ports and
 # the open models' are theirs as they are a laptop's; only Caddy (:80, :443), LiveKit's media (:7881
 # tcp, :7882 udp) and, with --phone, SIP (:5060 and its RTP ports, `PINECALL_SIP_RTP_PORTS`) face out.
@@ -225,6 +225,7 @@ services:
     env_file: ./env
     environment:
       DATABASE_URL: "${PINECALL_DB_APP_URL:?a server's gateway connects as the app's role, made by setup}"
+      PINECALL_CALLERS_SERVICE: "1"
     healthcheck: &answers
       test:
         - CMD
@@ -243,8 +244,43 @@ services:
     env_file: ./env
     environment:
       DATABASE_URL: "${PINECALL_DB_APP_URL:?a server's gateway connects as the app's role, made by setup}"
+      PINECALL_CALLERS_SERVICE: "1"
       PINECALL_GATEWAY_LISTEN: 127.0.0.1:8081
     healthcheck: *answers
+
+  # The callers of spoken simulations, played here and by no gateway (`PINECALL_CALLERS_SERVICE` on
+  # both): several processes, each one loop with nothing on it but the few callers it claimed, so a
+  # caller's voice reaches its room on time however many calls are simulated at once. A gateway
+  # started again ends none of them. Its processes are `PINECALL_CALLER_PROCESSES`, else half the
+  # machine's cores, each playing `PINECALL_CALLERS_PER_PROCESS` callers at once, three unless said.
+  # It answers nothing and listens on nothing. It is handed what playing a caller reads, by name: the
+  # database as the app's role, Redis, the vault for the caller's vendors' keys, what signs its way
+  # into a room, LiveKit and the names a phone leg dials. Told to stop, each process claims no other
+  # caller and ends with the calls it plays, eleven minutes at most: a caller cut then says so on its
+  # row, and its call is played again or says why.
+  callers:
+    <<: *runtime
+    profiles: [server]
+    pull_policy: never
+    command: ["callers", "start"]
+    environment:
+      DATABASE_URL: "${PINECALL_DB_APP_URL:?a server's callers connect as the app's role, made by setup}"
+      PINECALL_REDIS_URL: ${PINECALL_REDIS_URL}
+      PINECALL_VAULT_KEY: ${PINECALL_VAULT_KEY}
+      PINECALL_TOKEN_KEY: ${PINECALL_TOKEN_KEY}
+      LIVEKIT_URL: ${LIVEKIT_URL}
+      LIVEKIT_SANDBOX_URL: ${LIVEKIT_SANDBOX_URL:-}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+      PINECALL_DOMAIN: ${PINECALL_DOMAIN}
+      PINECALL_SIP_DOMAIN: ${PINECALL_SIP_DOMAIN:-}
+      PINECALL_SANDBOX_SIP_DOMAIN: ${PINECALL_SANDBOX_SIP_DOMAIN:-}
+      PINECALL_CALLER_PROCESSES: ${PINECALL_CALLER_PROCESSES:-}
+      PINECALL_CALLERS_PER_PROCESS: ${PINECALL_CALLERS_PER_PROCESS:-}
+      PINECALL_TIMEZONE: ${PINECALL_TIMEZONE:-}
+      PINECALL_LOG_LEVEL: ${PINECALL_LOG_LEVEL:-}
+    stop_grace_period: 12m
+    depends_on: [gateway]
 
   # A worker an environment. Its seats are the env file's: `PINECALL_<ENV>_MAX_JOBS`, else
   # `PINECALL_MAX_JOBS`. Told to stop, it takes no new call and ends when the last one it holds does:

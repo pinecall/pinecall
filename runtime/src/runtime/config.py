@@ -102,6 +102,17 @@ class Settings(BaseSettings):
     # The overflow's one sentence, for every call it answers; unset, it says its own in the agent's language.
     overflow_says: str | None = Field(None, alias="PINECALL_OVERFLOW_SAYS")
 
+    # ── the simulated callers ──
+    # Whether the callers of spoken simulations are played by the callers service (`pinecall-runtime
+    # callers start`) and never by a gateway. Unset, each gateway plays what it can on time itself: a
+    # laptop, a machine that runs one process of each.
+    callers_service: bool = Field(False, alias="PINECALL_CALLERS_SERVICE")
+    # The processes the callers service runs; unset, half the cores it is given, at least one.
+    caller_processes: int | None = Field(None, alias="PINECALL_CALLER_PROCESSES", ge=1)
+    # The callers one process plays at once. A caller is 0.18 of a core (measured 2026-11-25, six at
+    # once): three leave its one loop near half of a core, so a burst of one does not make the others late.
+    callers_per_process: int = Field(3, alias="PINECALL_CALLERS_PER_PROCESS", ge=1)
+
     # ── the runner of hosted apps ──
     runner_key: SecretStr | None = Field(None, alias="PINECALL_RUNNER_KEY")
     runner_image: str = Field("docker.io/library/node:24-slim", alias="PINECALL_RUNNER_IMAGE")

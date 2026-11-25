@@ -18,7 +18,7 @@ nor callbacks), ambient current-user state, and autoload.
 
 ```
 src/runtime/
-  app.py lifespan.py builders.py api.py worker.py runner.py cli/   the entrypoints: they build and wire, nothing else
+  app.py lifespan.py builders.py api.py worker.py runner.py callers.py cli/   the entrypoints: they build and wire
   config.py enums.py exceptions.py         one process's words: its settings, the shared enums, the errors
   actor.py auth.py scoping.py              who a request is, how its key is resolved and required, the org it is scoped to
   postgres.py signal.py redis.py livekit.py one process's connections
@@ -165,19 +165,22 @@ running app, the apps and the line were decided into it.
 
 `evals/service/` has more than sixteen modules and is one context: a test call placed against an
 agent and read after it: a golden run, a caller simulated, setups compared, a finished call checked
-again. Its twenty-six nouns stand on one seam (`Line`: written, spoken or by phone, decided once) and one
+again. Its twenty-seven nouns stand on one seam (`Line`: written, spoken or by phone, decided once) and one
 skeleton of a played call; what a person asks of a judge that reads calls (a judge tried, a group
 diagnosed, callers written, the calibration) was decided into it. `evals/parts.py` is `Harness`, one
 of each thing a test call reaches: the one value of the domain that carries collaborators together,
 under the rule `LiveParts` is under: it never leaves evals, and a use case that needs two or three of
-them takes them by name. Evals reaches the live side through one object the live side exports
+them takes them by name. `CallerParts`, beside it, is the ten of those a simulated caller is played
+with: what a callers process holds, which serves no agent and has no live side (`Harness.playing`
+is the same ten on a gateway). Evals reaches the live side through one object the live side exports
 (`ServingApps`: which app takes an agent's calls, a written call opened on it), never its parts.
 
-`evals/tasks.py` holds, beside its one loop, the two objects that keep the work a request starts and
-does not await: `Runner` (the runs this gateway plays, and the agent each holds by a lease) and
-`Simulations` (the simulated calls on the line, counted across the gateways). Both are built in the
-lifespan and stopped with the process, so they stand with the domain's work in the background and
-not in `service/`; the loop renews the leases of the runs `Runner` holds.
+`evals/tasks.py` holds, beside its loops, the three objects that keep the work a process starts and
+does not await: `Runner` (the runs this gateway plays, and the agent each holds by a lease),
+`Simulations` (the simulated calls a gateway plays itself, counted across the gateways) and `Callers`
+(the simulated callers a process claimed off their rows and plays, on a gateway or in a callers
+process). Each is built by an entrypoint and stopped with the process, so they stand with the
+domain's work in the background and not in `service/`.
 
 ## The rules
 
@@ -231,8 +234,8 @@ not in `service/`; the loop renews the leases of the runs `Runner` holds.
     its own in its service; endpoints never raise `HTTPException`; `app.py` has the one handler. A
     vendor's failure is an `UpstreamError` carrying `vendor`, `retryable` and `retry_after_s`,
     translated once where the vendor is called.
-14. **Entrypoints wire.** Only `app.py`, `lifespan.py`, `builders.py`, `api.py`, `worker.py`, `runner.py` and
-    `cli/` build objects from settings. The lifespan is the state and the order it is built in; each
+14. **Entrypoints wire.** Only `app.py`, `lifespan.py`, `builders.py`, `api.py`, `worker.py`, `runner.py`,
+    `callers.py` and `cli/` build objects from settings. The lifespan is the state and the order it is built in; each
     family of what it builds (the connections, the log's engine, the fleet, the live side) is a
     function of `builders.py`. A CLI verb is a typed function that calls a service and prints; a module
     is named for the word typed.

@@ -11,7 +11,7 @@ from livekit import rtc
 from livekit.agents import tts
 
 from runtime.enums import Env
-from runtime.evals.parts import Harness
+from runtime.evals.parts import CallerParts
 from runtime.evals.service import ambience, turns
 from runtime.evals.service.hearing import Said
 from runtime.evals.service.leg import CallerLeg, Spoken, synthesize
@@ -66,7 +66,7 @@ class SpokenLine:
     """A spoken call as its simulated caller is on it: a seat in the agent's room, a voice, the line's noise."""
 
     def __init__(
-        self, parts: Harness, dispatch: Dispatch, voice: Running, spoken: Spoken, *, waits_for_slot: bool
+        self, parts: CallerParts, dispatch: Dispatch, voice: Running, spoken: Spoken, *, waits_for_slot: bool
     ) -> None:
         self._parts = parts
         self._dispatch = dispatch
@@ -123,6 +123,10 @@ class SpokenLine:
     def list_said(self) -> Sequence[Said]:
         """What the caller said and when, by the log's clock."""
         return () if self._leg is None else tuple(self._leg.spoke)
+
+    def read_pace(self) -> dict[str, float] | None:
+        """How the caller's leg kept to the clock; None for a line whose leg never opened."""
+        return None if self._leg is None else self._leg.pace.dump()
 
     async def read_so_far(self) -> Sequence[Entry]:
         """The call's log as it stands, read from where the leg's waits last left it."""

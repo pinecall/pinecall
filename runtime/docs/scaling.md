@@ -24,13 +24,14 @@ staging before production.
 | Postgres that outlives a node | `postgres.instances: 2` (`charts/postgres`): CloudNativePG keeps a streaming replica and promotes it; its WAL and nightly base backups are in a bucket either way | — |
 | past ~15 000–20 000 calls | a second cell: another cluster, an org living in one | Postgres grows ~1.4 cores per 1 000 calls; one database is one cell |
 
-## Three planes, each grows on its own
+## Four planes, each grows on its own
 
 | plane | what it is | grows with |
 |---|---|---|
 | control | the gateways: logs, keys, routes, quotas, the roster; any serves any endpoint of any call, telling the others what it did on Redis | requests, never calls: another gateway behind the balancer |
 | media | LiveKit rooms, SIP, WebRTC: a LiveKit per environment, so a sandbox call never shares a machine with a production one | one per environment and region, beside the callers |
 | workers | the conversations: the ears, the model, the voice | calls |
+| callers | the simulated callers of spoken test calls: a voice into a room, three a process | simulations at once ([below](#the-simulated-callers-are-a-plane-of-their-own)) |
 
 The control plane is as many gateways as the requests need. Each keeps in memory only a cache of
 what Postgres holds and what is bound to a connection it holds (an app socket, a stream, a written
@@ -46,6 +47,60 @@ through a node's drain. A release never shows a caller a `503`: a stopping gatew
 and it keeps an idle connection 620 s, past the load balancer's 600, so the load balancer never
 sends a request down a socket the gateway already closed. A new gateway imports every vendor's
 plugin before it listens (5 s), so no request waits on the first endpoint that lists the vendors.
+
+## The simulated callers are a plane of their own
+
+A spoken simulation has two sides: the agent, which a worker of the sandbox's fleet runs like any call,
+and the caller, a voice that speaks into the room. The caller is played by **a callers process**, a
+loop with nothing on it but the few callers it claimed, and a gateway only places it.
+
+| | |
+|---|---|
+| placed | the gateway that takes the request writes the caller's row (`caller_jobs`): the simulation whole, as it was asked for, and the org's place on its line |
+| claimed | a process with room takes the next row that waits (`for update skip locked`): the caller of the org that holds the fewest first, then the one placed first. No two processes ever take one row |
+| played | on that process alone, from the seat it asks the fleet for to the hang-up. It says every 10 s that it still has the caller |
+| let go | played to its end, the job is over. Broken before the call began, the process says why on the row and a gateway ends the call with that reason (a callers process has no live side). Cut while the process stops, a caller whose call never began is another process's to play whole; one on the line leaves a call that is over, and a comparison places it again |
+| left | a process silent for 40 s is gone: a gateway gives the caller's seat back and closes its room, and the caller is played whole by another process if its call never began, once; else the call is over and its comparison places it again |
+
+**One process plays three callers at once** (`PINECALL_CALLERS_PER_PROCESS`), **and the service runs
+several** (`PINECALL_CALLER_PROCESSES`; unset, half the cores it is given). A caller costs 0.18 of a
+core: its voice synthesised, resampled, stretched and mixed with its room, handed to LiveKit ten
+milliseconds at a time, a tenth of a second ahead. Three are about half a core of the one a Python
+loop has, so a burst from one leaves the others their time. A process reads the clock twenty times a
+second and, after a reading that came 50 ms late, claims nothing for ten seconds: the callers it
+plays are what made it late, and one more would break the voice of all of them. Each caller's leg
+also counts the frames it handed to the room after the one before had run out, and keeps the count
+with the call (`call_facts.caller_line`: `{frames, late_frames, late_ms, worst_ms}`): a call whose
+line ran late was heard broken by its agent, and says nothing of the agent.
+
+What this replaced, measured on 2026-11-25: every simulated caller was a task of the gateway that
+took its request, beside its endpoints, its loops and its app sockets. Six at once were clean.
+Nineteen at once put two cores of work on one loop: the room heard 20 to 100 ms of silence inside the
+caller's words, 36 to 55 times a minute, in 101 of 140 calls of one run; a realtime model's reply
+measured 3.35 s there and 0.77 s with ten at once; the same loop kept the gateway's pool busy, and
+workers and the CLI were answered `503`. And a gateway started again ended every simulated call on
+the line with it.
+
+**A release drains them.** A callers process told to stop (`SIGTERM`) claims no other caller and ends
+when the calls it plays do, eleven minutes at most (a simulated call lasts ten); the service waits
+for every one of its processes, and its container or pod is given twelve. A gateway that rolls ends
+no simulated call: it plays none. During a release the new callers' processes start once the old
+ones ended, so a caller placed meanwhile waits for one, as it would for a seat.
+
+**Sizing.** A simulated call takes a seat of the sandbox's fleet and a third of a callers process:
+0.22 of a core at the worker and 0.18 at the caller. Sixteen at once are six processes and about
+6.4 cores between the two. On a server the service is one container (`callers`); on a cluster it is
+the Deployment `pinecall-callers` (`callers.replicas`, `callers.processes`), each process holding at
+most `PINECALL_CALLERS_PER_PROCESS` + 2 connections of Postgres. A gateway that is not told a callers
+service exists (`PINECALL_CALLERS_SERVICE` unset: a laptop, a machine with one process of each)
+claims and plays callers itself, by the same rows and under the same three at once: it stays on
+time, and what it cannot play yet waits.
+
+**Rolling to it.** The migration first (`caller_jobs` starts empty), then the gateways and the
+callers service together. A gateway of the release before plays the callers of the calls it placed
+as it always did and writes no row; a new one writes rows that only a process of this release
+claims. Until every gateway is new, the org's most at once is counted apart by the two kinds (an
+old gateway's memory, the new ones' rows), so an org may pass it by what the other kind placed.
 
 ## A fleet per environment
 
@@ -289,7 +344,7 @@ waited longest. An org alone in the line takes every seat there is, since nothin
 that is not asking. Two orgs that evaluate at once come to half each and three to a third; an org that
 arrives while another holds everything is given the next seats that free, and no call on the line is
 ended to make room. The line is rows, read under the fleet's turn (a Postgres advisory lock), so the
-answer is the same on every gateway. One of a gateway's own callers at a time asks Postgres for the
+answer is the same whichever process asks. One of a process's own callers at a time asks Postgres for the
 turn, the others waiting in the process with nothing in hand: each waiting on the lock in a transaction
 of its own held a connection, and twenty placed together kept a gateway's whole pool there (2026-11-25).
 An ask that finds no connection free is a seat not got this time, asked for again two seconds on. A caller says it still waits each time it asks, every two seconds:

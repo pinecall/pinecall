@@ -15,6 +15,7 @@ from runtime.calls import service as calls
 from runtime.calls.context import CallContext, Route, new_call_id
 from runtime.enums import Channel, Direction, Stage
 from runtime.evals.parts import Harness
+from runtime.evals.service import caller_jobs
 from runtime.evals.service.briefs import as_scenario, brief_persona
 from runtime.evals.service.callers import (
     Heard,
@@ -28,9 +29,9 @@ from runtime.evals.service.callers import (
 )
 from runtime.evals.service.simulated_calls import (
     Simulation,
+    holder_of,
     keep_as_placed,
     keep_written_as_placed,
-    play_spoken,
     play_written,
 )
 from runtime.exceptions import Conflict, NotFound, QuotaExceeded, TooManyRequests, ValidationError
@@ -110,11 +111,12 @@ class PlacedBefore:
 # ── placed ──
 
 
-# The gateway plays the caller, so the agent is called as anybody calls it: the process that holds it
-# answers, and nothing about the agent changes for a simulation. What can be refused is refused before
-# the answer: the persona, nobody holding the agent, the calls already on the line, the org's limits,
-# a vendor nobody keyed. The conversation is played after it, on a task of this gateway. No session of
-# the request's is taken: each read is a transaction of its own, and none is open while a model answers.
+# A caller is played as anybody calls the agent: the process that holds the agent answers, and nothing
+# about it changes for a simulation. What can be refused is refused before the answer: the persona,
+# nobody holding the agent, the calls already on the line, the org's limits, a vendor nobody keyed.
+# The conversation is played after it: a written one on a task of this gateway, a spoken one by
+# whichever process claims the caller's job (`caller_jobs`), which this gateway only writes. No session
+# of the request's is taken: each read is a transaction of its own, none open while a model answers.
 # The place on the line is taken before anything that costs: until 2026-11 a caller of the library was
 # briefed (a request of the judge model, an eval) before it, so a comparison waiting for a place paid a
 # brief at every retry, two seconds apart for up to three quarters of an hour.
@@ -131,11 +133,15 @@ async def place_simulation(
     async with parts.sessions.begin() as session_:
         persona = await _get_persona(session_, scope, wanted)
         quotas = await billing.get_quotas(session_, scope.org, scope.env)
+        placed_elsewhere = await caller_jobs.count_placed(session_, scope)
     registration = parts.apps.get(scope, wanted.agent)
     call = new_call_id()
-    # Taken with no await before it, and given back if what follows refuses the call: a burst of
-    # requests can never all pass the count together.
-    parts.simulations.take_place(call, scope, quotas.simulating_at_most)
+    # Taken before anything that costs, and given back if what follows refuses the call: a spoken call's
+    # place is its job's row, under the org's lock; a written call's is this gateway's own count.
+    if wanted.spoken:
+        await caller_jobs.take_place(parts, call, scope, wanted.agent, comparison, quotas.simulating_at_most)
+    else:
+        parts.simulations.take_place(call, scope, quotas.simulating_at_most, beside=placed_elsewhere)
     try:
         async with parts.sessions.begin() as session_:
             await admit_simulation(session_, parts, scope, wanted.agent, persona, spoken=wanted.spoken, waits=True)
@@ -160,17 +166,22 @@ async def place_simulation(
             comparison=comparison,
             network=LinkShape(acts.packet_loss, wanted.delay_ms, wanted.jitter_ms, wanted.rate_kbps),
             rings=rings,
+            held_by=holder_of(parts, scope, wanted.agent),
         )
         if wanted.spoken:
+            # One transaction: a process claims the caller of a call that is there, or nothing.
             async with parts.sessions.begin() as session_:
                 await claim_new_call(session_, call, wanted.agent, scope)
                 await keep_as_placed(session_, simulation, placed, wanted.persona)
-            parts.simulations.play(call, play_spoken(parts, simulation))
+                await caller_jobs.complete(session_, simulation, wanted.persona)
         else:
             running = await open_written_call(parts, registration, simulation, placed, wanted.persona)
             parts.simulations.play(call, play_written(parts, running, simulation))
     except BaseException:
-        parts.simulations.give_back(call)
+        if wanted.spoken:
+            await caller_jobs.give_place_back(parts, call)
+        else:
+            parts.simulations.give_back(call)
         raise
     return Started(call, wanted.spoken)
 
@@ -485,5 +496,5 @@ async def improvise_next_line(
 async def limits_of(session_: AsyncSession, parts: Harness, actor: Actor) -> Limits:
     """How the key's org may shape its simulations in the env: the calls at once, and the calls a comparison places."""
     quotas = await billing.get_quotas(session_, actor.org, actor.env)
-    on_the_line = parts.simulations.count(actor.org, actor.env)
+    on_the_line = parts.simulations.count(actor.org, actor.env) + await caller_jobs.count_placed(session_, actor.scope)
     return Limits(quotas.simulating_at_most, on_the_line, quotas.compared_at_most)
