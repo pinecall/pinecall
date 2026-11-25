@@ -5,6 +5,12 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
+## Unreleased
+
+- An `ownPersona`'s `behavior` takes `ambienceTurns`, 0 to 1: the share of the caller's own lines its ambience is heard
+  behind, a noise that comes and goes. `1`, the default, is the room that never stops. A `speed` under 1 is a slower
+  talker, with longer pauses between its phrases, where its voice was stretched.
+
 ## 0.11.52 — the callers an agent is tested with live in its test folder, beside its goldens; one Calls page lists every conversation (2026-11-19)
 
 - The callers an agent is tested with live in `agents/<name>/test/personas.ts`, beside its goldens: every `ownPersona`

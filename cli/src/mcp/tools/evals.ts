@@ -275,8 +275,9 @@ export const personas = tool({
     interrupts: z.number().min(0).max(1).optional().describe("on a spoken call, the share of the agent's answers they talk over"),
     pause_s: z.number().min(0).max(10).optional().describe("on a spoken call, seconds of silence before each line"),
     backchannels: z.number().min(0).max(1).optional().describe("on a spoken call, the share of the agent's answers they murmur an \"mm-hmm\" into, keeping their turn"),
-    speed: z.number().min(0.5).max(2).optional().describe("how fast they speak: 1 as the voice's vendor reads it, 0.8 slower, 1.3 faster"),
+    speed: z.number().min(0.5).max(2).optional().describe("how fast they speak: 1 as the voice's vendor reads it, 0.8 a slower talker with longer pauses between phrases, 1.3 faster"),
     ambience: z.enum(service.AMBIENCES).optional().describe("what plays behind them on a spoken call, at background_noise dB under them"),
+    ambience_turns: z.number().min(0).max(1).optional().describe("the share of their lines the ambience is heard behind: 1, the default, is the whole call and its silences; less is behind that share of what they say and nowhere else"),
     background_noise: z.number().nullable().optional().describe("dB under the caller the ambience plays at; null for a quiet room"),
     llm: z.string().optional().describe("the model that plays them; the runtime's when left out"),
     tts: z.string().optional().describe("the vendor their voice is read by; the runtime's when left out: a voice the agent does not have"),
@@ -317,6 +318,7 @@ export const personas = tool({
       backchannels: args.backchannels,
       speed: args.speed,
       ambience: args.ambience,
+      ambienceTurns: args.ambience_turns,
       backgroundNoise: args.background_noise,
     });
     return await service.writePersona(ctx, agent, name, args.action, input);

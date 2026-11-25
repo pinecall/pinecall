@@ -180,6 +180,7 @@ export const CallerBehaviorSchema = z.strictObject({
   backchannels: z.number().optional(),
   speed: z.number().optional(),
   ambience: AmbienceSchema.optional(),
+  ambience_turns: z.number().optional(),
 });
 
 export type CallerBehavior = z.infer<typeof CallerBehaviorSchema>;

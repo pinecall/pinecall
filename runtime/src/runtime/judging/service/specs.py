@@ -83,6 +83,10 @@ class Behavior:
     speed: float = 1.0
     # What plays behind the caller when `interferer_db` sets a level.
     ambience: str = "television"
+    # The share of the caller's lines the room is heard behind. 1: the room never stops, under the
+    # agent's answers and through every silence. Less: it is heard behind that share of the caller's
+    # own lines and nowhere else, a noise that comes and goes with what the caller says.
+    ambience_turns: float = 1.0
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.interrupts <= 1.0:
@@ -90,6 +94,10 @@ class Behavior:
         if not 0.0 <= self.backchannels <= 1.0:
             raise ValidationError(
                 f"backchannels is a share of the agent's answers, from 0 to 1, not {self.backchannels}"
+            )
+        if not 0.0 <= self.ambience_turns <= 1.0:
+            raise ValidationError(
+                f"ambience_turns is a share of the caller's lines, from 0 to 1, not {self.ambience_turns}"
             )
         if not SLOWEST <= self.speed <= FASTEST:
             raise ValidationError(f"speed is how fast the caller speaks, from {SLOWEST} to {FASTEST}, not {self.speed}")

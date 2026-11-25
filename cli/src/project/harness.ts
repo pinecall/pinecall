@@ -44,7 +44,7 @@ export interface Appended {
 const A_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 // How a caller acts when the code says nothing: only what differs from this is written into it.
-const BEHAVIOR_DEFAULTS: Record<string, unknown> = { interrupts: 0, pause_s: 0, interferer_db: null, packet_loss: 0, backchannels: 0, speed: 1, ambience: "television" };
+const BEHAVIOR_DEFAULTS: Record<string, unknown> = { interrupts: 0, pause_s: 0, interferer_db: null, packet_loss: 0, backchannels: 0, speed: 1, ambience: "television", ambience_turns: 1 };
 
 export const NOT_A_NAME = (name: string): string => `${name} is no name for one of the agent's own: lower-case letters and digits joined by hyphens — apurado, price-shopper`;
 export const DECLARED_ALREADY = (path: string, symbol: string): string => `${path} declares ${symbol} already: nothing is written over code; write it by hand, or under another name`;

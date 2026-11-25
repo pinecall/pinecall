@@ -43,6 +43,7 @@ export const WritePersonaInput = z.object({
   backchannels: z.number().min(0, A_SHARE("--backchannels")).max(1, A_SHARE("--backchannels")).optional(),
   speed: z.number().min(0.5, A_SPEED).max(2, A_SPEED).optional(),
   ambience: z.enum(AMBIENCES).optional(),
+  ambienceTurns: z.number().min(0, A_SHARE("--ambience-turns")).max(1, A_SHARE("--ambience-turns")).optional(),
   backgroundNoise: z.number().nullable().optional(),
 });
 export type WritePersonaInput = z.infer<typeof WritePersonaInput>;
@@ -114,6 +115,7 @@ export async function writePersona(ctx: Context, agent: string, name: string, ve
       ...(input.backchannels === undefined ? {} : { backchannels: input.backchannels }),
       ...(input.speed === undefined ? {} : { speed: input.speed }),
       ...(input.ambience === undefined ? {} : { ambience: input.ambience }),
+      ...(input.ambienceTurns === undefined ? {} : { ambience_turns: input.ambienceTurns }),
       ...(input.backgroundNoise === undefined ? {} : { interferer_db: input.backgroundNoise }),
     },
     ...(writing === name ? {} : { was: name }),

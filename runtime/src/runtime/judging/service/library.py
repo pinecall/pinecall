@@ -130,7 +130,8 @@ def read_persona(path: Path) -> WrittenPersona:
 
 
 # How the caller acts on a spoken line: `interrupts`, `pause_s`, `interferer_db`, `packet_loss`,
-# `backchannels`, `speed` and `ambience` in the front matter; a field left out is a quiet caller's.
+# `backchannels`, `speed`, `ambience` and `ambience_turns` in the front matter; a field left out is a
+# quiet caller's.
 def _behavior_of(fields: Mapping[str, str]) -> Behavior:
     noise = fields.get("interferer_db")
     return Behavior(
@@ -141,6 +142,7 @@ def _behavior_of(fields: Mapping[str, str]) -> Behavior:
         backchannels=float(fields.get("backchannels", "0")),
         speed=float(fields.get("speed", "1")),
         ambience=fields.get("ambience", "television"),
+        ambience_turns=float(fields.get("ambience_turns", "1")),
     )
 
 

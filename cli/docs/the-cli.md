@@ -939,6 +939,7 @@ pinecall personas add <name> --goal '…' --style '…' [--about '…'] [--fact 
 pinecall personas edit <name> [--goal '…'] [--style '…'] [--about '…'] [--fact 'what=said']… [--expect '…']… [--rename <name>]
                 … add and edit also take [--llm x] [--tts x] [--voice x] [--tag x]… [--interrupts 0-1] [--pause s]
                   [--backchannels 0-1] [--speed 0.5-2] [--ambience television|cafe|office|street] [--background-noise dB]
+                  [--ambience-turns 0-1]
 pinecall personas generate [N] [--about '…'] [--from-call <call>] [--template <name>] [--save]
 pinecall personas rm <name> · pinecall personas pull
                 … any of them with --json, --prod in production, and --agent <name> or
@@ -1005,7 +1006,9 @@ answers a few seconds in, keeping their turn, so an agent that stops for a liste
 found out; `--speed 0.8` makes them a slower talker, their words a little slower and the pauses between their phrases
 longer, and `1.3` hurries their voice to that much of the vendor's tempo, the pitch kept; `--ambience cafe` says what plays behind them — `television`, `cafe`, `office`
 or `street`, each the same sound every run — at the `--background-noise` dB under them, and
-without a level nothing plays. `show` prints one a label a line — about, goal, style, how they speak,
+without a level nothing plays; `--ambience-turns 0.5` has it heard behind that share of their own lines and
+nowhere else, a noise that comes and goes, where `1` (the default) is a room that never stops, under the agent's
+answers and through every silence. `show` prints one a label a line — about, goal, style, how they speak,
 their facts, what they expect (and says so when they expect nothing) — with the models that play them
 only when one is not the runtime's; `rm` drops it; `try` puts it on the class in
 this directory, which is `simulate` without the judge. A name is lower-case letters and digits

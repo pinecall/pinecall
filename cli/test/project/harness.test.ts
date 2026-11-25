@@ -69,7 +69,7 @@ export const inARush = ownPersona({
   it("writes of a caller's behavior only what differs from the runtime's defaults, and none when nothing does", () => {
     const root = project(["front-desk"]);
     const home = homeOf(`${root}/agents/front-desk/agent.ts`);
-    const defaults = { interrupts: 0, pause_s: 0, interferer_db: null, packet_loss: 0, backchannels: 0, speed: 1, ambience: "television" };
+    const defaults = { interrupts: 0, pause_s: 0, interferer_db: null, packet_loss: 0, backchannels: 0, speed: 1, ambience: "television", ambience_turns: 1 };
     startPersonas(home, []);
     appendPersona(home, { ...RUSH, name: "calm", behavior: defaults });
     appendPersona(home, { ...RUSH, name: "noisy", behavior: { ...defaults, interferer_db: -12, ambience: "cafe" } });

@@ -446,8 +446,9 @@ The agent's simulated callers: Pinecall's library switched on or off, its own wr
 | `interrupts` | a number 0–1 |  | on a spoken call, the share of the agent's answers they talk over |
 | `pause_s` | a number 0–10 |  | on a spoken call, seconds of silence before each line |
 | `backchannels` | a number 0–1 |  | on a spoken call, the share of the agent's answers they murmur an "mm-hmm" into, keeping their turn |
-| `speed` | a number 0.5–2 |  | how fast they speak: 1 as the voice's vendor reads it, 0.8 slower, 1.3 faster |
+| `speed` | a number 0.5–2 |  | how fast they speak: 1 as the voice's vendor reads it, 0.8 a slower talker with longer pauses between phrases, 1.3 faster |
 | `ambience` | `television` · `cafe` · `office` · `street` |  | what plays behind them on a spoken call, at background_noise dB under them |
+| `ambience_turns` | a number 0–1 |  | the share of their lines the ambience is heard behind: 1, the default, is the whole call and its silences; less is behind that share of what they say and nowhere else |
 | `background_noise` | text |  | dB under the caller the ambience plays at; null for a quiet room |
 | `llm` | text |  | the model that plays them; the runtime's when left out |
 | `tts` | text |  | the vendor their voice is read by; the runtime's when left out: a voice the agent does not have |

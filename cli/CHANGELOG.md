@@ -6,6 +6,9 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **`personas add --ambience-turns 0-1`**: the share of a caller's own lines its ambience is heard behind, a noise
+  that comes and goes; `1`, the default, is the room that never stops. `personas show` says it, and the MCP tool
+  `personas` takes `ambience_turns`. A caller slower than read (`--speed` under 1) is shown as a slow talker.
 - **`simulate --against realtime=vendor/model` runs the agent on a realtime model for that run.** A model that hears
   and speaks itself is a value of the run like `llm=`: a pipeline's models and the realtime ones are compared in one
   command, a `--against` each, and the table names the row `talks google/gemini-3.8-live`. Until now a realtime model

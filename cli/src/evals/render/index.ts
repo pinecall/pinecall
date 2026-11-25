@@ -184,8 +184,8 @@ export function persona(one: Persona): string[] {
     ...(acts.interrupts > 0 ? [`interrupts ${Math.round(acts.interrupts * 100)}% of the answers`] : []),
     ...(acts.pause_s > 0 ? [`pauses ${acts.pause_s} s before each line`] : []),
     ...(acts.backchannels > 0 ? [`murmurs into ${Math.round(acts.backchannels * 100)}% of the answers`] : []),
-    ...(acts.speed === 1 ? [] : [`speaks at ${acts.speed}× the vendor's tempo`]),
-    ...(acts.interferer_db === null ? [] : [`a ${acts.ambience} ${acts.interferer_db} dB under it`]),
+    ...(acts.speed === 1 ? [] : [acts.speed < 1 ? `a slow talker (${acts.speed}×): longer pauses between its phrases` : `speaks at ${acts.speed}× the vendor's tempo`]),
+    ...(acts.interferer_db === null ? [] : [`a ${acts.ambience} ${acts.interferer_db} dB under it${(acts.ambience_turns ?? 1) < 1 ? `, behind ${Math.round((acts.ambience_turns ?? 1) * 100)}% of its lines` : ""}`]),
     ...(acts.packet_loss > 0 ? [`${Math.round(acts.packet_loss * 100)}% packets lost`] : []),
   ];
   const models = [one.llm == null ? null : `played by ${one.llm}`, one.tts == null ? null : `read by ${one.tts}`, one.voice == null ? null : `voice ${one.voice}`].filter((said) => said !== null);

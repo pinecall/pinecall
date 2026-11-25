@@ -17,7 +17,7 @@ import { dropCaller, proposeCallers, switchCaller, writeCaller, type Persona, ty
 import { aboutOf, isPinecalls, verdictOfCall } from "./fold";
 
 // How a caller acts on a spoken line when nobody said otherwise.
-const STILL: CallerBehavior = { interrupts: 0, pause_s: 0, interferer_db: null, packet_loss: 0, backchannels: 0, speed: 1, ambience: "television" };
+const STILL: CallerBehavior = { interrupts: 0, pause_s: 0, interferer_db: null, packet_loss: 0, backchannels: 0, speed: 1, ambience: "television", ambience_turns: 1 };
 // The dB under the caller a background plays at when it is first picked.
 const A_BACKGROUND_DB = 15;
 

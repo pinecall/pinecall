@@ -51,6 +51,8 @@ A_THIRD = 3
 A_PAUSE_AT_HALF_SPEED_S = 0.9
 A_PAUSE_VARIES = (0.6, 1.4)
 A_BREAK_FRAMES = 9
+# A room heard behind some of the caller's lines alone comes up and goes down over this many frames.
+A_ROOM_FADES_FRAMES = 25
 # What a listener murmurs while the other speaks, without taking the turn, by language.
 MURMURS: Mapping[str, tuple[str, ...]] = {
     "es": ("ajá", "mm", "sí, sí"),
@@ -133,6 +135,9 @@ class CallerLeg:
         self.silent = asyncio.Event()
         # The samples the line has carried: where the interferer goes on from.
         self.carried = 0
+        # Whether the room is heard now, and how much of it: all of it for a room that never stops.
+        self.heard = spoken.acts.ambience_turns >= 1.0
+        self.room = 1.0 if self.heard else 0.0
         self.carrying: asyncio.Future[None] | None = None
         # What the caller said and when, by the log's clock: what the agent's hearing is measured against.
         self.spoke: list[Said] = []
@@ -154,7 +159,11 @@ class CallerLeg:
             await asyncio.sleep(self.spoken.acts.pause_s + self.spoken.network.delay_ms / 1000)
         self.cutting_in = False
         self.said_at = self.store.clock()
+        # A room heard behind some lines alone is thrown for at each one, and is gone with its last word.
+        whole = self.spoken.acts.ambience_turns >= 1.0
+        self.heard = whole or self.dice.random() < self.spoken.acts.ambience_turns
         await self._speak(line)
+        self.heard = whole
         self.spoke.append(Said("line", line, self.said_at, self.store.clock(), cut_in=cut_in))
 
     # A murmur rides the agent's answer: it moves no clock, so the answer is still waited for whole.
@@ -189,8 +198,11 @@ class CallerLeg:
         else:
             self.silent.set()
         if acts.interferer_db is not None and self.loudness > 0:
-            gain = self.level.rms / self.loudness * 10 ** (-acts.interferer_db / 20)
-            frame = mix_under(frame, self.interferer, self.carried, gain)
+            step = 1.0 / A_ROOM_FADES_FRAMES
+            self.room = min(1.0, self.room + step) if self.heard else max(0.0, self.room - step)
+            if self.room > 0:
+                gain = self.level.rms / self.loudness * 10 ** (-acts.interferer_db / 20) * self.room
+                frame = mix_under(frame, self.interferer, self.carried, gain)
         self.carried += len(frame) // 2
         return frame
 
@@ -254,7 +266,8 @@ def describe(acts: judging.Behavior, network: LinkShape, *, by_phone: bool = Fal
     """The line a caller acting so is on, in the words a report prints."""
     said = ["a phone line"] if by_phone else []
     if acts.interferer_db is not None:
-        said.append(f"{acts.ambience} {acts.interferer_db:.0f} dB under the caller")
+        some = "" if acts.ambience_turns >= 1.0 else f" in {acts.ambience_turns * 100:.0f}% of its lines"
+        said.append(f"{acts.ambience} {acts.interferer_db:.0f} dB under the caller{some}")
     if network.loss > 0:
         said.append(f"{network.loss * 100:.0f}% packet loss")
     if network.delay_ms > 0 or network.jitter_ms > 0:

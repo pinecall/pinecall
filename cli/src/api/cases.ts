@@ -102,6 +102,8 @@ export interface Behavior {
   backchannels: number;
   speed: number;
   ambience: string;
+  /** The share of its lines the ambience is heard behind; a gateway from before 2026-11-25 says none. */
+  ambience_turns?: number;
 }
 
 /** A persona as the agent's list carries it: Pinecall's or the agent's own. */

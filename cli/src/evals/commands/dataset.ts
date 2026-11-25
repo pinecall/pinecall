@@ -213,6 +213,7 @@ export function registerPersonas(program: Command, ctx: Context): void {
       .option("--backchannels <0-1>")
       .option("--speed <0.5-2>")
       .option("--ambience <what>", service.AMBIENCES.join(" | "))
+      .option("--ambience-turns <0-1>", "the share of their lines it is heard behind; 1 is the whole call, its silences too")
       .option("--background-noise <dB>", "dB under them it plays at; empty for a quiet room")
       .addOption(new Option("--rename <name>", "move it to another name").hideHelp(verb === "add"))
       .action(async (name, flags) => {
@@ -232,6 +233,7 @@ export function registerPersonas(program: Command, ctx: Context): void {
           backchannels: numberOf("--backchannels", flags.backchannels),
           speed: numberOf("--speed", flags.speed),
           ambience: flags.ambience,
+          ambienceTurns: numberOf("--ambience-turns", flags.ambienceTurns),
           backgroundNoise: flags.backgroundNoise === "" ? null : numberOf("--background-noise", flags.backgroundNoise),
         });
         if (verb === "add" && input.rename !== undefined) throw new UsageError("--rename is edit's: add writes the name typed");

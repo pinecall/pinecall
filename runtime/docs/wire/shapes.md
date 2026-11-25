@@ -590,6 +590,7 @@ How a simulated caller acts on a spoken line, beside what it says. Every field i
 | `backchannels` | `number` | no | The share of the agent's answers the caller murmurs an "mm-hmm" into without taking its turn, 0 to 1. |
 | `speed` | `number` | no | How fast the caller speaks: 1 as the vendor reads it, 0.5 half as fast, 2 twice. |
 | `ambience` | `Ambience` | no | What plays behind the caller once `interferer_db` names a level. Absent, a television. |
+| `ambience_turns` | `number` | no | The share of the caller's lines the ambience is heard behind, 0 to 1. Absent or 1, the whole call, its silences too. |
 
 ### `PersonaDeclaration`
 

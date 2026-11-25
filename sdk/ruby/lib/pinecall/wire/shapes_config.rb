@@ -26,7 +26,8 @@ module Pinecall
           packet_loss: { kind: :float },
           backchannels: { kind: :float },
           speed: { kind: :float },
-          ambience: { kind: :enum, values: %w[television cafe office street] }
+          ambience: { kind: :enum, values: %w[television cafe office street] },
+          ambience_turns: { kind: :float }
         }.freeze,
         "PersonaDeclaration" => {
           name: { kind: :str, required: true },

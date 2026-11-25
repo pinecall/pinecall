@@ -146,8 +146,8 @@ def own_persona(  # noqa: PLR0913 - one keyword for each thing a caller is
         state: The state the call opens in, as the class's fields name it.
         expects: What the agent should do, one line each, judged by `expected-outcome`.
         tags: Words to find the caller by.
-        behavior: `interrupts`, `pause_s`, `backchannels`, `speed`, `ambience`, `interferer_db`,
-            `packet_loss`: how they act on a spoken line.
+        behavior: `interrupts`, `pause_s`, `backchannels`, `speed`, `ambience`, `ambience_turns`,
+            `interferer_db`, `packet_loss`: how they act on a spoken line.
         llm: The model that plays them, `vendor/model`; None for the judge model.
         tts: The voice vendor that speaks them, and `voice` the voice; None for the default.
         voice: See `tts`.

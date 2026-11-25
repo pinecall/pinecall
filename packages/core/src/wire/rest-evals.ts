@@ -30,6 +30,8 @@ export const CallerBehaviorSchema = z.strictObject({
   /** How fast it speaks: 1 as the vendor reads it, 0.5 half as fast, 2 twice. */
   speed: z.number(),
   ambience: z.enum(AMBIENCES),
+  /** The share of its lines the ambience is heard behind: 1 the whole call, its silences too. A gateway from before 2026-11-25 says none. */
+  ambience_turns: z.number().default(1),
 });
 
 export type CallerBehavior = z.infer<typeof CallerBehaviorSchema>;

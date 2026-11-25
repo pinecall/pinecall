@@ -61,7 +61,9 @@ murmurs an "mm-hmm" in its language into that share of them (`backchannels`, 0 t
 seconds in, keeping its turn, so an agent that stops for a listener's noise is found out; it
 leaves `pause_s` of silence before each line (the request's `pause_s`, 0 to 10, stands over the
 persona's: a preview asks for 0), then speaks it as its voice's vendor sends it, piece
-by piece, never held until whole, at `speed` times the vendor's tempo (0.5 to 2, the pitch kept);
+by piece, never held until whole, at `speed` (0.5 to 2): above 1 that many times the vendor's tempo, the pitch
+kept; below 1 a slower talker, its words a third of the way slower and the rest of its slowness held as silence
+where the voice breaks between phrases;
 and the line carries its noise and loss unless the request names its own — `interferer_db` under
 the caller of the `ambience` it names: a `television` (a real newscast in English as a small speaker sounds from a couch across a living room), a `cafe`
 (eight tables talking at once over a room, none of them to be followed), an `office` (a hum), a `street` (traffic swelling and fading), each the
@@ -69,7 +71,12 @@ same sound every run. The ambience is the room's, not the voice's: it plays from
 caller joins until it hangs up, under the agent's answers and through every silence, so the agent
 speaks over the television and ends a turn against the street; it sits `interferer_db` under how
 loud the caller speaks over the call (its frames that carry speech, a vendor's usual level before
-its first word) and keeps that level whether the caller is speaking or not.
+its first word) and keeps that level whether the caller is speaking or not. `ambience_turns` (0 to 1, 1 unless
+said) under 1 makes it a noise that comes and goes: it is heard behind that share of the caller's own lines, each
+a draw of its own, coming up as the caller starts and gone with its last word, and nowhere else — not under the
+agent's answers, not in a silence. A television with voices that never stops is transcribed as a caller's turns by
+ears that have no filter (measured 2026-11-25, at 12, 20 and 26 dB under the caller); behind some lines it troubles
+the hearing of those lines and takes no turn of its own.
 
 **The line's network.** `packet_loss` (the share of packets lost at random, the persona's own unless
 the request says one), `delay_ms` (the milliseconds every packet is held, 0 to 2000), `jitter_ms`
@@ -223,7 +230,7 @@ persona kept from a case group, is `409 personas set by the class of {slug}: …
 stays; `""` is back to the runtime's choice — the box's caller model (`caller.llm` of the
 providers row), a voice the agent does not have. Anything else of it, or a `DELETE`, is `409`. Any of them is played by its name. A library
 persona acts on a spoken line as its file's front matter says (`interrupts`, `pause_s`,
-`interferer_db`, `packet_loss`, `backchannels`, `speed`, `ambience`): `interrupts` talks over 60% of the agent's answers,
+`interferer_db`, `packet_loss`, `backchannels`, `speed`, `ambience`, `ambience_turns`): `interrupts` talks over 60% of the agent's answers,
 `in-a-hurry` and `angry-repeat-caller` 30%, `elderly-slow` waits 2.5 s before each line and
 `non-native` and `switches-language` 1 s. `switches-language` opens in the language the agent speaks and
 changes to English from its third turn (to Spanish where the agent has been speaking English): what an

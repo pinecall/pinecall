@@ -82,6 +82,8 @@ Options:
   --backchannels <0-1>
   --speed <0.5-2>
   --ambience <what>        television | cafe | office | street
+  --ambience-turns <0-1>   the share of their lines it is heard behind; 1 is the
+                           whole call, its silences too
   --background-noise <dB>  dB under them it plays at; empty for a quiet room
   -h, --help               display help for command
 
@@ -108,6 +110,8 @@ Options:
   --backchannels <0-1>
   --speed <0.5-2>
   --ambience <what>        television | cafe | office | street
+  --ambience-turns <0-1>   the share of their lines it is heard behind; 1 is the
+                           whole call, its silences too
   --background-noise <dB>  dB under them it plays at; empty for a quiet room
   --rename <name>          move it to another name
   -h, --help               display help for command

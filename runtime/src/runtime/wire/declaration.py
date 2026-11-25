@@ -191,6 +191,8 @@ class CallerBehavior(WireModel):
     # How fast the caller speaks: 1 as the vendor reads it, 0.5 half as fast, 2 twice.
     speed: float = Field(default=1.0, ge=0.5, le=2.0)
     ambience: Ambience = "television"
+    # The share of the caller's lines the ambience is heard behind; 1: the whole call, its silences too.
+    ambience_turns: float = Field(default=1.0, ge=0.0, le=1.0)
 
 
 class PersonaDeclaration(WireModel):

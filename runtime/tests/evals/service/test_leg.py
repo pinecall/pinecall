@@ -11,6 +11,7 @@ from livekit import rtc
 
 from runtime.calls.log.store import Store
 from runtime.evals.service.leg import (
+    A_ROOM_FADES_FRAMES,
     A_VOICE_RMS,
     FRAME_MS,
     MURMURS,
@@ -26,6 +27,7 @@ from runtime.evals.service.leg import (
     tempo_of,
     with_pauses,
 )
+from runtime.exceptions import ValidationError
 from runtime.judging import service as judging
 from runtime.kit.link import LinkShape
 from runtime.kit.pcm import QUIET, frames_of, in_frames, mix_under, rms_of
@@ -179,6 +181,26 @@ async def test_the_room_is_heard_while_the_caller_says_nothing(store: Store, cal
     quiet = b"".join(leg.next_frame() for _ in range(A_SECOND_IN_FRAMES))
     under = 20 * math.log10(A_VOICE_RMS / rms_of(quiet))
     assert abs(under - 15.0) < WITHIN_THE_ROUNDING_DB
+
+
+# 2026-11-25: a television that never stops was transcribed as the caller's turns, at any level tried. A
+# room heard behind some of the caller's lines alone is silent until one of them and gone after it.
+@needs_the_database
+async def test_a_room_heard_behind_some_lines_alone_comes_up_with_a_line_and_is_gone_after_it(
+    store: Store, call: str
+) -> None:
+    television = tone_of(SAMPLE_RATE, 6000, period=31)
+    leg = leg_on(store, call, judging.Behavior(interferer_db=15.0, ambience_turns=0.5), television)
+    assert all(leg.next_frame() == SILENCE for _ in range(A_SECOND_IN_FRAMES))
+    leg.heard = True
+    rising = [rms_of(leg.next_frame()) for _ in range(A_ROOM_FADES_FRAMES)]
+    assert 0 < rising[0] < rising[-1]
+    leg.heard = False
+    falling = [rms_of(leg.next_frame()) for _ in range(A_ROOM_FADES_FRAMES)]
+    assert falling[0] > falling[-1] == 0
+    assert leg.next_frame() == SILENCE
+    with pytest.raises(ValidationError, match="ambience_turns is a share"):
+        judging.Behavior(ambience_turns=1.5)
 
 
 @needs_the_database

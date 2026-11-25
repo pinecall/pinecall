@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A caller's room may come and go: `ambience_turns`.** A persona's `behavior.ambience_turns` (0 to 1, 1 unless
+  said) is the share of the caller's own lines the ambience is heard behind. At 1 it is the room it was, from the
+  caller's joining to its hanging up, under the agent's answers and through every silence. Under 1 each of the
+  caller's lines is a draw: the room comes up as the line starts and is gone with its last word, and nothing plays
+  anywhere else. A television with voices that never stops is taken for the caller by ears with no filter, and by
+  two of the three realtime models tried; behind some lines it troubles the hearing and takes no turn.
 - **A slow simulated caller pauses, where it was stretched.** A persona's `speed` below 1 slowed its whole line, the
   pitch kept: every syllable drawn out and not one pause. Its words are now said a third of the way slower and the
   rest of its slowness is silence held where the voice already breaks, between phrases, a little more or less each

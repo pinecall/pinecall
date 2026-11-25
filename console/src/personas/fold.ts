@@ -23,7 +23,7 @@ export function tagsOf(acts: CallerBehavior): string[] {
   return [
     ...(acts.interrupts > 0 ? [`Interrupts ${share(acts.interrupts)}`] : []),
     ...(acts.pause_s > 0 ? [`Pauses ${acts.pause_s} s`] : []),
-    ...(acts.interferer_db !== null ? [`${ROOMS[acts.ambience] ?? "Noise"} behind`] : []),
+    ...(acts.interferer_db !== null ? [`${ROOMS[acts.ambience] ?? "Noise"} behind${acts.ambience_turns < 1 ? ` ${share(acts.ambience_turns)} of the lines` : ""}`] : []),
     ...(acts.packet_loss > 0 ? [`${share(acts.packet_loss)} loss`] : []),
     ...(acts.backchannels > 0 ? [`Murmurs ${share(acts.backchannels)}`] : []),
     ...(acts.speed !== 1 ? [`${acts.speed}× pace`] : []),
