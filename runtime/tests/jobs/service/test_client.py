@@ -2,15 +2,19 @@
 
 import dataclasses
 import secrets
+import time
 
 import pytest
 from opentelemetry import context as otel_context
 from opentelemetry import trace
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from runtime.actor import Scope
 from runtime.agents.declaration import Declaration
 from runtime.enums import Env
 from runtime.exceptions import UpstreamError
+from runtime.fleet.models import Offer
+from runtime.fleet.repository import OfferRepository
 from runtime.jobs.service.client import (
     GatewayClient,
     affinity_headers,
@@ -18,6 +22,7 @@ from runtime.jobs.service.client import (
     trace_headers,
     unavailable,
 )
+from runtime.wire.dispatch import Dispatch
 from runtime.wire.worker import AgentConfigResponse, HeartbeatRequest
 from tests.conftest import Gateway, Tenant, holding, needs_the_services
 
@@ -118,3 +123,33 @@ def test_a_worker_reads_every_field_a_call_is_declared_with() -> None:
     """What the gateway answers a worker holds every field of the declaration: none is the default by omission."""
     declared = {one.name for one in dataclasses.fields(Declaration)}
     assert declared <= set(AgentConfigResponse.model_fields), sorted(declared - set(AgentConfigResponse.model_fields))
+
+
+# What a worker says as it accepts a job and as it finds it cannot start it, with the fleet's key: the
+# room is counted its own from the first, and offered again from the second.
+@needs_the_services
+async def test_a_worker_says_a_room_its_own_and_gives_back_one_whose_job_never_started(
+    fleet: GatewayClient, gateway: Gateway, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    room, worker, now = f"room_{secrets.token_hex(6)}", f"pinecall-sandbox/w-{secrets.token_hex(3)}", time.time()
+    async with sessions.begin() as session:
+        offers = OfferRepository(session)
+        assert await offers.open(room, "pinecall-sandbox", Dispatch(agent="recepcion").dump(), now)
+        assert await offers.claim(room, 0, worker, now)
+    try:
+        await fleet.take_room(room)
+        assert await _opened_at(sessions, room) is not None
+        await fleet.drop_room(room, worker)
+        assert await _opened_at(sessions, room) is None
+        refused = await gateway.http.post(f"/v1/fleet/rooms/{room}/taken")
+        assert refused.status_code == 401, "a room is said taken with the fleet's key alone"
+    finally:
+        async with sessions.begin() as session:
+            await OfferRepository(session).forget(room)
+
+
+async def _opened_at(sessions: async_sessionmaker[AsyncSession], room: str) -> float | None:
+    async with sessions.begin() as session:
+        kept = await session.get(Offer, room)
+        assert kept is not None
+        return kept.opened_at

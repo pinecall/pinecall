@@ -45,7 +45,9 @@ class Arrived:
         return Scope(self.route.org, self.route.env, self.dispatch.holder or "")
 
     # The values a test room asked for ride the wire under the word the release before 2026-11 wrote.
-    def open_with(self, app: str | None) -> OpenCallRequest:
+    # `seat` is the identity the job's agent joined the room under: the gateway tells this job's open
+    # from the open of another job of the same room by it.
+    def open_with(self, app: str | None, seat: str) -> OpenCallRequest:
         """What the call's log is opened with at the gateway, and said again to one that forgot it."""
         return OpenCallRequest.model_validate(
             {
@@ -54,6 +56,7 @@ class Arrived:
                 "app": self.dispatch.app or app,
                 "carrier_account": self.arrival.carrier_account,
                 TEST_VALUES_ON_THE_WIRE: self.dispatch.test_values or None,
+                "seat": seat,
             }
         )
 

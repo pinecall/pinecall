@@ -1,9 +1,11 @@
-"""A worker's report to its gateway: what it holds, its last minute, a cordon's way out, and the names it goes by."""
+"""A worker's words to its gateway: the rooms it takes, what it holds, a cordon's way out, the names it goes by."""
 
 import asyncio
 import logging
 import socket
 import time
+
+from livekit.agents import JobRequest
 
 from runtime.exceptions import UpstreamError
 from runtime.fleet import service as fleet
@@ -27,6 +29,56 @@ UNREGISTERED = "unregistered"
 CORDONED_EXIT = 3
 
 
+# livekit's `on_request`, run in the worker's own process as LiveKit offers it a job. A job's process
+# joins its room only once it started, which takes about 2 s on an idle worker and over 12 s on one
+# starting nineteen at once (2026-11-25): the gateway read those rooms as given to nobody and rang each
+# again, and the second job ended the call the first was holding. The room is said the worker's here,
+# as the job is accepted, while livekit finds or makes the process: both at once, so no caller waits
+# for the word. A gateway that does not hear it changes nothing for the job: the room is the worker's
+# once its agent joins, as before.
+class Accepted:
+    """The worker's answer to a job it is offered: accepted, its room said its own, counted until its process runs."""
+
+    def __init__(self, gateway: GatewayClient, agent_name: str) -> None:
+        """A worker that accepted nothing yet, under the name the gateway offers it rooms by."""
+        self.gateway = gateway
+        self.agent_name = agent_name
+        # The jobs accepted whose process has not started: livekit counts none of them among its
+        # active ones, and each holds one of the worker's slots.
+        self.starting: set[str] = set()
+
+    # `accept` returns once the job runs in a process, and raises when LiveKit assigned it to nobody
+    # after all or no process could be launched for it: the room is then given back.
+    async def __call__(self, request: JobRequest) -> None:
+        """Accept the job, and say its room is this worker's while its process is found."""
+        room = request.room.name
+        self.starting.add(request.id)
+        telling = asyncio.create_task(self._say_taken(room))
+        try:
+            await request.accept()
+        except Exception:
+            if await telling:
+                await self._say_dropped(room)
+            raise
+        finally:
+            self.starting.discard(request.id)
+        await telling
+
+    async def _say_taken(self, room: str) -> bool:
+        try:
+            await self.gateway.take_room(room)
+        except UpstreamError as refused:
+            logger.warning("room %s: the gateway was not told it is this worker's: %s", room, refused)
+            return False
+        return True
+
+    async def _say_dropped(self, room: str) -> None:
+        try:
+            await self.gateway.drop_room(room, self.agent_name)
+        except UpstreamError as refused:
+            logger.warning("room %s: the gateway was not told its job never started: %s", room, refused)
+
+
 class Heartbeats:
     """The worker's report to its gateway every five seconds, and a cordon's way out."""
 
@@ -36,6 +88,7 @@ class Heartbeats:
         gateway: GatewayClient,
         minute: LastMinute,
         load: Load,
+        accepted: Accepted,
         *,
         fleet_name: str,
         worker: str,
@@ -44,6 +97,7 @@ class Heartbeats:
         self.server = server
         self.gateway = gateway
         self.minute = minute
+        self.accepted = accepted
         # The same measure livekit reads this worker by, asked here for the number alone.
         self.load = load
         self.fleet = fleet_name
@@ -54,9 +108,12 @@ class Heartbeats:
         # Set once LiveKit registered the worker and the gateway answered a heartbeat uncordoned.
         self.ready = asyncio.Event()
 
+    # A job accepted whose process has not started holds a slot and is none of livekit's active jobs
+    # yet: the gateway took its room for this worker's as it was accepted, and counts the slot from
+    # this beat. One that starts between the two reads is counted twice for a beat, never missed.
     def beat(self) -> HeartbeatRequest:
         """What this worker holds now, and what its calls did in the last minute."""
-        active = len(self.server.active_jobs)
+        active = len(self.server.active_jobs) + len(self.accepted.starting)
         last = self.minute.read_minute(asyncio.get_running_loop().time())
         # The name only once LiveKit registered it: before, a call offered to it waits for nobody.
         is_registered = self.server.id != UNREGISTERED

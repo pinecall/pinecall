@@ -86,8 +86,14 @@ class OfferRepository(Repository[Offer]):
         await self.session.execute(delete(Offer).where(Offer.room == room))
 
     async def mark_opened(self, room: str, now: float) -> None:
-        """A worker opened the room's call: nothing is left to offer, and the first opening stands."""
+        """A worker has the room's call: nothing is left to offer, and the first word of it stands."""
         statement = update(Offer).where(Offer.room == room, Offer.opened_at.is_(None)).values(opened_at=now)
+        await self.session.execute(statement)
+
+    # Only while the room is still that worker's: one offered to another since is the other's to say.
+    async def mark_dropped(self, room: str, worker: str) -> None:
+        """The worker the room was offered to could not start its job: nobody has the room, and it is offered again."""
+        statement = update(Offer).where(Offer.room == room, Offer.worker == worker).values(opened_at=None)
         await self.session.execute(statement)
 
     # Held to the end of the transaction, by every gateway alike: Postgres' advisory lock, keyed by the fleet.

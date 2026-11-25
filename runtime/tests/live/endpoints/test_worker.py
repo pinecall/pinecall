@@ -6,6 +6,7 @@ import time
 from datetime import date
 
 import pytest
+from livekit.protocol.models import ParticipantInfo
 from livekit.protocol.room import RoomParticipantIdentity
 
 from runtime.calls.context import CallContext, Route, dump_context, new_call_id
@@ -339,6 +340,58 @@ async def test_a_call_is_taken_up_only_while_its_caller_waits_alone_and_only_onc
     assert refused.status_code == 409, refused.text
     await first.aclose()
     await unstarted.aclose()
+
+
+def an_agent(identity: str) -> ParticipantInfo:
+    """A job's agent as LiveKit lists it in the call's room."""
+    return ParticipantInfo(identity=identity, kind=ParticipantInfo.Kind.AGENT)
+
+
+# 2026-11-25: a room rung twice under load had two jobs. The second's open was served as the first's
+# said again, its first batch was refused, and its seal ended the call in the middle of the first
+# job's conversation: four calls of thirty.
+async def test_a_second_job_of_the_room_is_refused_the_call_the_first_opened_and_writes_nothing_to_it(
+    fleet: GatewayClient, tenant: Tenant, agent: str, store: Store, livekit: Server
+) -> None:
+    """The first open stands: a job that finds another agent in the room is told the call has a worker (410),
+    and the call is as its opener left it, open and unsealed."""
+    context = dump_context(a_call(tenant, agent))
+    by_the_first = OpenCallRequest.model_validate({"agent": agent, "context": context, "seat": "agent-AJ_first"})
+    by_the_second = OpenCallRequest.model_validate({"agent": agent, "context": context, "seat": "agent-AJ_second"})
+    first = await open_call(fleet, by_the_first)
+    call = first.call
+    await first.append_many([BatchedEntry(type="call.started", data=A_START, ts=time.time())], after=0)
+    livekit.rooms.people = {call}
+    livekit.rooms.seated = {call: [an_agent("agent-AJ_first"), an_agent("agent-AJ_second")]}
+    with pytest.raises(UpstreamError, match="has a worker already") as refused:
+        await open_call(fleet, by_the_second)
+    assert refused.value.answered == 410 and not refused.value.retryable
+    assert [entry.type for entry in await store.whole_of(call)] == ["call.ringing", "call.started"]
+    assert not await store.is_sealed(call)
+    # The call goes on in the job that opened it.
+    await first.append_many([said("turn.agent", "Clínica Norte, buen día.")], after=1)
+    await first.seal([], "done")
+    assert await store.is_sealed(call)
+
+
+# What an open said again was before the refusal, and still is: a worker whose gateway died with the
+# answer asks again and is answered, the one agent in its room; a worker that names no seat (a release
+# before 2026-11-25) is answered whoever sits there.
+async def test_an_open_said_again_by_the_job_that_sits_alone_in_the_room_is_answered(
+    fleet: GatewayClient, tenant: Tenant, agent: str, store: Store, livekit: Server
+) -> None:
+    context = dump_context(a_call(tenant, agent))
+    by_the_first = OpenCallRequest.model_validate({"agent": agent, "context": context, "seat": "agent-AJ_first"})
+    first = await open_call(fleet, by_the_first)
+    call = first.call
+    livekit.rooms.people = {call}
+    livekit.rooms.seated = {call: [an_agent("agent-AJ_first")]}
+    again = await open_call(fleet, by_the_first)
+    livekit.rooms.seated = {call: [an_agent("agent-AJ_first"), an_agent("agent-AJ_second")]}
+    unnamed = await open_call(fleet, OpenCallRequest.model_validate({"agent": agent, "context": context}))
+    assert [entry.type for entry in await store.whole_of(call)] == ["call.ringing"]
+    for worker in (first, again, unnamed):
+        await worker.aclose()
 
 
 async def follow_then_die(worker: CallClient) -> None:

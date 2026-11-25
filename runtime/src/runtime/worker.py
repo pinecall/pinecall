@@ -82,7 +82,7 @@ def prewarm(proc: JobProcess) -> None:
     )
 
 
-def worker_server(settings: Settings, load: jobs.Load) -> AgentServer:
+def worker_server(settings: Settings, load: jobs.Load, accepted: jobs.Accepted) -> AgentServer:
     """The AgentServer of this worker, registered under its own name in its fleet."""
     key, secret = key_pair(settings)
     preload_plugins()
@@ -102,9 +102,9 @@ def worker_server(settings: Settings, load: jobs.Load) -> AgentServer:
     # livekit keeps one warm process per CPU; two fleets on one machine hold twice the memory.
     if settings.idle_processes is not None:
         server.update_options(num_idle_processes=settings.idle_processes)
-    # The gateway chooses the worker and dispatches to its name (fleet/).
-    name = jobs.agent_name_of(settings.fleet, jobs.worker_name_of(settings.worker_name))
-    server.rtc_session(run_job, agent_name=name, on_session_end=end_job)
+    # The gateway chooses the worker and dispatches to its name (fleet/); the worker says each room it
+    # is given its own as it accepts the job.
+    server.rtc_session(run_job, agent_name=accepted.agent_name, on_request=accepted, on_session_end=end_job)
     return server
 
 
@@ -131,13 +131,14 @@ def overflow_server(settings: Settings) -> AgentServer:
 async def run_worker(settings: Settings) -> int:
     """Run the worker until it is told to stop or cordoned; the exit it leaves with."""
     load = jobs.Load(settings.max_jobs)
-    server = worker_server(settings, load)
     gateway = _gateway(settings)
+    worker = jobs.worker_name_of(settings.worker_name)
+    accepted = jobs.Accepted(gateway, jobs.agent_name_of(settings.fleet, worker))
+    server = worker_server(settings, load, accepted)
     minute = jobs.LastMinute()
     measures = jobs.measures_path(settings.fleet, settings.worker_http_port)
     hearing = await jobs.listen_for_jobs(measures, minute)
-    worker = jobs.worker_name_of(settings.worker_name)
-    beats = jobs.Heartbeats(server, gateway, minute, load, fleet_name=settings.fleet, worker=worker)
+    beats = jobs.Heartbeats(server, gateway, minute, load, accepted, fleet_name=settings.fleet, worker=worker)
     loops = Loops()
     # A beat counts the calls in livekit's pool of processes, which `run` makes: the first beat waits
     # for the server to start (in production every worker's first beat failed on 2026-11-12).

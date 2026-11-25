@@ -215,6 +215,7 @@ def _arrival_of(body: OpenCallRequest) -> openings.Arrival:
         app=body.app,
         carrier_account=body.carrier_account,
         test_values=body.test_values,
+        seat=body.seat,
     )
 
 

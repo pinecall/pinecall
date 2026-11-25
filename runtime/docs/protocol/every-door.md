@@ -167,6 +167,8 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `POST` | `/v1/evals/voice` | evals | Dispatch the agent into a room, play the persona as a spoken caller, and hang up. |
 | `GET` | `/v1/events` | calls | The org's calls and agents changing, as they change. |
 | `POST` | `/v1/fleet/heartbeat` | fleet | A worker's report; the answer says whether it is cordoned and its fleet full. |
+| `DELETE` | `/v1/fleet/rooms/{room}/taken` | fleet | The worker that took the room could not start its job: the room is offered again. |
+| `POST` | `/v1/fleet/rooms/{room}/taken` | fleet | A worker accepted the room's job: the room is its own, and is offered to nobody else. |
 | `GET` | `/v1/fleet/wanted` | fleet | How many workers whose names start with `scaled` the fleet wants, each of `seats` seats. |
 | `GET` | `/v1/hosted` | app | The apps the platform hosts for the org in this environment, by name, each with the agents its processes hold. |
 | `DELETE` | `/v1/hosted/{name}` | app | Stop hosting the app: its releases go, and its token is revoked. |

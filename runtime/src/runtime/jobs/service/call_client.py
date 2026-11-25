@@ -7,6 +7,8 @@ from collections.abc import AsyncIterator, Awaitable, Callable, Mapping, Sequenc
 from functools import partial
 from pathlib import Path
 
+from livekit.agents import JobContext
+
 from runtime.actor import Scope
 from runtime.agents.declaration import Declaration
 from runtime.exceptions import Conflict, UpstreamError
@@ -54,6 +56,8 @@ ALREADY_OVER = 409
 NOT_SERVED = 404
 # The gateway's word that another worker took the call up: this one's end of it is not the call's.
 TAKEN_UP = 410
+# Why a job that opened nothing ends: the room it was sent to holds the job that opened the call.
+ANOTHER_JOBS = "another job's call"
 
 # The call's recording kept as the seal names it; None when the call has none.
 type KeepRecording = Callable[[], Awaitable[str | None]]
@@ -328,6 +332,24 @@ async def open_call(
         longest_s=LONGEST_WAIT_S,
     )
     return CallClient(gateway, opening.context.call, opening, OpenCallResponse.model_validate(answer), declaration)
+
+
+# A room rung twice has two jobs, and the gateway answers the one that opens the call second that it
+# has a worker (`TAKEN_UP`). That job leaves the room as it is: it wrote nothing and seals nothing, and
+# the call goes on in the job that opened it. Until 2026-11-25 the second job was served, its first
+# batch was refused, and its seal ended the call under the first.
+async def open_or_leave(
+    ctx: JobContext, gateway: GatewayClient, opening: OpenCallRequest, declaration: Declaration | None = None
+) -> CallClient | None:
+    """Open the call's log at the gateway; None, the job told to end, when another job opened it already."""
+    try:
+        return await open_call(gateway, opening, declaration)
+    except UpstreamError as refused:
+        if refused.answered != TAKEN_UP:
+            raise
+        logger.warning("call %s is another job's already, and this one leaves it: %s", opening.context.call, refused)
+    ctx.shutdown(reason=ANOTHER_JOBS)
+    return None
 
 
 # A frame this worker cannot read (a gateway newer than it) is said and skipped: the stream goes on.

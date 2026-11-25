@@ -14,11 +14,14 @@ from livekit.agents.job import JobAcceptArguments, RunningJobInfo
 from livekit.agents.utils import http_context
 from livekit.protocol import agent as livekit_agent
 from livekit.protocol import models
+from livekit.protocol.models import ParticipantInfo
 from livekit.protocol.room import DeleteRoomRequest
 
 from runtime.calls.recordings import Disk
 from runtime.enums import Env
 from runtime.jobs.service import JobSettings, Warmed, answer_job, end_job
+from runtime.jobs.service.arrival import arrive
+from runtime.jobs.service.call_client import ANOTHER_JOBS, open_call
 from runtime.jobs.service.client import GatewayClient
 from runtime.jobs.service.traces import OrgSpans
 from runtime.wire.dispatch import Dispatch
@@ -203,3 +206,44 @@ async def test_a_chat_in_a_room_livekit_hands_the_worker_is_greeted_in_writing_h
     assert not page["live"], kinds
     assert [entry["data"]["text"] for entry in page["entries"] if entry["type"] == "turn.agent"] == [GREETING]
     assert DeleteRoomRequest(room=room.name) in server.rooms.requests
+
+
+# 2026-11-25: a room rung twice under load had two jobs, and the second ended the call the first was
+# holding. The gateway tells the second the call has a worker, and the job leaves the room as it is.
+@pytest.mark.timeout(60)
+@needs_the_services
+async def test_a_job_sent_to_a_room_whose_call_another_job_opened_leaves_it_and_ends_nothing(
+    gateway: Gateway, fleet: GatewayClient, tenant: Tenant, agent: str, server: Server, livekit: Server, tmp_path: Path
+) -> None:
+    """Its open refused, the job is told to shut down: no session, no entry of its own, no seal, no room deleted."""
+    async with http_context.open(), holding(gateway, tenant, agent) as app:
+        declared = {"config": {"greeting": {"say": GREETING}}}
+        await app.send(json.dumps({"type": "agent.configure", "agent": agent, "call": None, "data": declared}))
+        await received(app, "agent.configured")
+        room = ConnectedRoom(f"room_{agent}", seat(THE_VISITOR, attributes={SCOPE_ATTRIBUTE: TALK}))
+        dispatch = Dispatch(agent=agent, org=tenant.org, env=Env.sandbox, scope=TALK)
+        # The first job of the room: it joined, opened the call and sits in its room.
+        first = Assigned(room, server, dispatch)
+        arrived = await arrive(first, fleet, default_agent=None, zone="America/Montevideo")
+        assert arrived is not None
+        opener = await open_call(fleet, arrived.open_with(None, "agent-AJ_first"))
+        livekit.rooms.people = {room.name}
+        livekit.rooms.seated = {
+            room.name: [ParticipantInfo(identity="agent-AJ_first", kind=ParticipantInfo.Kind.AGENT)]
+        }
+        second = Assigned(room, server, dispatch)
+        warmed = warmed_for(fleet, tmp_path)
+        try:
+            await answer_job(second, warmed)
+            await end_job(warmed)
+        finally:
+            await second.finish()
+            await first.finish()
+        assert second.shutdowns == [ANOTHER_JOBS]
+        assert warmed.job is None
+    entries = await gateway.http.get(f"/v1/calls/{room.name}/events", params={"durable": True}, headers=tenant.server)
+    page = entries.json()
+    assert [entry["type"] for entry in page["entries"]] == ["call.ringing"], "the call is as its opener left it"
+    assert page["live"], "nothing sealed it"
+    assert DeleteRoomRequest(room=room.name) not in server.rooms.requests
+    await opener.aclose()

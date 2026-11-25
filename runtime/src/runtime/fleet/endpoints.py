@@ -1,4 +1,4 @@
-"""The fleet endpoints: a worker's heartbeat, KEDA's demand, and the operator's fleets, floors, roster and cordons."""
+"""The fleet endpoints: a worker's heartbeat and the rooms it takes, KEDA's demand, the operator's fleets and roster."""
 
 import time
 from typing import Annotated
@@ -7,7 +7,7 @@ from fastapi import APIRouter, Query
 
 from runtime.auth import TheOperator
 from runtime.fleet import schemas
-from runtime.fleet.auth import FleetKey, TheRoster
+from runtime.fleet.auth import FleetKey, TheOffering, TheRoster
 from runtime.fleet.service import demand, envs, totals
 from runtime.postgres import Session
 from runtime.wire.worker import HeartbeatRequest, HeartbeatResponse
@@ -22,6 +22,22 @@ router = APIRouter()
 async def report_heartbeat(body: HeartbeatRequest, _key: FleetKey, roster: TheRoster) -> HeartbeatResponse:
     """A worker's report; the answer says whether it is cordoned."""
     return roster.report_heartbeat(body, time.time())
+
+
+# A worker says a room is its own as it accepts the room's job, before the job's process starts: from
+# then on the room is offered to nobody else, however long the process takes to join it.
+@router.post("/v1/fleet/rooms/{room}/taken", status_code=204)
+async def take_room(room: str, _key: FleetKey, offering: TheOffering) -> None:
+    """A worker accepted the room's job: the room is its own."""
+    await offering.say_opened(room)
+
+
+@router.delete("/v1/fleet/rooms/{room}/taken", status_code=204)
+async def drop_room(
+    room: str, worker: Annotated[str, Query(min_length=1)], _key: FleetKey, offering: TheOffering
+) -> None:
+    """The worker that took the room could not start its job: the room is offered again."""
+    await offering.say_dropped(room, worker)
 
 
 # KEDA's metrics-api scaler reads `wanted` and keeps the scaled Deployment at it (infra/charts),

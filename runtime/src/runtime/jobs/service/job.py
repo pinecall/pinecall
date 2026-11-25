@@ -18,7 +18,7 @@ from runtime.calls.recordings import Recordings, recording_path
 from runtime.enums import Channel, Stage
 from runtime.exceptions import PinecallError, UpstreamError
 from runtime.jobs.service.arrival import Arrived, arrive
-from runtime.jobs.service.call_client import CallClient, open_call
+from runtime.jobs.service.call_client import CallClient, open_or_leave
 from runtime.jobs.service.client import LONGEST_WAIT_S, GatewayClient, Stages
 from runtime.jobs.service.ending import end_and_seal, open_writer, release_room
 from runtime.jobs.service.hold_clip import find_hold_clip
@@ -247,7 +247,9 @@ async def answer_job(ctx: JobContext, warmed: Warmed) -> None:
         gateway.get_hold(route.agent, scope),
     )
     declaration = open_as_asked(declaration, dispatch.greeting, dispatch.instruction)
-    link = await open_call(gateway, arrived.open_with(told.app), declaration)
+    link = await open_or_leave(ctx, gateway, arrived.open_with(told.app, seat_of(ctx)), declaration)
+    if link is None:
+        return
     link.measures, link.lent = told.measures, stages.pipeline.lent
     # An outbound call is its far end answering: nothing is built for a leg that never came up.
     if dispatch.dial is not None and not await _dial_the_far_end(ctx, link, dispatch.dial):
@@ -272,6 +274,11 @@ async def answer_job(ctx: JobContext, warmed: Warmed) -> None:
         setup.running.hang_up("error", "platform", at_once=True)
         raise
     logger.info("the pipeline is live %.2fs after the job arrived", time.monotonic() - began)
+
+
+def seat_of(ctx: JobContext) -> str:
+    """The identity this job's agent sits in its room under, once it joined."""
+    return ctx.room.local_participant.identity
 
 
 # livekit's `on_session_end`: the one place a job's call ends, whatever ended it.

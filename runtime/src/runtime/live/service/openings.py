@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Literal
 
+from livekit.protocol.models import ParticipantInfo
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from runtime.accounts import service as accounts
@@ -18,7 +19,7 @@ from runtime.calls.context import CallContext
 from runtime.calls.models import Opener
 from runtime.compliance import service as compliance
 from runtime.enums import Direction
-from runtime.exceptions import Conflict, Forbidden, NotFound, QuotaExceeded, ValidationError
+from runtime.exceptions import Conflict, Forbidden, Gone, NotFound, QuotaExceeded, ValidationError
 from runtime.kit.crypto import Vault
 from runtime.live.holders import Holders, NobodyTakes, NotThatApp, Registration, orgs_own
 from runtime.live.parts import LiveParts
@@ -27,6 +28,7 @@ from runtime.live.served import Opening, Served
 from runtime.live.service import handoff
 from runtime.live.sockets import SocketId
 from runtime.live.tool_calls import ToolCalls
+from runtime.livekit import participants_in
 from runtime.providers import service as providers
 from runtime.scoping import box_wide
 from runtime.telephony import service as telephony
@@ -56,6 +58,8 @@ class Arrival:
     carrier_account: str | None = None
     # The test room's own voice and models the worker runs this call on.
     test_values: Mapping[str, Any] | None = None
+    # The identity the job's agent sits in the call's room under; None where the worker names none.
+    seat: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -245,13 +249,15 @@ async def open_call(session: AsyncSession, live: LiveParts, actor: Actor, arriva
     if came_by_carrier and context.route.number is not None:
         await _check_arrival(session, live.vault, scope, context.route.number, arrival.carrier_account)
     await _check_unclaimed_or_in(session, context.call, scope)
+    # Asked again by a worker whose gateway died with the answer: the same call, one ringing.
+    again = await calls.opening_of(session, context.call) is not None
+    if again:
+        await _check_nobody_else_runs_it(live, scope, arrival)
     await _spend_token(session, live, context, scope, arrival.agent)
     ceiling = await admit(session, live, scope, arrival.agent)
     registration = find_serving_agent(live.holders, scope, arrival.agent, arrival.app, context)
     _check_served(live.holders, scope, arrival, registration)
     resolved = await _resolve(session, scope, arrival.agent, context.call, arrival.test_values)
-    # Asked again by a worker whose gateway died with the answer: the same call, one ringing.
-    again = await calls.opening_of(session, context.call) is not None
     # A worker opened the room's call: nothing is left to offer it to another, and its slot is that worker's.
     await live.offering.say_opened(context.call)
     opener = Opener.fleet if actor.is_fleet else Opener.app
@@ -380,6 +386,22 @@ async def _check_unclaimed_or_in(session: AsyncSession, call: str, scope: Scope)
     kept = await calls.find_head(session, call)
     if kept is not None and kept.scope is not None and kept.scope != scope:
         raise NotFound(f"no call {call} in this key's org and env")
+
+
+# A room rung twice has two jobs, and the first to open the call has it. Until 2026-11-25 the second's
+# open was taken for the first's said again and served: its writer was refused at its first batch, and
+# its seal ended the call in the middle of the first job's conversation (four calls of thirty, on a
+# worker starting nineteen jobs at once). An open said again is the opener's own only while no other
+# agent sits in the call's room: a worker whose gateway died with the answer sits there alone and is
+# answered; a job that finds another agent seated is told the call has a worker, and leaves the room
+# as it is. A worker that names no seat (an older release) is answered as before.
+async def _check_nobody_else_runs_it(live: LiveParts, scope: Scope, arrival: Arrival) -> None:
+    call = arrival.context.call
+    if arrival.seat is None:
+        return
+    seated = await participants_in(live.servers[scope.env], call)
+    if any(seat.kind == ParticipantInfo.Kind.AGENT and seat.identity != arrival.seat for seat in seated):
+        raise Gone(f"call {call!r} has a worker already: another job opened it, and it is that job's")
 
 
 # A web call opens by the token its room was minted with: once, and only in the org, the env

@@ -244,7 +244,10 @@ ten minutes, offered by the gateway ([scaling.md](../scaling.md), "Who takes a c
 worker is told on its next heartbeat, takes no new call, finishes what it holds and leaves;
 `404` for a name nobody has. What grows and shrinks a fleet is [scaling.md](../scaling.md), "The burst".
 How many scaled workers a fleet wants is not the operator's endpoint: KEDA asks it with the environment's
-fleet key, `GET /v1/fleet/wanted` ([scaling.md](../scaling.md), "The burst").
+fleet key, `GET /v1/fleet/wanted` ([scaling.md](../scaling.md), "The burst"). Nor are a worker's own two
+words of a room, said with the same key: `POST /v1/fleet/rooms/{room}/taken` as it accepts the room's
+job, and `DELETE /v1/fleet/rooms/{room}/taken?worker=<its LiveKit name>` when that job never started;
+both answer `204`, for a room the gateway keeps or not ([scaling.md](../scaling.md), "Who takes a call").
 
 `POST /v1/livekit/webhook` is LiveKit's own endpoint, not the operator's: `livekit.yaml` sends it every
 room event, signed with the platform's LiveKit key (`Authorization: <token>`, the body's sha256 in the

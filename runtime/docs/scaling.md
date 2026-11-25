@@ -259,8 +259,11 @@ The SIP rule and a visitor's token keep dispatching to the fleet by its plain na
 holds, so LiveKit starts no job and keeps the dispatch on the room with the call's metadata. When a
 person is alone in a room, LiveKit's webhook says so (`participant_joined`, or an agent's
 `participant_left` after a hand-over), and the gateway reads the room's newest dispatch: one to a
-fleet that nobody took is the call to place. The room is kept in `offers` until a worker opens its
-call, an agent joins the room or the room ends, whichever LiveKit says first (`fleet/service/offers.py`, `fleet/service/arrivals.py`): a caller who hangs up before any worker took the call leaves nothing to
+fleet that nobody took is the call to place. The room is kept in `offers` until a worker takes it or
+the room ends. A worker takes a room as it accepts the room's job from LiveKit, in its own process and
+before the job's process starts (`POST /v1/fleet/rooms/{room}/taken`, `jobs/service/heartbeat.py`); the
+gateway also takes an agent joining the room (LiveKit's webhook) and the worker opening the call as
+that word, whichever it hears first (`fleet/service/offers.py`, `fleet/service/arrivals.py`): a caller who hangs up before any worker took the call leaves nothing to
 offer, and a dispatch on a room that is gone would make the room again. An outbound call, a
 simulated caller and a call whose worker went away are offered the same way, by the endpoint that
 makes them. So **the
@@ -268,8 +271,9 @@ gateway needs LiveKit's webhook** (`livekit.yaml`'s `webhook.urls`), each enviro
 (`?world=sandbox`), so the gateway asks the LiveKit the room is on: a deployment without it places no
 call. A room is dispatched on the LiveKit of its fleet's environment, which the `fleets` row says. The gateway offers it to the worker of the fleet heard in the last 12 s
 with the most seats free, by its LiveKit name (`<fleet>/<worker>`, above): no other worker can take it.
-A seat is taken from the moment a room is offered to its worker: the offer counts until the worker opens
-the call, and from then until that worker's next heartbeat, which is the first to say the call itself. A
+A seat is taken from the moment a room is offered to its worker: the offer counts until the worker takes
+the room, and from then until that worker's next heartbeat, which is the first to say the call itself: a
+heartbeat counts the calls the worker runs and the jobs it accepted whose process has not started. A
 caller that can wait (a simulated one) is seated only where a seat is, asked for and taken in one step
 with the fleet's seats held for it, so several that ask at once are never sent to the same seat; it
 takes the seat before it opens its voice or its room, so a queue of callers holds nothing open.
@@ -280,9 +284,17 @@ simulations never hold more than the other three quarters while a person's call 
 LiveKit hears a worker's load every 2.5 s and the gateway its calls every 5 s, so a seat the heartbeat
 says free may still be full to LiveKit, which then gives the room's job to nobody: such a room is offered
 again, to another worker first and to the same one when no other has a seat. A simulated caller's room is
-never sent to the overflow: it waits in the table for a seat. A room no worker opened 12 s after its
-offer is offered to another (LiveKit waits 10 s on a worker that does not answer; a live one opens a
-call in about 2 s). After three offers, or when the workers of the fleet heard lately have no seat,
+never sent to the overflow: it waits in the table for a seat. A room no worker took 12 s after its
+offer is offered to another (LiveKit waits 10 s on a worker that does not answer; a worker that gets a
+job says so as it accepts it, in milliseconds). The twelve seconds measure that alone, a job LiveKit
+gave to nobody, and never how long a job takes to start: a worker starting many jobs at once takes
+over twelve seconds to join each room, and until 2026-11-25, when a room was its worker's only once
+its agent had joined, such rooms were rung again and the second job ended the call the first was
+holding. A job accepted that never starts (LiveKit assigned it to nobody after all, or no process
+could be launched for it) is given back by its worker (`DELETE /v1/fleet/rooms/{room}/taken?worker=`)
+and offered again. Should a room be rung twice all the same (a gateway that never heard the worker's
+word), the first job to open the call has it: the second, which finds another agent seated in the
+room, is answered `410` and leaves the room as it is, with nothing written and nothing sealed. After three offers, or when the workers of the fleet heard lately have no seat,
 the room goes to the fleet's overflow (`<fleet>/overflow`, below): the caller hears one sentence and
 a call back is written. A fleet none of whose workers was heard in 12 s is one a gateway that just
 started knows nothing of yet (the next heartbeats, five seconds, tell it): its room waits for the

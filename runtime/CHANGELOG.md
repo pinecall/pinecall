@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **A room a worker accepted is not rung again.** A room was its worker's once its agent joined it, which a job's
+  process does after it started; a room nobody had joined 12 s after its offer was read as a job LiveKit gave to
+  nobody and offered again. On a worker starting many jobs at once a process takes longer than that: the room got
+  a second job, whose open was served as the first's said again and whose seal ended the call in the middle of the
+  first job's conversation (four simulated calls of thirty, nineteen starting at once). A worker now says a room is
+  its own as it accepts the job (`POST /v1/fleet/rooms/{room}/taken`), gives it back if the job never starts
+  (`DELETE`, the same path), and counts the jobs it accepted and has not started in its heartbeat. And a job that
+  opens a call another job of its room opened already is answered `410` and leaves the room as it is: `POST
+  /v1/calls` carries the job's `seat`.
 - **A simulated caller stays on the line until it is told how its call ended.** It was told to hang up "once you
   have what you came for", and a caller that had just said yes to a time took that for having it: it left while the
   agent asked its name, and the call was judged a failure of the agent's. It now hangs up only once the business has

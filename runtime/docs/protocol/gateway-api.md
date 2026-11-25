@@ -147,7 +147,10 @@ The worker's endpoints (`POST /v1/calls`, `/events`, `/entries`, `/sealed`, `/to
 for a call the fleet's worker opened, an org's `app` key for one its own worker opened, nobody
 for a written call, which the gateway runs itself. `POST /v1/calls` carries the test room's own voice and
 models the worker runs the call on (`tuning`, its dispatch's), so the call opens as it runs: the platform's
-first words in that language. Another key is answered `404`; so is a
+first words in that language, and the identity the job's agent sits in the call's room under (`seat`):
+an open of a call that was opened already is the same call, answered again, unless another agent
+sits in its room, which is a second job of a room rung twice and is answered `410`, the call left to
+the job that opened it. Another key is answered `404`; so is a
 `/reopened` (a call the gateway forgot, served again) outside the call's own scope. `/taken-up` is
 asked by the worker sent into the room of a call whose worker went away, before it joins: it answers
 `{opening, medium, started_at, history, written, taken_up}`, what the call was opened with, its turns

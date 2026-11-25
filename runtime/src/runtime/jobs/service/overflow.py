@@ -11,9 +11,9 @@ from livekit.agents.voice import Agent, AgentSession
 from runtime.enums import Channel
 from runtime.exceptions import UpstreamError
 from runtime.jobs.service.arrival import arrive_as_rung
-from runtime.jobs.service.call_client import CallClient, open_call
+from runtime.jobs.service.call_client import CallClient, open_or_leave
 from runtime.jobs.service.ending import end_and_seal, open_writer
-from runtime.jobs.service.job import Warmed
+from runtime.jobs.service.job import Warmed, seat_of
 from runtime.livekit import close_room
 from runtime.providers import service as providers
 from runtime.providers.stage import Running, primary_language
@@ -81,7 +81,9 @@ async def answer_overflow(ctx: JobContext, warmed: Warmed) -> None:
     stages = await gateway.get_stages(route.agent, arrived.scope)
     calls_back = route.channel is Channel.phone and bool(caller)
     says = sentence_in(stages.pipeline.tts.language, warmed.told.overflow_says, calls_back=calls_back)
-    link = await open_call(gateway, arrived.open_with(None))
+    link = await open_or_leave(ctx, gateway, arrived.open_with(None, seat_of(ctx)))
+    if link is None:
+        return
     writing = open_writer(link)
     try:
         await _say_once(ctx, writing, stages.pipeline.tts, says)

@@ -1,4 +1,4 @@
-"""The offers: a room of no env's fleet is let go, the sweep passes a room it cannot offer, a seat is taken once."""
+"""The offers: a room of no env's fleet is let go, a room a worker took is not rung again, a seat is taken once."""
 
 import time
 from uuid import uuid4
@@ -227,6 +227,64 @@ async def test_a_room_a_worker_opened_is_kept_anew_when_it_is_offered_again(
         again = await offers.open(room, SANDBOX, Dispatch(agent="recepcion").dump(), now + 2)
         assert again is not None and (again.worker, again.offers, again.opened_at) == (None, 0, None)
         await offers.forget(room)
+
+
+# 2026-11-25: nineteen simulated calls started on one worker at once, and a job's process took over
+# twelve seconds from its dispatch to joining its room. The sweep read each room as one LiveKit gave to
+# nobody and rang it again, and the second job ended the call the first was holding. A worker says the
+# room is its own as it accepts the job; a room nobody took is still LiveKit's loss, and is rung again.
+async def test_a_room_its_worker_took_is_not_rung_again_however_long_its_job_takes_to_start(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    servers, roster = per_world(), Roster()
+    offering = Offering(sessions, servers=servers, roster=roster)
+    only = f"w_{uuid4().hex}"
+    roster.workers[(SANDBOX, only)] = a_worker(only, active=0, max_jobs=8, fleet=SANDBOX)
+    taken, given_to_nobody = f"room_{uuid4().hex}", f"room_{uuid4().hex}"
+    rung = time.time() - OFFERED_AGAIN_AFTER_S - 5
+    async with sessions.begin() as session:
+        offers = OfferRepository(session)
+        for room in (taken, given_to_nobody):
+            assert await offers.open(room, SANDBOX, Dispatch(agent="recepcion").dump(), rung)
+            assert await offers.claim(room, 0, agent_name(SANDBOX, only), rung)
+    try:
+        await offering.say_opened(taken)
+        offered = await offering.sweep()
+        assert given_to_nobody in offered, "a job LiveKit gave to nobody is rung again"
+        assert taken not in offered, "a room a worker accepted the job of is that worker's"
+        kept = await _kept(sessions, taken)
+        assert kept is not None and kept.offers == 1
+    finally:
+        await offering.forget(taken)
+        await offering.forget(given_to_nobody)
+        for server in servers.values():
+            await server.aclose()
+
+
+# A job accepted and never started (LiveKit assigned it to nobody after all, or no process could be
+# launched for it) is given back by the worker that took it, and by no other.
+async def test_a_room_its_worker_could_not_start_the_job_of_is_rung_again(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    servers, roster = per_world(), Roster()
+    offering = Offering(sessions, servers=servers, roster=roster)
+    only = f"w_{uuid4().hex}"
+    roster.workers[(SANDBOX, only)] = a_worker(only, active=0, max_jobs=8, fleet=SANDBOX)
+    room, rung = f"room_{uuid4().hex}", time.time() - OFFERED_AGAIN_AFTER_S - 5
+    async with sessions.begin() as session:
+        offers = OfferRepository(session)
+        assert await offers.open(room, SANDBOX, Dispatch(agent="recepcion").dump(), rung)
+        assert await offers.claim(room, 0, agent_name(SANDBOX, only), rung)
+    try:
+        await offering.say_opened(room)
+        await offering.say_dropped(room, agent_name(SANDBOX, "another"))
+        assert room not in await offering.sweep(), "only the worker the room was offered to gives it back"
+        await offering.say_dropped(room, agent_name(SANDBOX, only))
+        assert room in await offering.sweep()
+    finally:
+        await offering.forget(room)
+        for server in servers.values():
+            await server.aclose()
 
 
 def test_an_offer_takes_its_workers_slot_until_opened_and_then_until_the_next_beat() -> None:

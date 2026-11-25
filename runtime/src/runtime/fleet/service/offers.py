@@ -19,8 +19,12 @@ from runtime.wire.signal import WorkerStatus
 
 logger = logging.getLogger(__name__)
 
-# LiveKit waits 10 s on a worker that does not answer before it gives a job up; a live worker opens
-# its call in about 2 s. A room no worker opened 12 s after its offer is offered to another.
+# LiveKit waits 10 s on a worker that does not answer before it gives a job up; a worker that takes
+# a job says so as it accepts it, in milliseconds. A room no worker took 12 s after its offer is one
+# LiveKit gave to nobody, and it is offered to another.
+# Until 2026-11-25 a room was its worker's only once its agent joined it, which a job's process does
+# after it started: with nineteen jobs starting on one worker that took over 12 s, the rooms were
+# offered again, and the second job of each ended the call the first was holding.
 OFFERED_AGAIN_AFTER_S = 12.0
 
 # Three offers, then the overflow's sentence: 36 s is the longest a caller waits on our account.
@@ -184,10 +188,20 @@ class Offering:
         async with self.sessions.begin() as session:
             await OfferRepository(session).forget(room)
 
+    # Said three times of a call, and the first stands: by the worker as it accepts the room's job
+    # (`POST /v1/fleet/rooms/{room}/taken`), by LiveKit as its agent joins, by the worker as it opens the call.
     async def say_opened(self, room: str) -> None:
-        """A worker opened the room's call: nothing is left to offer, and its slot is that worker's."""
+        """A worker has the room's call: nothing is left to offer, and its slot is that worker's."""
         async with self.sessions.begin() as session:
             await OfferRepository(session).mark_opened(room, time.time())
+
+    # A job accepted and never started (LiveKit assigned it to nobody after all, or no process of the
+    # worker could be launched for it) is a room nobody has: the sweep offers it again in its turn.
+    async def say_dropped(self, room: str, worker: str) -> None:
+        """The worker that took the room could not start its job: the room is offered again."""
+        async with self.sessions.begin() as session:
+            await OfferRepository(session).mark_dropped(room, worker)
+        logger.warning("room %s: %s accepted its job and could not start it; offered again", room, worker)
 
     async def sweep(self) -> list[str]:
         """Offer again every room nobody opened in time; the rooms offered."""

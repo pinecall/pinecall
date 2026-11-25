@@ -403,6 +403,10 @@ class OpenCallRequest(WireModel):
     # the gateway opens the call as it runs: the platform's first words in that language. On the wire
     # it is `tuning`, the word the release before 2026-11 sends.
     test_values: dict[str, Any] | None = Field(default=None, alias="tuning")
+    # The identity the job's agent sits in the call's room under: an open of a call another agent's
+    # job opened already is refused by it. None from a worker of a release before 2026-11-25, and for
+    # a call with no room.
+    seat: str | None = None
 
 
 class OpenCallResponse(WireModel):

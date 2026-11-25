@@ -123,6 +123,14 @@ class GatewayClient:
         """Report this worker; the answer says whether it is cordoned."""
         return HeartbeatResponse.model_validate(await self.read("POST", "/v1/fleet/heartbeat", beat.dump()))
 
+    async def take_room(self, room: str) -> None:
+        """Say the room's job was accepted by this worker: the gateway offers the room to nobody else."""
+        await self.read("POST", f"/v1/fleet/rooms/{room}/taken")
+
+    async def drop_room(self, room: str, agent_name: str) -> None:
+        """Say the job this worker accepted for the room never started: the gateway offers the room again."""
+        await self.read("DELETE", f"/v1/fleet/rooms/{room}/taken", params={"worker": agent_name})
+
     async def ask_callback(self, agent: str, channel: Channel, number: str, call: str) -> None:
         """Somebody the overflow told to wait for a call back."""
         wanted: Json = {"agent": agent, "channel": channel.value, "number": number, "call": call}
