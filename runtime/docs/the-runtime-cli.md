@@ -27,7 +27,7 @@ and a server's gateway stays on loopback behind Caddy). `worker start` is a work
 the fleet is full. `callers start` is the service that plays the callers of spoken simulations
 (`scaling.md`, "The simulated callers are a plane of their own"): it starts
 `PINECALL_CALLER_PROCESSES` processes (unset, half the cores it is given), each of which is
-`callers play`, claims callers off their rows and plays three at once; one that ends on its own is
+`callers play`, claims callers off their rows and plays two at once; one that ends on its own is
 started again, and told to stop the service waits for every process to end the calls it plays,
 eleven minutes at most. It reads the database, Redis, the vault and LiveKit as a gateway does and
 answers nothing; the gateways beside it are told it exists with `PINECALL_CALLERS_SERVICE`, and
@@ -153,7 +153,7 @@ worker once the calls it holds have ended.
 | what | how |
 |---|---|
 | the seats of each environment | `PINECALL_SANDBOX_MAX_JOBS` and `PINECALL_PRODUCTION_MAX_JOBS`, each its worker's; `PINECALL_MAX_JOBS` is what either reads when it has no line of its own. A spoken call was measured at about a third of a core, the platform's part included |
-| the simulations at once | `PINECALL_CALLER_PROCESSES`, the processes of the `callers` service, each playing three simulated callers at once (`PINECALL_CALLERS_PER_PROCESS`); unset, half the machine's cores. A spoken simulation is a seat of the sandbox's worker and a third of one of these: sixteen at once are six processes and sixteen seats and more, about 6.4 cores between them (`scaling.md`, "The simulated callers are a plane of their own") |
+| the simulations at once | `PINECALL_CALLER_PROCESSES`, the processes of the `callers` service, each playing two simulated callers at once (`PINECALL_CALLERS_PER_PROCESS`); unset, half the machine's cores. A spoken simulation is a seat of the sandbox's worker and a third of one of these: sixteen at once are six processes and sixteen seats and more, about 6.4 cores between them (`scaling.md`, "The simulated callers are a plane of their own") |
 | the image | `--image <ref>`: every process of the runtime runs that image of a registry, the one a cluster of the same commit runs, pulled and never built here (the machine signs in to the registry itself). `setup` alone keeps it; `--image here` builds on the machine again |
 | a server made ready before its name moves | `--unpointed`: the name is not checked and https is not waited for. Once the name points here, `local up` has Caddy ask for the certificate at once and waits for it: left alone, a Caddy that was refused while the name was elsewhere waits longer after each refusal, ten minutes between tries after half an hour |
 | a database from another machine | `local restore <dump>`, below |

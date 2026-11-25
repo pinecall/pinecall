@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A vendor that refuses the connection for payment ends the call at once, and a callers process plays two.**
+  xAI answers the realtime handshake of an account out of credit with a bare `402`, which its client reports as
+  "connection error": fourteen calls were retried and said not to have been answered. The status behind a
+  connection error is read now: a refusal (`401`, `402`, `403`, `404`) ends the call on the first, in the words
+  `xai refused this call: it answered the connection 402 Payment Required`. `PINECALL_CALLERS_PER_PROCESS` is 2
+  (was 3): with twenty calls at once a process holding three woke 55 to 66 ms late and two callers' voices broke up.
 - **A simulated call says whether it measured its agent, and a table counts only those that did.** A public
   table of 140 calls had 101 whose simulated caller's voice broke up on the way, and calls a vendor refused for
   credit counted as the models' failures; nothing said so. Every comparison row and every run's row now carries

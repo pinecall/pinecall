@@ -78,6 +78,42 @@ def test_a_vendor_that_will_not_serve_an_unpaid_account_is_told_apart(status: in
     assert refusals.is_unpaid(APIStatusError(message, status_code=status, body=body))
 
 
+# 2026-11-26: xAI answered the realtime handshake of an account out of credit with a bare 402, and its
+# plugin raised "client connection error": fourteen calls were said not to have been answered.
+class _HandshakeRefused(Exception):
+    def __init__(self, status: int) -> None:
+        super().__init__(f"{status}, message='Invalid response status'")
+        self.status = status
+
+
+def _refused_at_the_handshake(status: int) -> APIConnectionError:
+    silent = APIConnectionError("xAI Realtime API client connection error")
+    silent.__cause__ = _HandshakeRefused(status)
+    return silent
+
+
+def test_a_connection_a_vendor_refused_for_payment_is_an_unpaid_account_and_is_said_as_a_refusal() -> None:
+    refused = _refused_at_the_handshake(402)
+    assert refusals.status_behind(refused) == 402
+    assert refusals.is_unpaid(refused)
+    voice = llm.RealtimeModelError(
+        timestamp=1.0,
+        label="livekit.plugins.xai.realtime.realtime_model.RealtimeModel",
+        error=refused,
+        recoverable=True,
+    )
+    first = say_failure(voice).split("\n")[0]
+    assert first == "xai refused this call: it answered the connection 402 Payment Required"
+
+
+def test_a_connection_that_only_broke_names_no_status_and_is_the_vendors_silence() -> None:
+    broke = APIConnectionError("connection reset")
+    assert refusals.status_behind(broke) is None
+    assert not refusals.is_unpaid(broke)
+    assert refusals.status_behind(_refused_at_the_handshake(503)) == 503
+    assert not refusals.is_unpaid(_refused_at_the_handshake(503))
+
+
 def test_a_rate_limit_is_not_an_unpaid_account() -> None:
     limited = APIStatusError("Rate limit reached", status_code=429, body={"error": {"code": "rate_limit_exceeded"}})
     assert not refusals.is_unpaid(limited)

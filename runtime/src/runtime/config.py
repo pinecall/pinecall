@@ -110,8 +110,9 @@ class Settings(BaseSettings):
     # The processes the callers service runs; unset, half the cores it is given, at least one.
     caller_processes: int | None = Field(None, alias="PINECALL_CALLER_PROCESSES", ge=1)
     # The callers one process plays at once. A caller is 0.18 of a core (measured 2026-11-25, six at
-    # once): three leave its one loop near half of a core, so a burst of one does not make the others late.
-    callers_per_process: int = Field(3, alias="PINECALL_CALLERS_PER_PROCESS", ge=1)
+    # once). Three were tried first: with twenty calls at once a process holding three woke 55 to 66 ms
+    # late and two callers' voices broke up (2026-11-26). Two leave a burst of one its room.
+    callers_per_process: int = Field(2, alias="PINECALL_CALLERS_PER_PROCESS", ge=1)
 
     # ── the runner of hosted apps ──
     runner_key: SecretStr | None = Field(None, alias="PINECALL_RUNNER_KEY")

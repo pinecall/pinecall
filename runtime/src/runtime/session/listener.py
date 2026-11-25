@@ -6,6 +6,7 @@ from collections.abc import Callable, Iterable, Mapping
 
 from livekit.agents import (
     AgentStateChangedEvent,
+    APIError,
     APIStatusError,
     CloseEvent,
     CloseReason,
@@ -219,7 +220,7 @@ class Listener:
             return
         said = providers.say_failure(event.error)
         wrapped = getattr(event.error, "error", None)
-        if not (isinstance(wrapped, APIStatusError) and fails_for_good(wrapped)):
+        if not (isinstance(wrapped, APIError) and fails_for_good(wrapped)):
             recoverable = bool(getattr(event.error, "recoverable", False))
             self.call.writing.write(
                 "error", wire.ErrorEvent(code="component_failed", message=said, recoverable=recoverable)
@@ -244,6 +245,10 @@ class Listener:
         self.call.writing.write(kind, model, ephemeral=True if tick else None)
 
 
-def fails_for_good(error: APIStatusError) -> bool:
-    """Whether a vendor's HTTP error will fail the same way every time it is retried."""
-    return error.status_code == POLICY_VIOLATION or error.status_code in FOREVER or providers.is_unpaid(error)
+# A vendor that will not open a connection answers its handshake with a status, and the client says
+# "connection error": on 2026-11-26 xAI answered 402 to fourteen calls of an account out of credit, and
+# each was retried three times and went on with no model. The status behind the error is read too.
+def fails_for_good(error: APIError) -> bool:
+    """Whether a vendor's error will fail the same way every time it is retried."""
+    status = error.status_code if isinstance(error, APIStatusError) else providers.status_behind(error)
+    return status == POLICY_VIOLATION or status in FOREVER or providers.is_unpaid(error)

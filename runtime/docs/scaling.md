@@ -62,11 +62,12 @@ loop with nothing on it but the few callers it claimed, and a gateway only place
 | let go | played to its end, the job is over. Broken before the call began, the process says why on the row and a gateway ends the call with that reason (a callers process has no live side). Cut while the process stops, a caller whose call never began is another process's to play whole; one on the line leaves a call that is over, and a comparison places it again |
 | left | a process silent for 40 s is gone: a gateway gives the caller's seat back and closes its room, and the caller is played whole by another process if its call never began, once; else the call is over and its comparison places it again |
 
-**One process plays three callers at once** (`PINECALL_CALLERS_PER_PROCESS`), **and the service runs
+**One process plays two callers at once** (`PINECALL_CALLERS_PER_PROCESS`), **and the service runs
 several** (`PINECALL_CALLER_PROCESSES`; unset, half the cores it is given). A caller costs 0.18 of a
 core: its voice synthesised, resampled, stretched and mixed with its room, handed to LiveKit ten
-milliseconds at a time, a tenth of a second ahead. Three are about half a core of the one a Python
-loop has, so a burst from one leaves the others their time. A process reads the clock twenty times a
+milliseconds at a time, a tenth of a second ahead. Two are about a third of the one core a Python
+loop has, so a burst from one leaves the other its time (with three, a process woke 55 to 66 ms late
+under twenty calls at once, and two callers' voices broke up). A process reads the clock twenty times a
 second and, after a reading that came 50 ms late, claims nothing for ten seconds: the callers it
 plays are what made it late, and one more would break the voice of all of them. Each caller's leg
 also counts the frames it handed to the room after the one before had run out, and keeps the count
@@ -87,13 +88,13 @@ for every one of its processes, and its container or pod is given twelve. A gate
 no simulated call: it plays none. During a release the new callers' processes start once the old
 ones ended, so a caller placed meanwhile waits for one, as it would for a seat.
 
-**Sizing.** A simulated call takes a seat of the sandbox's fleet and a third of a callers process:
-0.22 of a core at the worker and 0.18 at the caller. Sixteen at once are six processes and about
+**Sizing.** A simulated call takes a seat of the sandbox's fleet and half of a callers process:
+0.22 of a core at the worker and 0.18 at the caller. Sixteen at once are eight processes and about
 6.4 cores between the two. On a server the service is one container (`callers`); on a cluster it is
 the Deployment `pinecall-callers` (`callers.replicas`, `callers.processes`), each process holding at
 most `PINECALL_CALLERS_PER_PROCESS` + 2 connections of Postgres. A gateway that is not told a callers
 service exists (`PINECALL_CALLERS_SERVICE` unset: a laptop, a machine with one process of each)
-claims and plays callers itself, by the same rows and under the same three at once: it stays on
+claims and plays callers itself, by the same rows and under the same two at once: it stays on
 time, and what it cannot play yet waits.
 
 **Rolling to it.** The migration first (`caller_jobs` starts empty), then the gateways and the

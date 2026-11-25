@@ -252,7 +252,7 @@ services:
   # both): several processes, each one loop with nothing on it but the few callers it claimed, so a
   # caller's voice reaches its room on time however many calls are simulated at once. A gateway
   # started again ends none of them. Its processes are `PINECALL_CALLER_PROCESSES`, else half the
-  # machine's cores, each playing `PINECALL_CALLERS_PER_PROCESS` callers at once, three unless said.
+  # machine's cores, each playing `PINECALL_CALLERS_PER_PROCESS` callers at once, two unless said.
   # It answers nothing and listens on nothing. It is handed what playing a caller reads, by name: the
   # database as the app's role, Redis, the vault for the caller's vendors' keys, what signs its way
   # into a room, LiveKit and the names a phone leg dials. Told to stop, each process claims no other

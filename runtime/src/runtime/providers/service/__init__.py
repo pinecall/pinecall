@@ -29,6 +29,7 @@ from runtime.providers.service.refusals import (
     say_failure,
     sentence_of,
     stage_named_in,
+    status_behind,
     vendor_named_in,
 )
 from runtime.providers.service.signatures import (
@@ -80,6 +81,7 @@ __all__ = [
     "hears_and_speaks",
     "is_installed",
     "is_unpaid",
+    "status_behind",
     "judge_ceiling",
     "keys_of",
     "list_by_vendor",

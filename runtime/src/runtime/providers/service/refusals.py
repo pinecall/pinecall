@@ -3,6 +3,7 @@
 import re
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
+from http import HTTPStatus
 
 from livekit.agents import APIConnectionError, APIError, APIStatusError, APITimeoutError
 
@@ -16,7 +17,8 @@ THE_VENDORS_OWN = 500
 
 # What a vendor answers when the account it was asked on cannot pay: its body's `code` or `type`, or its
 # own sentence. Said with a 429 by OpenAI ("You have no credits remaining", `insufficient_quota`) and
-# xAI (a team's spending limit), with a 400 by Anthropic ("credit balance is too low"). Unlike a rate
+# xAI (a team's spending limit), with a 400 by Anthropic ("credit balance is too low"), and with a bare 402
+# by xAI's realtime handshake. Unlike a rate
 # limit, which the same status says too, retrying it changes nothing until a person pays.
 UNPAID_CODES = frozenset(
     {"insufficient_quota", "billing_hard_limit_reached", "billing_not_active", "access_terminated", "credit_exhausted"}
@@ -25,6 +27,13 @@ UNPAID_WORDS = re.compile(
     r"no credits remaining|credit balance is too low|exceeded your current quota|spending.limit|billing.hard.limit",
     re.IGNORECASE,
 )
+
+# A vendor that will not open a connection says so with a status the client reports as the cause of a
+# "connection error": xAI answers a realtime handshake `402` for an account with no credit, and the
+# plugin raises "client connection error". The status is read a few causes down, no further.
+PAYMENT_REQUIRED = 402
+A_REFUSAL = 400
+CAUSES_READ = 4
 
 # The sentence a use case says of a vendor that did not answer, given the words the silence came with.
 type Silence = Callable[[str], str]
@@ -65,6 +74,9 @@ def refusing(vendor: str, what: str, *, silence: Silence | None = None) -> Gener
 # on a live call's log by `say_failure`.
 def _word(vendor: str, what: str, refused: APIError) -> str:
     if isinstance(refused, APIConnectionError | APITimeoutError):
+        status = status_behind(refused)
+        if status is not None and status < THE_VENDORS_OWN:
+            return f"{vendor} refused {what}: it answered the connection {status} {_phrase(status)}"
         return f"{vendor} did not answer: {sentence_of(refused)}"
     if isinstance(refused, APIStatusError) and refused.status_code >= THE_VENDORS_OWN:
         return f"{vendor} failed on its side ({refused.status_code}): {sentence_of(refused)}"
@@ -89,8 +101,31 @@ def sentence_of(refused: APIError) -> str:
     return refused.message
 
 
+def status_behind(refused: BaseException) -> int | None:
+    """The HTTP status a vendor refused with, on the error itself or on what caused it; None when it gave none."""
+    cause: BaseException | None = refused
+    for _ in range(CAUSES_READ):
+        if cause is None:
+            return None
+        for name in ("status_code", "status"):
+            status: object = getattr(cause, name, None)
+            if isinstance(status, int) and not isinstance(status, bool) and status >= A_REFUSAL:
+                return status
+        cause = cause.__cause__ or cause.__context__
+    return None
+
+
+def _phrase(status: int) -> str:
+    try:
+        return HTTPStatus(status).phrase
+    except ValueError:
+        return ""
+
+
 def is_unpaid(refused: APIError) -> bool:
     """Whether the vendor refused because the account it was asked on cannot pay: no credit, a quota or limit spent."""
+    if status_behind(refused) == PAYMENT_REQUIRED:
+        return True
     body = refused.body
     holders: list[Mapping[str, object]] = []
     if a_mapping(body):

@@ -39,7 +39,7 @@ spec:
           resources:
             # A process at its most is about half a core (0.18 a caller, three callers) and a quarter gibibyte.
             requests:
-              cpu: {{ printf "%dm" (mul (int .Values.callers.processes) 600) }}
+              cpu: {{ printf "%dm" (mul (int .Values.callers.processes) 400) }}
               memory: {{ printf "%dMi" (mul (int .Values.callers.processes) 256) }}
       volumes:
         {{- include "pinecall.scratchVolumes" . | nindent 8 }}

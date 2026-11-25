@@ -473,7 +473,7 @@ is one place to fail (its two gateways are started again one after the other, so
 the name answering, a worker drains for ten minutes and the simulated callers for twelve; a machine
 that stops takes everything with it until it is back). The callers of spoken simulations are a
 service of their own beside the gateways (`callers`: `PINECALL_CALLER_PROCESSES` processes, half the
-machine's cores unless said, three callers each), so a test run of many calls at once costs the
+machine's cores unless said, two callers each), so a test run of many calls at once costs the
 gateways nothing and a gateway started again ends none of them; on a cluster the same service is the
 Deployment `pinecall-callers` (`callers.replicas`, `callers.processes` in the chart's values). The apps are fenced as a cluster fences them: each is a gVisor container of
 the apps' machine, with no root and no capability, on a network that reaches the internet and
