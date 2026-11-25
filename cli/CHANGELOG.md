@@ -6,6 +6,9 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **A setup that lost most of its calls is held to no bar.** A benchmark's setup with more calls left out than
+  counted is listed last, marked `most of its calls not counted`, and named in the verdict: it neither clears the
+  bars nor is the one to take. A model whose vendor refused fourteen of twenty calls read `6 of 6 · 100%` and first.
 - **The benchmark of an agent, from one command.** `pinecall simulate … --report [dir]` writes it when the calls
   end, and `pinecall benchmark <comparison…>` of comparisons already played: a folder with a page to open or
   publish (`index.html`), every number of it (`report.json`) and each call's recording. Each setup is held to two

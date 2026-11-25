@@ -87,6 +87,8 @@ export interface Setup {
   spread: { least: number; most: number } | null;
   clears: { floor: boolean | null; ceiling: boolean | null };
   not_counted: number;
+  /** More of its calls were left out than counted: what is left is too little to hold it to a bar. */
+  thin: boolean;
   /** Against an earlier report, when one was given. */
   baseline?: Moved;
 }
@@ -214,6 +216,7 @@ export function setupOf(values: AgentValues, all: readonly BenchCall[], callers:
     spread: shares.length < 2 ? null : { least: Math.min(...shares), most: Math.max(...shares) },
     clears: { floor: completed.share === null ? null : completed.share >= bars.floor, ceiling: p50 === null ? null : p50 <= bars.ceiling_s },
     not_counted: all.length - counted.length,
+    thin: all.length - counted.length > counted.length,
   };
 }
 
@@ -227,17 +230,21 @@ function priced(setup: Setup): boolean {
 /** The verdict: which setups clear both bars, and which of them to take. */
 export function verdictOf(setups: readonly Setup[], bars: Bars): Verdict {
   if (setups.every((setup) => setup.clears.floor === null)) return { passed: null, cleared: [], winner: null, says: "nobody judged a call: run it with --judge and a caller that expects something" };
-  const cleared = setups.filter((setup) => setup.clears.floor === true && setup.clears.ceiling !== false);
+  // A setup that lost most of its calls is held to no bar: on 2026-11-26 a model whose vendor refused
+  // fourteen of its twenty read "6 of 6, clears both" and was listed first.
+  const thin = setups.filter((setup) => setup.thin);
+  const lost = thin.length === 0 ? "" : `; ${thin.map((setup) => setup.name).join(", ")} lost most of ${thin.length === 1 ? "its" : "their"} calls and ${thin.length === 1 ? "is" : "are"} held to no bar`;
+  const cleared = setups.filter((setup) => !setup.thin && setup.clears.floor === true && setup.clears.ceiling !== false);
   const floor = `${String(Math.round(bars.floor * 100))}% of calls completed`;
   const ceiling = `a reply within ${String(bars.ceiling_s)} s`;
-  if (cleared.length === 0) return { passed: false, cleared: [], winner: null, says: setups.length === 1 ? `it does not clear both bars: ${floor}, ${ceiling}` : `no setup clears both bars: ${floor}, ${ceiling}` };
+  if (cleared.length === 0) return { passed: false, cleared: [], winner: null, says: setups.length === 1 ? `it does not clear both bars: ${floor}, ${ceiling}${lost}` : `no setup clears both bars: ${floor}, ${ceiling}${lost}` };
   const cheapest = cleared.filter(priced).sort((one, other) => (one.cost.per_completed ?? 0) - (other.cost.per_completed ?? 0))[0];
   const best = [...cleared].sort((one, other) => (other.completed.share ?? 0) - (one.completed.share ?? 0) || (one.reply.p50 ?? Infinity) - (other.reply.p50 ?? Infinity))[0];
   const winner = cheapest ?? best;
   const names = cleared.map((setup) => setup.name);
-  if (setups.length === 1) return { passed: true, cleared: names, winner: winner?.name ?? null, says: `it clears both bars: ${floor}, ${ceiling}` };
+  if (setups.length === 1) return { passed: true, cleared: names, winner: winner?.name ?? null, says: `it clears both bars: ${floor}, ${ceiling}${lost}` };
   const how = cheapest === undefined ? "the one that completed the most (no cost was measured for them)" : "the cheapest per completed call";
-  return { passed: true, cleared: names, winner: winner?.name ?? null, says: `${String(cleared.length)} of ${String(setups.length)} setups clear both bars; ${winner?.name ?? ""} is ${how}` };
+  return { passed: true, cleared: names, winner: winner?.name ?? null, says: `${String(cleared.length)} of ${String(setups.length)} setups clear both bars; ${winner?.name ?? ""} is ${how}${lost}` };
 }
 
 /** What an earlier report said of a setup: enough to say how it moved. */

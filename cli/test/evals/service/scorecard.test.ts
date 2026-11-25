@@ -109,6 +109,16 @@ describe("the verdict", () => {
     expect(verdictOf([unpriced, fast()], BARS).winner).toBe("talks google/gemini-3.8-live");
   });
 
+  it("holds to no bar a setup that lost most of its calls, however well the few left went", () => {
+    const refused = { not_counted: { kind: "vendor" as const, why: "xai refused this call" }, completed: null };
+    const lost = setupOf({ realtime: "xai/grok-voice-3.0" }, calls([{ reply_s: 0.5 }, refused, refused]), ["books-a-visit"], BARS);
+    expect([lost.thin, lost.calls, lost.not_counted]).toEqual([true, 1, 2]);
+    const verdict = verdictOf([lost, fast()], BARS);
+    expect(verdict.cleared).toEqual(["talks google/gemini-3.8-live"]);
+    expect(verdict.says).toContain("talks xai/grok-voice-3.0 lost most of its calls and is held to no bar");
+    expect(verdictOf([lost], BARS).passed).toBe(false);
+  });
+
   it("fails when no setup clears both, and is no verdict when nobody judged a call", () => {
     expect(verdictOf([slow()], BARS)).toMatchObject({ passed: false, winner: null });
     expect(verdictOf([setupOf({}, calls([{ completed: null }]), ["books-a-visit"], BARS)], BARS).passed).toBeNull();

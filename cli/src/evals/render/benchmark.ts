@@ -12,6 +12,7 @@ const dollars = (value: number | null): string => (value === null ? "" : `$${val
 
 /** How a setup stands against the bars: held, broken, and which one it misses. */
 function standing(setup: Setup): string {
+  if (setup.thin) return "most of its calls not counted";
   if (setup.clears.floor === null) return "not judged";
   const missed = [...(setup.clears.floor ? [] : ["the floor"]), ...(setup.clears.ceiling === false ? ["the ceiling"] : [])];
   return missed.length === 0 ? HELD : `${BROKEN} misses ${missed.join(" and ")}`;

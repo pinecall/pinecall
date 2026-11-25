@@ -70,12 +70,13 @@
   for (const label of ["The agent runs on", "Completed", "Reply", "p90 · slowest", "A completed call"]) head.append(el("span", "", label));
   $("table").append(head);
   for (const one of R.setups) {
-    const clears = one.clears.floor === true && one.clears.ceiling !== false;
+    const clears = !one.thin && one.clears.floor === true && one.clears.ceiling !== false;
     const row = el("div", `row${one.name === R.verdict.winner && several ? " won" : ""}${clears || one.clears.floor === null ? "" : " out"}`);
     const name = el("span", `m${one.kind === "speech to speech" ? " s2s" : ""}`, short(one.name));
     name.append(el("small", "", one.kind));
     const done = el("span", one.clears.floor === null ? "" : one.clears.floor ? "good" : "bad", pct(one.completed.share));
     done.append(el("span", "of", `${one.completed.completed} of ${one.completed.of}`), el("small", "range", one.completed.low === null ? "nobody judged" : `plausibly ${pct(one.completed.low)}–${pct(one.completed.high)}`));
+    if (one.thin) done.append(el("small", "range", `${one.not_counted} of its calls did not count: held to no bar`));
     const fell = moved(one);
     if (fell) done.append(fell);
     const cost = el("span", "", one.cost.per_completed === null ? "none completed" : usd(one.cost.per_completed));

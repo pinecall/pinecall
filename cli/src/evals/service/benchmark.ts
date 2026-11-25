@@ -198,7 +198,7 @@ export async function benchmark(ctx: Context, input: BenchmarkInput): Promise<Be
   const values = new Map<string, api.AgentValues>();
   for (const row of ended) if (!values.has(nameOf(row.against))) values.set(nameOf(row.against), row.against);
   const setups = [...values].map(([name, one]) => setupOf(one, all.filter((call) => call.setup === name), callers, bars));
-  setups.sort((one, other) => (other.completed.share ?? -1) - (one.completed.share ?? -1) || (one.reply.p50 ?? Infinity) - (other.reply.p50 ?? Infinity));
+  setups.sort((one, other) => Number(one.thin) - Number(other.thin) || (other.completed.share ?? -1) - (one.completed.share ?? -1) || (one.reply.p50 ?? Infinity) - (other.reply.p50 ?? Infinity));
   if (earlier !== null) for (const setup of setups) {
     const was = earlier.setups.find((one) => one.name === setup.name) as Earlier | undefined;
     if (was !== undefined) setup.baseline = movedSince(setup, was);
