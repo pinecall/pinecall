@@ -73,10 +73,11 @@ export async function placeAgain(credentials: Credentials, call: string): Promis
 }
 
 /** How a run stands: on the line, held by every judge, broken by one, or ended with nobody judging it. */
-export type Standing = "live" | "held" | "broke" | "unjudged";
+export type Standing = "live" | "held" | "broke" | "unjudged" | "uncounted";
 
 export function standingOf(run: PersonaRun): Standing {
   if (run.ended_at === null) return "live";
+  if (!run.valid) return "uncounted";
   if (run.score === null || run.score.judged === 0) return "unjudged";
   return run.score.passed ? "held" : "broke";
 }
@@ -174,20 +175,27 @@ export function setupUnder(against: AgentValues): string {
 export const THE_GOAL = "expected-outcome";
 
 /** How one call of a comparison stands: still on, never begun, waiting for its judges, or its task done or failed. */
-export type Cell = "live" | "unstarted" | "scoring" | "passed" | "failed" | "unjudged";
+export type Cell = "live" | "unstarted" | "scoring" | "passed" | "failed" | "unjudged" | "uncounted";
 
 // The judges answer a few seconds after the hang-up; past this a call with no score has none coming.
 const JUDGES_ANSWER_WITHIN_S = 90;
 
 // A task is its caller's goal: done when the judge of what the caller expected held. A caller that
-// expects nothing has no such judge, and its call is done when every judge that answered held.
+// expects nothing has no such judge, and its call is done when every judge that answered held. A call
+// a vendor, the platform or its own caller broke measured nothing of the agent: it is not counted.
 export function cellOf(row: ComparisonRow, now: number = Date.now() / 1000): Cell {
+  if (row.ended_at !== null && !row.valid) return "uncounted";
   if (row.why !== null) return "unstarted";
   if (row.ended_at === null) return "live";
   if (row.score === null) return now - row.ended_at < JUDGES_ANSWER_WITHIN_S ? "scoring" : "unjudged";
   if (row.goal !== null) return row.goal === "held" ? "passed" : "failed";
   if (row.score.judged === 0) return "unjudged";
   return row.score.passed ? "passed" : "failed";
+}
+
+/** The calls that count: every one but those a vendor, the platform or their own caller broke. */
+export function countedOf(rows: readonly ComparisonRow[]): ComparisonRow[] {
+  return rows.filter((row) => row.valid);
 }
 
 /** The judges beside the goal's that gave a verdict on the call: how well it was done, apart from whether it was. */

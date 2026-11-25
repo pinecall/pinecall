@@ -292,7 +292,14 @@ def test_a_line_that_keeps_to_the_clock_hands_no_frame_late() -> None:
     # The first frames are handed at once (the room takes a tenth of a second ahead), then one each ten milliseconds.
     for frame in range(300):
         pace.hand(100.0 + max(0, frame - 10) * 0.010)
-    assert pace.dump() == {"frames": 300, "late_frames": 0, "late_ms": 0.0, "worst_ms": 0.0}
+    assert pace.dump() == {
+        "frames": 300,
+        "late_frames": 0,
+        "late_ms": 0.0,
+        "worst_ms": 0.0,
+        "speech_frames": 0,
+        "breaks_in_speech": 0,
+    }
 
 
 def test_a_loop_that_stalls_past_what_the_room_holds_is_counted_once_for_each_time_the_room_ran_out() -> None:
@@ -307,6 +314,20 @@ def test_a_loop_that_stalls_past_what_the_room_holds_is_counted_once_for_each_ti
     kept = pace.dump()
     assert (kept["frames"], kept["late_frames"]) == (200, 1)
     assert kept["late_ms"] == kept["worst_ms"] == 140.0
+
+
+def test_a_break_inside_the_callers_lines_is_counted_apart_from_lateness_in_its_silence() -> None:
+    """A listener hears the voice break when the room runs out in the middle of a line, for 20 ms or more."""
+    pace = Pace()
+    for frame in range(100):
+        pace.hand(100.0 + frame * 0.010, speaking=True)
+    # Away 50 ms while it speaks: a break the listener hears. Away 50 ms again while it says nothing: no break.
+    pace.hand(100.99 + 0.050, speaking=True)
+    for frame in range(1, 50):
+        pace.hand(100.99 + 0.050 + frame * 0.010, speaking=True)
+    pace.hand(101.53 + 0.050 + 0.050, speaking=False)
+    kept = pace.dump()
+    assert (kept["speech_frames"], kept["breaks_in_speech"], kept["late_frames"]) == (150, 1, 2)
 
 
 def test_a_frame_a_moment_late_is_nothing_the_room_hears() -> None:

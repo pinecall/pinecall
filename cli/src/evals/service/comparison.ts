@@ -77,6 +77,7 @@ export async function simulateAgainst(ctx: Context, agent: string, written: Pers
   listeners.onOpened?.(started.call);
   const entries = await followUntilEnded(ctx, started.call, listeners);
   const score = input.judge ? await scoreOf(ctx, started.call) : null;
+  const listed = await api.getSimulatedCall(ctx.gateway(), started.call);
   return {
     persona: persona.name,
     goal: persona.goal,
@@ -87,6 +88,7 @@ export async function simulateAgainst(ctx: Context, agent: string, written: Pers
     medians: mediansOf(entries),
     score,
     unjudged: input.judge && score === null,
+    invalid: listed?.invalid ?? null,
   };
 }
 

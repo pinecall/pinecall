@@ -31,6 +31,7 @@ from runtime.evals.service.leg import Spoken
 from runtime.evals.service.phone import PhoneLine
 from runtime.evals.service.spoken import SpokenLine
 from runtime.evals.service.turns import NextLine, is_call_over
+from runtime.evals.service.validity import VALID, Invalid, Validity, judge
 from runtime.evals.service.written import WrittenLine
 from runtime.exceptions import PinecallError
 from runtime.judging import service as judging
@@ -43,6 +44,7 @@ from runtime.providers import service as providers
 from runtime.providers.catalog import Catalog
 from runtime.providers.stage import Running
 from runtime.session import service as session
+from runtime.wire.base import Entry
 from runtime.wire.dispatch import Dispatch
 from runtime.wire.room import A_SIMULATED_CALLER
 
@@ -98,12 +100,19 @@ async def play_spoken(parts: CallerParts, simulation: Simulation) -> Played:
     spoken = Spoken(simulation.call, simulation.acts, voice.language, notice, simulation.network)
     on_the_line = SpokenLine if simulation.rings is None else PhoneLine
     line = on_the_line(parts, _dispatch_of(simulation), voice, spoken, waits_for_slot=simulation.waits_for_slot)
+    broke: str | None = None
     try:
         return await play(parts.sessions, parts.vault, parts.store, simulation, line, voice)
+    except Exception as failed:
+        # A caller that broke is no caller of the agent's: said with its line, the call is not counted.
+        if not is_cancellation(failed):
+            broke = say_why(failed, "play this call's caller")
+        raise
     finally:
         pace = line.read_pace()
-        if pace is not None:
-            await when_free(lambda: keep_line(parts.sessions, simulation.call, pace))
+        kept: dict[str, Any] = {**(pace or {}), **({} if broke is None else {"broke": broke})}
+        if kept:
+            await when_free(lambda: keep_line(parts.sessions, simulation.call, kept))
 
 
 async def play_written(parts: Harness, running: session.Session, simulation: Simulation) -> Played:
@@ -303,9 +312,9 @@ async def keep_heard(
         await calls.keep_caller_heard(session_, call, asdict(heard))
 
 
-# What only the process that played the caller knows: whether its own loop was on time. A call whose
-# line ran late was heard broken by its agent, and says nothing of the agent.
-async def keep_line(sessions: async_sessionmaker[AsyncSession], call: str, pace: Mapping[str, float]) -> None:
+# What only the process that played the caller knows: whether its own loop was on time, and whether the
+# caller broke. A call whose line ran late was heard broken by its agent, and says nothing of the agent.
+async def keep_line(sessions: async_sessionmaker[AsyncSession], call: str, pace: Mapping[str, Any]) -> None:
     """Keep how the caller's leg kept to the clock with the call's facts."""
     async with sessions.begin() as session_:
         await calls.keep_caller_line(session_, call, pace)
@@ -358,6 +367,18 @@ class SimulatedCall:
     # How a spoken call was heard, against what its caller really said; None for a written one, and
     # until the simulation ends.
     hearing: Mapping[str, Any] | None
+    # Whether the call measured its agent (`validity.judge`); a call still on the line is not judged.
+    validity: Validity = VALID
+
+    @property
+    def valid(self) -> bool:
+        """Whether the call counts: nothing but its agent's model spoke for it, on a caller's clean line."""
+        return self.validity.valid
+
+    @property
+    def invalid(self) -> Invalid | None:
+        """Why the call does not count; None for one that does."""
+        return self.validity.invalid
 
 
 @dataclass(frozen=True, slots=True)
@@ -375,7 +396,8 @@ async def list_simulated(
     """The simulated calls the filter names in the key's env, in the copies it lists, newest first."""
     asked = replace(wanted, holders=calls.list_copies(actor))
     found = await calls.list_persona_runs(session_, actor.scope, asked, limit=limit)
-    return SimulatedPage([_row_of(run) for run in found.runs], found.total, found.next)
+    errors = await calls.list_errors(session_, [run.facts.call for run in found.runs if run.facts.ended_at is not None])
+    return SimulatedPage([_row_of(run, errors.get(run.facts.call, [])) for run in found.runs], found.total, found.next)
 
 
 async def list_of_persona(
@@ -396,8 +418,9 @@ def score_of(facts: folds.CallFacts) -> Scored | None:
     return Scored(held=facts.held or 0, judged=facts.judged, passed=facts.passed, reason=facts.reason)
 
 
-def _row_of(run: calls.PersonaRun) -> SimulatedCall:
+def _row_of(run: calls.PersonaRun, errors: Sequence[Entry]) -> SimulatedCall:
     facts, kept = folds.facts_of(run.facts), run.facts
+    validity = VALID if facts.ended_at is None else judge(errors, facts.end_reason, kept.caller_line)
     played_by = None if kept.caller_llm is None else PlayedBy(kept.caller_llm, kept.caller_tts, kept.caller_voice)
     return SimulatedCall(
         call=facts.call,
@@ -415,4 +438,5 @@ def _row_of(run: calls.PersonaRun) -> SimulatedCall:
         against=kept.against,
         comparison=kept.comparison,
         hearing=kept.hearing,
+        validity=validity,
     )

@@ -35,6 +35,7 @@ export function saidOf(run: PersonaRun): string {
   const standing = standingOf(run);
   if (standing === "live") return "on the line now";
   if (standing === "unjudged") return `not judged, ${ago(run.started_at)}`;
+  if (standing === "uncounted") return `not counted (${run.invalid?.kind ?? "broken"}), ${ago(run.started_at)}`;
   return `${run.score?.held ?? 0} of ${run.score?.judged ?? 0} judges held, ${ago(run.started_at)}`;
 }
 

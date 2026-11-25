@@ -912,7 +912,18 @@ unless the operator gave it more; a comparison past the second is refused before
 its sentence naming the number. Each row's JSON (`--json`) carries what the table has no column for:
 `goal`, every judge's verdict in `judges`, and for a spoken call `hearing` — the caller's lines the
 agent never answered, its replies the room cut off, the turns it heard that nobody said, and the
-word error rate of what it heard, measured against what the simulated caller really said.
+word error rate of what it heard, measured against what the simulated caller really said. A spoken
+comparison sums those by configuration in a table of their own, **how each heard its callers**: the
+lines said, the unanswered, the turns heard while the caller said nothing, the replies the room cut
+off, the lines talked over, and the middle word error.
+
+A call **that does not count** is in the table, its judges' column saying `not counted:` and whose
+fault — `vendor` (a vendor of the agent refused or failed one of its stages, an account out of credit
+among them), `platform` (our side lost the call) or `caller` (its own simulated caller broke, or its
+voice broke up on the way) — with the reason under the table, and it is in no count: not in how often
+a configuration did the task, not in its reply, not in what a completed call cost. A model that was
+wrong, slow or silent counts: that is the comparison. One simulation that does not count says so
+under its result the same way.
 
 A configuration the gateway refuses (a vendor nobody keyed, the org's limits) is said under the
 table, `not placed`, and the others go on; `--listen` is one call, so a comparison refuses it. The

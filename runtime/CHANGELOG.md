@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **A simulated call says whether it measured its agent, and a table counts only those that did.** A public
+  table of 140 calls had 101 whose simulated caller's voice broke up on the way, and calls a vendor refused for
+  credit counted as the models' failures; nothing said so. Every comparison row and every run's row now carries
+  `valid` and, when false, `invalid` `{kind, why}`: `vendor` (an `error` of `component_failed` or
+  `component_dead_end`), `platform` (never served, the worker gone, the session broken, the app stopped, or an end
+  in error with no reason), `caller` (the caller broke on the line, or its voice broke up: over ten silences of
+  20 ms or more a minute of its lines). The caller's leg counts those silences as it plays (`caller_line`:
+  `speech_frames`, `breaks_in_speech`, and `broke` when it broke), and a list reads its page's errors in one
+  statement (`calls.list_errors`). A call that does not count ranks after those that do (`evals.service.validity`).
 - **A vendor that will not serve the account ends the call at its first refusal.** OpenAI answers "You have no
   credits remaining" with a 429, the status of a rate limit, which livekit retries: on 2026-11-25 five simulated
   calls went on with a model that answered nothing until their ten minutes ran out. A refusal whose body says the

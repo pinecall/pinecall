@@ -60,6 +60,7 @@ from runtime.calls.service.simulated import (
     keep_caller_line,
     keep_caller_played,
     keep_how_placed,
+    list_errors,
 )
 
 __all__ = [
@@ -103,6 +104,7 @@ __all__ = [
     "list_carried",
     "list_copies",
     "list_entries",
+    "list_errors",
     "list_logs_of_agent",
     "list_logs_of_contact",
     "list_logs_of_org",

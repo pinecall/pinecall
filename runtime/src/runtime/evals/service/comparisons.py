@@ -18,6 +18,7 @@ from runtime.evals.service.placing import place_as_planned, play_to_the_end
 from runtime.evals.service.plans import Pair, Plan, Refused, is_left, keep_plan, read_plan, say_who_asked
 from runtime.evals.service.simulated_calls import Scored, score_of
 from runtime.evals.service.simulations import Scenario, Wanted, as_placed, check_talking, write_scenario
+from runtime.evals.service.validity import VALID, Invalid, Validity, judge
 from runtime.evals.tasks import TooManyAtOnce
 from runtime.exceptions import NotFound, PinecallError, ValidationError
 from runtime.kit.crypto import random_id
@@ -74,6 +75,19 @@ class Row:
     cut_off: int
     # How the call was heard, against what its caller really said; None for a written call.
     hearing: Mapping[str, Any] | None
+    # Whether the call measured its agent: one a vendor, our side or its caller broke is shown, and no
+    # count of the table's reads it.
+    validity: Validity = VALID
+
+    @property
+    def valid(self) -> bool:
+        """Whether the call counts in the table."""
+        return self.validity.valid
+
+    @property
+    def invalid(self) -> Invalid | None:
+        """Why the call does not count; None for one that does."""
+        return self.validity.invalid
 
 
 @dataclass(frozen=True, slots=True)
@@ -255,6 +269,7 @@ async def compare_row(store: Store, run: calls.PersonaRun) -> Row:
         slowest_reply=max(answered, default=None),
         cut_off=len([turn for turn in replies if turn.interrupted]),
         hearing=run.facts.hearing,
+        validity=judge(entries, facts.end_reason, run.facts.caller_line) if facts.ended_at is not None else VALID,
     )
 
 
@@ -300,8 +315,8 @@ def list_in_order_placed(rows: Sequence[Row]) -> list[str]:
 
 # The best is the one a person would pick first: the caller got what it expected, then every judge
 # held, then the most that held, then the fastest reply, then the cheapest. A caller that expects
-# nothing has no goal to be judged on: its call is done when every judge held. A call still on the
-# line is last: nothing of it is known yet.
+# nothing has no goal to be judged on: its call is done when every judge held. A call that does not
+# count comes after the ones that do, and a call still on the line last: nothing of it is known yet.
 def is_done(row: Row) -> bool:
     """Whether the call did its caller's task: its goal held, or, with no goal judged, every judge did."""
     if row.goal is not None:
@@ -314,14 +329,23 @@ def rank(rows: Sequence[Row]) -> list[Row]:
     """The rows best first, caller by caller."""
     order = {persona: at for at, persona in enumerate(list_in_order_placed(rows))}
 
-    def key(row: Row) -> tuple[int, bool, bool, bool, float, float, float]:
+    def key(row: Row) -> tuple[int, bool, bool, bool, bool, float, float, float]:
         judged = row.score is not None and row.score.judged > 0
         passed = row.score is not None and row.score.passed
         share = row.score.held / row.score.judged if judged and row.score is not None else 0.0
         e2e = row.latency.get("e2e_latency")
         cost = row.cost_usd if row.cost_usd is not None else float("inf")
         fastest = e2e if e2e is not None else float("inf")
-        return (order[row.persona], row.ended_at is None, not is_done(row), not passed, -share, fastest, cost)
+        return (
+            order[row.persona],
+            row.ended_at is None,
+            not row.valid,
+            not is_done(row),
+            not passed,
+            -share,
+            fastest,
+            cost,
+        )
 
     return sorted(rows, key=key)
 

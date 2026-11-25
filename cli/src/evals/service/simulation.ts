@@ -104,6 +104,8 @@ export interface Simulated {
   score: CallScore | null;
   /** Judging was asked and no score came in time. */
   unjudged: boolean;
+  /** Why the call measured nothing of its agent, as the gateway judged it; null for one that counts. */
+  invalid?: api.Invalid | null;
 }
 
 /** Where the agent is: its slug, and the process that serves the call (read on every dial). */
@@ -179,6 +181,7 @@ export async function simulate(ctx: Context, reached: Reached, written: Persona,
   const placed = input.voice ? await outLoud(ctx, reached.slug, persona, input, heard, listeners) : await inWriting(ctx, reached, persona, input, heard);
   const entries = placed.call === "" ? [] : await allEntries(ctx, placed.call);
   const score = input.judge && placed.call !== "" ? await scoreOf(ctx, placed.call) : null;
+  const listed = placed.call === "" ? null : await api.getSimulatedCall(ctx.gateway(), placed.call);
   return {
     persona: persona.name,
     goal: persona.goal,
@@ -189,6 +192,7 @@ export async function simulate(ctx: Context, reached: Reached, written: Persona,
     medians: mediansOf(entries),
     score,
     unjudged: input.judge && score === null,
+    invalid: listed?.invalid ?? null,
   };
 }
 

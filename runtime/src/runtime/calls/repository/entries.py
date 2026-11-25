@@ -64,6 +64,18 @@ class EntryRepository(Repository[CallLog]):
                 return found
             after = page[-1].seq
 
+    # Off each log's key: a page of calls whose errors a list reads, with no log read whole.
+    async def list_of_types(self, logs: Sequence[str], types: Sequence[str]) -> list[Entry]:
+        """The durable entries of these types in these logs, each log's in seq order."""
+        if not logs or not types:
+            return []
+        statement = (
+            select(*(getattr(CallLog, name) for name in COLUMNS))
+            .where(CallLog.log.in_(list(logs)), CallLog.type.in_(list(types)))
+            .order_by(CallLog.log, CallLog.seq)
+        )
+        return [entry_of(row) for row in (await self.session.execute(statement)).all()]
+
     # Served by call_log_metered (type, position). The positions come in commit order for the fed
     # types alone (`log/writer.py`: `FED_TYPES`): the store refuses any other before it asks.
     async def list_across(self, types: Sequence[str], *, after: int = 0, limit: int = A_PAGE) -> list[Positioned]:

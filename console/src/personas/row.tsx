@@ -7,7 +7,7 @@ import { PersonaAvatar } from "../apps/avatar";
 import { standingOf, type Persona, type PersonaRun, type Standing } from "../simulations/door";
 import { goalOf, saidOf } from "./fold";
 
-export const DOTS: Record<Standing, string> = { live: "app-dot app-dot-warn", held: "app-dot app-dot-good", broke: "app-dot app-dot-bad", unjudged: "app-dot app-dot-calm" };
+export const DOTS: Record<Standing, string> = { live: "app-dot app-dot-warn", held: "app-dot app-dot-good", broke: "app-dot app-dot-bad", unjudged: "app-dot app-dot-calm", uncounted: "app-dot app-dot-calm" };
 
 export function Row({ persona, whose, last, open, to }: { persona: Persona; whose: string | undefined; last: PersonaRun | undefined; open: boolean; to: To }): ReactNode {
   return (

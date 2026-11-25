@@ -203,6 +203,7 @@ a.cmp-run:hover { outline: 2px solid var(--ink); outline-offset: 1px; }
 .cmp-run-failed, .cmp-run-unstarted { background: var(--bad); }
 .cmp-run-live, .cmp-run-scoring { background: var(--accent); animation: sim-pulse 1.4s ease-in-out infinite; }
 .cmp-run-unjudged { background: var(--quiet); }
+.cmp-run-uncounted { background: transparent; border: 1px solid var(--quiet); }
 .cmp-run-waiting { border: 1px dashed var(--quiet); background: transparent; }
 .cmp-run-none { opacity: 0.4; }
 .cmp-foot { margin-top: 12px; }

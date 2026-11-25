@@ -197,6 +197,14 @@ export const HearingSchema = z.strictObject({
 
 export type Hearing = z.infer<typeof HearingSchema>;
 
+/** Why a simulated call does not count: whose fault it was (`caller`, `platform`, `vendor`), in a sentence. */
+export const InvalidSchema = z.strictObject({
+  kind: z.enum(["caller", "platform", "vendor"]),
+  why: z.string(),
+});
+
+export type Invalid = z.infer<typeof InvalidSchema>;
+
 export const PersonaRunSchema = z.strictObject({
   call: z.string(),
   agent: z.string(),
@@ -219,6 +227,9 @@ export const PersonaRunSchema = z.strictObject({
   comparison: z.string().nullable(),
   /** How a spoken call was heard, against what its caller really said; null for a written one, and until the simulation ends. */
   hearing: HearingSchema.nullable().default(null),
+  /** Whether the call measured its agent: one a vendor, the platform or its own caller broke counts for nothing, and says why. */
+  valid: z.boolean().default(true),
+  invalid: InvalidSchema.nullable().default(null),
 });
 
 export type PersonaRun = z.infer<typeof PersonaRunSchema>;
@@ -258,6 +269,9 @@ export const ComparisonRowSchema = z.strictObject({
   cut_off: z.int().default(0),
   /** How the call was heard, against what its caller really said; null for a written one, and until the simulation ends. */
   hearing: HearingSchema.nullable().default(null),
+  /** Whether the call counts: one a vendor, the platform or its own caller broke is shown, left out of every count, and says why. */
+  valid: z.boolean().default(true),
+  invalid: InvalidSchema.nullable().default(null),
 });
 
 export type ComparisonRow = z.infer<typeof ComparisonRowSchema>;

@@ -198,3 +198,29 @@ async def test_a_simulation_the_orgs_own_copy_took_is_listed_and_its_comparison_
     table = await gateway.http.get(f"/v1/simulations/compare/{comparison}", headers=tenant.person)
     assert table.status_code == 200, table.text
     assert (table.json()["personas"], [row["call"] for row in table.json()["rows"]]) == (["in-a-hurry"], [call])
+
+
+# 2026-11-25: calls OpenAI refused for credit were counted in a public table as the models' failures.
+async def test_a_simulated_call_a_vendor_refused_is_listed_and_compared_as_counting_for_nothing(
+    gateway: Gateway, tenant: Tenant, agent: str, sessions: async_sessionmaker[AsyncSession], store: Store
+) -> None:
+    call = await a_call_on(store, tenant, agent, THE_ORGS_OWN)
+    comparison = f"cmp_{call[-6:]}"
+    writing = logs_on(store).logs.writing(call, agent)
+    refused = "openai refused this call's model: You have no credits remaining.\nlabel='livekit.plugins.openai.llm.LLM'"
+    await writing.append("error", {"code": "component_dead_end", "message": refused, "recoverable": False})
+    ended: JsonObject = {"reason": "error", "ended_by": "platform", "ended_at": 40.0, "duration_s": 39.0}
+    await writing.append("call.ended", ended)
+    await store.writer.drain()
+    async with sessions.begin() as session:
+        await simulated.keep_agent_values(session, call, against={}, comparison=comparison, persona="in-a-hurry")
+
+    why = "a vendor of the agent failed the call: openai refused this call's model: You have no credits remaining."
+    runs = await gateway.http.get("/v1/simulations", params={"comparison": comparison}, headers=tenant.person)
+    assert runs.status_code == 200, runs.text
+    (run,) = runs.json()["runs"]
+    assert (run["valid"], run["invalid"]) == (False, {"kind": "vendor", "why": why})
+    table = await gateway.http.get(f"/v1/simulations/compare/{comparison}", headers=tenant.person)
+    assert table.status_code == 200, table.text
+    (row,) = table.json()["rows"]
+    assert (row["valid"], row["invalid"]) == (False, {"kind": "vendor", "why": why})

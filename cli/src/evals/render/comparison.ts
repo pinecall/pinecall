@@ -19,9 +19,15 @@ export function against(values: AgentValues): string {
   return said.length === 0 ? "the agent's own settings" : said.join(" · ");
 }
 
-/** The judges' column of one call: a call that ended in error reads so, whatever a judge made of what little it had. */
+/** Whether a call counts: one a vendor, the platform or its own caller broke measured nothing of the agent. */
+function counts(row: ComparisonRow): boolean {
+  return row.valid !== false;
+}
+
+/** The judges' column of one call: a call that does not count or ended in error reads so, whatever a judge made of what little it had. */
 export function verdictOf(row: ComparisonRow): string {
   if (row.ended_at === null) return "on a call";
+  if (!counts(row)) return `not counted: ${row.invalid?.kind ?? "broken"}`;
   if (row.why !== null) return "never started";
   if (row.end_reason === "error") return "ended in error";
   if (row.score === null) return (row.end_reason ?? "not judged").replace(/_/g, " ");
@@ -31,7 +37,7 @@ export function verdictOf(row: ComparisonRow): string {
 // A caller's task is its goal: done when the judge of what it expected held; a caller that expects
 // nothing is done when every judge held.
 function didIt(row: ComparisonRow): boolean | null {
-  if (row.ended_at === null || row.why !== null) return null;
+  if (row.ended_at === null || row.why !== null || !counts(row)) return null;
   if (row.goal !== undefined && row.goal !== null) return row.goal === "held";
   return row.score === null ? null : row.score.passed;
 }
@@ -51,12 +57,14 @@ function share(did: readonly (boolean | null)[]): string {
 }
 
 // A call that did not do the caller's task was paid for too: what a completed call cost is everything
-// the configuration's calls cost over the ones that did it, which a price per call never says.
+// the configuration's calls cost over the ones that did it, which a price per call never says. A call
+// that does not count is no call of the configuration's: neither its cost nor its reply is summed.
 /** Several runs by configuration, the one that did the most first: each caller's count, all of them, the middle reply, what they cost, and what one completed call cost. */
 function byConfiguration(rows: readonly ComparisonRow[], personas: readonly string[]): string[] {
   const named = new Map<string, ComparisonRow[]>();
   for (const row of rows) named.set(against(row.against), [...(named.get(against(row.against)) ?? []), row]);
-  const summed = [...named].map(([name, its]) => {
+  const summed = [...named].map(([name, all]) => {
+    const its = all.filter(counts);
     const did = its.map(didIt);
     const judged = did.filter((one) => one !== null).length;
     const done = did.filter((one) => one === true).length;
@@ -80,6 +88,38 @@ function byConfiguration(rows: readonly ComparisonRow[], personas: readonly stri
     ),
   );
   return lines;
+}
+
+/** One measure of how the calls were heard, summed over a configuration's calls that carry it. */
+function heard(rows: readonly ComparisonRow[], name: string): number {
+  return rows.reduce((sum, row) => sum + (row.hearing?.[name] ?? 0), 0);
+}
+
+// What a simulation knows and a real call does not: what its caller really said, and when. Read off
+// each call's hearing, summed by configuration, so a table says which agent invented turns, talked over
+// its caller or was cut off by the room, without opening a call.
+/** How each configuration heard its callers: lines said, unanswered, turns heard that nobody said, replies cut by the room, lines talked over, the middle word error. */
+function hearingByConfiguration(rows: readonly ComparisonRow[]): string[] {
+  const heardRows = rows.filter((row) => counts(row) && row.hearing != null);
+  if (heardRows.length === 0) return [];
+  const named = new Map<string, ComparisonRow[]>();
+  for (const row of heardRows) named.set(against(row.against), [...(named.get(against(row.against)) ?? []), row]);
+  const errors = (its: readonly ComparisonRow[]): number | null => middle(its.flatMap((row) => (typeof row.hearing?.word_error_rate === "number" ? [row.hearing.word_error_rate] : [])));
+  return [
+    "how each heard its callers, against what they really said",
+    ...table(
+      ["the agent runs on", "lines", "unanswered", "heard nobody", "cut by the room", "talked over", "word error"],
+      [...named].map(([name, its]) => [
+        name,
+        heard(its, "lines"),
+        heard(its, "unanswered"),
+        heard(its, "phantom_turns"),
+        heard(its, "cut_by_the_room"),
+        heard(its, "talked_over"),
+        ((rate) => (rate === null ? "" : `${String(Math.round(rate * 100))}%`))(errors(its)),
+      ]),
+    ),
+  ];
 }
 
 /** A comparison: the callers against the agent, one row per call, then several runs summed by configuration, what was not placed, and how to read a call whole. */
@@ -107,7 +147,9 @@ export function comparison(done: Compared): string[] {
     ),
   );
   if ((found.repeats ?? 1) > 1 || several) lines.push(...byConfiguration(found.rows, callers));
-  for (const row of found.rows) if (row.why !== null) lines.push(`never started, ${against(row.against)}: ${row.why}`);
+  lines.push(...hearingByConfiguration(found.rows));
+  for (const row of found.rows) if (row.invalid != null) lines.push(`not counted, ${against(row.against)} (${row.invalid.kind}): ${row.invalid.why}`);
+  for (const row of found.rows) if (row.why !== null && counts(row)) lines.push(`never started, ${against(row.against)}: ${row.why}`);
   for (const one of done.refused) lines.push(`not placed, ${against(one.against)}: ${one.why}`);
   if (found.abandoned === true) lines.push(`${String(found.waiting ?? 0)} never placed: the gateway placing them was restarted — run it again for those`);
   lines.push(formatHint("pinecall sessions <call> reads one whole"));

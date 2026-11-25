@@ -167,6 +167,7 @@ export function ResultsPanel({ watched, run, onClose }: { watched: Watched; run:
   return (
     <SidePanel title="Results" icon="quality" width={440} onClose={onClose}>
       {watched.over ? <CallSummary log={{ call: watched.call, state: watched.state, score: watched.score }} /> : <p className="ui-panel-about">The numbers and the judges' verdicts land here when the call ends. Each judge reads the whole conversation at hang-up.</p>}
+      {watched.over && run?.invalid != null && <p className="app-refused">Not counted: {run.invalid.why}</p>}
       {watched.over && run?.hearing != null && <HearingCard hearing={run.hearing} />}
     </SidePanel>
   );

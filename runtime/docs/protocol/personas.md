@@ -182,7 +182,7 @@ vendor nobody keyed, the org's limits), and how many wait. The callers do not ch
 `GET /v1/simulations/compare/{comparison}` reads the table: `{comparison, agent, persona, personas,
 voice, rows: [{call, persona, against, started_at, ended_at, turns, end_reason, score, cost_usd,
 latency: {e2e_latency, llm_node_ttft, tts_node_ttfb, transcription_delay, end_of_turn_delay}, why,
-goal, judges: [{name, verdict, reason}], replies, slowest_reply, cut_off}]}`
+goal, judges: [{name, verdict, reason}], replies, slowest_reply, cut_off, hearing, valid, invalid}]}`
 (`persona` the first caller, `personas` every one in the order placed), each measure the median over
 the call's turns in seconds (null while no turn reported it). A caller is a task: `goal` is whether it
 got what it `expects` of the agent, the `expected-outcome` judge's verdict (`held`, `broken`, `na`;
@@ -199,10 +199,19 @@ the agent heard while the caller was saying no line; the lines it began a reply 
 the seconds from the caller's last word to the agent's first (the median, and the one nine in ten
 are under); and the share of the caller's words it got wrong, past 1 when it transcribed a room
 nobody spoke in. A judge reads the transcript alone, so a call may hold every judge and still have
-been heard badly: these are what says so. Every run's row (`GET /v1/simulations`) carries the same. The rows come caller by caller and each
+been heard badly: these are what says so. **`valid`** is whether the call measured its agent at all,
+and `invalid` `{kind, why}` says why not, null for a call that counts: `vendor` when a vendor of the
+agent refused or failed one of its stages (an `error` of `component_failed` or `component_dead_end` on
+its log, an account out of credit among them); `platform` when our side lost it (nobody served it, its
+worker went away, its session broke, the app that held its agent stopped, or it ended in an error its
+log gives no reason for); `caller` when its own simulated caller broke on the line, or its voice broke
+up: more than ten silences of 20 ms or more a minute of its lines, put there by the process playing it
+being late with a frame (the call's facts keep the count, `caller_line`). A model that was wrong,
+slow or silent is valid: that is the eval. A call still on the line counts until it ends. Every run's
+row (`GET /v1/simulations`) carries the same. The rows come caller by caller and each
 caller's best first — its goal held (every judge, for a caller with no goal judged), then every
-judge held, then the most held, then the fastest reply, then the cheapest, a call still on the line
-last. The table also says what was asked for, so a call not placed yet has its place on it:
+judge held, then the most held, then the fastest reply, then the cheapest, a call that does not count
+after every one that does, and a call still on the line last. The table also says what was asked for, so a call not placed yet has its place on it:
 `against` (each configuration, in the order named), `repeats`, `planned` (every call it was to
 place), `waiting` (those still without a place on the line), `refused` (each call that could not be
 placed, and why, the ones refused after the answer among them) and `abandoned`. Every call asked for

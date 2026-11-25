@@ -302,6 +302,22 @@ export interface ComparisonRow {
   cut_off?: number;
   /** How a spoken call was heard, against what its simulated caller really said. */
   hearing?: Record<string, number | null> | null;
+  /** Whether the call measured its agent; when not, whose fault and why. Absent from a gateway before 2026-11-26: every call counted. */
+  valid?: boolean;
+  invalid?: Invalid | null;
+}
+
+/** Why a simulated call does not count: a vendor of the agent failed it, the platform lost it, or its own caller broke. */
+export interface Invalid {
+  kind: "caller" | "platform" | "vendor";
+  why: string;
+}
+
+/** One simulated call as \`GET /v1/simulations?call=\` lists it: what this command reads of it, whether it counted. */
+export interface SimulatedCall {
+  call: string;
+  valid?: boolean;
+  invalid?: Invalid | null;
 }
 
 /** `GET /v1/simulations/compare/{id}`: the comparison's calls, caller by caller, each one's best first; and, from a gateway that keeps them, what was asked for and how its placing stands. */
@@ -332,6 +348,11 @@ export function startSimulation(gw: GatewayClient, body: SimulationRequest): Pro
 /** A comparison placed at once: its id, the calls that started, and what was refused. */
 export function startComparison(gw: GatewayClient, body: ComparisonRequest): Promise<ComparisonStarted> {
   return gw.post<ComparisonStarted>("/v1/simulations/compare", body);
+}
+
+/** One simulated call's row: whether it counted, and why not; null when the gateway lists no such call. */
+export async function getSimulatedCall(gw: GatewayClient, call: string): Promise<SimulatedCall | null> {
+  return (await gw.get<{ runs: SimulatedCall[] }>("/v1/simulations", { call })).runs[0] ?? null;
 }
 
 /** The comparison's table as it stands: the rows best first, a call still on the line last. */

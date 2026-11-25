@@ -1,12 +1,14 @@
 """What a simulated call keeps beside its fold: how it was placed, who played its caller, its cost, how it was heard."""
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from runtime.calls.repository.entries import EntryRepository
 from runtime.calls.repository.facts import FactsRepository
 from runtime.enums import Env
+from runtime.wire.base import Entry
 from runtime.wire.room import A_SIMULATED_CALLER
 
 # A simulated call plays a quarter of an hour at most, and is summed up a moment after it ends.
@@ -38,6 +40,17 @@ async def keep_caller_heard(session: AsyncSession, call: str, hearing: Mapping[s
 async def keep_caller_line(session: AsyncSession, call: str, line: Mapping[str, Any]) -> None:
     """Keep how a simulated caller's leg kept to the clock (frames carried, frames late) with the call's facts."""
     await FactsRepository(session).keep(call, caller_line=dict(line))
+
+
+# A list of simulated calls says which of them measured their agent: their errors say so, and are a
+# handful of entries of logs a list does not read whole.
+async def list_errors(session: AsyncSession, calls: Sequence[str]) -> dict[str, list[Entry]]:
+    """Each of these calls' `error` entries, oldest first, by call; a call with none is absent."""
+    found: dict[str, list[Entry]] = {}
+    for entry in await EntryRepository(session).list_of_types(calls, ["error"]):
+        if entry.call is not None:
+            found.setdefault(entry.call, []).append(entry)
+    return found
 
 
 # The caller is kept with it: the row exists before the call's first entry folds into it.

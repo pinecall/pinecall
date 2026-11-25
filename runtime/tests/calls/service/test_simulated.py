@@ -62,3 +62,23 @@ async def test_a_simulated_call_that_began_counts_as_one_on_the_line_until_its_s
     await store.write("entry", f"{call}-sim", agent, "call.summary", {**a_summary([]), "simulated": True})
     await store.writer.drain()
     assert await on_the_line(sessions, tenant) == 0
+
+
+async def test_a_page_of_calls_reads_each_ones_errors_and_nothing_else_of_their_logs(
+    store: Store, sessions: async_sessionmaker[AsyncSession], tenant: Tenant, call: str, agent: str
+) -> None:
+    """A list says which simulated calls counted from their errors alone: no log of the page is read whole."""
+    refused, clean = f"{call}-refused", f"{call}-clean"
+    for one in (refused, clean):
+        await begun(store, tenant, agent, one, persona="in-a-hurry")
+    said = {
+        "code": "component_dead_end",
+        "message": "openai refused this call's model: no credits",
+        "recoverable": False,
+    }
+    await store.write("entry", refused, agent, "error", said)
+    await store.writer.drain()
+    async with sessions() as session:
+        errors = await simulated.list_errors(session, [refused, clean])
+    assert list(errors) == [refused]
+    assert [entry.data["code"] for entry in errors[refused]] == ["component_dead_end"]

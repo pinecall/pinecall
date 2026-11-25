@@ -95,6 +95,9 @@ class SpokenLevel:
 # of them at once: on 2026-11-25 nineteen on one gateway left thirty-six to fifty-five such gaps a
 # minute in each caller's speech. Under this long the room's own buffer covers it.
 A_GAP_IS_HEARD_S = 0.005
+# A silence this long inside a word is one a listener hears as the voice breaking: the one a recording's
+# 20 ms frames show as quiet between two loud ones, the measure the public run's calls were thrown out by.
+A_BREAK_IN_SPEECH_S = 0.02
 
 
 @dataclass(slots=True)
@@ -105,10 +108,14 @@ class Pace:
     late_frames: int = 0
     late_ms: float = 0.0
     worst_ms: float = 0.0
+    # The frames of the caller's lines (its words and the pauses it meant), and the silences its voice
+    # broke into by being late with one of them: what a listener of the call hears as a broken voice.
+    speech_frames: int = 0
+    breaks_in_speech: int = 0
     # The moment the next frame is due at the room at the latest: when the last one handed runs out.
     due: float | None = None
 
-    def hand(self, now: float) -> None:
+    def hand(self, now: float, *, speaking: bool = False) -> None:
         """Count one frame handed to the room at this moment, by a clock that only goes forward."""
         due = now if self.due is None else self.due
         late = now - due
@@ -116,6 +123,9 @@ class Pace:
             self.late_frames += 1
             self.late_ms += late * 1000
             self.worst_ms = max(self.worst_ms, late * 1000)
+        if speaking:
+            self.speech_frames += 1
+            self.breaks_in_speech += late >= A_BREAK_IN_SPEECH_S
         # A room that ran out goes on from when it was handed something again.
         self.due = max(due, now) + FRAME_MS / 1000
         self.frames += 1
@@ -127,6 +137,8 @@ class Pace:
             "late_frames": self.late_frames,
             "late_ms": round(self.late_ms, 1),
             "worst_ms": round(self.worst_ms, 1),
+            "speech_frames": self.speech_frames,
+            "breaks_in_speech": self.breaks_in_speech,
         }
 
 
@@ -275,8 +287,9 @@ class CallerLeg:
     # The source paces the frames it is handed: this loop runs at the clock's rate, AHEAD_MS ahead.
     async def _carry(self) -> None:
         while not self.closed:
+            speaking = bool(self.waiting)
             frame = self.next_frame()
-            self.pace.hand(time.monotonic())
+            self.pace.hand(time.monotonic(), speaking=speaking)
             await self.source.capture_frame(rtc.AudioFrame(frame, SAMPLE_RATE, CHANNELS, len(frame) // 2))
 
     # The voice is handed to the line as it arrives and the line says it at the clock's rate: a line

@@ -239,6 +239,7 @@ export function simulated(said: Simulated): string[] {
   const measured = latencyLine(said.medians);
   const lines = [`${said.call === "" ? "no call" : said.call} · ${turns}${measured === "" ? "" : ` · ${measured}`}`];
   if (said.score !== null) lines.push(...callScore(said.score));
+  if (said.invalid != null) lines.push(`not counted (${said.invalid.kind}): ${said.invalid.why}`);
   if (said.unjudged) lines.push("no score within a minute", formatHint(`pinecall sessions ${said.call} reads it when the judges are done`));
   else if (said.call !== "") lines.push(formatHint(`pinecall sessions ${said.call} reads it whole`));
   return lines;

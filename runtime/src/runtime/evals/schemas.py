@@ -276,6 +276,13 @@ class PlayedByRow(Row):
     voice: str | None = None
 
 
+class InvalidRow(Row):
+    """Why a simulated call does not count: whose fault (`caller`, `platform`, `vendor`), in a sentence."""
+
+    kind: Literal["caller", "platform", "vendor"]
+    why: str
+
+
 class PersonaRunRow(Row):
     """One call a persona made: who played it, to whom, when, how it ended, what it cost."""
 
@@ -298,6 +305,9 @@ class PersonaRunRow(Row):
     comparison: str | None = None
     # How a spoken call was heard, against what its caller really said; None for a written one.
     hearing: dict[str, Any] | None = None
+    # Whether the call measured its agent; when not, why. A call still on the line counts until it ends.
+    valid: bool = True
+    invalid: InvalidRow | None = None
 
 
 class PersonaRunList(Row):
@@ -426,6 +436,10 @@ class ComparisonRow(Row):
     cut_off: int = 0
     # How the call was heard, against what its caller really said; None for a written call.
     hearing: dict[str, Any] | None = None
+    # Whether the call measured its agent: one a vendor, our side or its caller broke is shown and not
+    # counted; when not, why.
+    valid: bool = True
+    invalid: InvalidRow | None = None
 
 
 class Comparison(Row):

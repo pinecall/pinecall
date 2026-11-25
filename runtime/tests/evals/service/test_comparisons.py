@@ -1,5 +1,7 @@
 """A comparison's rows: a call's latency medians read off its log, and the rows ranked best first."""
 
+from dataclasses import replace
+
 from runtime.actor import Scope
 from runtime.enums import Env
 from runtime.evals.service.comparisons import (
@@ -15,6 +17,7 @@ from runtime.evals.service.comparisons import (
     rank,
 )
 from runtime.evals.service.simulated_calls import Scored
+from runtime.evals.service.validity import Invalid, Validity
 from runtime.kit.text import Json, JsonObject
 from runtime.wire.base import Entry
 from runtime.wire.parts import ScoreVerdict
@@ -86,6 +89,18 @@ def test_the_rows_are_ranked_by_judges_then_speed_then_cost_with_a_live_call_las
         "unjudged",
         "live",
     ]
+
+
+def test_a_call_that_does_not_count_ranks_after_every_one_that_does() -> None:
+    """A call a vendor refused is shown, under the calls that measured the agent, however its judges read it."""
+    held = Scored(held=4, judged=4, passed=True, reason=None)
+    refused = Validity(Invalid("vendor", "a vendor of the agent failed the call: openai refused it"))
+    rows = [
+        replace(a_row("refused", score=held, e2e=0.4, cost=0.001), validity=refused),
+        a_row("slow", score=held, e2e=3.0),
+    ]
+    assert [row.call for row in rank(rows)] == ["slow", "refused"]
+    assert not rank(rows)[1].valid and rank(rows)[1].invalid == refused.invalid
 
 
 def test_several_callers_are_ranked_each_on_its_own_in_the_order_they_were_placed() -> None:

@@ -5,13 +5,13 @@ import { Link } from "react-router";
 
 import { saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
-import { cellOf, qualityOf, readComparison, replyOf, setupKey, setupName, setupUnder, THE_GOAL, type AgentValues, type Cell, type Comparison, type ComparisonRow } from "./door";
+import { cellOf, countedOf, qualityOf, readComparison, replyOf, setupKey, setupName, setupUnder, THE_GOAL, type AgentValues, type Cell, type Comparison, type ComparisonRow } from "./door";
 
 // The board is read again this often while a call of it waits, is on the line or is being judged.
 const ASKED_EVERY_MS = 4000;
 
 const WAITING: readonly Cell[] = ["live", "scoring"];
-const RUN_SAID: Record<Cell, string> = { live: "On the line", scoring: "Being judged", passed: "Done", failed: "Failed", unjudged: "Not judged", unstarted: "Did not start" };
+const RUN_SAID: Record<Cell, string> = { live: "On the line", scoring: "Being judged", passed: "Done", failed: "Failed", unjudged: "Not judged", unstarted: "Did not start", uncounted: "Not counted" };
 
 /** One setup of the comparison, with what its calls add up to. */
 interface Standing {
@@ -51,11 +51,12 @@ function columns(read: Comparison): { key: string; against: AgentValues; rows: C
 function standings(read: Comparison): Standing[] {
   const all = columns(read).map(({ key, against, rows }) => {
     const cells = rows.map((row) => cellOf(row));
-    const quality = rows.map(qualityOf);
+    const counted = countedOf(rows);
+    const quality = counted.map(qualityOf);
     const verdicts = quality.reduce((sum, one) => sum + one.judged, 0);
-    const slowest = rows.flatMap((row) => row.slowest_reply ?? []);
-    const costs = rows.flatMap((row) => row.cost_usd ?? []);
-    const hearings = rows.flatMap((row) => row.hearing ?? []);
+    const slowest = counted.flatMap((row) => row.slowest_reply ?? []);
+    const costs = counted.flatMap((row) => row.cost_usd ?? []);
+    const hearings = counted.flatMap((row) => row.hearing ?? []);
     const always = read.personas.filter((task) => {
       const runs = rows.filter((row) => row.persona === task).map((row) => cellOf(row));
       return runs.length > 0 && runs.every((cell) => cell === "passed");
@@ -68,10 +69,10 @@ function standings(read: Comparison): Standing[] {
       judged: cells.filter((cell) => cell === "passed" || cell === "failed").length,
       always,
       quality: verdicts === 0 ? null : quality.reduce((sum, one) => sum + one.held, 0) / verdicts,
-      reply: middle(rows.flatMap((row) => replyOf(row) ?? [])),
+      reply: middle(counted.flatMap((row) => replyOf(row) ?? [])),
       slowest: slowest.length === 0 ? null : Math.max(...slowest),
-      cut: rows.reduce((sum, row) => sum + row.cut_off, 0),
-      replies: rows.reduce((sum, row) => sum + row.replies, 0),
+      cut: counted.reduce((sum, row) => sum + row.cut_off, 0),
+      replies: counted.reduce((sum, row) => sum + row.replies, 0),
       cost: costs.length === 0 ? null : costs.reduce((sum, cost) => sum + cost, 0) / costs.length,
       heard:
         hearings.length === 0
@@ -101,7 +102,7 @@ function cost(usd: number | null): string {
 /** What each judge said of a run, the goal's first: read without opening the call. */
 function verdictsOf(row: ComparisonRow): string {
   const said = [...row.judges].sort((one, other) => Number(other.name === THE_GOAL) - Number(one.name === THE_GOAL)).map((judge) => `${judge.verdict === "held" ? "✓" : judge.verdict === "broken" ? "✗" : "·"} ${judge.name}: ${judge.reason}`);
-  return [RUN_SAID[cellOf(row)], row.why, ...said].filter((part) => part !== null && part !== "").join("\n\n");
+  return [RUN_SAID[cellOf(row)], row.invalid?.why ?? null, row.why, ...said].filter((part) => part !== null && part !== "").join("\n\n");
 }
 
 /** One task under one setup: each run a dot that opens its call, and what the runs add up to. */
@@ -113,8 +114,10 @@ function CellView({ rows, asked, waiting }: { rows: ComparisonRow[]; asked: numb
   const unplaced = Math.max(0, asked - rows.length);
   const tone = going || (waiting && unplaced > 0) ? "live" : judged === 0 ? (rows.length === 0 ? "none" : "unjudged") : done === judged ? "passed" : done === 0 ? "failed" : "mixed";
   const said = tone === "live" ? (rows.length === 0 ? "Waiting its turn" : "Running") : tone === "none" ? "Not placed" : tone === "unjudged" ? RUN_SAID[cells[0] ?? "unjudged"] : asked === 1 ? (done === 1 ? "Done" : "Failed") : `${done} of ${judged} done`;
-  const quality = rows.map(qualityOf).reduce((sum, one) => ({ held: sum.held + one.held, judged: sum.judged + one.judged }), { held: 0, judged: 0 });
-  const under = judged === 0 ? null : [quality.judged === 0 ? null : `quality ${quality.held}/${quality.judged}`, replied(middle(rows.flatMap((row) => replyOf(row) ?? []))), cost(middle(rows.flatMap((row) => row.cost_usd ?? [])))].filter((part) => part !== null).join(" · ");
+  const counted = countedOf(rows);
+  const quality = counted.map(qualityOf).reduce((sum, one) => ({ held: sum.held + one.held, judged: sum.judged + one.judged }), { held: 0, judged: 0 });
+  const uncounted = rows.length - counted.length;
+  const under = judged === 0 ? null : [quality.judged === 0 ? null : `quality ${quality.held}/${quality.judged}`, replied(middle(counted.flatMap((row) => replyOf(row) ?? []))), cost(middle(counted.flatMap((row) => row.cost_usd ?? []))), uncounted === 0 ? null : `${uncounted} not counted`].filter((part) => part !== null).join(" · ");
   return (
     <div className={`cmp-cell cmp-cell-${tone}`}>
       <span className="cmp-cell-said">{said}</span>

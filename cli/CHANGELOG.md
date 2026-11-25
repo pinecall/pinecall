@@ -6,6 +6,11 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **A call that does not count is said, and left out of every count.** `pinecall simulate`'s comparison shows a call
+  a vendor, the platform or its own caller broke as `not counted:` with whose fault, says why under the table, and
+  leaves it out of how often each configuration did the task, its reply and what a completed call cost; one
+  simulation says it under its result. A spoken comparison adds a table of how each configuration heard its callers
+  (unanswered lines, turns heard that nobody said, replies cut by the room, lines talked over, the middle word error).
 - **A read a busy gateway refused is asked again.** A gateway whose database had no connection free answers `503`
   and says when to come back (`Retry-After`). `pinecall simulate` following twenty calls ended on the first such
   answer, the calls still on the line and the comparison unread. A `GET` answered that way is asked again, four times

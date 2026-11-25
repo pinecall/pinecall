@@ -92,3 +92,38 @@ describe("several runs of a comparison, summed by configuration", () => {
     expect(none.some((line) => line.includes("0 of 2 · 0%") && line.includes("none completed"))).toBe(true);
   });
 });
+
+// 2026-11-25: calls a vendor refused for credit were counted as the models' failures in a public table.
+describe("a call that does not count", () => {
+  const refused: ComparisonRow = {
+    ...ran("books", "acme/small", "broken", 0.01, 0.2),
+    call: "call_refused",
+    valid: false,
+    invalid: { kind: "vendor", why: "a vendor of the agent failed the call: acme refused this call's model: no credits" },
+  };
+  const rows = [ran("books", "acme/small", "held", 0.04, 1.2), ran("books", "acme/small", "held", 0.04, 1.4), refused];
+  const lines = comparison({ comparison: "cmp_1", refused: [], table: { comparison: "cmp_1", agent: "dentist", persona: "books", personas: ["books"], voice: true, repeats: 3, rows } });
+
+  it("is shown as not counted, whose fault, and why", () => {
+    expect(verdictOf(refused)).toBe("not counted: vendor");
+    expect(lines).toContain("not counted, thinks acme/small (vendor): a vendor of the agent failed the call: acme refused this call's model: no credits");
+  });
+
+  it("is left out of the configuration's count, its reply and what a completed call cost", () => {
+    const summed = lines.find((line) => line.startsWith("thinks acme/small") && line.includes("of"));
+    expect(summed).toContain("2 of 2");
+    expect(summed).toContain("$0.0800");
+    expect(summed).not.toContain("200 ms");
+  });
+});
+
+describe("how each configuration heard its callers", () => {
+  it("sums each call's hearing by configuration, with the middle word error", () => {
+    const hearing = { lines: 6, unanswered: 1, cut_by_the_room: 2, cut_by_a_murmur: 0, phantom_turns: 3, talked_over: 1, reply_s: 1.1, slow_reply_s: 1.4, word_error_rate: 0.12 };
+    const rows = [{ ...ran("books", "acme/small", "held", 0.04, 1.2), hearing }, { ...ran("books", "acme/small", "held", 0.04, 1.2), hearing }];
+    const lines = comparison({ comparison: "cmp_1", refused: [], table: { comparison: "cmp_1", agent: "dentist", persona: "books", personas: ["books"], voice: true, rows } });
+    expect(lines).toContain("how each heard its callers, against what they really said");
+    const row = lines.find((line) => line.startsWith("thinks acme/small") && line.includes("12%"));
+    expect(row?.split(/\s{2,}/).slice(1, 6)).toEqual(["12", "2", "6", "4", "2"]);
+  });
+});

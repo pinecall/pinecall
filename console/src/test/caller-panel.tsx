@@ -57,6 +57,7 @@ function LastCall({ run }: { run: PersonaRun | undefined }): ReactNode {
           {run.ended_at !== null && `, ${lengthOf(run.started_at, run.ended_at)}`}
         </span>
       </span>
+      {run.invalid != null && <p className="tst-last-why">Not counted: {run.invalid.why}</p>}
       {run.score?.reason != null && <p className="tst-last-why">{run.score.reason}</p>}
       <Link to={`/simulations/${run.call}`} className="tst-link">
         Open the call

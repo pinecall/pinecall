@@ -26,8 +26,8 @@ const LISTED = CHECKING ? "Checks" : "Simulations";
 // A call on the line is read again this often, so its row says how it ended without a reload.
 const A_CALL_IS_ASKED_EVERY_MS = 5000;
 
-const DOTS: Record<Standing, string> = { live: "app-dot app-dot-warn sim-dot-live", held: "app-dot app-dot-good", broke: "app-dot app-dot-bad", unjudged: "app-dot app-dot-calm" };
-const SAID: Record<Standing, string> = { live: "On the line", held: "Every judge held", broke: "A judge broke", unjudged: "Not judged" };
+const DOTS: Record<Standing, string> = { live: "app-dot app-dot-warn sim-dot-live", held: "app-dot app-dot-good", broke: "app-dot app-dot-bad", unjudged: "app-dot app-dot-calm", uncounted: "app-dot app-dot-calm" };
+const SAID: Record<Standing, string> = { live: "On the line", held: "Every judge held", broke: "A judge broke", unjudged: "Not judged", uncounted: "Not counted" };
 
 const rowClass = ({ isActive }: { isActive: boolean }): string => (isActive ? "app-row app-row-worn app-row-on" : "app-row app-row-worn");
 
@@ -86,7 +86,8 @@ function RunRow({ run }: { run: PersonaRun }): ReactNode {
   const standing = standingOf(run);
   // What the call ran on over the agent's settings, when anything: "smart interruptions off" tells two runs of one caller apart.
   const ranOn = run.against == null || setupUnder(run.against) === "" ? null : setupUnder(run.against);
-  const under = standing === "live" ? "on the line now" : [ago(run.started_at), lengthOf(run.started_at, run.ended_at), run.score !== null && run.score.judged > 0 ? `${run.score.held}/${run.score.judged} held` : null, ranOn].filter((part) => part !== null).join(" · ");
+  const judged = standing === "uncounted" ? `not counted: ${run.invalid?.kind ?? "broken"}` : run.score !== null && run.score.judged > 0 ? `${run.score.held}/${run.score.judged} held` : null;
+  const under = standing === "live" ? "on the line now" : [ago(run.started_at), lengthOf(run.started_at, run.ended_at), judged, ranOn].filter((part) => part !== null).join(" · ");
   return (
     <NavLink to={`${HOME}/${run.call}`} className={rowClass}>
       <CallerMark run={run} />
@@ -216,7 +217,7 @@ export function SimulationsPage(): ReactNode {
     seconds: ended.length === 0 ? null : ended.reduce((sum, run) => sum + ((run.ended_at ?? run.started_at) - run.started_at), 0) / ended.length,
     usd: ended.length === 0 ? null : ended.reduce((sum, run) => sum + (run.cost_usd ?? 0) + run.caller_cost_usd, 0) / ended.length,
   };
-  const judged = ended.filter((run) => run.score !== null && run.score.judged > 0);
+  const judged = ended.filter((run) => run.valid && run.score !== null && run.score.judged > 0);
   const held = judged.filter((run) => run.score?.passed === true).length;
 
   const list = (
