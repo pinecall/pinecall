@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **A simulated caller stays on the line until it is told how its call ended.** It was told to hang up "once you
+  have what you came for", and a caller that had just said yes to a time took that for having it: it left while the
+  agent asked its name, and the call was judged a failure of the agent's. It now hangs up only once the business has
+  said that everything it called for is done, or cannot be, and answers a question it was just asked.
 - **A caller's room may come and go: `ambience_turns`.** A persona's `behavior.ambience_turns` (0 to 1, 1 unless
   said) is the share of the caller's own lines the ambience is heard behind. At 1 it is the room it was, from the
   caller's joining to its hanging up, under the agent's answers and through every silence. Under 1 each of the

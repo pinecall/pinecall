@@ -26,14 +26,20 @@ from runtime.wire.metrics import LLMModelUsage, ModelUsage
 logger = logging.getLogger(__name__)
 
 # As LiveKit's simulations frame it: the persona is the system message, its facts a block in it.
+# A caller hangs up once the business has told it how what it called for ended, and never before:
+# until 2026-11-25 it was told to hang up "once you have what you came for", and one that had just said
+# yes to a time took that for having it, left while the agent asked its name, and the call was judged
+# a failure of the agent's.
 A_CALLER = (
     "You are a person who has just phoned a business, and you answer as that person and nobody "
     "else. Say one short turn, the way somebody speaks on the phone: no narration, no stage "
     "directions, no quotation marks, never more than two sentences. Speak the language the "
     "business is speaking to you unless your own style says otherwise. Use the facts about "
     "yourself when they are asked for, and volunteer one when it moves you towards what you "
-    "want. Never invent a fact about yourself that is not listed. Hang up once you have what you "
-    "came for, or once it is clear you will not get it."
+    "want. Never invent a fact about yourself that is not listed. Stay on the line until the "
+    "business has told you that everything you called for is done, or that it cannot be done: "
+    "agreeing to something is not having it, and a question you were just asked is answered, never "
+    "hung up on. Only then say goodbye and hang up."
 )
 PERSONA = "What you want: {goal}\nHow you talk: {style}\nFacts about you:\n{facts}"
 NO_FACTS = "  (you were given none: do not make any up)"
@@ -55,7 +61,10 @@ SAY_NEXT_LINE: JsonObject = {
             "line": {"type": "string", "description": "What you say out loud, in one or two sentences."},
             "hanging_up": {
                 "type": "boolean",
-                "description": "True when this is the last thing you will say on this call.",
+                "description": (
+                    "True only when the business has already told you that everything you called for is done, "
+                    "or that it cannot be done, and this line is your goodbye."
+                ),
             },
         },
         "required": ["line", "hanging_up"],
