@@ -8,17 +8,18 @@ import pytest
 from sqlalchemy.exc import TimeoutError as PoolTimeout
 
 import runtime.evals.service.turns as turns
+from runtime.calls.log import Logs
 from runtime.calls.log.store import Store
 from runtime.evals.service.turns import (
     A_SILENT_OPENING_S,
     Landed,
     NextLine,
+    SoFar,
     Wait,
     has_answer_landed,
     is_agent_busy,
     is_call_over,
     is_line_open,
-    read_so_far,
     speak_turns,
     wait_for_answer,
     wait_until_speaking,
@@ -257,7 +258,7 @@ async def test_the_wait_between_two_lines_ends_the_moment_the_call_does(store: S
     await log.append("turn.user", {})
     await log.append("call.ended", {})
     began = time.monotonic()
-    await wait_for_answer(logs, store, call, 1)
+    await wait_for_answer(SoFar(logs, store, call), 1)
     assert time.monotonic() - began < 5.0
 
 
@@ -273,7 +274,7 @@ async def test_the_caller_waits_through_a_long_answer_and_gives_up_on_silence_al
     log = logs.writing(call, "clinica-norte")
     await log.append("call.started", {})
     # The caller said its line; the agent hears it a moment after the wait begins, as on a call.
-    waiting = asyncio.create_task(wait_for_answer(logs, store, call, 1))
+    waiting = asyncio.create_task(wait_for_answer(SoFar(logs, store, call), 1))
     await asyncio.sleep(0.05)
     await log.append("turn.user", {"text": "hola"})
     await log.append("agent.state", {"state": "speaking"})
@@ -296,7 +297,7 @@ async def test_an_answer_holds_after_the_quiet_and_not_before(
     logs = logs_on(store).logs
     log = logs.writing(call, "clinica-norte")
     await log.append("call.started", {})
-    waiting = asyncio.create_task(wait_for_answer(logs, store, call, 1))
+    waiting = asyncio.create_task(wait_for_answer(SoFar(logs, store, call), 1))
     await asyncio.sleep(0.05)
     await log.append("turn.user", {"text": "hola"})
     await log.append("agent.state", {"state": "speaking"})
@@ -318,7 +319,7 @@ async def test_an_answer_in_hand_is_let_go_the_moment_the_quiet_has_passed(
     logs = logs_on(store).logs
     log = logs.writing(call, "clinica-norte")
     await log.append("call.started", {})
-    waiting = asyncio.create_task(wait_for_answer(logs, store, call, 1))
+    waiting = asyncio.create_task(wait_for_answer(SoFar(logs, store, call), 1))
     await asyncio.sleep(0.05)
     await log.append("turn.user", {"text": "hola"})
     await log.append("agent.state", {"state": "speaking"})
@@ -340,7 +341,7 @@ async def test_the_vads_metrics_landing_all_along_never_hold_an_answer_back(
     logs = logs_on(store).logs
     log = logs.writing(call, "clinica-norte")
     await log.append("call.started", {})
-    waiting = asyncio.create_task(wait_for_answer(logs, store, call, 1))
+    waiting = asyncio.create_task(wait_for_answer(SoFar(logs, store, call), 1))
     await asyncio.sleep(0.05)
     await log.append("turn.user", {"text": "hola"})
     await log.append("agent.state", {"state": "speaking"})
@@ -372,7 +373,7 @@ async def test_a_caller_that_cuts_in_waits_for_the_agent_to_start_speaking_and_n
     await log.append("call.started", {})
     await log.append("agent.state", {"state": "speaking"})
     since = store.clock()
-    waiting = asyncio.create_task(wait_until_speaking(logs, store, call, since=since))
+    waiting = asyncio.create_task(wait_until_speaking(SoFar(logs, store, call), since=since))
     await asyncio.sleep(0.3)
     assert not waiting.done(), "a speaking state from before the caller's line is not this answer"
     await log.append("turn.user", {"text": "hola"})
@@ -446,23 +447,68 @@ async def test_a_call_of_no_turns_asks_for_no_line() -> None:
     assert await spoken_by(0, next_line, a_wait()) == []
 
 
-class ABusyStore:
-    """A store whose first read of a log finds the pool full."""
+class AStore:
+    """A store that keeps where each read of a log began; its first read finds the pool full when told so."""
 
-    def __init__(self, entries: list[Entry]) -> None:
+    def __init__(self, entries: list[Entry], *, busy_at_first: bool = False) -> None:
         self.entries = entries
-        self.asked = 0
+        self.busy_at_first = busy_at_first
+        self.read_after: list[int] = []
 
     async def whole_of(self, _log: str, *, after: int = 0) -> list[Entry]:
-        self.asked += 1
-        if self.asked == 1:
+        self.read_after.append(after)
+        if self.busy_at_first and len(self.read_after) == 1:
             raise PoolTimeout("QueuePool limit of size 8 overflow 0 reached, connection timed out, timeout 2.00")
+        # A read takes a moment, in which another look of the same call may begin.
+        await asyncio.sleep(0)
         return [entry for entry in self.entries if entry.seq > after]
+
+
+def reading(store: AStore) -> SoFar:
+    """A caller's reading of call_1 on this store; no look of it follows the log."""
+    return SoFar(cast("Logs", None), cast("Store", store), "call_1")
 
 
 # 2026-11-25: a caller reads its call's log every beat for as long as the call lasts. One read that
 # found the gateway's pool full broke the line under a call that was going well.
 async def test_a_read_of_the_calls_log_that_finds_no_connection_free_is_asked_again() -> None:
-    busy = ABusyStore(a_log(("agent.state", "listening"), "turn.user"))
-    assert await read_so_far(cast(Store, busy), "call_1") == busy.entries
-    assert busy.asked == 2
+    busy = AStore(a_log(("agent.state", "listening"), "turn.user"), busy_at_first=True)
+    assert await reading(busy).read() == busy.entries
+    assert busy.read_after == [0, 0]
+
+
+# 2026-11-25: every look read the whole log again, 82 KB by the end of a call, and thirty callers on one
+# gateway kept its eight connections out. A look reads what the log took since the look before.
+async def test_each_look_at_a_calls_log_reads_only_what_it_took_since_the_last() -> None:
+    log = a_log("call.started", ("agent.state", "listening"))
+    store = AStore(log)
+    so_far = reading(store)
+    assert await so_far.read() == log[:2]
+    assert await so_far.read() == log[:2], "a log that took nothing reads as it stood"
+    log += a_log("call.started", ("agent.state", "listening"), "turn.user", "turn.agent")[2:]
+    assert await so_far.read() == log, "what was read stands, and what the log took since follows it in order"
+    assert store.read_after == [0, 2, 2]
+
+
+# A wait and the caller's next line look at the same call at the same moment.
+async def test_two_looks_at_once_read_no_entry_twice() -> None:
+    store = AStore(a_log("call.started", ("agent.state", "listening"), "turn.user"))
+    so_far = reading(store)
+    one, other = await asyncio.gather(so_far.read(), so_far.read())
+    assert [entry.seq for entry in one] == [entry.seq for entry in other] == [1, 2, 3]
+    assert store.read_after == [0, 3]
+
+
+# What a caller has read is the log itself, as one read of the whole of it gives it.
+@needs_the_database
+async def test_a_reading_that_grew_look_by_look_is_the_log_as_one_read_gives_it(store: Store, call: str) -> None:
+    logs = logs_on(store).logs
+    log = logs.writing(call, "clinica-norte")
+    so_far = SoFar(logs, store, call)
+    await log.append("call.started", {})
+    assert [entry.type for entry in await so_far.read()] == ["call.started"]
+    await log.append("turn.user", {"text": "hola"})
+    await log.append("agent.state", {"state": "speaking"})
+    assert await so_far.read() == await store.whole_of(call)
+    await log.append("turn.agent", {"text": "buen día"})
+    assert await so_far.read() == await store.whole_of(call)

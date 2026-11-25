@@ -6,6 +6,12 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **A read a busy gateway refused is asked again.** A gateway whose database had no connection free answers `503`
+  and says when to come back (`Retry-After`). `pinecall simulate` following twenty calls ended on the first such
+  answer, the calls still on the line and the comparison unread. A `GET` answered that way is asked again, four times
+  in all, each wait twice the last and four seconds at most; a log's stream is opened again the same way when its
+  first opening is refused so. A `503` that names no time (a vendor nobody keyed), and any refusal of a write, are the
+  answer at once, as before.
 - **`personas add --ambience-turns 0-1`**: the share of a caller's own lines its ambience is heard behind, a noise
   that comes and goes; `1`, the default, is the room that never stops. `personas show` says it, and the MCP tool
   `personas` takes `ambience_turns`. A caller slower than read (`--speed` under 1) is shown as a slow talker.

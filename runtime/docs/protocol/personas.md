@@ -57,7 +57,8 @@ broke it: a refusal in its own words (the caller's vendor refused its model, `th
 connection came free in 20 s`), a fault of the gateway's own by its kind alone (`the gateway could not
 play this call's caller (KeyError): its log says why`). A caller is played by a task of the gateway
 that nobody awaits, so what it asks of the database it asks again for twenty seconds when every
-connection is taken, where a request would be answered `503`; a written call whose caller breaks on
+connection is taken, where a request would be answered `503`; it reads its call's log every beat, and
+each read is of what the log took since the one before, never the whole of it; a written call whose caller breaks on
 the line is ended `error` too. A seat that
 answers nothing (LiveKit gave the room's job to nobody) is rung again by the gateway's sweep, to the same
 worker when it is the only one, while the caller waits in its room; the reaper leaves a call that waits

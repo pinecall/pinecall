@@ -7,6 +7,9 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 
 ## Unreleased
 
+- `observe` (and `sseFrames`) open a stream again when its first opening is answered `503` with `Retry-After`: a
+  gateway whose database had no connection free for a moment, which asking again outlasts. Four openings in all, then
+  the refusal is thrown as any first failure is; a wrong key or an unknown door is thrown at once, as before.
 - An `ownPersona`'s `behavior` takes `ambienceTurns`, 0 to 1: the share of the caller's own lines its ambience is heard
   behind, a noise that comes and goes. `1`, the default, is the room that never stops. A `speed` under 1 is a slower
   talker, with longer pauses between its phrases, where its voice was stretched.

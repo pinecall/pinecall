@@ -24,6 +24,10 @@ export interface Streaming {
 
 const RETRY_MS = 1_000;
 const RETRY_CAP_MS = 30_000;
+// A first connection the gateway was too busy for, and said when to ask again (`503` with
+// `Retry-After`: its database had no connection free), is no wrong key and no unknown door: it is
+// opened again, this many times in all, before the refusal is thrown as any first failure is.
+const A_BUSY_OPENING_IS_ASKED = 4;
 
 // The gateway's answer for a stream with nothing more to say: a sealed call past its last entry.
 const NOTHING_MORE = 204;
@@ -31,7 +35,8 @@ const NOTHING_MORE = 204;
 /**
  * The frames of a stream until aborted, or until the gateway answers 204: nothing more to say. A
  * dropped connection reconnects with `Last-Event-ID` after a jittered backoff; it throws only when
- * the first connection fails (a bad key, an unknown door).
+ * the first connection fails (a bad key, an unknown door), a gateway that said it was busy asked
+ * again a few times first.
  */
 export async function* sseFrames(url: URL | string, options: Streaming): AsyncGenerator<Frame> {
   let lastId = options.lastId ?? null;
@@ -56,8 +61,9 @@ export async function* sseFrames(url: URL | string, options: Streaming): AsyncGe
       if (aborted(options.signal)) {
         return;
       }
-      // Never opened means misconfiguration: surface it. Later drops retry.
-      if (!opened) {
+      // Never opened means misconfiguration: surface it. Later drops retry, and so does a first
+      // opening the gateway was only too busy for.
+      if (!opened && !(failed instanceof Busy && attempt + 1 < A_BUSY_OPENING_IS_ASKED)) {
         throw failed;
       }
     }
@@ -74,13 +80,17 @@ async function open(url: URL | string, options: Streaming, lastId: string | null
   const response = await fetch(url, { headers, ...(options.signal === undefined ? {} : { signal: options.signal }) });
   if (!response.ok) {
     const why = (await response.text()).trim();
-    throw new PinecallError(`${new URL(url).pathname}: the gateway answered ${response.status}${why === "" ? "" : `: ${why}`}`);
+    const said = `${new URL(url).pathname}: the gateway answered ${response.status}${why === "" ? "" : `: ${why}`}`;
+    throw response.status === 503 && response.headers.has("retry-after") ? new Busy(said) : new PinecallError(said);
   }
   if (response.body === null && response.status !== NOTHING_MORE) {
     throw new PinecallError("the event stream came back with no body");
   }
   return response;
 }
+
+/** The gateway answered an opening `503` and said when to come back: busy for a moment, which asking again outlasts. */
+class Busy extends PinecallError {}
 
 /** The frames one connection carries, until it closes. */
 async function* framesOf(response: Response): AsyncGenerator<Frame> {

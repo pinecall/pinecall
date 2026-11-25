@@ -51,12 +51,32 @@ async def wait_for_entry_or_beat(subscription: Subscription) -> None:
         await asyncio.sleep(A_BEAT_S)
 
 
-# A caller reads its call's log every beat, for minutes, on a task nobody awaits: a read that finds the
-# pool full is asked again (`when_free`), where until 2026-11-25 it broke the line under a call that
-# was going well, and the call ended in the middle of a sentence and was judged as its agent's.
-async def read_so_far(store: Store, call: str) -> list[Entry]:
-    """The call's log as it stands, asked again while the database has no connection for the read."""
-    return await when_free(lambda: store.whole_of(call))
+# A caller looks at its call's log every beat, for minutes, on a task nobody awaits. A look reads what
+# the log took since the look before: a log only grows, and its seqs are given in order under its
+# head's lock, so nothing ever lands under an entry already read. Until 2026-11-25 every look read the
+# whole log (134 entries and 82 KB by the end of a call of 96 s), and thirty callers played by one
+# gateway read thirty logs whole every 0.75 s on a pool of eight connections, which the requests of
+# the workers serving those same calls then found full. A look that finds the pool full is asked
+# again (`when_free`): until that day it broke the line under a call that was going well, and the
+# call ended in the middle of a sentence and was judged as its agent's. One reading a call: its
+# waits and its caller's next line look at the same entries, one after the other.
+class SoFar:
+    """A call's log as its caller has read it so far: each look adds what the log took since the last."""
+
+    def __init__(self, logs: Logs, store: Store, call: str) -> None:
+        """A call nobody has looked at yet."""
+        self.logs = logs
+        self.store = store
+        self.call = call
+        self.entries: list[Entry] = []
+        self._looking = asyncio.Lock()
+
+    async def read(self) -> list[Entry]:
+        """The call's log as it stands, oldest first, read from the last entry this reading holds."""
+        async with self._looking:
+            after = self.entries[-1].seq if self.entries else 0
+            self.entries += await when_free(lambda: self.store.whole_of(self.call, after=after))
+            return list(self.entries)
 
 
 def is_call_over(entries: Sequence[Entry]) -> bool:
@@ -120,9 +140,7 @@ def is_agent_busy(entries: Sequence[Entry]) -> bool:
 # The log's own clock stamps its entries, so it is the clock the caller's silence is read by:
 # `since` is when the caller began its line, before the agent could have heard it.
 async def wait_for_answer(
-    logs: Logs,
-    store: Store,
-    call: str,
+    so_far: SoFar,
     lines: int,
     *,
     since: float | None = None,
@@ -130,9 +148,10 @@ async def wait_for_answer(
     notice: bool = False,
 ) -> bool:
     """Wait until the agent answered `lines` lines (its opening when 0, past a notice when `notice`); False if not."""
+    store = so_far.store
     if since is None:
         since = store.clock()
-    subscription = await logs.reading(call).follow(CONVERSATION)
+    subscription = await so_far.logs.reading(so_far.call).follow(CONVERSATION)
     loop = asyncio.get_running_loop()
     started = loop.time()
     moved_at = started
@@ -142,7 +161,7 @@ async def wait_for_answer(
     was_done = False
     try:
         while loop.time() - started < at_most:
-            entries = await read_so_far(store, call)
+            entries = await so_far.read()
             if is_call_over(entries):
                 return False
             done = (
@@ -170,14 +189,14 @@ async def wait_for_answer(
 
 
 # A caller that cuts in waits for the agent to start answering, never for it to finish.
-async def wait_until_speaking(logs: Logs, store: Store, call: str, *, since: float) -> None:
+async def wait_until_speaking(so_far: SoFar, *, since: float) -> None:
     """Wait until the agent starts speaking after `since`, or the call ended."""
-    subscription = await logs.reading(call).follow(CONVERSATION)
+    subscription = await so_far.logs.reading(so_far.call).follow(CONVERSATION)
     loop = asyncio.get_running_loop()
     started = loop.time()
     try:
         while loop.time() - started < AN_ANSWER_MAY_TAKE_S:
-            entries = await read_so_far(store, call)
+            entries = await so_far.read()
             if is_call_over(entries):
                 return
             if any(

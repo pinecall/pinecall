@@ -6,6 +6,7 @@ from typing import Protocol, Self
 
 from runtime.evals.service.hearing import Said
 from runtime.evals.service.turns import Landed, NextLine, speak_turns
+from runtime.wire.base import Entry
 from runtime.wire.metrics import ModelUsage
 
 
@@ -39,6 +40,10 @@ class Line(Protocol):
 
     def list_said(self) -> Sequence[Said]:
         """What the caller really said and when, for the agent's hearing to be measured against; none when written."""
+        ...
+
+    async def read_so_far(self) -> Sequence[Entry]:
+        """The call's log as it stands, read from where the line's own waits last left it."""
         ...
 
 

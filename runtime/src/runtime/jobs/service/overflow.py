@@ -12,6 +12,7 @@ from runtime.enums import Channel
 from runtime.exceptions import UpstreamError
 from runtime.jobs.service.arrival import arrive_as_rung
 from runtime.jobs.service.call_client import CallClient, open_or_leave
+from runtime.jobs.service.client import arriving
 from runtime.jobs.service.ending import end_and_seal, open_writer
 from runtime.jobs.service.job import Warmed, seat_of
 from runtime.livekit import close_room
@@ -76,9 +77,10 @@ async def answer_overflow(ctx: JobContext, warmed: Warmed) -> None:
     began = time.monotonic()
     ctx.log_context_fields = {"room": ctx.job.room.name}
     gateway = warmed.gateway
-    arrived = await arrive_as_rung(ctx, gateway, default_agent=warmed.told.agent, zone=warmed.told.zone)
+    asking = arriving()
+    arrived = await arrive_as_rung(ctx, gateway, default_agent=warmed.told.agent, zone=warmed.told.zone, asking=asking)
     route, caller = arrived.route, arrived.arrival.caller
-    stages = await gateway.get_stages(route.agent, arrived.scope)
+    stages = await asking.ask(lambda: gateway.get_stages(route.agent, arrived.scope), f"the stages of {route.agent}")
     calls_back = route.channel is Channel.phone and bool(caller)
     says = sentence_in(stages.pipeline.tts.language, warmed.told.overflow_says, calls_back=calls_back)
     link = await open_or_leave(ctx, gateway, arrived.open_with(None, seat_of(ctx)))

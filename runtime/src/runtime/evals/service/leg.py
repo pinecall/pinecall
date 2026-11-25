@@ -121,8 +121,9 @@ class CallerLeg:
     ) -> None:
         self.spoken = spoken
         self.voice = voice
-        self.logs = logs
         self.store = store
+        # The call's log as this caller reads it: its waits, and its line's reads, add to the one reading.
+        self.so_far = turns.SoFar(logs, store, spoken.call)
         self.interferer = interferer
         self.dice = dice or randomness.Random()
         # The interferer's own level, taken once: it is seconds long and asked for a hundred times a second.
@@ -212,19 +213,19 @@ class CallerLeg:
     # the answer like any other, its "mm-hmm" said along the way.
     async def wait_for_answer(self, lines: int, landed: turns.Landed) -> bool:
         """Wait until the agent answered this many lines, or cut in once it started answering: True to speak."""
-        acts, call = self.spoken.acts, self.spoken.call
+        acts = self.spoken.acts
         if lines and self.dice.random() < acts.interrupts:
-            await turns.wait_until_speaking(self.logs, self.store, call, since=self.said_at)
+            await turns.wait_until_speaking(self.so_far, since=self.said_at)
             landed()
             await asyncio.sleep(self.dice.uniform(*CUT_IN_AFTER_S))
             self.cutting_in = True
             return True
         if lines and self.dice.random() < acts.backchannels:
-            await turns.wait_until_speaking(self.logs, self.store, call, since=self.said_at)
+            await turns.wait_until_speaking(self.so_far, since=self.said_at)
             await asyncio.sleep(self.dice.uniform(*MURMUR_AFTER_S))
             await self.murmur(pick_murmur(self.spoken.language, self.dice))
         return await turns.wait_for_answer(
-            self.logs, self.store, call, lines, since=self.said_at, landed=landed, notice=self.spoken.notice
+            self.so_far, lines, since=self.said_at, landed=landed, notice=self.spoken.notice
         )
 
     # The source paces the frames it is handed: this loop runs at the clock's rate, AHEAD_MS ahead.

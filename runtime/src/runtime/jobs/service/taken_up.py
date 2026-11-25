@@ -10,8 +10,9 @@ from livekit.agents import JobContext
 from runtime.calls.context import read_context
 from runtime.enums import Medium
 from runtime.exceptions import UpstreamError
-from runtime.jobs.service.arrival import Arrived
+from runtime.jobs.service.arrival import Arrived, read_agent
 from runtime.jobs.service.call_client import TAKEN_UP, CallClient
+from runtime.jobs.service.client import arriving
 from runtime.jobs.service.job import Job, Setup, Warmed, set_up_spoken, set_up_typed
 from runtime.jobs.service.overflow import tell_the_caller
 from runtime.jobs.service.traces import attributes_of, check_collector
@@ -83,13 +84,8 @@ async def _set_up(ctx: JobContext, warmed: Warmed, dispatch: Dispatch, taken: Ta
     route = context.route
     arrival = telephony.Arrival(context.caller, context.channel, context.direction, route.number)
     arrived = Arrived(dispatch, arrival, route, context)
-    call, scope = context.call, arrived.scope
-    _, declaration, stages, held = await asyncio.gather(
-        ctx.connect(),
-        gateway.get_agent(route.agent, scope, call=call),
-        gateway.get_stages(route.agent, scope, call=call),
-        gateway.get_hold(route.agent, scope),
-    )
+    call = context.call
+    _, (declaration, stages, held) = await asyncio.gather(ctx.connect(), read_agent(gateway, arrived, arriving()))
     link = CallClient(gateway, call, taken.opening, OpenCallResponse(seconds_left=None, minutes=None), declaration)
     link.measures, link.lent = told.measures, stages.pipeline.lent
     link.written, link.taken_up = taken.written, taken.taken_up

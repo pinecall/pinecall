@@ -40,6 +40,9 @@ STATEMENT_TIMEOUT_MS = 30_000
 IDLE_IN_TRANSACTION_MS = 60_000
 CONNECT_TIMEOUT_S = 10
 POOL_WAIT_S = 2.0
+# What a request the database had no time for is told to wait before it asks again (`Retry-After`): the
+# pool is taken by statements of milliseconds, and a second lets them through.
+COME_BACK_AFTER_S = 1
 
 
 # The one name an endpoint catches of the database's: a scrape or a health line that must still
@@ -50,8 +53,12 @@ DatabaseError = SQLAlchemyError
 def busy() -> ServiceUnavailable:
     """The refusal of a request that found no connection free in time."""
     # What a request is told when every connection was taken for POOL_WAIT_S: the same sentence from
-    # an endpoint, the middleware that resolves its actor, and an app's socket. A worker retries a 503.
-    return ServiceUnavailable(f"the database is busy: no connection came free within {POOL_WAIT_S:g} s; try again")
+    # an endpoint, the middleware that resolves its actor, and an app's socket. A worker retries a 503,
+    # and a reader that is no worker (the CLI, a stream's first opening) asks again on its `Retry-After`.
+    return ServiceUnavailable(
+        f"the database is busy: no connection came free within {POOL_WAIT_S:g} s; try again",
+        retry_after_s=COME_BACK_AFTER_S,
+    )
 
 
 def is_pool_timeout(error: BaseException) -> bool:

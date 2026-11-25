@@ -14,6 +14,7 @@ from runtime.calls import service as calls
 from runtime.calls.context import Route
 from runtime.enums import Channel
 from runtime.exceptions import UpstreamError
+from runtime.kit.retry import Within
 from runtime.kit.sse import EVENT_STREAM, Sent, read_sse
 from runtime.kit.text import Json, a_list
 from runtime.providers import service as providers
@@ -36,6 +37,14 @@ TIMEOUT_S = 5.0
 A_FILE_S = 15.0
 # A restarting gateway is back in seconds; the cap keeps the log catching up after it.
 LONGEST_WAIT_S = 5.0
+# What a job asks before its call is open (its routes, whose ring it is, its agent, its stages, what
+# it plays a held caller) is asked again for this long while the gateway is away or busy, all of it on
+# the one wait. On 2026-11-25 a gateway whose pool had no connection free for two seconds answered a
+# job's read of its agent `503`, the job ended on it, and its caller waited 110 s for nobody: three
+# calls of twenty. Thirty seconds outlast a restart and a full pool, and leave the room time to be
+# rung again inside what a simulated caller waits (`evals.service.spoken`) and what the fleet keeps a
+# room (`fleet.service.offers`, 120 s), a job's process taking up to fifteen to start.
+ARRIVES_WITHIN_S = 30.0
 # A stream is timed only on connect: a quiet one is kept open by the gateway's ping every 25 s.
 STREAMED = httpx.Timeout(TIMEOUT_S, read=None)
 
@@ -203,6 +212,11 @@ class GatewayClient:
         authorization = self.http.headers.get("Authorization")
         key = {"Authorization": authorization} if authorization else {}
         return f"ws{base.removeprefix('http')}{path}", {**key, **trace_headers(), **affinity_headers(path)}
+
+
+def arriving() -> Within:
+    """The wait a job's questions share from its arrival until its call is opened."""
+    return Within(ARRIVES_WITHIN_S, longest_s=LONGEST_WAIT_S)
 
 
 def open_gateway(url: str, key: str | None) -> GatewayClient:

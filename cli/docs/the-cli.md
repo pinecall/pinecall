@@ -3126,6 +3126,12 @@ verification snippet per language.
 | `2` | this command could not run, and measured nothing: no key, a flag that is not a flag, a name nothing answers to, an input refused, **any refusal of the gateway** — 400, 401, 403, 404, 409, 422, 429, 503, in its own words — the network down, a verb that moved (`pipeline set` is `agent set` now) |
 | `130` | stopped: Ctrl-C (or SIGTERM) on a verb, which is not a failure |
 
+A read the gateway was only too busy for is not a refusal yet: a `503` that says when to come back
+(`Retry-After`, a database with no connection free for a moment) is asked again, four times in all, and
+a log a verb follows (`simulate` and `test` their calls and runs, `supervise` a live call) is opened again
+the same way. Only then is it the `503` above. A `503` that names no time, and every refusal of a write,
+is the answer at once.
+
 Every refusal is two lines on stderr: what happened, `pinecall: …`, in the CLI's own words, and
 under it the next step, `  → …`, when there is one — a sentence that names a command after its
 colon is cut there. A line typed wrong names the verb typed, what was typed and the `--help` that

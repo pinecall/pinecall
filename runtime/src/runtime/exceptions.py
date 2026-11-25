@@ -108,10 +108,17 @@ class UpstreamError(PinecallError):
         self.retry_after_s = retry_after_s
 
 
+# What the box lacks may be there in a moment (a database with no connection free) or not until
+# somebody acts (a vendor nobody keyed): only the first says when to come back, and whoever reads the
+# answer asks again on that word alone.
 class ServiceUnavailable(PinecallError):
-    """This box lacks what the request needs: a key, the vault, an embedder, a database."""
+    """This box lacks what the request needs (a key, the vault, a database); `retry_after_s` when asking again helps."""
 
     status = 503
+
+    def __init__(self, message: str, *, retry_after_s: int | None = None) -> None:
+        super().__init__(message)
+        self.retry_after_s = retry_after_s
 
 
 class ConfigurationError(PinecallError):

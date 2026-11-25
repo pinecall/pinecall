@@ -308,7 +308,15 @@ over twelve seconds to join each room, and until 2026-11-25, when a room was its
 its agent had joined, such rooms were rung again and the second job ended the call the first was
 holding. A job accepted that never starts (LiveKit assigned it to nobody after all, or no process
 could be launched for it) is given back by its worker (`DELETE /v1/fleet/rooms/{room}/taken?worker=`)
-and offered again. Should a room be rung twice all the same (a gateway that never heard the worker's
+and offered again. So is the room of a job that started and left before its call was open, whatever took
+it out (the gateway away past the job's wait, a refusal, a fault of the worker's own, its process told
+to stop): the job says the same word as it goes. What a job asks the gateway before its call is open
+(its routes, whose ring it is, its agent, its stages, what it plays a held caller) it asks again while
+the gateway is away or busy, thirty seconds in all, and the open itself for fifteen: on 2026-11-25 a
+gateway whose pool had no connection free for two seconds answered three jobs of twenty `503`, each
+ended on that one answer, and their rooms, held for their worker since the accept, were rung by
+nobody while their callers waited 110 s. A process killed outright says nothing: its room stays its
+worker's until the fleet forgets it at 120 s. Should a room be rung twice all the same (a gateway that never heard the worker's
 word), the first job to open the call has it: the second, which finds another agent seated in the
 room, is answered `410` and leaves the room as it is, with nothing written and nothing sealed. After three offers, or when the workers of the fleet heard lately have no seat,
 the room goes to the fleet's overflow (`<fleet>/overflow`, below): the caller hears one sentence and

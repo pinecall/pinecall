@@ -1,4 +1,4 @@
-"""Asking again: the wait before a try, a call retried a few times or for as long as there is time, a poll."""
+"""Asking again: the wait before a try, a call retried a few times or while there is time, a wait asks share, a poll."""
 
 import asyncio
 import logging
@@ -70,6 +70,30 @@ async def keep_asking[T](
             if attempt % SAID_EVERY == 0:
                 logger.warning("%s: still no answer after %d tries", what, attempt)
             await sleep(wait)
+
+
+# Several questions asked on the one wait: what a job asks its gateway as it arrives (its routes, its
+# agent, its stages), each asked again as `keep_asking` asks, for what is left of the time they share.
+# Each given the whole of it, four questions would wait four times what their caller can.
+class Within:
+    """A wait several asks share: each is asked again while it fails retryably and the wait is not over."""
+
+    def __init__(
+        self,
+        within_s: float,
+        *,
+        longest_s: float = LONGEST_WAIT_S,
+        sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+    ) -> None:
+        """A wait that starts now."""
+        self.until = time.monotonic() + within_s
+        self.longest_s = longest_s
+        self.sleep = sleep
+
+    async def ask[T](self, ask: Callable[[], Awaitable[T]], what: str) -> T:
+        """The answer of `ask`, tried again while it fails retryably and the wait has time left."""
+        left = max(self.until - time.monotonic(), 0.0)
+        return await keep_asking(ask, within_s=left, what=what, longest_s=self.longest_s, sleep=self.sleep)
 
 
 async def until[T](

@@ -28,9 +28,9 @@ class PhoneLine(SpokenLine):
     @override
     async def hang_up(self) -> None:
         """Hear the last answer out, then hang the leg up as a phone does."""
-        parts, leg = self._parts, self._on_the_line()
-        await turns.wait_for_answer(parts.logs, parts.store, self._spoken.call, self._lines, since=leg.said_at)
-        await telephony.hang_up_simulated_caller(parts.servers, self._spoken.call)
+        leg = self._on_the_line()
+        await turns.wait_for_answer(leg.so_far, self._lines, since=leg.said_at)
+        await telephony.hang_up_simulated_caller(self._parts.servers, self._spoken.call)
 
     @override
     async def _open(self) -> None:

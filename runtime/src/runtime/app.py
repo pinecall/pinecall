@@ -19,7 +19,7 @@ from runtime.exceptions import OAuthRefusal, PinecallError, ServiceUnavailable, 
 from runtime.handles import THE_INTERNET, Handles, Outside
 from runtime.kit.middleware import AllowedOrigins, BodyCeiling, NamesUnder
 from runtime.lifespan import lifespan
-from runtime.postgres import STATEMENT_TIMEOUT_MS, busy
+from runtime.postgres import COME_BACK_AFTER_S, STATEMENT_TIMEOUT_MS, busy
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ async def answer_refusal(_request: Request, error: Exception) -> Response:
     """A refusal answered with its status and its sentence."""
     status = error.status if isinstance(error, PinecallError) else 500
     headers = {"WWW-Authenticate": "Bearer"} if isinstance(error, Unauthorized) else None
-    if isinstance(error, TooManyRequests) and error.retry_after_s is not None:
+    if isinstance(error, TooManyRequests | ServiceUnavailable) and error.retry_after_s is not None:
         headers = {"Retry-After": str(error.retry_after_s)}
     said: dict[str, str] = {"detail": str(error)}
     # An app reads a refusal of OAuth's by the words its RFC gives it (RFC 6749 section 5.2).
@@ -75,7 +75,10 @@ async def answer_busy(request: Request, error: Exception) -> Response:
         # worker outlasts a 503 and retries.
         return await answer_refusal(
             request,
-            ServiceUnavailable(f"the database took more than {STATEMENT_TIMEOUT_MS / 1000:g} s to answer; try again"),
+            ServiceUnavailable(
+                f"the database took more than {STATEMENT_TIMEOUT_MS / 1000:g} s to answer; try again",
+                retry_after_s=COME_BACK_AFTER_S,
+            ),
         )
     logger.error("the database refused a request", exc_info=error)
     return JSONResponse({"detail": INTERNAL}, status_code=500)

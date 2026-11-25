@@ -1,23 +1,26 @@
-"""Whose call a job is: its dispatch, how it arrived, the route it takes, a ring handed over or at the test line."""
+"""Whose call a job is: its dispatch, arrival and route, a ring handed on; what it asks again; its room given back."""
 
 import asyncio
 import logging
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
+from typing import Any
 
 from livekit.agents import JobContext
 from livekit.agents.utils import aio
 
 from runtime.actor import Scope
+from runtime.agents.declaration import Declaration
 from runtime.calls.context import CallContext, Contact, Route, dump_context
 from runtime.enums import Channel, Direction, Env
 from runtime.exceptions import NotFound, UpstreamError
-from runtime.jobs.service.client import GatewayClient
+from runtime.jobs.service.client import GatewayClient, Stages
 from runtime.jobs.service.handed import tell_it_is_handed
+from runtime.kit.retry import Within
 from runtime.kit.time import today_in
 from runtime.telephony import service as telephony
 from runtime.wire.dispatch import Dispatch
-from runtime.wire.worker import OpenCallRequest
+from runtime.wire.worker import HoldAudio, OpenCallRequest
 
 logger = logging.getLogger(__name__)
 
@@ -63,27 +66,70 @@ class Arrived:
 
 # The one reading of whose call a job is, for the job that runs it and for the overflow that only
 # tells its caller: until 2026-11 each had its own copy of these steps. The room is the call: its
-# name is the id the gateway minted, or the SIP rule's.
-async def arrive_as_rung(ctx: JobContext, gateway: GatewayClient, *, default_agent: str | None, zone: str) -> Arrived:
+# name is the id the gateway minted, or the SIP rule's. What it asks the gateway is asked on the
+# job's one wait (`asking`, `client.arriving`): a gateway away or busy is asked again, not left.
+async def arrive_as_rung(
+    ctx: JobContext, gateway: GatewayClient, *, default_agent: str | None, zone: str, asking: Within
+) -> Arrived:
     """Join the room and find whose call the job is, by its dispatch and the number it rang."""
     dispatch = Dispatch.parse(ctx.job.metadata)
-    arrival, found = await _join(ctx, gateway, dispatch)
+    arrival, found = await _join(ctx, gateway, dispatch, asking)
     route = resolve_route(dispatch, arrival, found, default_agent)
     return Arrived(dispatch, arrival, route, context_of(ctx.room.name or ctx.job.id, dispatch, arrival, route, zone))
 
 
 # A call that will be run may be somebody's own ring: a developer's at a production number, sent on
 # to their sandbox, or a tester's at the box's test line, answered here as their org's agent.
-async def arrive(ctx: JobContext, gateway: GatewayClient, *, default_agent: str | None, zone: str) -> Arrived | None:
+async def arrive(
+    ctx: JobContext, gateway: GatewayClient, *, default_agent: str | None, zone: str, asking: Within
+) -> Arrived | None:
     """Join the room and find whose call the job is; None once the ring was handed to a developer's sandbox."""
-    rung = await arrive_as_rung(ctx, gateway, default_agent=default_agent, zone=zone)
+    rung = await arrive_as_rung(ctx, gateway, default_agent=default_agent, zone=zone, asking=asking)
     dispatch, arrival, route = rung.dispatch, rung.arrival, rung.route
-    if may_be_a_developers(dispatch, arrival, route) and await _hand_over(ctx, gateway, dispatch, arrival, route):
+    if may_be_a_developers(dispatch, arrival, route) and await _hand_over(ctx, gateway, rung, asking):
         return None
     if not may_be_a_testers(dispatch, arrival, route):
         return rung
-    route, dispatch = await ring_the_tester(gateway, dispatch, arrival, route)
+    route, dispatch = await ring_the_tester(gateway, dispatch, arrival, route, asking)
     return Arrived(dispatch, arrival, route, context_of(rung.context.call, dispatch, arrival, route, zone))
+
+
+# A room is its worker's from the moment its job was accepted (`heartbeat.Accepted`), so that a process
+# slow to start is not read as a job given to nobody. A job that then leaves before its call is open
+# leaves a room nobody has and the gateway holds for it: nothing rang it again, and its caller waited
+# for nobody (2026-11-25: three simulated callers of twenty, each its 110 s, their jobs gone on a busy
+# gateway's `503`). Whatever takes the job out before the open (a gateway away past the wait, a
+# refusal, a fault of ours, its process told to stop) the room is given back as it goes, and the
+# sweep offers it again in its turn. A job that returns, its ring handed on or its call another job's,
+# gives nothing back: that room has somebody. A process killed outright says nothing: its room stays
+# held until the fleet forgets it.
+async def or_give_the_room_back[T](ctx: JobContext, gateway: GatewayClient, opening: Callable[[], Awaitable[T]]) -> T:
+    """What leads to the call's opening, done; a job that breaks on the way gives its room back to the gateway."""
+    try:
+        return await opening()
+    except BaseException:
+        room, worker = ctx.job.room.name, ctx.job.agent_name
+        # A job no dispatch named a worker for was offered by nobody: there is no offer to give back.
+        if worker:
+            try:
+                await gateway.drop_room(room, worker)
+            except UpstreamError as refused:
+                logger.warning("room %s: the gateway was not told this job left it unopened: %s", room, refused)
+        raise
+
+
+# The three answers a call is set up from, asked together on the job's one wait: a call's first job
+# and the job that takes it up from a worker that went away ask the same.
+async def read_agent(
+    gateway: GatewayClient, arrived: Arrived, asking: Within, *, test: Mapping[str, Any] | None = None
+) -> tuple[Declaration, Stages, HoldAudio]:
+    """The agent as the call runs it, the stages it runs on with their keys, and what it plays a held caller."""
+    agent, scope, call = arrived.route.agent, arrived.scope, arrived.context.call
+    return await asyncio.gather(
+        asking.ask(lambda: gateway.get_agent(agent, scope, call=call, test=test), f"the agent of {call}"),
+        asking.ask(lambda: gateway.get_stages(agent, scope, call=call, test=test), f"the stages of {call}"),
+        asking.ask(lambda: gateway.get_hold(agent, scope), f"what {call} plays on hold"),
+    )
 
 
 def context_of(call: str, dispatch: Dispatch, arrival: telephony.Arrival, route: Route, zone: str) -> CallContext:
@@ -145,11 +191,12 @@ def may_be_a_testers(dispatch: Dispatch, arrival: telephony.Arrival, route: Rout
 # is answered by the agent the number is routed to, told which of them it is in the call's metadata
 # (`{{metadata.test_line}}` in a Studio agent): a caller hears what to fix, not every reason at once.
 async def ring_the_tester(
-    gateway: GatewayClient, dispatch: Dispatch, arrival: telephony.Arrival, route: Route
+    gateway: GatewayClient, dispatch: Dispatch, arrival: telephony.Arrival, route: Route, asking: Within
 ) -> tuple[Route, Dispatch]:
     """The route and the dispatch a ring at the test line goes on with: its caller's own agent, or the number's."""
     try:
-        handed = await gateway.ring_at_test_line(str(route.number), arrival.caller)
+        whose = f"whose phone rings {route.number}"
+        handed = await asking.ask(lambda: gateway.ring_at_test_line(str(route.number), arrival.caller), whose)
     except UpstreamError:
         logger.warning("could not ask whose phone rings %s: the call stays with %s", route.number, route.agent)
         return route, _tell(dispatch, TEST_LINE_UNAVAILABLE, None)
@@ -179,13 +226,18 @@ async def ring_the_tester(
 # A dispatch that names its scope has its routes asked for while the room connects. One that names
 # none is the box's own trunk, where the number dialled decides: it is read off the caller's leg
 # first, and the routes asked once. Until 2026-11 they were asked twice, the first answer unread.
-async def _join(ctx: JobContext, gateway: GatewayClient, dispatch: Dispatch) -> tuple[telephony.Arrival, list[Route]]:
+async def _join(
+    ctx: JobContext, gateway: GatewayClient, dispatch: Dispatch, asking: Within
+) -> tuple[telephony.Arrival, list[Route]]:
     named = dispatch.named_scope
+    what = f"the routes of room {ctx.job.room.name}"
     if named is None:
         await ctx.connect()
         arrival = await telephony.arrival_of(dispatch, ctx.room)
-        return arrival, await gateway.list_routes(None, number=arrival.number, channel=arrival.channel)
-    _, found = await asyncio.gather(ctx.connect(), gateway.list_routes(named, number=None, channel=Channel.phone))
+        rung = arrival.number, arrival.channel
+        return arrival, await asking.ask(lambda: gateway.list_routes(None, number=rung[0], channel=rung[1]), what)
+    listing = asking.ask(lambda: gateway.list_routes(named, number=None, channel=Channel.phone), what)
+    _, found = await asyncio.gather(ctx.connect(), listing)
     return await telephony.arrival_of(dispatch, ctx.room), found
 
 
@@ -215,11 +267,11 @@ def _route_of_agent(agent: str, dispatch: Dispatch, arrival: telephony.Arrival, 
 
 
 # The caller and their carrier stay where they are: production's LiveKit holds their leg.
-async def _hand_over(
-    ctx: JobContext, gateway: GatewayClient, dispatch: Dispatch, arrival: telephony.Arrival, route: Route
-) -> bool:
+async def _hand_over(ctx: JobContext, gateway: GatewayClient, rung: Arrived, asking: Within) -> bool:
+    dispatch, arrival, route = rung.dispatch, rung.arrival, rung.route
     try:
-        handed = await gateway.ring_for(route.agent, route.org, arrival.caller)
+        whose = f"whose phone rings {route.agent}"
+        handed = await asking.ask(lambda: gateway.ring_for(route.agent, route.org, arrival.caller), whose)
     except UpstreamError:
         logger.warning("could not ask whose phone rings %s: the call stays here", route.agent)
         return False

@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **A job outlasts a busy gateway, and a room it leaves unopened is offered again.** Thirty simulated calls played
+  by one gateway on a pool of eight connections: for two seconds none came free, three jobs of twenty were answered
+  `503` on the read of their agent, each ended on that one answer, and their rooms, held for their worker since the
+  job was accepted, were rung by nobody while their callers waited 110 s. Now (1) what a job asks before its call is
+  open (its routes, whose ring it is, its agent, its stages, what it plays a held caller) is asked again while the
+  gateway is away or busy, on one wait of thirty seconds they share (`kit.retry.Within`, `jobs.service.client.arriving`),
+  for a call's first job, the overflow's and the job that takes a call up; (2) a job that leaves before its call is open,
+  whatever took it out, gives its room back (`DELETE /v1/fleet/rooms/{room}/taken`) and the sweep offers it again; a job
+  that returns because the call is another job's gives nothing back; (3) a simulated caller reads its call's log from
+  the last entry it read, where every beat read the whole of it (82 KB by the end of a call, thirty at once on one
+  gateway): `evals.service.turns.SoFar`, one reading a call for its waits and its next line; (4) the two `503` of a
+  database too busy to answer say `Retry-After: 1`, and no other `503` does. No migration.
 - **A simulated call that was placed never vanishes.** A simulated call is played by a task of the gateway that
   nobody awaits, and a comparison's calls are placed by another. Twenty calls placed together on a gateway whose
   pool is eight: the twentieth found no connection in two seconds, its task ended with a warning in the gateway's

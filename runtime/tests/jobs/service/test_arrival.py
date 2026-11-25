@@ -1,7 +1,15 @@
-"""The route a call takes: the agent the job names, else the number dialled, else the worker's default."""
+"""The route a call takes by its agent, its number or the default; what a job asks again; the room it gives back."""
+
+import asyncio
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass, field
+from typing import cast
 
 import httpx
 import pytest
+from livekit.agents import JobContext
+from livekit.protocol import agent as livekit_agent
+from livekit.protocol import models
 
 from runtime.calls.context import Route
 from runtime.enums import Channel, Direction, Env
@@ -13,10 +21,12 @@ from runtime.jobs.service.arrival import (
     TEST_LINE_UNAVAILABLE,
     may_be_a_developers,
     may_be_a_testers,
+    or_give_the_room_back,
     resolve_route,
     ring_the_tester,
 )
-from runtime.jobs.service.client import GatewayClient
+from runtime.jobs.service.client import ARRIVES_WITHIN_S, GatewayClient
+from runtime.kit.retry import Within
 from runtime.telephony.service.legs import Arrival
 from runtime.wire.dispatch import Dispatch
 from runtime.wire.worker import RingAtTestLine
@@ -109,6 +119,15 @@ def test_only_an_undispatched_ring_at_a_sandbox_number_may_be_a_testers() -> Non
 A_TESTERS_RING = Dispatch(org="org_a", env=Env.sandbox)
 
 
+def on_one_try() -> Within:
+    """A job's wait that is over already: each question is asked once."""
+    return Within(0.0)
+
+
+async def at_once(_seconds: float) -> None:
+    """The wait between two tries, not waited."""
+
+
 def answering(handed: RingAtTestLine) -> GatewayClient:
     """The worker's own client, on a gateway that says whose sandbox agent a ring at the test line is for."""
 
@@ -122,7 +141,7 @@ def answering(handed: RingAtTestLine) -> GatewayClient:
 
 async def test_the_route_a_known_caller_takes_is_their_orgs_agent_at_the_number_dialled() -> None:
     gateway = answering(RingAtTestLine(org="org_b", agent="front", holder="m_x"))
-    taken, moved = await ring_the_tester(gateway, A_TESTERS_RING, A_PHONE, IN_THE_SANDBOX)
+    taken, moved = await ring_the_tester(gateway, A_TESTERS_RING, A_PHONE, IN_THE_SANDBOX, on_one_try())
     await gateway.aclose()
     assert taken == Route(org="org_b", agent="front", channel=Channel.phone, number=NUMBER, env=Env.sandbox)
     assert (moved.org, moved.agent, moved.holder, moved.caller) == ("org_b", "front", "m_x", CALLER)
@@ -130,7 +149,7 @@ async def test_the_route_a_known_caller_takes_is_their_orgs_agent_at_the_number_
 
 async def test_a_phone_nobody_said_was_theirs_stays_with_the_numbers_agent_told_why() -> None:
     gateway = answering(RingAtTestLine())
-    taken, moved = await ring_the_tester(gateway, A_TESTERS_RING, A_PHONE, IN_THE_SANDBOX)
+    taken, moved = await ring_the_tester(gateway, A_TESTERS_RING, A_PHONE, IN_THE_SANDBOX, on_one_try())
     await gateway.aclose()
     assert taken == IN_THE_SANDBOX
     assert moved.metadata["test_line"] == PHONE_NOT_SAID
@@ -150,7 +169,7 @@ async def test_a_ring_the_gateway_hands_to_nobody_stays_with_the_numbers_own_age
     handed: RingAtTestLine, why: str, agent: str
 ) -> None:
     gateway = answering(handed)
-    taken, moved = await ring_the_tester(gateway, A_TESTERS_RING, A_PHONE, IN_THE_SANDBOX)
+    taken, moved = await ring_the_tester(gateway, A_TESTERS_RING, A_PHONE, IN_THE_SANDBOX, on_one_try())
     await gateway.aclose()
     assert taken == IN_THE_SANDBOX
     assert (moved.org, moved.agent, moved.holder) == (A_TESTERS_RING.org, A_TESTERS_RING.agent, A_TESTERS_RING.holder)
@@ -162,7 +181,121 @@ async def test_a_ring_at_the_test_line_while_the_gateway_is_away_stays_with_the_
         return httpx.Response(503, text="away")
 
     gateway = GatewayClient(httpx.AsyncClient(base_url="http://gateway.test", transport=httpx.MockTransport(away)))
-    taken, moved = await ring_the_tester(gateway, A_TESTERS_RING, A_PHONE, IN_THE_SANDBOX)
+    taken, moved = await ring_the_tester(gateway, A_TESTERS_RING, A_PHONE, IN_THE_SANDBOX, on_one_try())
     await gateway.aclose()
     assert taken == IN_THE_SANDBOX
     assert moved.metadata["test_line"] == TEST_LINE_UNAVAILABLE
+
+
+# 2026-11-25, thirty simulated calls on one gateway: its pool had no connection free for two seconds,
+# it answered a job's read `503`, the job ended on that answer and its caller waited 110 s for nobody.
+# A gateway busy or away is asked again, for as long as the job's one wait lasts.
+async def test_a_question_a_busy_gateway_refused_is_asked_again_on_the_jobs_wait() -> None:
+    asked: list[str] = []
+
+    def busy_at_first(request: httpx.Request) -> httpx.Response:
+        asked.append(request.url.path)
+        if len(asked) == 1:
+            return httpx.Response(503, json={"detail": "the database is busy: no connection came free within 2 s"})
+        return httpx.Response(200, json=RingAtTestLine(org="org_b", agent="front", holder="m_x").dump())
+
+    http = httpx.AsyncClient(base_url="http://gateway.test", transport=httpx.MockTransport(busy_at_first))
+    gateway, asking = GatewayClient(http), Within(ARRIVES_WITHIN_S, sleep=at_once)
+    taken, _ = await ring_the_tester(gateway, A_TESTERS_RING, A_PHONE, IN_THE_SANDBOX, asking)
+    await gateway.aclose()
+    assert taken.org == "org_b", "the second answer is the one the call goes on with"
+    assert asked == ["/v1/test-line/rings-for"] * 2
+
+
+THE_WORKER = "pinecall-sandbox/w1.1"
+GIVEN_BACK = ("DELETE", "/v1/fleet/rooms/call_1/taken?worker=pinecall-sandbox%2Fw1.1")
+
+
+@dataclass
+class Hearing:
+    """A gateway that keeps what a job said of its room, and answers as told."""
+
+    status: int = 204
+    heard: list[tuple[str, str]] = field(default_factory=list[tuple[str, str]])
+
+    def answer(self, request: httpx.Request) -> httpx.Response:
+        """The word is kept, or the gateway is away."""
+        self.heard.append((request.method, str(request.url.raw_path, "ascii")))
+        return httpx.Response(self.status)
+
+    @property
+    def client(self) -> GatewayClient:
+        """The job's way to this gateway."""
+        return GatewayClient(httpx.AsyncClient(transport=httpx.MockTransport(self.answer), base_url="http://gw"))
+
+
+@dataclass
+class AJob:
+    """A job as livekit hands it: its room, and the worker's name its dispatch carried."""
+
+    job: livekit_agent.Job
+
+
+def a_job(worker: str = THE_WORKER) -> JobContext:
+    """The job of room call_1, offered to this worker by name."""
+    job = livekit_agent.Job(id="AJ_call_1", room=models.Room(name="call_1", sid="RM_call_1"), agent_name=worker)
+    return cast("JobContext", AJob(job))
+
+
+def breaking(failure: Exception) -> Callable[[], Awaitable[None]]:
+    """What leads to a call's opening, broken on the way."""
+
+    async def opening() -> None:
+        raise failure
+
+    return opening
+
+
+# 2026-11-25: a room is its worker's from the moment the job is accepted, so a job that ended before
+# it opened its call left a room held for nobody, which nothing rang again.
+async def test_a_job_that_breaks_before_its_call_is_open_gives_its_room_back() -> None:
+    gateway = Hearing()
+    with pytest.raises(RuntimeError, match="the gateway stayed busy"):
+        await or_give_the_room_back(a_job(), gateway.client, breaking(RuntimeError("the gateway stayed busy")))
+    assert gateway.heard == [GIVEN_BACK]
+
+
+async def test_a_job_told_to_stop_before_its_call_is_open_gives_its_room_back() -> None:
+    gateway = Hearing()
+    arriving = asyncio.create_task(or_give_the_room_back(a_job(), gateway.client, asyncio.Event().wait))
+    await asyncio.sleep(0.05)
+    arriving.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await arriving
+    assert gateway.heard == [GIVEN_BACK]
+
+
+async def test_a_job_that_opened_its_call_or_left_it_to_another_job_gives_nothing_back() -> None:
+    gateway = Hearing()
+
+    async def opened() -> str:
+        return "call_1"
+
+    async def another_jobs() -> None:
+        return None
+
+    assert await or_give_the_room_back(a_job(), gateway.client, opened) == "call_1"
+    assert await or_give_the_room_back(a_job(), gateway.client, another_jobs) is None
+    assert gateway.heard == []
+
+
+async def test_a_job_no_worker_was_named_for_has_no_offer_to_give_back() -> None:
+    gateway = Hearing()
+    with pytest.raises(RuntimeError):
+        await or_give_the_room_back(a_job(worker=""), gateway.client, breaking(RuntimeError("broke")))
+    assert gateway.heard == []
+
+
+async def test_a_gateway_that_does_not_hear_the_room_given_back_leaves_the_job_its_own_failure(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    gateway = Hearing(status=503)
+    with pytest.raises(RuntimeError, match="broke"):
+        await or_give_the_room_back(a_job(), gateway.client, breaking(RuntimeError("broke")))
+    assert gateway.heard == [GIVEN_BACK]
+    assert "room call_1: the gateway was not told this job left it unopened" in caplog.text

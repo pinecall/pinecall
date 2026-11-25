@@ -61,7 +61,8 @@ signature is read: LiveKit's over 4 MiB, Meta's over 1 MiB); `429` a quota, the 
 lines and 6 memory extraction runs of 50 cases at most, per org; 30 voice samples and 30 voice
 notes or dictations, per key); `502` a vendor or a
 carrier that did not answer, in its own words; `503` the request was right and this deployment cannot
-honour it, or not now: a database too busy to answer within its timeouts is a `503` to retry. A
+honour it, or not now: a database too busy to answer within its timeouts is a `503` to retry, and the
+one `503` that says when (`Retry-After: 1`). A
 socket closes with **4000 plus the status** it would have answered over HTTP (`4404` for a name nothing answers to, `4403` for a scope the key lacks) and the sentence. A key past its expiry is `401` saying
 when it expired, never the silence of a key nobody made.
 

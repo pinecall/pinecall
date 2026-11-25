@@ -17,9 +17,9 @@ from runtime.calls.projection import Audience, project_entry, project_state
 from runtime.calls.recordings import Recordings, recording_path
 from runtime.enums import Channel, Stage
 from runtime.exceptions import PinecallError, UpstreamError
-from runtime.jobs.service.arrival import Arrived, arrive
+from runtime.jobs.service.arrival import Arrived, arrive, or_give_the_room_back, read_agent
 from runtime.jobs.service.call_client import CallClient, open_or_leave
-from runtime.jobs.service.client import LONGEST_WAIT_S, GatewayClient, Stages
+from runtime.jobs.service.client import LONGEST_WAIT_S, GatewayClient, Stages, arriving
 from runtime.jobs.service.ending import end_and_seal, open_writer, release_room
 from runtime.jobs.service.hold_clip import find_hold_clip
 from runtime.jobs.service.recordings import keep_recording
@@ -111,6 +111,17 @@ class Setup:
     quiet_s: float
     idle: Idle | None
     silence_s: int | None
+
+
+@dataclass(frozen=True, slots=True)
+class Opened:
+    """A job's call once its log is open at the gateway: whose it is, its link, and what it is set up from."""
+
+    arrived: Arrived
+    link: CallClient
+    declaration: Declaration
+    stages: Stages
+    held: HoldAudio
 
 
 class Job:
@@ -235,22 +246,12 @@ async def answer_job(ctx: JobContext, warmed: Warmed) -> None:
     """Answer the job: find whose call it is, open its log, set it up and start it."""
     began = time.monotonic()
     ctx.log_context_fields = {"room": ctx.job.room.name}
-    gateway, told = warmed.gateway, warmed.told
-    arrived = await arrive(ctx, gateway, default_agent=told.agent, zone=told.zone)
-    if arrived is None:
+    opened = await or_give_the_room_back(ctx, warmed.gateway, lambda: open_its_call(ctx, warmed))
+    if opened is None:
         return
-    route, scope, dispatch, call = arrived.route, arrived.scope, arrived.dispatch, arrived.context.call
-    test = dispatch.test_values
-    declaration, stages, held = await asyncio.gather(
-        gateway.get_agent(route.agent, scope, call=call, test=test),
-        gateway.get_stages(route.agent, scope, call=call, test=test),
-        gateway.get_hold(route.agent, scope),
-    )
-    declaration = open_as_asked(declaration, dispatch.greeting, dispatch.instruction)
-    link = await open_or_leave(ctx, gateway, arrived.open_with(told.app, seat_of(ctx)), declaration)
-    if link is None:
-        return
-    link.measures, link.lent = told.measures, stages.pipeline.lent
+    arrived, link, stages = opened.arrived, opened.link, opened.stages
+    dispatch, call = arrived.dispatch, arrived.context.call
+    link.measures, link.lent = warmed.told.measures, stages.pipeline.lent
     # An outbound call is its far end answering: nothing is built for a leg that never came up.
     if dispatch.dial is not None and not await _dial_the_far_end(ctx, link, dispatch.dial):
         return
@@ -259,7 +260,7 @@ async def answer_job(ctx: JobContext, warmed: Warmed) -> None:
     try:
         warmed.spans.route_to(await check_collector(stages.telemetry, call), attributes_of(arrived.context), call)
         build = set_up_typed if dispatch.scope == CHAT else set_up_spoken
-        setup = await build(ctx, warmed, arrived, link, declaration, stages, held)
+        setup = await build(ctx, warmed, arrived, link, opened.declaration, stages, opened.held)
     except Exception as failed:
         await fail_call(link, failed)
         ctx.shutdown(reason=SESSION_FAILED)
@@ -274,6 +275,21 @@ async def answer_job(ctx: JobContext, warmed: Warmed) -> None:
         setup.running.hang_up("error", "platform", at_once=True)
         raise
     logger.info("the pipeline is live %.2fs after the job arrived", time.monotonic() - began)
+
+
+# From the job's arrival to its call's log open at the gateway: what it asks on the way is asked on
+# one wait, and a job that breaks here gives its room back (`arrival.or_give_the_room_back`).
+async def open_its_call(ctx: JobContext, warmed: Warmed) -> Opened | None:
+    """Find whose call the job is and open its log; None when the ring was handed on or the call is another job's."""
+    gateway, told, asking = warmed.gateway, warmed.told, arriving()
+    arrived = await arrive(ctx, gateway, default_agent=told.agent, zone=told.zone, asking=asking)
+    if arrived is None:
+        return None
+    dispatch = arrived.dispatch
+    declaration, stages, held = await read_agent(gateway, arrived, asking, test=dispatch.test_values)
+    declaration = open_as_asked(declaration, dispatch.greeting, dispatch.instruction)
+    link = await open_or_leave(ctx, gateway, arrived.open_with(told.app, seat_of(ctx)), declaration)
+    return None if link is None else Opened(arrived, link, declaration, stages, held)
 
 
 def seat_of(ctx: JobContext) -> str:

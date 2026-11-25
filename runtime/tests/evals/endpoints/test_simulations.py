@@ -315,6 +315,19 @@ async def ended(gateway: Gateway, tenant: Tenant, call: str) -> dict[str, object
     return run
 
 
+# A call's end is written before its summary, which carries how it ended in words: the row says the
+# one a moment before the other, and a reader that asked between the two read an end with no reason.
+async def summarized(gateway: Gateway, tenant: Tenant, call: str) -> dict[str, object]:
+    """The simulated call's row, once it ended and its summary says why."""
+    run: dict[str, object] = {}
+    for _ in range(200):
+        run = await ended(gateway, tenant, call)
+        if run.get("outcome") is not None:
+            break
+        await asyncio.sleep(0.05)
+    return run
+
+
 # The row says a call ended as its end is written, a moment before the gateway lets go of the call.
 async def is_off_the_line(gateway: Gateway, tenant: Tenant) -> bool:
     """Whether the org holds no call at once any more, within a few seconds."""
@@ -339,7 +352,7 @@ async def test_a_simulated_call_whose_caller_breaks_before_the_call_begins_ends_
     async with holding(gateway, tenant, agent):
         placed_one = await gateway.http.post("/v1/simulations", json=body, headers=tenant.server)
         assert placed_one.status_code == 200, placed_one.text
-        run = await ended(gateway, tenant, str(placed_one.json()["call"]))
+        run = await summarized(gateway, tenant, str(placed_one.json()["call"]))
         assert run["end_reason"] == "error", run
         # Named by its kind alone: what a fault of the gateway's says may carry a statement.
         assert run["outcome"] == "the gateway could not play this call's caller (RuntimeError): its log says why"

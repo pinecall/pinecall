@@ -5,7 +5,7 @@ import asyncio
 import pytest
 
 from runtime.exceptions import UpstreamError
-from runtime.kit.retry import FIRST_WAIT_S, JITTER, LONGEST_WAIT_S, delay, keep_asking, retry, until
+from runtime.kit.retry import FIRST_WAIT_S, JITTER, LONGEST_WAIT_S, Within, delay, keep_asking, retry, until
 
 AWAY = UpstreamError("away", retryable=True)
 
@@ -88,3 +88,43 @@ async def test_a_probe_is_asked_every_so_often_until_it_answers_or_the_time_runs
 
     assert await until(probe, every_s=0.01, within_s=5.0) == "there"
     assert await until(never, every_s=0.01, within_s=0.0) is None
+
+
+# A job asks its gateway four things as it arrives. Each given the whole wait, a gateway away would be
+# waited for four times as long as the caller on the line can wait.
+async def test_asks_that_share_a_wait_are_each_asked_again_within_what_is_left_of_it() -> None:
+    """The first ask is asked again until answered; one that starts once the wait is over is asked once."""
+    tries: list[str] = []
+
+    async def no_sleep(_seconds: float) -> None:
+        return None
+
+    async def away_once() -> str:
+        tries.append("first")
+        if len(tries) < 2:
+            raise AWAY
+        return "answered"
+
+    async def away() -> str:
+        tries.append("second")
+        raise AWAY
+
+    asking = Within(30.0, sleep=no_sleep)
+    assert await asking.ask(away_once, "x") == "answered"
+    asking.until = 0.0
+    with pytest.raises(UpstreamError, match="away"):
+        await asking.ask(away, "y")
+    assert tries == ["first", "first", "second"]
+
+
+async def test_an_answer_that_is_a_refusal_ends_an_ask_on_a_shared_wait_at_once() -> None:
+    """A refusal is the answer, whatever is left of the wait."""
+    tries: list[int] = []
+
+    async def refused() -> str:
+        tries.append(1)
+        raise UpstreamError("no", answered=404)
+
+    with pytest.raises(UpstreamError, match="no"):
+        await Within(30.0).ask(refused, "x")
+    assert len(tries) == 1

@@ -17,7 +17,7 @@ from runtime.kit.loops import is_cancellation
 from runtime.kit.text import JsonObject
 from runtime.providers import service as providers
 from runtime.session import service as session
-from runtime.wire.base import Command
+from runtime.wire.base import Command, Entry
 from runtime.wire.goldens import Golden
 from runtime.wire.metrics import ModelUsage
 from runtime.wire.parts import EndedBy, EndReason
@@ -53,8 +53,9 @@ class WrittenLine:
 
     def __init__(self, running: session.Session, logs: Logs, store: Store) -> None:
         self._running = running
-        self._logs = logs
         self._store = store
+        # The call's log as this caller reads it, one reading for its waits and its lines.
+        self._so_far = turns.SoFar(logs, store, running.call.context.call)
         # When the caller began its last line: the agent hears a written one the moment it is said.
         self._said_at = store.clock()
 
@@ -85,8 +86,7 @@ class WrittenLine:
         """Wait until the agent answered this many lines; False on a call that is over."""
         if self._running.closed:
             return False
-        call = self._running.call.context.call
-        return await turns.wait_for_answer(self._logs, self._store, call, lines, since=self._said_at, landed=landed)
+        return await turns.wait_for_answer(self._so_far, lines, since=self._said_at, landed=landed)
 
     async def hang_up(self) -> None:
         """Hang up, unless the agent or a person ended the call first."""
@@ -96,6 +96,10 @@ class WrittenLine:
     def list_said(self) -> Sequence[Said]:
         """Nothing: the agent reads a written line as it was written."""
         return ()
+
+    async def read_so_far(self) -> Sequence[Entry]:
+        """The call's log as it stands, read from where the line's waits last left it."""
+        return await self._so_far.read()
 
 
 @dataclass(frozen=True, slots=True)

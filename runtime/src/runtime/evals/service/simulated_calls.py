@@ -29,7 +29,7 @@ from runtime.evals.service.callers import (
 from runtime.evals.service.leg import Spoken
 from runtime.evals.service.phone import PhoneLine
 from runtime.evals.service.spoken import SpokenLine
-from runtime.evals.service.turns import NextLine, is_call_over, read_so_far
+from runtime.evals.service.turns import NextLine, is_call_over
 from runtime.evals.service.written import WrittenLine
 from runtime.exceptions import PinecallError
 from runtime.judging import service as judging
@@ -177,7 +177,7 @@ async def play(parts: Harness, simulation: Simulation, line: lines.Line, voice: 
         caller = Caller(simulation.persona, model.model, spending)
         await when_free(lambda: _keep_played_by(parts, call, model.named, voice))
         try:
-            turns = await lines.play(line, simulation.turns, improvise(parts, call, caller), spending.count)
+            turns = await lines.play(line, simulation.turns, improvise(line, caller), spending.count)
         finally:
             await when_free(lambda: keep_cost(parts, call, spending))
             await when_free(lambda: keep_heard(parts, call, line.list_said()))
@@ -186,16 +186,16 @@ async def play(parts: Harness, simulation: Simulation, line: lines.Line, voice: 
 
 # Asked before each line: the line that crosses the ceiling is the last one said, and a call the
 # agent or a person already ended asks for none.
-def improvise(parts: Harness, call: str, caller: Caller) -> NextLine:
+def improvise(line: lines.Line, caller: Caller) -> NextLine:
     """The caller's next line on the call so far, and whether it hangs up after it."""
 
     async def next_line(turns_left: int) -> tuple[str, bool]:
-        entries = await read_so_far(parts.store, call)
+        entries = await line.read_so_far()
         if is_call_over(entries) or caller.spending.is_over:
             return "", True
-        line = await improvise_line(caller.model, caller.persona, list_heard(entries), turns_left)
-        caller.spending.count(line.usage)
-        return line.say, line.hangup
+        said = await improvise_line(caller.model, caller.persona, list_heard(entries), turns_left)
+        caller.spending.count(said.usage)
+        return said.say, said.hangup
 
     return next_line
 

@@ -1,4 +1,4 @@
-/** The gateway client: one URL, one key, one env header; every `/v1/` request of the CLI goes through it. */
+/** The gateway client: one URL, one key, one env header; every `/v1/` request of the CLI goes through it, a read a busy gateway refused asked again. */
 
 import { signed, type World } from "@pinecall/agents/client";
 
@@ -19,6 +19,16 @@ export interface RequestOptions {
   headers?: Record<string, string> | undefined;
   signal?: AbortSignal | undefined;
 }
+
+// A gateway whose database had no connection free for two seconds answers `503` and says when to
+// come back (`Retry-After`): thirty simulated calls on one gateway did that to the `simulate` that
+// followed them (2026-11-25), which ended on the first one with every call still on the line. A read
+// that changes nothing is asked again on that word, this many times in all, each wait twice the last
+// and never past the longest; then the refusal is the answer, as it was. A `503` that names no time (a
+// vendor nobody keyed) is an answer already, and so is every refusal of a write: asked again, a write
+// may be done twice.
+const A_READ_IS_ASKED = 4;
+const LONGEST_WAIT_MS = 4_000;
 
 /** The gateway at one URL, for one key, in one env. Built once per verb by the Context. */
 export class GatewayClient {
@@ -58,21 +68,29 @@ export class GatewayClient {
     return this.request<T>(path, { method: "DELETE", query });
   }
 
-  /** The raw answer, for a stream (SSE) or bytes (audio); non-2xx still throws `GatewayError`. */
+  /**
+   * The raw answer, for a stream (SSE) or bytes (audio); non-2xx still throws `GatewayError`. A read
+   * the gateway was too busy for, and said when to ask again, is asked again a few times first.
+   */
   async fetch(path: string, options: RequestOptions = {}): Promise<Response> {
-    const answered = await fetch(this.urlOf(path, options.query), {
-      method: options.method ?? "GET",
-      headers: { ...this.headers(options.body), ...options.headers },
-      ...(options.body === undefined ? {} : { body: encoded(options.body) }),
-      ...(options.signal === undefined ? {} : { signal: options.signal }),
-    });
-    if (!answered.ok) {
+    const method = options.method ?? "GET";
+    for (let asked = 1; ; asked += 1) {
+      const answered = await fetch(this.urlOf(path, options.query), {
+        method,
+        headers: { ...this.headers(options.body), ...options.headers },
+        ...(options.body === undefined ? {} : { body: encoded(options.body) }),
+        ...(options.signal === undefined ? {} : { signal: options.signal }),
+      });
+      if (answered.ok) return answered;
       const text = await answered.text();
-      const detail = detailOf(text);
-      // A body with no `detail` (a proxy's page, nothing) is not a sentence of the gateway's: the status is named.
-      throw new GatewayError(answered.status, detail, detail !== text);
+      const wait = method === "GET" && asked < A_READ_IS_ASKED ? comeBackAfter(answered, asked) : null;
+      if (wait === null || options.signal?.aborted === true) {
+        const detail = detailOf(text);
+        // A body with no `detail` (a proxy's page, nothing) is not a sentence of the gateway's: the status is named.
+        throw new GatewayError(answered.status, detail, detail !== text);
+      }
+      await new Promise((wake) => setTimeout(wake, wait));
     }
-    return answered;
   }
 
   /** The full URL of a path, for a socket or a browser as much as a request. */
@@ -87,6 +105,13 @@ export class GatewayClient {
     const content = body === undefined || Buffer.isBuffer(body) ? {} : { "content-type": "application/json" };
     return { ...signed(this.key, this.env), ...content };
   }
+}
+
+/** How long to wait before a busy gateway is asked again: what it said, doubled each time; null when it named no time. */
+function comeBackAfter(answered: Response, asked: number): number | null {
+  const said = answered.headers.get("retry-after");
+  if (answered.status !== 503 || said === null || !/^\d+$/.test(said)) return null;
+  return Math.min(Number(said) * 1_000 * 2 ** (asked - 1), LONGEST_WAIT_MS);
 }
 
 function encoded(body: unknown): Uint8Array | string {

@@ -3,10 +3,11 @@
 import asyncio
 import functools
 import json
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 from pathlib import Path
 from typing import override
 
+import httpx
 import pytest
 from livekit import api, rtc
 from livekit.agents import JobContext, JobExecutorType, JobProcess
@@ -19,11 +20,13 @@ from livekit.protocol.room import DeleteRoomRequest
 
 from runtime.calls.recordings import Disk
 from runtime.enums import Env
+from runtime.exceptions import UpstreamError
 from runtime.jobs.service import JobSettings, Warmed, answer_job, end_job
 from runtime.jobs.service.arrival import arrive
 from runtime.jobs.service.call_client import ANOTHER_JOBS, open_call
-from runtime.jobs.service.client import GatewayClient
+from runtime.jobs.service.client import GatewayClient, arriving, unavailable
 from runtime.jobs.service.traces import OrgSpans
+from runtime.kit.text import Json
 from runtime.wire.dispatch import Dispatch
 from runtime.wire.room import CHAT, SCOPE_ATTRIBUTE, TALK
 from tests.conftest import Gateway, Tenant, holding, needs_the_services, received, until
@@ -32,6 +35,7 @@ from tests.fakes.livekit import Player, Room, Server, Speaker, seat
 GREETING = "Clínica Norte, buen día."
 THE_VISITOR = "visitor_1"
 RECORDED = "This call may be recorded."
+THE_WORKER = "pinecall-sandbox/worker-test.1"
 
 
 class Assigned(JobContext):
@@ -224,7 +228,7 @@ async def test_a_job_sent_to_a_room_whose_call_another_job_opened_leaves_it_and_
         dispatch = Dispatch(agent=agent, org=tenant.org, env=Env.sandbox, scope=TALK)
         # The first job of the room: it joined, opened the call and sits in its room.
         first = Assigned(room, server, dispatch)
-        arrived = await arrive(first, fleet, default_agent=None, zone="America/Montevideo")
+        arrived = await arrive(first, fleet, default_agent=None, zone="America/Montevideo", asking=arriving())
         assert arrived is not None
         opener = await open_call(fleet, arrived.open_with(None, "agent-AJ_first"))
         livekit.rooms.people = {room.name}
@@ -247,3 +251,100 @@ async def test_a_job_sent_to_a_room_whose_call_another_job_opened_leaves_it_and_
     assert page["live"], "nothing sealed it"
     assert DeleteRoomRequest(room=room.name) not in server.rooms.requests
     await opener.aclose()
+
+
+class BusyAtFirst(GatewayClient):
+    """The suite's gateway as a job reaches it on a busy afternoon: the first ask of each of its reads is a `503`."""
+
+    def __init__(self, gateway: GatewayClient) -> None:
+        """The same gateway, on the same key; nothing asked or said of a room yet."""
+        super().__init__(gateway.http)
+        self.asked: list[str] = []
+        self.given_back: list[tuple[str, str]] = []
+
+    @override
+    async def answer(
+        self,
+        method: str,
+        path: str,
+        data: Json = None,
+        *,
+        wait_s: float | None = None,
+        params: Mapping[str, str] | None = None,
+    ) -> httpx.Response:
+        """A read asked for the first time is refused as a full pool refuses it; asked again, it is answered."""
+        if method == "GET":
+            self.asked.append(path)
+            if self.asked.count(path) == 1:
+                raise unavailable(
+                    f"GET {path}: 503 the database is busy: no connection came free within 2 s", answered=503
+                )
+        return await super().answer(method, path, data, wait_s=wait_s, params=params)
+
+    @override
+    async def drop_room(self, room: str, agent_name: str) -> None:
+        """Kept, and said to the gateway as any job says it."""
+        self.given_back.append((room, agent_name))
+        await super().drop_room(room, agent_name)
+
+
+# 2026-11-25, two orgs evaluating at once on the tests' server: the gateway's pool had no connection
+# free for two seconds, a job's read of its agent was answered `503`, the job ended on it, and its
+# simulated caller waited 110 s for nobody. Three calls of twenty. What a job asks before its call is
+# open is asked again.
+@pytest.mark.timeout(60)
+@needs_the_services
+async def test_a_job_whose_gateway_is_busy_as_it_arrives_asks_again_and_answers_its_call(
+    gateway: Gateway, fleet: GatewayClient, tenant: Tenant, agent: str, server: Server, tmp_path: Path
+) -> None:
+    """Its routes, its agent, its stages and its hold are each refused once: the call is opened and greeted anyway."""
+    busy = BusyAtFirst(fleet)
+    async with http_context.open(), holding(gateway, tenant, agent) as app:
+        declared = {"config": {"greeting": {"say": GREETING}}}
+        await app.send(json.dumps({"type": "agent.configure", "agent": agent, "call": None, "data": declared}))
+        await received(app, "agent.configured")
+        room = ConnectedRoom(f"room_{agent}", seat(THE_VISITOR, attributes={SCOPE_ATTRIBUTE: CHAT}))
+        ctx = Assigned(room, server, Dispatch(agent=agent, org=tenant.org, env=Env.sandbox, scope=CHAT))
+        ctx.job.agent_name = THE_WORKER
+        warmed = warmed_for(busy, tmp_path)
+        try:
+            await answer_job(ctx, warmed)
+            job = warmed.job
+            assert job is not None, "the job answered its call"
+            call = job.link.call
+            assert (await received(app, "call.started"))["call"] == call
+            assert (await received(app, "turn.agent"))["data"]["text"] == GREETING
+            hangup = {"type": "call.hangup", "agent": agent, "call": call, "data": {"reason": "done"}}
+            await app.send(json.dumps(hangup))
+            await until(lambda: bool(ctx.shutdowns), within_s=10)
+            await end_job(warmed)
+        finally:
+            await ctx.finish()
+    reads = [f"/v1/agents/{agent}/config", f"/v1/agents/{agent}/provider-keys", f"/v1/agents/{agent}/hold-audio"]
+    assert {path: busy.asked.count(path) for path in ("/v1/routes", *reads)} == dict.fromkeys(("/v1/routes", *reads), 2)
+    assert busy.given_back == [], "a room whose call was opened is not given back"
+
+
+# A job that leaves before its call is open leaves a room the gateway holds for its worker since the
+# job was accepted: said given back, the sweep offers it again while its caller still waits.
+@pytest.mark.timeout(60)
+@needs_the_services
+async def test_a_job_the_gateway_refuses_before_its_call_is_open_gives_its_room_back(
+    fleet: GatewayClient, tenant: Tenant, server: Server, tmp_path: Path
+) -> None:
+    """An agent no org holds is the gateway's refusal: the job ends on it, its room given back first."""
+    busy = BusyAtFirst(fleet)
+    async with http_context.open():
+        room = ConnectedRoom("room_of_nobodys_agent", seat(THE_VISITOR, attributes={SCOPE_ATTRIBUTE: CHAT}))
+        dispatch = Dispatch(agent="an-agent-nobody-holds", org=tenant.org, env=Env.sandbox, scope=CHAT)
+        ctx = Assigned(room, server, dispatch)
+        ctx.job.agent_name = THE_WORKER
+        warmed = warmed_for(busy, tmp_path)
+        try:
+            with pytest.raises(UpstreamError) as refused:
+                await answer_job(ctx, warmed)
+        finally:
+            await ctx.finish()
+    assert refused.value.answered == httpx.codes.NOT_FOUND
+    assert busy.given_back == [(room.name, THE_WORKER)]
+    assert warmed.job is None

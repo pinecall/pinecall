@@ -27,6 +27,7 @@ from runtime.postgres import when_free
 from runtime.providers import service as providers
 from runtime.providers.stage import Running
 from runtime.session import service as session
+from runtime.wire.base import Entry
 from runtime.wire.dispatch import Dispatch
 from runtime.wire.metrics import ModelUsage, TTSModelUsage
 from runtime.wire.room import A_SIMULATED_CALLER
@@ -110,8 +111,8 @@ class SpokenLine:
     # with the silence between the two billed.
     async def hang_up(self) -> None:
         """Hear the last answer out, then say the hang-up in the room."""
-        parts, leg = self._parts, self._on_the_line()
-        await turns.wait_for_answer(parts.logs, parts.store, self._spoken.call, self._lines, since=leg.said_at)
+        leg = self._on_the_line()
+        await turns.wait_for_answer(leg.so_far, self._lines, since=leg.said_at)
         await self._room.local_participant.publish_data(b"{}", reliable=True, topic=session.HANGUP)
         # On a line with a network the hang-up is a packet like the rest, held or lost and sent again: the
         # caller stays on until the agent heard it. Leaving at once, as on a clean line, took the packet
@@ -122,6 +123,10 @@ class SpokenLine:
     def list_said(self) -> Sequence[Said]:
         """What the caller said and when, by the log's clock."""
         return () if self._leg is None else tuple(self._leg.spoke)
+
+    async def read_so_far(self) -> Sequence[Entry]:
+        """The call's log as it stands, read from where the leg's waits last left it."""
+        return await self._on_the_line().so_far.read()
 
     @property
     def env(self) -> Env:

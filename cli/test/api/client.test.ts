@@ -8,6 +8,7 @@ import { GatewayError } from "../../src/errors.js";
 import { answer, GATEWAY, KEY, refuse, server } from "../support/gateway.js";
 
 const gw = new GatewayClient(`${GATEWAY}/`, KEY, "production");
+const BUSY = "the database is busy: no connection came free within 2 s; try again";
 
 describe("a request", () => {
   it("is signed with the key and the env, its query's undefined values left out", async () => {
@@ -31,6 +32,49 @@ describe("a request", () => {
   it("a refusal is a GatewayError with the status and the detail", async () => {
     refuse("get", "/v1/things", 409, "already going");
     await expect(gw.get("/v1/things")).rejects.toEqual(new GatewayError(409, "already going"));
+  });
+
+  // 2026-11-25: a gateway whose database had no connection free answered a read 503, and the command
+  // that followed twenty simulated calls ended on it. The answer says when to come back, and a read is asked again.
+  it("a read a busy gateway refused, saying when to come back, is asked again and answered", async () => {
+    let asked = 0;
+    server.use(
+      http.get(`${GATEWAY}/v1/things`, () => {
+        asked += 1;
+        return asked < 3 ? HttpResponse.json({ detail: BUSY }, { status: 503, headers: { "retry-after": "0" } }) : HttpResponse.json({ ok: true });
+      }),
+    );
+    expect(await gw.get("/v1/things")).toEqual({ ok: true });
+    expect(asked).toBe(3);
+  });
+
+  it("a gateway still busy at the fourth ask is the refusal it always was", async () => {
+    let asked = 0;
+    server.use(
+      http.get(`${GATEWAY}/v1/things`, () => {
+        asked += 1;
+        return HttpResponse.json({ detail: BUSY }, { status: 503, headers: { "retry-after": "0" } });
+      }),
+    );
+    await expect(gw.get("/v1/things")).rejects.toEqual(new GatewayError(503, BUSY));
+    expect(asked).toBe(4);
+  });
+
+  it("a 503 that names no time to come back, and a write refused, are answers at once", async () => {
+    let asked = 0;
+    server.use(
+      http.get(`${GATEWAY}/v1/things`, () => {
+        asked += 1;
+        return HttpResponse.json({ detail: "no key for elevenlabs in this env" }, { status: 503 });
+      }),
+      http.post(`${GATEWAY}/v1/things`, () => {
+        asked += 1;
+        return HttpResponse.json({ detail: BUSY }, { status: 503, headers: { "retry-after": "0" } });
+      }),
+    );
+    await expect(gw.get("/v1/things")).rejects.toMatchObject({ status: 503, detail: "no key for elevenlabs in this env" });
+    await expect(gw.post("/v1/things", { a: 1 })).rejects.toMatchObject({ status: 503, detail: BUSY });
+    expect(asked).toBe(2);
   });
 
   it("a body that is no JSON is the detail as it came", async () => {
