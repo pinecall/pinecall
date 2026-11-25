@@ -14,6 +14,18 @@ from runtime.providers.service.plugins import INFERENCE, INFERENCE_MODULE, PLUGI
 # A status at or past it is the vendor failing, not what was asked of it.
 THE_VENDORS_OWN = 500
 
+# What a vendor answers when the account it was asked on cannot pay: its body's `code` or `type`, or its
+# own sentence. Said with a 429 by OpenAI ("You have no credits remaining", `insufficient_quota`) and
+# xAI (a team's spending limit), with a 400 by Anthropic ("credit balance is too low"). Unlike a rate
+# limit, which the same status says too, retrying it changes nothing until a person pays.
+UNPAID_CODES = frozenset(
+    {"insufficient_quota", "billing_hard_limit_reached", "billing_not_active", "access_terminated", "credit_exhausted"}
+)
+UNPAID_WORDS = re.compile(
+    r"no credits remaining|credit balance is too low|exceeded your current quota|spending.limit|billing.hard.limit",
+    re.IGNORECASE,
+)
+
 # The sentence a use case says of a vendor that did not answer, given the words the silence came with.
 type Silence = Callable[[str], str]
 
@@ -75,6 +87,21 @@ def sentence_of(refused: APIError) -> str:
         if isinstance(said, str) and said.strip():
             return said.strip()
     return refused.message
+
+
+def is_unpaid(refused: APIError) -> bool:
+    """Whether the vendor refused because the account it was asked on cannot pay: no credit, a quota or limit spent."""
+    body = refused.body
+    holders: list[Mapping[str, object]] = []
+    if a_mapping(body):
+        holders.append(body)
+        nested = body.get("error")
+        if a_mapping(nested):
+            holders.append(nested)
+    for holder in holders:
+        if any(str(holder.get(key) or "") in UNPAID_CODES for key in ("code", "type")):
+            return True
+    return UNPAID_WORDS.search(f"{sentence_of(refused)} {refused.message}") is not None
 
 
 def vendor_named_in(text: str) -> str:

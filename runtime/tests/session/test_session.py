@@ -235,6 +235,46 @@ async def test_a_voice_that_does_not_exist_ends_the_call_after_one_error_and_no_
     assert (ended.data["reason"], ended.data["ended_by"]) == ("error", "platform")
 
 
+# 2026-11-25: OpenAI answered "You have no credits remaining" with a 429, the status of a rate limit, and
+# five simulated calls went on with a model that answered nothing until their ten minutes ran out.
+@needs_the_database
+async def test_an_account_with_no_credit_ends_the_call_at_its_first_refusal_though_its_status_is_a_rate_limits(
+    box: Box, store: Store, call: str
+) -> None:
+    session = a_session(box, NOBODY)
+    await session.start()
+    body = {
+        "error": {
+            "message": "You have no credits remaining.",
+            "type": "insufficient_quota",
+            "code": "insufficient_quota",
+        }
+    }
+    refused = APIStatusError("You have no credits remaining.", status_code=429, body=body)
+    session.live.emit("error", ComponentFailed(error=_component_error(refused), source=model_of(session)))
+    await session.close()
+    entries = await store.whole_of(call)
+    assert [entry.data["code"] for entry in entries if entry.type == "error"] == ["component_dead_end"]
+    ended = next(entry for entry in entries if entry.type == "call.ended")
+    assert (ended.data["reason"], ended.data["ended_by"]) == ("error", "platform")
+
+
+@needs_the_database
+async def test_a_rate_limit_is_retried_and_ends_no_call(box: Box, store: Store, call: str) -> None:
+    session = a_session(box, NOBODY)
+    await session.start()
+    refused = APIStatusError(
+        "Rate limit reached for requests", status_code=429, body={"error": {"code": "rate_limit_exceeded"}}
+    )
+    session.live.emit("error", ComponentFailed(error=_component_error(refused), source=model_of(session)))
+    await settled()
+    await session.end("caller_hung_up", "caller")
+    entries = await store.whole_of(call)
+    assert [entry.data["code"] for entry in entries if entry.type == "error"] == ["component_failed"]
+    ended = next(entry for entry in entries if entry.type == "call.ended")
+    assert ended.data["reason"] == "caller_hung_up"
+
+
 @needs_the_database
 async def test_a_close_asked_for_while_one_runs_waits_for_it(box: Box, store: Store, call: str) -> None:
     """With no host, hanging up begins the close as a task: whoever closes after it returns once the call is over."""

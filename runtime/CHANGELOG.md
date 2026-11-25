@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **A vendor that will not serve the account ends the call at its first refusal.** OpenAI answers "You have no
+  credits remaining" with a 429, the status of a rate limit, which livekit retries: on 2026-11-25 five simulated
+  calls went on with a model that answered nothing until their ten minutes ran out. A refusal whose body says the
+  account cannot pay (`insufficient_quota`, a billing limit, "credit balance is too low", a spending limit) now ends
+  the call as a bad key does (`component_dead_end`, ended by the platform), on every call; a rate limit is retried
+  as before (`providers.is_unpaid`).
 - **A simulated caller is played by a callers process, and a gateway only places it.** Every simulated caller
   of a spoken call was a task of the gateway that took its request. Nineteen at once on that one loop were late
   with their frames: the room heard 20 to 100 ms of silence inside the caller's words, 36 to 55 times a minute, in

@@ -23,7 +23,14 @@ from runtime.providers.service.plugins import (
 from runtime.providers.service.prices import completion_usage, cost_of
 from runtime.providers.service.questions import Answerer, Line, Patience, ask, open_answerer
 from runtime.providers.service.readiness import Runnable, runnable_on
-from runtime.providers.service.refusals import name_stage, say_failure, sentence_of, stage_named_in, vendor_named_in
+from runtime.providers.service.refusals import (
+    is_unpaid,
+    name_stage,
+    say_failure,
+    sentence_of,
+    stage_named_in,
+    vendor_named_in,
+)
 from runtime.providers.service.signatures import (
     default_voice,
     refuse_a_silence_out_of_band,
@@ -72,6 +79,7 @@ __all__ = [
     "get_catalog",
     "hears_and_speaks",
     "is_installed",
+    "is_unpaid",
     "judge_ceiling",
     "keys_of",
     "list_by_vendor",

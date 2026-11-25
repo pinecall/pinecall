@@ -210,7 +210,10 @@ class Listener:
         return answer
 
     # livekit closes only after three unrecoverable errors. A refusal that can never succeed (a
-    # bad key, a voice that does not exist) ends the call on the first.
+    # bad key, a voice that does not exist, an account with no credit) ends the call on the first.
+    # Until 2026-11-25 an account out of credit, which OpenAI answers with a 429 as it answers a rate
+    # limit, was retried: five simulated calls went on with a model that answered nothing, for ten
+    # minutes each, to the call's ceiling.
     def _on_failure(self, event: ComponentFailed) -> None:
         if self.ended_for_good:
             return
@@ -243,4 +246,4 @@ class Listener:
 
 def fails_for_good(error: APIStatusError) -> bool:
     """Whether a vendor's HTTP error will fail the same way every time it is retried."""
-    return error.status_code == POLICY_VIOLATION or error.status_code in FOREVER
+    return error.status_code == POLICY_VIOLATION or error.status_code in FOREVER or providers.is_unpaid(error)

@@ -166,7 +166,7 @@ is an answer and is never retried.
 | the heartbeat | every 5 s, whatever the last one answered | the worker keeps its calls while the gateway is away | `jobs/` |
 | a tool call whose app's socket went | sent again to the socket that takes the call over | the model is still waiting on that call id | `live/service/handoff.py`, `session/tools.py` |
 | an embedding | two more tries on a transport error, `408`, `409`, `429` or `5xx`, 0.5 s doubling to 8 s or the server's `retry-after` up to 60 s; a batch too big is split in halves | an embedding is the same vector however often it is asked | `knowledge/service/embedder.py` |
-| a vendor's stream (ears, model, voice) | livekit's own: 3 retries 2 s apart; the session closes after 3 unrecoverable errors of a stage | a refusal that never succeeds ends the call on the first | `session/session.py`, `session/listener.py` |
+| a vendor's stream (ears, model, voice) | livekit's own: 3 retries 2 s apart; the session closes after 3 unrecoverable errors of a stage | a refusal that never succeeds ends the call on the first: a 4xx of the request, a policy close, or an account the vendor will not serve (no credit, a quota spent, which OpenAI says with the 429 of a rate limit) | `session/session.py`, `session/listener.py` |
 | a reader's stream (SSE) | the client reconnects after 1 s and resumes from `Last-Event-ID` | stored before published: nothing is lost between two reads | `kit/sse.py`, `calls/endpoints/logs.py` |
 | Meta's webhook | Meta delivers again for 7 days | each message id is claimed once per org before it is read | `live/service/whatsapp.py`, `whatsapp/service.py` |
 

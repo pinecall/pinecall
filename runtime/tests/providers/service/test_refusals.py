@@ -1,8 +1,10 @@
 """A vendor's refusal read in its own words, never the SDK's repr of its body."""
 
+import pytest
 from livekit.agents import APIConnectionError, APIStatusError, llm, stt, tts
 
 from runtime.enums import Stage
+from runtime.providers.service import refusals
 from runtime.providers.service.refusals import say_failure, sentence_of, stage_named_in, vendor_named_in
 
 AN_SDKS_MESSAGE = "Error code: 401 - {'message': 'Wrong API Key', 'type': 'invalid_request_error'}"
@@ -58,3 +60,24 @@ def test_a_component_that_names_no_plugin_and_an_error_that_is_no_vendors_are_st
     broke = llm.LLMError(timestamp=1.0, label="acme", error=RuntimeError("the stream ended early"), recoverable=False)
     assert say_failure(broke).split("\n")[0] == "the vendor failed this call: the stream ended early"
     assert stage_named_in(str(broke)) is None
+
+
+@pytest.mark.parametrize(
+    ("status", "body", "message"),
+    [
+        (429, {"error": {"message": "You have no credits remaining.", "code": "insufficient_quota"}}, "quota"),
+        (
+            400,
+            {"type": "error", "error": {"type": "invalid_request_error", "message": "Your credit balance is too low"}},
+            "x",
+        ),
+        (403, None, "personal-team-blocked:spending-limit reached for this team"),
+    ],
+)
+def test_a_vendor_that_will_not_serve_an_unpaid_account_is_told_apart(status: int, body: object, message: str) -> None:
+    assert refusals.is_unpaid(APIStatusError(message, status_code=status, body=body))
+
+
+def test_a_rate_limit_is_not_an_unpaid_account() -> None:
+    limited = APIStatusError("Rate limit reached", status_code=429, body={"error": {"code": "rate_limit_exceeded"}})
+    assert not refusals.is_unpaid(limited)
