@@ -1,26 +1,51 @@
-"""The offers: a room of no env's fleet is let go, a room a worker took is not rung again, a seat is taken once."""
+"""The offers: a room of no env's fleet is let go, a room a worker took is not rung again, a seat is taken in turn."""
 
 import time
+from collections.abc import AsyncIterator
 from uuid import uuid4
 
 import pytest
 from livekit import api
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from runtime.enums import Env
-from runtime.fleet.models import Offer
-from runtime.fleet.repository import OfferRepository
+from runtime.fleet.models import Offer, Turn
+from runtime.fleet.repository import OfferRepository, TurnRepository
 from runtime.fleet.schemas import WorkerStatus
 from runtime.fleet.service import slots
 from runtime.fleet.service.dispatches import agent_name, overflow_name
 from runtime.fleet.service.envs import PRODUCTION, SANDBOX
-from runtime.fleet.service.offers import OFFERED_AGAIN_AFTER_S, Offering
+from runtime.fleet.service.offers import (
+    A_SEAT_IS_HELD_AT_MOST_S,
+    A_WAITER_ASKS_WITHIN_S,
+    FORGOTTEN_AFTER_S,
+    OFFERED_AGAIN_AFTER_S,
+    Offering,
+    list_next,
+)
 from runtime.fleet.service.roster import Roster
 from runtime.wire.dispatch import Dispatch
 from tests.conftest import needs_the_database
 from tests.fakes.livekit import per_world
 
 pytestmark = needs_the_database
+
+THE_SUITES_FLEETS = text("select pg_advisory_lock(hashtext('tests:the fleets seats'))")
+GIVEN_BACK = text("select pg_advisory_unlock(hashtext('tests:the fleets seats'))")
+
+
+# A fleet's seats, its rooms due again and its line are one per database, and every worker of the
+# suite runs on the one database: a caller another test left waiting for a moment would be seated
+# before this test's own. The tests of this file take the fleets one at a time.
+@pytest.fixture(autouse=True)
+async def the_fleets_to_itself(engine: AsyncEngine) -> AsyncIterator[None]:
+    async with engine.connect() as held:
+        await held.execute(THE_SUITES_FLEETS)
+        try:
+            yield
+        finally:
+            await held.execute(GIVEN_BACK)
 
 
 # On 2026-10-21 a simulated call's room was kept under LiveKit's unnamed dispatch once its agent
@@ -147,6 +172,7 @@ async def test_two_callers_that_ask_for_the_one_seat_together_are_not_both_seate
         await offering.ring(seat, Dispatch(agent="recepcion"))
     finally:
         await offering.forget(first)
+        await offering.forget(second)
         for server in servers.values():
             await server.aclose()
 
@@ -170,7 +196,7 @@ async def test_a_caller_that_can_wait_leaves_a_quarter_of_the_fleets_seats_to_pe
         assert await offering.has_a_slot(SANDBOX), "two seats are free, and they are a person's"
         assert await offering.offer(a_person, SANDBOX, Dispatch(agent="recepcion")) == agent_name(SANDBOX, only)
     finally:
-        for room in (*seated, a_person):
+        for room in (*seated, one_more, a_person):
             await offering.forget(room)
         for server in servers.values():
             await server.aclose()
@@ -367,3 +393,148 @@ async def test_a_caller_that_waits_lets_a_room_that_lost_its_seat_go_first(
         await offering.forget(behind)
         for server in servers.values():
             await server.aclose()
+
+
+# ── the line for a seat, shared between the orgs in it ──
+
+
+def a_fleet_of(roster: Roster, seats: int, *, taken: int = 0) -> str:
+    """One worker of the sandbox's fleet with so many seats, some of them holding calls; its name."""
+    only = f"w_{uuid4().hex}"
+    roster.workers[(SANDBOX, only)] = a_worker(only, active=taken, max_jobs=seats, fleet=SANDBOX)
+    return only
+
+
+def of(org: str) -> Dispatch:
+    """A waiting caller's dispatch, placed by the org."""
+    return Dispatch(agent="recepcion", org=org, persona="in-a-hurry")
+
+
+async def _turn(sessions: async_sessionmaker[AsyncSession], room: str) -> Turn | None:
+    async with sessions.begin() as session:
+        return await session.get(Turn, room)
+
+
+# 2026-11-25: a comparison of two hundred calls held the sandbox's seats for over an hour, and a seat
+# that freed went to whichever caller asked first, which was the comparison's own next one. Two
+# gateways are two dispatchers on the one table: the answer is the rows', whoever asks.
+async def test_a_seat_that_frees_goes_to_the_org_that_holds_the_fewest_on_whichever_gateway_it_asks(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    servers, roster = per_world(), Roster()
+    one_gateway = Offering(sessions, servers=servers, roster=roster)
+    another = Offering(sessions, servers=servers, roster=roster)
+    only = a_fleet_of(roster, seats=3)
+    acme, bolt = f"acme_{uuid4().hex}", f"bolt_{uuid4().hex}"
+    held = [f"room_{uuid4().hex}" for _ in range(3)]
+    next_of_acme, first_of_bolt, second_of_bolt = (f"room_{uuid4().hex}" for _ in range(3))
+    try:
+        for room in held:
+            assert await one_gateway.take_seat(room, SANDBOX, of(acme)) is not None, "alone, an org takes every seat"
+        assert await one_gateway.take_seat(next_of_acme, SANDBOX, of(acme)) is None
+        assert await another.take_seat(first_of_bolt, SANDBOX, of(bolt)) is None
+        assert await another.take_seat(second_of_bolt, SANDBOX, of(bolt)) is None
+        # One of acme's calls ends, and its seat is given back.
+        await one_gateway.forget(held[0])
+        assert await one_gateway.take_seat(next_of_acme, SANDBOX, of(acme)) is None, "acme holds two and bolt none"
+        assert await one_gateway.take_seat(second_of_bolt, SANDBOX, of(bolt)) is None, "bolt's first caller is first"
+        seat = await another.take_seat(first_of_bolt, SANDBOX, of(bolt))
+        assert seat is not None and seat.worker == agent_name(SANDBOX, only)
+        turn = await _turn(sessions, first_of_bolt)
+        assert turn is not None and turn.seated_at is not None and turn.org == bolt
+        # Nobody's call was ended to make room: acme's two are still seated.
+        assert [await _turn(sessions, room) is not None for room in held] == [False, True, True]
+    finally:
+        for room in (*held, next_of_acme, first_of_bolt, second_of_bolt):
+            await one_gateway.forget(room)
+        for server in servers.values():
+            await server.aclose()
+
+
+async def test_several_seats_free_at_once_are_taken_by_the_first_of_the_line_in_any_order(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    servers, roster = per_world(), Roster()
+    offering = Offering(sessions, servers=servers, roster=roster)
+    only = a_fleet_of(roster, seats=3, taken=3)
+    acme, bolt = f"acme_{uuid4().hex}", f"bolt_{uuid4().hex}"
+    rooms = {name: f"room_{uuid4().hex}" for name in ("acme-1", "acme-2", "acme-3", "bolt-1")}
+    try:
+        for name, room in rooms.items():
+            assert await offering.take_seat(room, SANDBOX, of(acme if name.startswith("acme") else bolt)) is None
+        # Two of the worker's calls end together: one seat is acme's first caller's, the other bolt's.
+        roster.workers[(SANDBOX, only)] = a_worker(only, active=1, max_jobs=3, fleet=SANDBOX)
+        assert await offering.take_seat(rooms["acme-2"], SANDBOX, of(acme)) is None
+        assert await offering.take_seat(rooms["bolt-1"], SANDBOX, of(bolt)) is not None
+        assert await offering.take_seat(rooms["acme-3"], SANDBOX, of(acme)) is None
+        assert await offering.take_seat(rooms["acme-1"], SANDBOX, of(acme)) is not None
+        assert await offering.take_seat(rooms["acme-2"], SANDBOX, of(acme)) is None, "both seats are taken"
+    finally:
+        for room in rooms.values():
+            await offering.forget(room)
+        for server in servers.values():
+            await server.aclose()
+
+
+# A caller whose wait ended (its simulation stopped, its gateway gone) asks no more. The one behind it
+# is not held back by it: at once when it says so, and within seconds when it only went silent.
+async def test_a_caller_that_left_the_line_holds_nobody_back(sessions: async_sessionmaker[AsyncSession]) -> None:
+    fleet, now = f"fleet_{uuid4().hex}", time.time()
+    gave_up, went_silent, waits = (f"room_{uuid4().hex}" for _ in range(3))
+    async with sessions.begin() as session:
+        turns = TurnRepository(session)
+        await turns.ask(gave_up, fleet, "acme", now - 30)
+        await turns.ask(went_silent, fleet, "acme", now - 20)
+        await turns.ask(went_silent, fleet, "acme", now - A_WAITER_ASKS_WITHIN_S - 1)
+        await turns.ask(waits, fleet, "acme", now - 10)
+        for room in (gave_up, waits):
+            await turns.ask(room, fleet, "acme", now)
+        assert await list_next(turns, fleet, 1, now) == [gave_up]
+        await turns.forget(gave_up)
+        assert await list_next(turns, fleet, 1, now) == [waits], "the silent one is passed over"
+        # It asks again: it was only slow, and its place is the one its first ask gave it.
+        await turns.ask(went_silent, fleet, "acme", now)
+        assert await list_next(turns, fleet, 2, now) == [went_silent, waits]
+        await turns.forget_gone(now + 1, now - A_SEAT_IS_HELD_AT_MOST_S)
+        assert await list_next(turns, fleet, 2, now) == []
+
+
+# A seat nobody gave back (its gateway gone, its room's end unheard) is its org's for as long as a
+# call that waited for one may last, and no longer: the org is not kept behind the others by it for good.
+async def test_a_seat_nobody_gave_back_stops_counting_as_its_orgs(sessions: async_sessionmaker[AsyncSession]) -> None:
+    fleet, now = f"fleet_{uuid4().hex}", time.time()
+    lost, of_acme, of_bolt = (f"room_{uuid4().hex}" for _ in range(3))
+    async with sessions.begin() as session:
+        turns = TurnRepository(session)
+        await turns.ask(lost, fleet, "acme", now - 60)
+        await turns.seat(lost, now - 60)
+        await turns.ask(of_acme, fleet, "acme", now - 5)
+        await turns.ask(of_bolt, fleet, "bolt", now)
+        assert await turns.count_held(fleet, now - A_SEAT_IS_HELD_AT_MOST_S) == {"acme": 1}
+        assert await list_next(turns, fleet, 1, now) == [of_bolt], "acme holds one and bolt none"
+        later = now + A_SEAT_IS_HELD_AT_MOST_S
+        for room in (of_acme, of_bolt):
+            await turns.ask(room, fleet, "acme" if room == of_acme else "bolt", later)
+        assert await list_next(turns, fleet, 1, later) == [of_acme], "the seat is past any call: acme asked first"
+        await turns.forget_gone(later - FORGOTTEN_AFTER_S, later - A_SEAT_IS_HELD_AT_MOST_S)
+        assert await session.get(Turn, lost) is None
+        for room in (of_acme, of_bolt):
+            await turns.forget(room)
+
+
+async def test_a_pass_of_the_sweep_lets_go_the_callers_that_stopped_asking_and_keeps_the_ones_seated(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    fleet, now = f"fleet_{uuid4().hex}", time.time()
+    stopped, seated = f"room_{uuid4().hex}", f"room_{uuid4().hex}"
+    async with sessions.begin() as session:
+        turns = TurnRepository(session)
+        await turns.ask(stopped, fleet, "acme", now - FORGOTTEN_AFTER_S - 5)
+        await turns.ask(seated, fleet, "acme", now - FORGOTTEN_AFTER_S - 5)
+        await turns.seat(seated, now - FORGOTTEN_AFTER_S - 5)
+    offering = Offering(sessions, servers={}, roster=Roster())
+    await offering.sweep()
+    assert await _turn(sessions, stopped) is None
+    assert await _turn(sessions, seated) is not None, "a call lasts longer than a wait is forgotten in"
+    await offering.forget(seated)
+    assert await _turn(sessions, seated) is None

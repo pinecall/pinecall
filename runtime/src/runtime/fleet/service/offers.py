@@ -9,8 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from runtime.enums import Env
 from runtime.fleet.models import Offer
-from runtime.fleet.repository import OfferRepository
-from runtime.fleet.service import dispatches, envs, slots
+from runtime.fleet.repository import OfferRepository, TurnRepository
+from runtime.fleet.service import dispatches, envs, shares, slots
 from runtime.fleet.service.roster import Roster
 from runtime.kit.loops import survive
 from runtime.livekit import Servers
@@ -49,6 +49,15 @@ FORGOTTEN_AFTER_S = 120.0
 A_ROOM_IS_KEPT_S = FORGOTTEN_AFTER_S
 
 SWEPT_AT_MOST = 100
+
+# A caller that waits asks for its seat every couple of seconds, and each ask says it still waits: one
+# unheard this long left the line (its gateway stopped, its wait ended) and holds nobody back. It is
+# in its place again the moment it asks.
+A_WAITER_ASKS_WITHIN_S = 10.0
+# A seat is given back as its call ends: the caller's line closing, its room finishing. One nobody gave
+# back (its gateway gone and the room's end unheard) stops counting as its org's once no call that
+# waited for a seat can still be on it: a simulated caller's token lasts a quarter of an hour.
+A_SEAT_IS_HELD_AT_MOST_S = 20 * 60.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -145,8 +154,12 @@ class Offering:
     # ones past it were answered by the overflow's sentence and counted as calls of their comparison.
     # The seat is taken before the room is rung (`ring`), so a caller holds nothing open while it
     # waits: twenty that opened their voice first and then waited took every file their gateway had.
+    # A caller that is told to wait stands in the fleet's line from that ask (`seat_turns`), and a seat
+    # that frees is its own only when the line says so (`shares.list_next`): the org that holds the
+    # fewest goes first. The line and what each org holds are rows, read under the fleet's turn, so the
+    # answer is the same on every gateway.
     async def take_seat(self, room: str, fleet: str, dispatch: Dispatch) -> Seat | None:
-        """Take a seat for the room on a worker that has a slot now; None, and nothing kept, when none has."""
+        """Take a seat for the room on a worker that has a slot now; None, and no room kept, when it is not its turn."""
         now = time.time()
         workers = self.roster.workers_of(fleet, now)
         async with self.sessions.begin() as session:
@@ -156,20 +169,24 @@ class Offering:
             await self.offer(room, fleet, dispatch)
             return Seat(room)
         async with self.sessions.begin() as session:
-            offers = OfferRepository(session)
+            offers, turns = OfferRepository(session), TurnRepository(session)
             await offers.take_turns(fleet)
+            asked = time.time()
+            await turns.ask(room, fleet, dispatch.org or "", asked)
             # A room that was rung and that nobody opened is offered again by the sweep, and it was here
             # first: a seat that frees is its own, a caller that only waits lets it go.
             if await offers.count_due(fleet, now - OFFERED_AGAIN_AFTER_S) > 0:
                 return None
-            flying = await count_in_flight(session, time.time(), workers)
+            flying = await count_in_flight(session, asked, workers)
             gone = self.roster.list_gone(fleet, now)
             # The seats kept for people are never this caller's: it waits, and a person does not.
-            if slots.count_free(workers, flying, now, gone) <= slots.count_kept_for_people(workers, now):
+            seats = slots.count_free(workers, flying, now, gone) - slots.count_kept_for_people(workers, now)
+            if seats <= 0 or room not in await list_next(turns, fleet, seats, asked):
                 return None
             chosen = slots.choose_worker(workers, flying, now, not_these=gone)
             if chosen is None or chosen.agent_name is None:
                 return None
+            await turns.seat(room, asked)
             kept = await offers.open(room, fleet, dispatch.dump(), now)
             if kept is None:
                 return Seat(room)
@@ -183,10 +200,13 @@ class Offering:
         await dispatches.dispatch_into(self.servers[seat.env], seat.room, seat.worker, dispatch)
         logger.info("room %s: seated on %s, which had a slot", seat.room, seat.worker)
 
+    # A caller that waited for its seat gives it back here, and its place in the line with it: its
+    # line closing, its room finishing (LiveKit says so to any gateway) or its wait given up.
     async def forget(self, room: str) -> None:
-        """The room is done with: the overflow sent, or the room gone."""
+        """The room is done with: the overflow sent, the room gone, or its caller's wait over."""
         async with self.sessions.begin() as session:
             await OfferRepository(session).forget(room)
+            await TurnRepository(session).forget(room)
 
     # Said three times of a call, and the first stands: by the worker as it accepts the room's job
     # (`POST /v1/fleet/rooms/{room}/taken`), by LiveKit as its agent joins, by the worker as it opens the call.
@@ -209,6 +229,7 @@ class Offering:
         async with self.sessions.begin() as session:
             offers = OfferRepository(session)
             await offers.forget_older_than(now - FORGOTTEN_AFTER_S)
+            await TurnRepository(session).forget_gone(now - FORGOTTEN_AFTER_S, now - A_SEAT_IS_HELD_AT_MOST_S)
             due = list(await offers.list_due(now - OFFERED_AGAIN_AFTER_S, SWEPT_AT_MOST))
         offered: list[str] = []
         # Oldest first: a room that cannot be offered is said and left, or no room behind it ever would be.
@@ -257,6 +278,16 @@ async def count_in_flight(session: AsyncSession, now: float, workers: Iterable[W
     """Each worker's slots its offers take now: the rooms it has not opened, and the ones opened since it last beat."""
     offered = await OfferRepository(session).list_in_flight(now - OFFERED_AGAIN_AFTER_S)
     return slots.count_in_flight(offered, workers)
+
+
+async def list_next(turns: TurnRepository, fleet: str, seats: int, now: float) -> list[str]:
+    """The rooms the fleet's next `seats` seats go to: the line as it stands, shared between the orgs in it."""
+    waiting = [
+        shares.Waiting(turn.room, turn.org, turn.asked_at)
+        for turn in await turns.list_waiting(fleet, now - A_WAITER_ASKS_WITHIN_S)
+    ]
+    held = await turns.count_held(fleet, now - A_SEAT_IS_HELD_AT_MOST_S)
+    return shares.list_next(waiting, held, seats)
 
 
 async def examine(session: AsyncSession, now: float) -> str | None:

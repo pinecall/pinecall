@@ -144,19 +144,20 @@ class SpokenLine:
     # A simulation waits for a seat and takes it before it opens anything: its voice, its room's sound
     # and its place in the room are held only once a worker is to answer, so a queue of callers holds
     # nothing open. A golden said out loud takes none: its room is offered as a caller's is, and a full
-    # fleet answers it with the overflow's sentence. The seat is given back if the line breaks before
-    # its room is rung, or the sweep would ring a room nobody is in.
+    # fleet answers it with the overflow's sentence. Its place in the fleet's line and its seat are given
+    # back whatever ends the line: the wait given up, so no caller behind it waits for one that left;
+    # the line breaking before its room is rung, or the sweep would ring a room nobody is in; the
+    # call's end, when the seat stops counting as its org's.
     async def _take_a_seat(self) -> fleet.Seat | None:
         if not self._waits_for_slot:
             return None
         parts, call = self._parts, self._spoken.call
         async with parts.sessions.begin() as session_:
             the_fleet = await fleet.fleet_of_env(session_, self.env)
-        seat = await take_fleet_seat(
+        self._stack.push_async_callback(parts.offering.forget, call)
+        return await take_fleet_seat(
             parts.sessions, parts.offering, parts.roster, parts.logs, self.env, the_fleet, call, self._dispatch
         )
-        self._stack.push_async_callback(parts.offering.forget, call)
-        return seat
 
     async def _ring(self, seat: fleet.Seat | None) -> None:
         parts, call = self._parts, self._spoken.call

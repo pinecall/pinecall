@@ -18,7 +18,8 @@ from runtime.wire.events import FleetFull
 # a sandbox of two slots were refused eight times before the node came (2026-11-04). On a fleet that
 # does not grow the wait is a queue: sixty calls placed on eight seats (2026-11-24) had the last of them
 # wait past three minutes, which was the whole wait then, and those never started. A call waits as long
-# as a comparison goes on placing its own.
+# as a comparison goes on placing its own. The queue is the fleet's, a line shared between the orgs in
+# it (`fleet.service.shares`): a caller here only asks, and each ask says it still waits.
 WAITED_S = 45 * 60.0
 ASKED_EVERY_S = 2.0
 

@@ -1,11 +1,11 @@
-"""The offers table: every room with a caller and no worker yet, as the gateways share it."""
+"""The offers and the turns: every room with a caller and no worker yet, and every caller waiting for a seat."""
 
 from collections.abc import Sequence
 
 from sqlalchemy import and_, delete, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 
-from runtime.fleet.models import Offer
+from runtime.fleet.models import Offer, Turn
 from runtime.kit.repository import Repository
 
 
@@ -109,3 +109,45 @@ class OfferRepository(Repository[Offer]):
     async def count_older_than(self, moment: float) -> int:
         """How many rooms were first seen before the moment and are still kept."""
         return await self.count(self.statement().where(Offer.seen_at < moment, Offer.opened_at.is_(None)))
+
+
+class TurnRepository(Repository[Turn]):
+    """The callers that wait for a seat and the ones that took theirs; read and written under the fleet's turn."""
+
+    model = Turn
+
+    # The first ask stands as the caller's place in the line; every ask after it says it still waits.
+    async def ask(self, room: str, fleet: str, org: str, now: float) -> None:
+        """Put the room's caller in the fleet's line, or say it still waits there."""
+        asked = insert(Turn).values(room=room, fleet=fleet, org=org, asked_at=now, heard_at=now)
+        await self.session.execute(asked.on_conflict_do_update(index_elements=[Turn.room], set_={"heard_at": now}))
+
+    async def list_waiting(self, fleet: str, heard_since: float) -> Sequence[Turn]:
+        """The fleet's callers with no seat yet that asked since `heard_since`, the longest wait first."""
+        statement = (
+            self.statement()
+            .where(Turn.fleet == fleet, Turn.seated_at.is_(None), Turn.heard_at >= heard_since)
+            .order_by(Turn.asked_at, Turn.room)
+        )
+        return await self.all(statement)
+
+    async def count_held(self, fleet: str, seated_since: float) -> dict[str, int]:
+        """Each org's callers that took a seat of the fleet since `seated_since` and still hold it."""
+        statement = (
+            select(Turn.org, func.count()).where(Turn.fleet == fleet, Turn.seated_at >= seated_since).group_by(Turn.org)
+        )
+        rows = (await self.session.execute(statement)).all()
+        return {str(org): int(held) for org, held in rows}
+
+    async def seat(self, room: str, now: float) -> None:
+        """The room's caller took its seat: it left the line and counts as one its org holds."""
+        await self.session.execute(update(Turn).where(Turn.room == room).values(seated_at=now, heard_at=now))
+
+    async def forget(self, room: str) -> None:
+        """The room's caller is done with: its call ended, or it gave its wait up."""
+        await self.session.execute(delete(Turn).where(Turn.room == room))
+
+    async def forget_gone(self, unheard_since: float, seated_before: float) -> None:
+        """Let go the callers that stopped asking before `unheard_since` and the seats taken before `seated_before`."""
+        gone = or_(and_(Turn.seated_at.is_(None), Turn.heard_at < unheard_since), Turn.seated_at < seated_before)
+        await self.session.execute(delete(Turn).where(gone))

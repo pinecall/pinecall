@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **The seats simulations wait for are shared between orgs.** A simulated caller that found no seat asked again
+  every two seconds, and the seat that freed went to whichever asked first: one org's comparison held every seat a
+  waiting caller may take, and another org's call waited behind all of its calls, up to forty-five minutes. A
+  caller told to wait now stands in its fleet's line (the table `seat_turns`, migration 000035), and a freed seat
+  goes to the org that holds the fewest seats of the fleet, then to the caller that has waited longest: two orgs
+  evaluating at once come to half each, one that arrives late is given the next seats that free, an org alone
+  still takes them all, and no call on the line is ended to make room. The line is rows, so both gateways answer
+  the same. A caller that gives its wait up leaves the line at once.
 - **A room a worker accepted is not rung again.** A room was its worker's once its agent joined it, which a job's
   process does after it started; a room nobody had joined 12 s after its offer was read as a job LiveKit gave to
   nobody and offered again. On a worker starting many jobs at once a process takes longer than that: the room got

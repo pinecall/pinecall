@@ -281,6 +281,19 @@ A person does not wait for a seat and a simulated caller does, so it is the one 
 free: it takes a seat only while a quarter of the fleet's seats would still be free after it (two of
 eight, one of four; a fleet under four seats, or one whose workers count none, keeps none), and
 simulations never hold more than the other three quarters while a person's call finds a seat.
+**The seats a waiting caller may take are shared between the orgs waiting for them.** A caller told to
+wait stands in its fleet's line (the table `seat_turns`: its room, its org, when it first asked, when
+it took its seat), and a seat that frees goes to the org that holds the fewest seats of that fleet at
+that moment; among orgs that hold the same, and among one org's own callers, to the caller that has
+waited longest. An org alone in the line takes every seat there is, since nothing is held back for one
+that is not asking. Two orgs that evaluate at once come to half each and three to a third; an org that
+arrives while another holds everything is given the next seats that free, and no call on the line is
+ended to make room. The line is rows, read under the fleet's turn (a Postgres advisory lock), so the
+answer is the same on every gateway. A caller says it still waits each time it asks, every two seconds:
+one unheard for ten is passed over, and has its place again when it asks. Its seat is given back as its
+line closes or its room finishes; one nobody gave back stops counting as its org's after twenty
+minutes. Until 2026-11-25 a freed seat went to whichever caller asked first, and one org's comparison
+of sixty calls kept every other org's simulation waiting behind all of its own.
 LiveKit hears a worker's load every 2.5 s and the gateway its calls every 5 s, so a seat the heartbeat
 says free may still be full to LiveKit, which then gives the room's job to nobody: such a room is offered
 again, to another worker first and to the same one when no other has a seat. A simulated caller's room is
@@ -490,7 +503,7 @@ chart's values, and their floor `min`: a scaled worker kept warm whatever the ca
 finds its 32 seats at once instead of waiting the minute or two its node takes (the sandbox's is
 1 since 2026-11-04, for ten simulations placed together; [Keeping workers warm](#keeping-workers-warm)
 changes it in one line). A spoken simulation with no seat waits
-up to three minutes for one, saying `fleet.full` on the agent's log; a real call goes to the
+for one in its fleet's line, up to forty-five minutes, saying `fleet.full` on the agent's log; a real call goes to the
 overflow, and a golden run stops.
 
 Measured on staging on 2026-10-03, with the lab (`infra/lab/`: SIP callers with real audio from a

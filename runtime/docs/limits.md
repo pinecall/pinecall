@@ -67,7 +67,12 @@ in both environments.
   placed until its caller hangs up; the console's Simulations starts what it can and says so. A
   comparison is the one thing that waits instead: its calls past the most at once are placed by the
   gateway as the ones before them end ([protocol/personas.md](protocol/personas.md)). A
-  simulated call the worker opens is a call like any other to `concurrent_calls`.
+  simulated call the worker opens is a call like any other to `concurrent_calls`. **The most at once
+  is a ceiling, and the fleet's seats are shared**: a spoken simulation that finds no seat waits in
+  its fleet's line, and a seat that frees goes to the org that holds the fewest of them, then to the
+  caller that has waited longest, so an org that evaluates while another does gets its half of the
+  seats and not a place behind the other's calls ([scaling.md](scaling.md), "The seats a waiting caller
+  may take are shared").
 
 **How an org's simulations are shaped** is two numbers beside its quotas, per environment, that are
 not a month's count: `simulations_at_once`, the simulated calls it may have on the line at once, and
