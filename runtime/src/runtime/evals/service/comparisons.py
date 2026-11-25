@@ -22,6 +22,7 @@ from runtime.evals.tasks import TooManyAtOnce
 from runtime.exceptions import NotFound, PinecallError, ValidationError
 from runtime.kit.crypto import random_id
 from runtime.kit.text import JsonObject
+from runtime.postgres import DatabaseError, is_pool_timeout, when_free
 from runtime.wire.base import Entry
 from runtime.wire.parts import ScoreVerdict
 from runtime.wire.scores import CallScore
@@ -171,10 +172,18 @@ async def start_comparison(
         except PinecallError as why:
             plan.refused.append(Refused(pair.persona, pair.against, str(why)))
             continue
+        except DatabaseError as full:
+            # No connection for it now: it waits its turn with the ones behind it, and the placing that
+            # follows the answer asks the database again. Answered "busy" here, the request would leave
+            # the calls it had placed with no plan to count them in.
+            if not is_pool_timeout(full):
+                raise
+            waiting.append(pair)
+            continue
         placed.append(PlacedCall(pair.persona, pair.against, call))
     plan.waiting = len(waiting)
     plan.heard_at = parts.store.clock()
-    await keep_plan(parts.sessions, plan)
+    await when_free(lambda: keep_plan(parts.sessions, plan))
     # Played by this gateway to its last call's end, whether or not a call waits: it says so as it
     # goes, and a gateway that stops saying so has its comparison taken up by another (`placing`).
     parts.simulations.place_later(play_to_the_end(parts, plan, waiting, place))

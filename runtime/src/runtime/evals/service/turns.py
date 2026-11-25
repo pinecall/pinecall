@@ -4,6 +4,7 @@ import asyncio
 from collections.abc import Awaitable, Callable, Sequence
 
 from runtime.calls.log import Filter, Logs, Store, Subscription
+from runtime.postgres import when_free
 from runtime.wire.base import Entry
 from runtime.wire.events import AgentStateChanged
 
@@ -48,6 +49,14 @@ async def wait_for_entry_or_beat(subscription: Subscription) -> None:
     """Wait for the log's next entry; once its readers are ended, one beat, so the caller looks again."""
     if await anext(subscription, None) is None:
         await asyncio.sleep(A_BEAT_S)
+
+
+# A caller reads its call's log every beat, for minutes, on a task nobody awaits: a read that finds the
+# pool full is asked again (`when_free`), where until 2026-11-25 it broke the line under a call that
+# was going well, and the call ended in the middle of a sentence and was judged as its agent's.
+async def read_so_far(store: Store, call: str) -> list[Entry]:
+    """The call's log as it stands, asked again while the database has no connection for the read."""
+    return await when_free(lambda: store.whole_of(call))
 
 
 def is_call_over(entries: Sequence[Entry]) -> bool:
@@ -133,7 +142,7 @@ async def wait_for_answer(
     was_done = False
     try:
         while loop.time() - started < at_most:
-            entries = await store.whole_of(call)
+            entries = await read_so_far(store, call)
             if is_call_over(entries):
                 return False
             done = (
@@ -168,7 +177,7 @@ async def wait_until_speaking(logs: Logs, store: Store, call: str, *, since: flo
     started = loop.time()
     try:
         while loop.time() - started < AN_ANSWER_MAY_TAKE_S:
-            entries = await store.whole_of(call)
+            entries = await read_so_far(store, call)
             if is_call_over(entries):
                 return
             if any(

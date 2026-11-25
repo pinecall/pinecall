@@ -1,7 +1,8 @@
 """A simulated call: played on its line by a caller of its own, what that cost and how it was heard kept with it."""
 
 import logging
-from collections.abc import Mapping, Sequence
+from collections.abc import AsyncGenerator, Mapping, Sequence
+from contextlib import asynccontextmanager
 from dataclasses import asdict, dataclass, field, replace
 from typing import Any
 
@@ -23,17 +24,21 @@ from runtime.evals.service.callers import (
     list_heard,
     name_of,
     open_caller_model,
+    stage_of_caller,
 )
 from runtime.evals.service.leg import Spoken
 from runtime.evals.service.phone import PhoneLine
 from runtime.evals.service.spoken import SpokenLine
-from runtime.evals.service.turns import NextLine, is_call_over
+from runtime.evals.service.turns import NextLine, is_call_over, read_so_far
 from runtime.evals.service.written import WrittenLine
-from runtime.exceptions import ServiceUnavailable
+from runtime.exceptions import PinecallError
 from runtime.judging import service as judging
 from runtime.kit.link import LinkShape
+from runtime.kit.loops import is_cancellation, survive
 from runtime.kit.text import Json, JsonObject
+from runtime.postgres import when_free
 from runtime.providers import service as providers
+from runtime.providers.catalog import Catalog
 from runtime.providers.stage import Running
 from runtime.session import service as session
 from runtime.wire.dispatch import Dispatch
@@ -79,8 +84,57 @@ class Played:
 # own: seated in that room, or, when it rings a number, through a phone leg dialled into it.
 async def play_spoken(parts: Harness, simulation: Simulation) -> Played:
     """Play the persona out loud on the agent's line; the lines said, and what they cost."""
+    async with ending_what_never_began(parts, simulation):
+        voice, notice = await when_free(lambda: _read_voice(parts, simulation))
+        # The caller murmurs in the language it speaks: the line learns it here, with the voice.
+        spoken = Spoken(simulation.call, simulation.acts, voice.language, notice, simulation.network)
+        on_the_line = SpokenLine if simulation.rings is None else PhoneLine
+        line = on_the_line(parts, _dispatch_of(simulation), voice, spoken, waits_for_slot=simulation.waits_for_slot)
+        return await play(parts, simulation, line, voice)
+
+
+async def play_written(parts: Harness, running: session.Session, simulation: Simulation) -> Played:
+    """The persona's lines said on the written call, until it hangs up; and what they cost."""
+    async with ending_what_never_began(parts, simulation):
+        return await play(parts, simulation, WrittenLine(running, parts.logs, parts.store), None)
+
+
+# A simulated call is played on a task nobody awaits: what breaks it is logged by the gateway and seen
+# by no reader. A call that never began has nobody to end it either: its row would stay open, and
+# whoever follows it, a command or a comparison counting its calls, would wait for good. So whatever
+# breaks the caller before the call began ends the call, saying why, as a call no worker took is ended
+# (`end_never_served`: the reason on its log, its end, its summary). Until 2026-11-25 this was done for
+# a seat never got and a line that could not be held, and nothing else: a caller the database had no
+# connection for, or one whose vendor refused its model, left its call open and unsaid. A call that
+# began is its agent's to end: the caller's line closes its room as it breaks.
+@asynccontextmanager
+async def ending_what_never_began(
+    parts: Harness, simulation: Simulation, *, doing: str = "play this call's caller"
+) -> AsyncGenerator[None]:
+    """Play a simulated call in the block; one that breaks before the call began is ended, saying why."""
+    try:
+        yield
+    except Exception as broke:
+        if not is_cancellation(broke):
+            with survive("ending a simulated call that never began", simulation.call):
+                entries = await when_free(lambda: parts.store.whole_of(simulation.call))
+                if not any(entry.type == "call.started" for entry in entries):
+                    await parts.apps.end_never_served(simulation.call, simulation.agent, say_why(broke, doing))
+        raise
+
+
+# A refusal of ours is said in its own words. Anything else is the gateway's own fault, named by its
+# kind alone: a database error's text carries the statement it was on.
+def say_why(broke: BaseException, doing: str) -> str:
+    """Why something of a simulated call broke, as its reader is told."""
+    if isinstance(broke, PinecallError):
+        return str(broke)
+    return f"the gateway could not {doing} ({type(broke).__name__}): its log says why"
+
+
+def _dispatch_of(simulation: Simulation) -> Dispatch:
     scope, persona = simulation.scope, simulation.persona
-    dispatch = Dispatch(
+    return Dispatch(
         agent=simulation.agent,
         org=scope.org,
         env=scope.env,
@@ -92,29 +146,19 @@ async def play_spoken(parts: Harness, simulation: Simulation) -> Played:
         tuning=dict(simulation.against),
         dialled=simulation.rings,
     )
+
+
+async def _read_voice(parts: Harness, simulation: Simulation) -> tuple[Running, bool]:
+    scope = simulation.scope
     async with parts.sessions.begin() as session_:
-        voice = await caller_voice(
-            session_, parts.vault, scope, await agent_as_it_runs(session_, parts, scope, simulation.agent), persona
-        )
-        notice = await opens_with_a_notice(session_, scope)
-    await keep_against(parts, simulation)
-    # The caller murmurs in the language it speaks: the line learns it here, with the voice.
-    spoken = Spoken(simulation.call, simulation.acts, voice.language, notice, simulation.network)
-    on_the_line = SpokenLine if simulation.rings is None else PhoneLine
-    line = on_the_line(parts, dispatch, voice, spoken, waits_for_slot=simulation.waits_for_slot)
-    try:
-        return await play(parts, simulation, line, voice)
-    except ServiceUnavailable as never:
-        # No seat in the whole wait, or a line that could not be held: a call that never began has nobody
-        # to end it, its row would stay open and whoever follows it would wait for good. It ends, saying why.
-        if not any(entry.type == "call.started" for entry in await parts.store.whole_of(simulation.call)):
-            await parts.apps.end_never_served(simulation.call, simulation.agent, str(never))
-        raise
+        agent = await agent_as_it_runs(session_, parts, scope, simulation.agent)
+        voice = await caller_voice(session_, parts.vault, scope, agent, simulation.persona)
+        return voice, await opens_with_a_notice(session_, scope)
 
 
-async def play_written(parts: Harness, running: session.Session, simulation: Simulation) -> Played:
-    """The persona's lines said on the written call, until it hangs up; and what they cost."""
-    return await play(parts, simulation, WrittenLine(running, parts.logs, parts.store), None)
+async def _read_catalog(parts: Harness) -> Catalog:
+    async with parts.sessions.begin() as session_:
+        return await providers.get_catalog(session_)
 
 
 # The one skeleton of a simulated call, whatever line it is on. Until 2026-11 it was written twice, a
@@ -122,18 +166,21 @@ async def play_written(parts: Harness, running: session.Session, simulation: Sim
 # spent and how it was heard. What was spent is kept whatever ended the call, a caller hanging up or
 # the line failing: it was spent. Only a simulation knows what its caller really said and when: how the
 # agent heard it is measured against that once the caller has left, and kept with the call's facts.
+# Nobody waits on the task that plays it, so each thing it asks the database is asked again when the
+# pool is full (`when_free`): a request would be answered "busy", and this has nobody to tell.
 async def play(parts: Harness, simulation: Simulation, line: lines.Line, voice: Running | None) -> Played:
     """Play the simulation on its line: who plays it kept as it starts, its lines said, its cost and hearing kept."""
-    async with parts.sessions.begin() as session_:
-        spending = Spending(await providers.get_catalog(session_))
-    async with open_caller_model(parts.sessions, parts.vault, simulation.scope, simulation.persona) as model:
+    scope, call = simulation.scope, simulation.call
+    spending = Spending(await when_free(lambda: _read_catalog(parts)))
+    stage = await when_free(lambda: stage_of_caller(parts.sessions, parts.vault, scope, simulation.persona))
+    async with open_caller_model(stage) as model:
         caller = Caller(simulation.persona, model.model, spending)
-        await _keep_played_by(parts, simulation.call, model.named, voice)
+        await when_free(lambda: _keep_played_by(parts, call, model.named, voice))
         try:
-            turns = await lines.play(line, simulation.turns, improvise(parts, simulation.call, caller), spending.count)
+            turns = await lines.play(line, simulation.turns, improvise(parts, call, caller), spending.count)
         finally:
-            await keep_cost(parts, simulation.call, spending)
-            await keep_heard(parts, simulation.call, line.list_said())
+            await when_free(lambda: keep_cost(parts, call, spending))
+            await when_free(lambda: keep_heard(parts, call, line.list_said()))
     return Played(turns, spending)
 
 
@@ -143,7 +190,7 @@ def improvise(parts: Harness, call: str, caller: Caller) -> NextLine:
     """The caller's next line on the call so far, and whether it hangs up after it."""
 
     async def next_line(turns_left: int) -> tuple[str, bool]:
-        entries = await parts.store.whole_of(call)
+        entries = await read_so_far(parts.store, call)
         if is_call_over(entries) or caller.spending.is_over:
             return "", True
         line = await improvise_line(caller.model, caller.persona, list_heard(entries), turns_left)
@@ -179,11 +226,15 @@ async def _keep_played_by(parts: Harness, call: str, model: str, voice: Running 
         await calls.keep_caller_played(session_, call, llm=model, tts=tts, voice=chosen)
 
 
-async def keep_against(parts: Harness, simulation: Simulation) -> None:
-    """Keep what the agent runs on for this call alone, its comparison and its caller, with the call's facts."""
-    if not simulation.against and simulation.comparison is None:
-        return
-    async with parts.sessions.begin() as session_:
+# A call is its comparison's from the transaction that makes it a call, with how it was placed: all of
+# it or none. Until 2026-11-25 what the agent ran on and the comparison were kept by the task that
+# plays the call, in a transaction of its own: when that one found no connection (twenty calls placed
+# together on a pool of eight) the call existed, claimed and counted on the org's line, and was no row
+# of its comparison, whose table then said nineteen of twenty with nothing waiting and nothing refused.
+async def keep_as_placed(session_: AsyncSession, simulation: Simulation, placed: JsonObject, persona: str) -> None:
+    """Keep with the call's facts how it was placed, what its agent runs on for it alone, and its comparison."""
+    await calls.keep_how_placed(session_, simulation.call, placed, persona=persona)
+    if simulation.against or simulation.comparison is not None:
         await calls.keep_agent_values(
             session_,
             simulation.call,
@@ -191,6 +242,19 @@ async def keep_against(parts: Harness, simulation: Simulation) -> None:
             comparison=simulation.comparison,
             persona=simulation.persona.name,
         )
+
+
+# A written call is open by then, on the org's line: one that cannot be kept as placed is ended, saying
+# why, never left there with nobody to play it.
+async def keep_written_as_placed(parts: Harness, simulation: Simulation, placed: JsonObject, persona: str) -> None:
+    """The same of a written call that was just opened, in a transaction of its own; the call ended if it cannot be."""
+
+    async def keep() -> None:
+        async with parts.sessions.begin() as session_:
+            await keep_as_placed(session_, simulation, placed, persona)
+
+    async with ending_what_never_began(parts, simulation, doing="keep how this call was placed"):
+        await when_free(keep)
 
 
 async def keep_cost(parts: Harness, call: str, spending: Spending) -> None:

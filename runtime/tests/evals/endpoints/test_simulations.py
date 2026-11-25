@@ -1,13 +1,18 @@
 """A simulation through the gateway: the agent's and the library's personas, who plays a run, what refuses it."""
 
 import asyncio
+from functools import partial
 
 import httpx
+import pytest
+from sqlalchemy.exc import TimeoutError as PoolTimeout
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from runtime.billing import service as billing
 from runtime.billing.service import quotas
 from runtime.enums import Env
+from runtime.evals.service import placing, simulated_calls
+from runtime.postgres import when_free
 from tests.conftest import Gateway, Tenant, holding, needs_the_services, used_of
 from tests.fakes import talker
 from tests.fakes.acme import UNKNOWN
@@ -296,3 +301,126 @@ async def test_a_call_nobody_simulated_here_is_not_placed_again(gateway: Gateway
     assert answer.status_code == 404
     assert "no simulated call call_nobodysimulated here" in answer.text
     assert await used_of(gateway, tenant, "simulations") == 0
+
+
+async def ended(gateway: Gateway, tenant: Tenant, call: str) -> dict[str, object]:
+    """The simulated call's row, once the list says it ended."""
+    run: dict[str, object] = {}
+    for _ in range(200):
+        runs = await listed_calls(gateway, tenant, [call])
+        run = runs[0] if runs else {}
+        if run.get("ended_at") is not None:
+            break
+        await asyncio.sleep(0.05)
+    return run
+
+
+# The row says a call ended as its end is written, a moment before the gateway lets go of the call.
+async def is_off_the_line(gateway: Gateway, tenant: Tenant) -> bool:
+    """Whether the org holds no call at once any more, within a few seconds."""
+    for _ in range(100):
+        if await used_of(gateway, tenant, "concurrent_calls") == 0:
+            return True
+        await asyncio.sleep(0.05)
+    return False
+
+
+# 2026-11-25: a simulated call is played by a task of the gateway that nobody awaits. One that broke
+# before its call began (the database had no connection for it) was a warning in the gateway's log and
+# a call left open for good: only a seat never got and a line that could not be held ended it.
+async def test_a_simulated_call_whose_caller_breaks_before_the_call_begins_ends_saying_why(
+    gateway: Gateway, tenant: Tenant, agent: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def breaks(*_: object) -> None:
+        raise RuntimeError("select secret from vault")
+
+    monkeypatch.setattr(simulated_calls, "stage_of_caller", breaks)
+    body = {"agent": agent, "persona": "in-a-hurry", "voice": False, "turns": 1}
+    async with holding(gateway, tenant, agent):
+        placed_one = await gateway.http.post("/v1/simulations", json=body, headers=tenant.server)
+        assert placed_one.status_code == 200, placed_one.text
+        run = await ended(gateway, tenant, str(placed_one.json()["call"]))
+        assert run["end_reason"] == "error", run
+        # Named by its kind alone: what a fault of the gateway's says may carry a statement.
+        assert run["outcome"] == "the gateway could not play this call's caller (RuntimeError): its log says why"
+        assert await is_off_the_line(gateway, tenant), "the call it had opened holds none of the org's calls at once"
+
+
+async def test_a_written_call_whose_caller_breaks_on_the_line_is_ended_whatever_broke_it(
+    gateway: Gateway, tenant: Tenant, agent: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def breaks(*_: object) -> None:
+        raise RuntimeError("the caller's model answered nothing a line can be read from")
+
+    monkeypatch.setattr(simulated_calls, "improvise_line", breaks)
+    body = {"agent": agent, "persona": "in-a-hurry", "voice": False, "turns": 1}
+    async with holding(gateway, tenant, agent):
+        placed_one = await gateway.http.post("/v1/simulations", json=body, headers=tenant.server)
+        assert placed_one.status_code == 200, placed_one.text
+        run = await ended(gateway, tenant, str(placed_one.json()["call"]))
+        assert run["end_reason"] == "error", run
+        assert await is_off_the_line(gateway, tenant)
+
+
+# A written call is opened, on the org's line, before it is kept as placed: one that cannot be kept is
+# refused to whoever asked and ended, where it would have stayed open with nobody to play it.
+async def test_a_written_call_that_cannot_be_kept_as_placed_is_refused_and_ended(
+    gateway: Gateway, tenant: Tenant, agent: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def breaks(*_: object) -> None:
+        raise RuntimeError("the row could not be written")
+
+    monkeypatch.setattr(simulated_calls, "keep_as_placed", breaks)
+    body = {"agent": agent, "persona": "in-a-hurry", "voice": False, "turns": 1}
+    async with holding(gateway, tenant, agent):
+        refused = await gateway.http.post("/v1/simulations", json=body, headers=tenant.server)
+        assert refused.status_code == 500, refused.text
+        assert await is_off_the_line(gateway, tenant)
+
+
+# 2026-11-25, cmp_bf669d1c4545: twenty calls planned, nineteen rows, none waiting, none refused, and a
+# command waiting on the twentieth for good. Every call asked for is a row, a call that waits or a
+# refusal with its reason: here the database never has a connection for one caller's calls.
+@needs_the_services
+async def test_a_comparisons_call_the_database_never_has_a_connection_for_is_a_refusal_its_table_says(
+    gateway: Gateway, tenant: Tenant, agent: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    busy_for, placed_as_ever = "in-a-hurry", placing.place_simulation
+
+    async def place(parts: object, actor: object, wanted: object, **how: object) -> object:
+        if getattr(wanted, "persona", None) == busy_for:
+            raise PoolTimeout("QueuePool limit of size 8 overflow 0 reached, connection timed out, timeout 2.00")
+        return await placed_as_ever(parts, actor, wanted, **how)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(placing, "place_simulation", place)
+    # The wait for a connection, twenty seconds, cut to what a test can wait.
+    monkeypatch.setattr(placing, "when_free", partial(when_free, within_s=0.3))
+    against: list[dict[str, object]] = [{"llm": "acme/acme-1"}, {"temperature": 0.2}]
+    body = {
+        "agent": agent,
+        "persona": busy_for,
+        "more_personas": ["asks-for-a-person"],
+        "voice": False,
+        "turns": 1,
+        "against": against,
+    }
+    async with holding(gateway, tenant, agent):
+        answer = await gateway.http.post("/v1/simulations/compare", json=body, headers=tenant.person)
+        assert answer.status_code == 200, answer.text
+        started = answer.json()
+        # No connection for the first call: it waits its turn with the ones behind it, and nothing is refused yet.
+        assert (started["calls"], started["refused"], started["waiting"]) == ([], [], 4)
+        table: dict[str, object] = {}
+        for _ in range(400):
+            read = await gateway.http.get(f"/v1/simulations/compare/{started['comparison']}", headers=tenant.server)
+            table = read.json()
+            rows: list[dict[str, object]] = table["rows"]  # type: ignore[assignment]
+            if table["waiting"] == 0 and len(rows) == 2 and all(row["ended_at"] is not None for row in rows):
+                break
+            await asyncio.sleep(0.05)
+        refused: list[dict[str, object]] = table["refused"]  # type: ignore[assignment]
+        assert [(one["persona"], one["against"]) for one in refused] == [(busy_for, values) for values in against]
+        assert all("the database was busy: no connection came free" in str(one["why"]) for one in refused)
+        rows = table["rows"]  # type: ignore[assignment]
+        assert sorted(str(row["persona"]) for row in rows) == ["asks-for-a-person"] * 2
+        assert table["planned"] == len(rows) + int(str(table["waiting"])) + len(refused) == 4

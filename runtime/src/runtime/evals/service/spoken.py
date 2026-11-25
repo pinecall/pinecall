@@ -23,6 +23,7 @@ from runtime.kit.time import epoch
 from runtime.kit.turn import Relay
 from runtime.live import service as live
 from runtime.livekit import close_room
+from runtime.postgres import when_free
 from runtime.providers import service as providers
 from runtime.providers.stage import Running
 from runtime.session import service as session
@@ -152,8 +153,7 @@ class SpokenLine:
         if not self._waits_for_slot:
             return None
         parts, call = self._parts, self._spoken.call
-        async with parts.sessions.begin() as session_:
-            the_fleet = await fleet.fleet_of_env(session_, self.env)
+        the_fleet = await when_free(self._read_fleet)
         self._stack.push_async_callback(parts.offering.forget, call)
         return await take_fleet_seat(
             parts.sessions, parts.offering, parts.roster, parts.logs, self.env, the_fleet, call, self._dispatch
@@ -164,9 +164,11 @@ class SpokenLine:
         if seat is not None:
             await parts.offering.ring(seat, self._dispatch)
             return
-        async with parts.sessions.begin() as session_:
-            the_fleet = await fleet.fleet_of_env(session_, self.env)
-        await parts.offering.offer(call, the_fleet, self._dispatch)
+        await parts.offering.offer(call, await when_free(self._read_fleet), self._dispatch)
+
+    async def _read_fleet(self) -> str:
+        async with self._parts.sessions.begin() as session_:
+            return await fleet.fleet_of_env(session_, self.env)
 
     # The caller's seat in a room of an env's LiveKit: its leg published and carrying from here on.
     async def _join(self, room: str, env: Env, speech: tts.TTS[Never], interferer: bytes) -> None:

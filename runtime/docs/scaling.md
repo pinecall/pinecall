@@ -289,7 +289,10 @@ waited longest. An org alone in the line takes every seat there is, since nothin
 that is not asking. Two orgs that evaluate at once come to half each and three to a third; an org that
 arrives while another holds everything is given the next seats that free, and no call on the line is
 ended to make room. The line is rows, read under the fleet's turn (a Postgres advisory lock), so the
-answer is the same on every gateway. A caller says it still waits each time it asks, every two seconds:
+answer is the same on every gateway. One of a gateway's own callers at a time asks Postgres for the
+turn, the others waiting in the process with nothing in hand: each waiting on the lock in a transaction
+of its own held a connection, and twenty placed together kept a gateway's whole pool there (2026-11-25).
+An ask that finds no connection free is a seat not got this time, asked for again two seconds on. A caller says it still waits each time it asks, every two seconds:
 one unheard for ten is passed over, and has its place again when it asks. Its seat is given back as its
 line closes or its room finishes; one nobody gave back stops counting as its org's after twenty
 minutes. Until 2026-11-25 a freed seat went to whichever caller asked first, and one org's comparison

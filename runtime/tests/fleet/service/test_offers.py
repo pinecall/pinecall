@@ -1,14 +1,16 @@
 """The offers: a room of no env's fleet is let go, a room a worker took is not rung again, a seat is taken in turn."""
 
+import asyncio
 import time
 from collections.abc import AsyncIterator
 from uuid import uuid4
 
 import pytest
 from livekit import api
-from sqlalchemy import text
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from runtime.config import load_settings
 from runtime.enums import Env
 from runtime.fleet.models import Offer, Turn
 from runtime.fleet.repository import OfferRepository, TurnRepository
@@ -25,6 +27,7 @@ from runtime.fleet.service.offers import (
     list_next,
 )
 from runtime.fleet.service.roster import Roster
+from runtime.postgres import POOL_WAIT_S, create_engine, session_maker
 from runtime.wire.dispatch import Dispatch
 from tests.conftest import needs_the_database
 from tests.fakes.livekit import per_world
@@ -538,3 +541,33 @@ async def test_a_pass_of_the_sweep_lets_go_the_callers_that_stopped_asking_and_k
     assert await _turn(sessions, seated) is not None, "a call lasts longer than a wait is forgotten in"
     await offering.forget(seated)
     assert await _turn(sessions, seated) is None
+
+
+# 2026-11-25: twenty simulated callers placed together on one gateway, each asking for its seat every
+# two seconds. Each waited for the fleet's turn inside its own transaction, a connection in hand, and
+# the gateway's pool of eight was all of it waiting on one lock: the call placed next was told the
+# database was busy, and was lost. One of a gateway's callers at a time asks Postgres for the turn.
+async def test_the_callers_of_one_gateway_wait_for_the_fleets_turn_with_one_connection_between_them(
+    engine: AsyncEngine,
+) -> None:
+    a_gateways_pool = create_engine(load_settings(), pool_size=2)
+    servers, roster = per_world(), Roster()
+    offering = Offering(session_maker(a_gateways_pool), servers=servers, roster=roster)
+    a_fleet_of(roster, seats=8)
+    rooms = [f"room_{uuid4().hex}" for _ in range(6)]
+    try:
+        # Another gateway holds the fleet's turn for longer than a pool waits for a connection.
+        async with engine.connect() as another_gateway:
+            held = await another_gateway.begin()
+            await another_gateway.execute(select(func.pg_advisory_xact_lock(func.hashtext(f"offers:{SANDBOX}"))))
+            asking = [asyncio.ensure_future(offering.take_seat(room, SANDBOX, of("acme"))) for room in rooms]
+            await asyncio.sleep(POOL_WAIT_S + 0.5)
+            await held.commit()
+        seats = await asyncio.gather(*asking)
+        assert all(seat is not None for seat in seats), "every caller asked in its turn, none refused a connection"
+    finally:
+        for room in rooms:
+            await offering.forget(room)
+        for server in servers.values():
+            await server.aclose()
+        await a_gateways_pool.dispose()

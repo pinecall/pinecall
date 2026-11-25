@@ -51,7 +51,14 @@ for a seat, asking every two seconds and taking the first one free: the fleet gr
 already on it, and on a fleet that does not grow the wait is a queue. It waits as long as a comparison
 goes on placing its calls, 45 minutes, before it gives up: the call then ends, `error` on its log
 (`never_served`, `every seat of the sandbox's fleet held a call for 2700 s: the simulation did not
-start`) and `call.ended` with reason `error` after it, so whoever follows it stops waiting. A seat that
+start`) and `call.ended` with reason `error` after it, so whoever follows it stops waiting. The same
+end is every simulated call's whose caller broke before the call began, written or spoken, whatever
+broke it: a refusal in its own words (the caller's vendor refused its model, `the database was busy: no
+connection came free in 20 s`), a fault of the gateway's own by its kind alone (`the gateway could not
+play this call's caller (KeyError): its log says why`). A caller is played by a task of the gateway
+that nobody awaits, so what it asks of the database it asks again for twenty seconds when every
+connection is taken, where a request would be answered `503`; a written call whose caller breaks on
+the line is ended `error` too. A seat that
 answers nothing (LiveKit gave the room's job to nobody) is rung again by the gateway's sweep, to the same
 worker when it is the only one, while the caller waits in its room; the reaper leaves a call that waits
 for its seat. Spoken, the caller
@@ -197,7 +204,12 @@ judge held, then the most held, then the fastest reply, then the cheapest, a cal
 last. The table also says what was asked for, so a call not placed yet has its place on it:
 `against` (each configuration, in the order named), `repeats`, `planned` (every call it was to
 place), `waiting` (those still without a place on the line), `refused` (each call that could not be
-placed, and why, the ones refused after the answer among them) and `abandoned`. A comparison is
+placed, and why, the ones refused after the answer among them) and `abandoned`. Every call asked for
+is one of the three, so `planned` is the rows, the waiting and the refused together, and a reader
+that waits for the last call's end always sees it: a call is its comparison's row from the
+transaction that claims it; one the gateway's database had no connection for waits its turn and is
+asked for again, twenty seconds at most, then refused `the database was busy`; and one the gateway
+broke placing is refused by the kind of its fault, the calls behind it placed all the same. A comparison is
 played by the gateway that took its request, which says so every twenty seconds until its last call
 ended. One whose gateway stops saying so for forty (a release, a crash) is taken up by another
 gateway: a call that had not ended is placed again, the one that never began ended with why on its

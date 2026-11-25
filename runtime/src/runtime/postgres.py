@@ -1,6 +1,8 @@
 """The database: the engine, the two sessions a request may ask for, and row-level security applied to each."""
 
-from collections.abc import AsyncGenerator
+import asyncio
+import time
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from typing import Annotated, NewType
 
@@ -22,6 +24,7 @@ from starlette.requests import HTTPConnection
 from runtime.config import Settings
 from runtime.exceptions import ServiceUnavailable
 from runtime.handles import sessions_of
+from runtime.kit.retry import delay
 from runtime.scoping import SCOPED_ORG
 
 # Transaction-local, so a pooled connection goes back as it came.
@@ -54,6 +57,40 @@ def busy() -> ServiceUnavailable:
 def is_pool_timeout(error: BaseException) -> bool:
     """Whether a database error is the pool's: every connection taken for POOL_WAIT_S."""
     return isinstance(error, PoolTimeout)
+
+
+# A request that finds the pool full is answered `busy` and its client asks again. Work nobody waits on
+# the answer of (a comparison's placing, a simulated call's caller) has no client to ask again: until
+# 2026-11-25 its first pool timeout ended it, and a call of a comparison of twenty was dropped with a
+# warning in the gateway's log, its command waiting for a row that never came. Such work asks again
+# itself. The pool refuses before the transaction's first statement, so the work it refused did
+# nothing: what is asked again must do nothing before that statement either. Ten of the pool's own
+# waits: a burst of calls placed together clears in a few seconds, and a database busy past this is
+# said, not waited for.
+A_CONNECTION_IS_WAITED_FOR_S = 20.0
+ASKED_AGAIN_AFTER_S = 0.25
+ASKED_AGAIN_AT_MOST_EVERY_S = 2.0
+
+
+async def when_free[T](
+    work: Callable[[], Awaitable[T]],
+    *,
+    within_s: float = A_CONNECTION_IS_WAITED_FOR_S,
+    sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+    clock: Callable[[], float] = time.monotonic,
+) -> T:
+    """The work's answer, asked again while the pool has no connection for it; refused as busy past `within_s`."""
+    began = clock()
+    attempt = 0
+    while True:
+        try:
+            return await work()
+        except PoolTimeout as full:
+            waited = clock() - began
+            if waited >= within_s:
+                raise ServiceUnavailable(f"the database was busy: no connection came free in {waited:.0f} s") from full
+            await sleep(delay(attempt, first_s=ASKED_AGAIN_AFTER_S, longest_s=ASKED_AGAIN_AT_MOST_EVERY_S))
+            attempt += 1
 
 
 def pool_measures(engine: AsyncEngine) -> tuple[int, int]:

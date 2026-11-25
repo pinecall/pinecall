@@ -2,8 +2,10 @@
 
 import asyncio
 import time
+from typing import cast
 
 import pytest
+from sqlalchemy.exc import TimeoutError as PoolTimeout
 
 import runtime.evals.service.turns as turns
 from runtime.calls.log.store import Store
@@ -16,6 +18,7 @@ from runtime.evals.service.turns import (
     is_agent_busy,
     is_call_over,
     is_line_open,
+    read_so_far,
     speak_turns,
     wait_for_answer,
     wait_until_speaking,
@@ -441,3 +444,25 @@ async def test_a_call_that_ended_while_its_line_was_written_says_none_of_it() ->
 async def test_a_call_of_no_turns_asks_for_no_line() -> None:
     next_line, _ = a_caller([])
     assert await spoken_by(0, next_line, a_wait()) == []
+
+
+class ABusyStore:
+    """A store whose first read of a log finds the pool full."""
+
+    def __init__(self, entries: list[Entry]) -> None:
+        self.entries = entries
+        self.asked = 0
+
+    async def whole_of(self, _log: str, *, after: int = 0) -> list[Entry]:
+        self.asked += 1
+        if self.asked == 1:
+            raise PoolTimeout("QueuePool limit of size 8 overflow 0 reached, connection timed out, timeout 2.00")
+        return [entry for entry in self.entries if entry.seq > after]
+
+
+# 2026-11-25: a caller reads its call's log every beat for as long as the call lasts. One read that
+# found the gateway's pool full broke the line under a call that was going well.
+async def test_a_read_of_the_calls_log_that_finds_no_connection_free_is_asked_again() -> None:
+    busy = ABusyStore(a_log(("agent.state", "listening"), "turn.user"))
+    assert await read_so_far(cast(Store, busy), "call_1") == busy.entries
+    assert busy.asked == 2

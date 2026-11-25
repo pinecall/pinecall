@@ -6,10 +6,13 @@ from contextlib import contextmanager
 import pytest
 from sqlalchemy import select, text
 from sqlalchemy.exc import DBAPIError
+from sqlalchemy.exc import TimeoutError as PoolTimeout
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
 from runtime.accounts.models import Org
+from runtime.exceptions import ServiceUnavailable
 from runtime.platform.service import schema
+from runtime.postgres import A_CONNECTION_IS_WAITED_FOR_S, when_free
 from runtime.providers.models import ProviderKey
 from runtime.scoping import SCOPED_ORG, box_wide
 from tests.conftest import Tenant, make_tenant, needs_the_database
@@ -138,3 +141,51 @@ async def test_a_databases_standing_is_read_by_a_role_that_owns_nothing(engine: 
     finally:
         await acting.dispose()
     assert not standing.behind
+
+
+A_FULL_POOL = "QueuePool limit of size 8 overflow 0 reached, connection timed out, timeout 2.00"
+
+
+# 2026-11-25: twenty simulated calls placed together on a gateway whose pool is eight. The task that
+# played the twentieth asked for a connection, was refused in two seconds, and ended there: nobody was
+# waiting on it to be told "busy", and its call was never seen again.
+async def test_work_nobody_waits_on_is_asked_again_while_the_pool_has_no_connection_for_it() -> None:
+    asked: list[int] = []
+    waits: list[float] = []
+
+    async def work() -> str:
+        asked.append(len(asked))
+        if len(asked) < 3:
+            raise PoolTimeout(A_FULL_POOL)
+        return "kept"
+
+    async def sleep(seconds: float) -> None:
+        waits.append(seconds)
+
+    assert await when_free(work, sleep=sleep) == "kept"
+    assert len(asked) == 3 and len(waits) == 2 and all(0 < wait <= 2.0 for wait in waits)
+
+
+async def test_a_pool_full_past_the_wait_is_said_busy_and_any_other_failure_is_raised_at_once() -> None:
+    now = [0.0]
+    asked: list[int] = []
+
+    async def never() -> None:
+        asked.append(len(asked))
+        raise PoolTimeout(A_FULL_POOL)
+
+    async def sleep(_seconds: float) -> None:
+        now[0] += 5.0
+
+    with pytest.raises(ServiceUnavailable, match="the database was busy: no connection came free in 20 s"):
+        await when_free(never, sleep=sleep, clock=lambda: now[0])
+    assert len(asked) == 1 + A_CONNECTION_IS_WAITED_FOR_S / 5.0
+
+    async def broken() -> None:
+        asked.append(len(asked))
+        raise ValueError("not the pool's")
+
+    before = len(asked)
+    with pytest.raises(ValueError, match="not the pool's"):
+        await when_free(broken, sleep=sleep)
+    assert len(asked) == before + 1

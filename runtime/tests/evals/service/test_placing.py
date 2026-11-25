@@ -1,6 +1,9 @@
 """A comparison's placing: the calls that wait placed as the line frees, and what is left to place after a take-up."""
 
 from dataclasses import dataclass, field
+from typing import override
+
+from sqlalchemy.exc import TimeoutError as PoolTimeout
 
 from runtime.actor import Scope
 from runtime.enums import Env
@@ -8,6 +11,7 @@ from runtime.evals.service.placing import PLACING_GIVES_UP_AFTER_S, list_left_to
 from runtime.evals.service.plans import Pair, Plan, Refused
 from runtime.evals.tasks import TooManyAtOnce
 from runtime.exceptions import ServiceUnavailable
+from runtime.postgres import A_CONNECTION_IS_WAITED_FOR_S
 
 ACME = Scope("org_acme", Env.sandbox)
 
@@ -116,3 +120,63 @@ def test_what_is_left_to_place_is_every_planned_call_no_call_played_or_refused_s
 def test_a_comparison_whose_every_call_was_played_has_nothing_left_to_place() -> None:
     plan = a_plan()
     assert list_left_to_place(plan, plan.list_pairs()) == []
+
+
+A_FULL_POOL = "QueuePool limit of size 8 overflow 0 reached, connection timed out, timeout 2.00"
+
+
+@dataclass
+class ABusyDatabase(Line):
+    """A line whose database has no connection free for the first asks of one caller, or for any of them."""
+
+    busy_for: str = ""
+    refusals: int = 0
+    asked: int = 0
+    breaks: str | None = None
+
+    @override
+    async def place(self, pair: Pair) -> None:
+        if pair.persona == self.breaks:
+            raise KeyError("a fault of the gateway's own")
+        if pair.persona == self.busy_for:
+            self.asked += 1
+            if self.asked <= self.refusals:
+                raise PoolTimeout(A_FULL_POOL)
+        await super().place(pair)
+
+    async def passes(self, seconds: float) -> None:
+        self.now += max(seconds, 1.0)
+
+
+# 2026-11-25, cmp_bf669d1c4545: twenty calls on a gateway whose pool is eight. The twentieth found no
+# connection in two seconds; the comparison then read twenty planned, nineteen rows, none waiting and
+# none refused for good, and the command that followed it never returned.
+async def test_a_placing_that_finds_no_connection_free_is_asked_again_and_placed() -> None:
+    plan = a_plan()
+    line = ABusyDatabase(places=10, busy_for="books", refusals=3)
+    await place_waiting(plan, plan.list_pairs(), line.place, line.say, clock=line.clock, sleep=line.passes)
+    assert line.placed == plan.list_pairs()
+    assert (plan.waiting, plan.refused) == (0, [])
+
+
+async def test_a_placing_the_database_never_has_a_connection_for_is_refused_as_busy_and_the_rest_go_on() -> None:
+    plan = a_plan()
+    line = ABusyDatabase(places=10, busy_for="books", refusals=10_000)
+    await place_waiting(plan, plan.list_pairs(), line.place, line.say, clock=line.clock, sleep=line.passes)
+    assert [pair.persona for pair in line.placed] == ["cancels", "cancels"]
+    assert [(one.persona, one.against) for one in plan.refused] == [("books", {}), ("books", {"llm": "acme/quick"})]
+    assert all("the database was busy: no connection came free in" in one.why for one in plan.refused)
+    assert line.now >= 2 * A_CONNECTION_IS_WAITED_FOR_S
+    # Every call asked for is a call, a call that waits or a refusal: the count a reader waits on closes.
+    assert plan.planned == len(line.placed) + plan.waiting + len(plan.refused)
+
+
+async def test_a_placing_that_breaks_is_a_refusal_by_the_kind_of_what_broke_and_never_the_end_of_the_placing() -> None:
+    plan = a_plan()
+    line = ABusyDatabase(places=10, breaks="books")
+    await place_waiting(plan, plan.list_pairs(), line.place, line.say, clock=line.clock, sleep=line.passes)
+    assert [pair.persona for pair in line.placed] == ["cancels", "cancels"]
+    assert [one.why for one in plan.refused] == [
+        "the gateway could not place this call (KeyError): its log says why"
+    ] * 2
+    assert plan.waiting == 0

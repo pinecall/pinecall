@@ -23,9 +23,16 @@ from runtime.evals.service.callers import (
     improvise_line,
     name_of,
     open_caller_model,
+    stage_of_caller,
     voice_vendor,
 )
-from runtime.evals.service.simulated_calls import Simulation, keep_against, play_spoken, play_written
+from runtime.evals.service.simulated_calls import (
+    Simulation,
+    keep_as_placed,
+    keep_written_as_placed,
+    play_spoken,
+    play_written,
+)
 from runtime.exceptions import Conflict, NotFound, QuotaExceeded, TooManyRequests, ValidationError
 from runtime.fleet import service as fleet
 from runtime.judging import service as judging
@@ -157,12 +164,10 @@ async def place_simulation(
         if wanted.spoken:
             async with parts.sessions.begin() as session_:
                 await claim_new_call(session_, call, wanted.agent, scope)
-                await calls.keep_how_placed(session_, call, placed, persona=wanted.persona)
+                await keep_as_placed(session_, simulation, placed, wanted.persona)
             parts.simulations.play(call, play_spoken(parts, simulation))
         else:
-            running = await open_written_call(parts, registration, simulation)
-            async with parts.sessions.begin() as session_:
-                await calls.keep_how_placed(session_, call, placed, persona=wanted.persona)
+            running = await open_written_call(parts, registration, simulation, placed, wanted.persona)
             parts.simulations.play(call, play_written(parts, running, simulation))
     except BaseException:
         parts.simulations.give_back(call)
@@ -393,8 +398,10 @@ async def refuse_an_opened_call(session_: AsyncSession, call: str) -> None:
 
 # Opened at once, so a refusal (the org's limits, nobody holding the agent) is the request's; the
 # conversation runs after, as long as the caller keeps it going.
-async def open_written_call(parts: Harness, registration: live.Registration, simulation: Simulation) -> session.Session:
-    """A written call to whoever holds the agent, with what the persona expects on it; unstarted."""
+async def open_written_call(
+    parts: Harness, registration: live.Registration, simulation: Simulation, placed: JsonObject, named: str
+) -> session.Session:
+    """A written call to whoever holds the agent, with what the persona expects on it, kept as placed; unstarted."""
     scope, persona = registration.scope, simulation.persona
     context = CallContext(
         call=simulation.call,
@@ -413,7 +420,7 @@ async def open_written_call(parts: Harness, registration: live.Registration, sim
         running = await parts.apps.open_written(session_, registration, context, test=simulation.against or None)
     # Committed on its own before the call's first entry: the facts writer rewrites the row whole
     # from what it locked, and a row it did not find yet would be written over.
-    await keep_against(parts, simulation)
+    await keep_written_as_placed(parts, simulation, placed, named)
     return running
 
 
@@ -470,7 +477,8 @@ async def improvise_next_line(
 ) -> Improvised:
     """The persona's next line on the call so far, improvised by its model; so many a minute for an org."""
     await parts.caller_lines.check(f"{actor.org} evals/caller", TOO_MANY_LINES)
-    async with open_caller_model(parts.sessions, parts.vault, actor.scope, persona) as model:
+    stage = await stage_of_caller(parts.sessions, parts.vault, actor.scope, persona)
+    async with open_caller_model(stage) as model:
         return await improvise_line(model.model, persona, heard, turns_left)
 
 

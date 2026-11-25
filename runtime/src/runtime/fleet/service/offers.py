@@ -1,9 +1,10 @@
 """Who takes a call: offered to a worker the gateway chose, then another, then the overflow."""
 
+import asyncio
 import logging
 import time
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -88,6 +89,8 @@ class Offering:
     sessions: async_sessionmaker[AsyncSession]
     servers: Servers
     roster: Roster
+    # A fleet's queue of this process's own callers that ask for a seat (`take_seat`).
+    queues: dict[str, asyncio.Lock] = field(default_factory=dict[str, asyncio.Lock], repr=False, compare=False)
 
     # `left_by` is the worker a call's room was left by, under its LiveKit name. The roster is told it
     # is gone before the room is offered (`Roster.say_gone`), so neither this room nor any other goes
@@ -168,7 +171,12 @@ class Offering:
             # No env's fleet, or a gateway that heard no worker yet: kept as any room is, and the sweep's from here.
             await self.offer(room, fleet, dispatch)
             return Seat(room)
-        async with self.sessions.begin() as session:
+        # One of this process's callers at a time asks Postgres for the fleet's turn, and the others wait
+        # here, holding nothing. Until 2026-11-25 each waited on the lock inside its own transaction,
+        # a connection of the pool in hand: twenty callers placed together, each asking every two
+        # seconds, kept a gateway's eight connections waiting on one lock, and whatever else asked for
+        # one in those seconds (a call being placed, a worker's write) was told the database was busy.
+        async with self.queues.setdefault(fleet, asyncio.Lock()), self.sessions.begin() as session:
             offers, turns = OfferRepository(session), TurnRepository(session)
             await offers.take_turns(fleet)
             asked = time.time()

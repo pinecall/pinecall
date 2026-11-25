@@ -72,7 +72,9 @@ in both environments.
   its fleet's line, and a seat that frees goes to the org that holds the fewest of them, then to the
   caller that has waited longest, so an org that evaluates while another does gets its half of the
   seats and not a place behind the other's calls ([scaling.md](scaling.md), "The seats a waiting caller
-  may take are shared").
+  may take are shared"). A simulation that was placed always ends where its reader looks: one whose
+  caller could not be played ends `error` with the reason on its log, and a call of a comparison that
+  could not be placed is a refusal in its table ([protocol/personas.md](protocol/personas.md)).
 
 **How an org's simulations are shaped** is two numbers beside its quotas, per environment, that are
 not a month's count: `simulations_at_once`, the simulated calls it may have on the line at once, and

@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **A simulated call that was placed never vanishes.** A simulated call is played by a task of the gateway that
+  nobody awaits, and a comparison's calls are placed by another. Twenty calls placed together on a gateway whose
+  pool is eight: the twentieth found no connection in two seconds, its task ended with a warning in the gateway's
+  log, and the comparison read twenty planned, nineteen rows, none waiting and none refused for good, the command
+  that followed it never returning. Now (1) a call is its comparison's row from the transaction that claims it,
+  with how it was placed: what the agent runs on and the comparison were kept later, by the task, in a transaction
+  of its own; (2) whatever breaks a caller before its call began ends the call saying why, as a seat never got
+  already did (`error` on its log, `never_served`), a fault of the gateway's own named by its kind alone, and a
+  written call whose caller breaks on the line is ended whatever broke it; (3) a comparison's call that cannot be
+  placed is a refusal in its table whatever refused it, and the calls behind it are placed; (4) work with no
+  request behind it asks the database again when the pool is full, twenty seconds at most
+  (`postgres.when_free`), then says `the database was busy`: the placing, the plan's "still placed", each read of
+  a call's log by its caller, what the caller keeps with the call, and a waiting caller's ask for its seat, which
+  is a seat not got this time. And one of a gateway's callers at a time waits for the fleet's turn: each waiting
+  on Postgres's lock in its own transaction held a connection, which is how eight were all taken.
 - **The seats simulations wait for are shared between orgs.** A simulated caller that found no seat asked again
   every two seconds, and the seat that freed went to whichever asked first: one org's comparison held every seat a
   waiting caller may take, and another org's call waited behind all of its calls, up to forty-five minutes. A

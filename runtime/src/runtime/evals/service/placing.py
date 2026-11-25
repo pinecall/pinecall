@@ -1,8 +1,10 @@
 """A comparison's calls placed to its last call's end, by its gateway and by another when that one leaves."""
 
 import asyncio
+import logging
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import replace
+from functools import partial
 
 from runtime.actor import THE_ORGS_OWN, Actor, Scope
 from runtime.calls import folds
@@ -19,13 +21,17 @@ from runtime.evals.service.plans import (
     keep_plan,
     read_plan,
 )
+from runtime.evals.service.simulated_calls import say_why
 from runtime.evals.service.simulations import Scenario, as_wanted, place_simulation
 from runtime.evals.tasks import TooManyAtOnce
 from runtime.exceptions import PinecallError
-from runtime.kit.loops import survive
+from runtime.kit.loops import is_cancellation, survive
 from runtime.kit.text import a_mapping
 from runtime.livekit import close_room
+from runtime.postgres import when_free
 from runtime.scoping import box_wide, within_org
+
+logger = logging.getLogger(__name__)
 
 # A call that waits for a place on the line asks again this often.
 A_PLACE_IS_ASKED_EVERY_S = 2.0
@@ -43,6 +49,11 @@ LOST_WITH_ITS_GATEWAY = (
 
 # A place on the line is the org's own ceiling, so it is waited for; anything else that refuses a
 # call (a vendor nobody keyed, the month's simulations used up) would refuse it again a second later.
+# Every call asked for ends as one of three things a reader can count: a call, a call that waits, or a
+# refusal with its reason. A placing that found the pool full is asked again (`when_free`) and refused
+# as busy past that; one that broke some other way is refused by the kind of what broke, and the ones
+# behind it go on. Until 2026-11-25 either one ended this task: the calls behind it were never placed,
+# and the plan went on saying none waited and none was refused.
 async def place_waiting(
     plan: Plan,
     waiting: Sequence[Pair],
@@ -55,10 +66,14 @@ async def place_waiting(
     """Place each call that waits as a place on the line frees, saying how the placing stands as it goes."""
     began = clock()
     left = list(waiting)
+
+    async def tell() -> None:
+        await when_free(say, clock=clock, sleep=sleep)
+
     while left:
         pair = left[0]
         try:
-            await place(pair)
+            await when_free(partial(place, pair), clock=clock, sleep=sleep)
         except TooManyAtOnce:
             waited = clock() - began
             if waited >= PLACING_GIVES_UP_AFTER_S:
@@ -67,19 +82,24 @@ async def place_waiting(
                 left = []
             elif clock() - plan.heard_at >= STILL_PLACING_EVERY_S:
                 plan.heard_at = clock()
-                await say()
+                await tell()
             if left:
                 await sleep(A_PLACE_IS_ASKED_EVERY_S)
             continue
         except PinecallError as why:
             plan.refused.append(Refused(pair.persona, pair.against, str(why)))
+        except Exception as broke:
+            if is_cancellation(broke):
+                raise
+            logger.warning("%s: a call of %s could not be placed", plan.comparison, pair.persona, exc_info=broke)
+            plan.refused.append(Refused(pair.persona, pair.against, say_why(broke, "place this call")))
         left.pop(0)
         plan.waiting = len(left)
         plan.heard_at = clock()
-        await say()
+        await tell()
     plan.waiting = 0
     plan.heard_at = clock()
-    await say()
+    await tell()
 
 
 # ── from the request to the last call's end ──
@@ -111,14 +131,16 @@ async def play_to_the_end(
     async def say() -> None:
         await keep_plan(parts.sessions, plan)
 
+    # A gateway that stops saying so has its comparison taken up by another, which ends the calls it
+    # finds on the line and places them again: a pool full for two seconds is no reason to stop saying.
     await place_waiting(plan, waiting, place, say, clock=parts.store.clock)
-    while await _is_any_on_the_line(parts, plan):
+    while await when_free(lambda: _is_any_on_the_line(parts, plan)):
         await asyncio.sleep(STILL_PLACING_EVERY_S)
         plan.heard_at = parts.store.clock()
-        await say()
+        await when_free(say)
     plan.done = True
     plan.heard_at = parts.store.clock()
-    await say()
+    await when_free(say)
 
 
 # ── taken up ──

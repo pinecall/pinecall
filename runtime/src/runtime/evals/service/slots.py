@@ -10,6 +10,7 @@ from runtime.enums import Channel, Env
 from runtime.exceptions import ServiceUnavailable
 from runtime.fleet import service as fleet
 from runtime.kit.retry import until
+from runtime.postgres import DatabaseError, is_pool_timeout, when_free
 from runtime.wire.dispatch import Dispatch
 from runtime.wire.events import FleetFull
 
@@ -50,19 +51,36 @@ async def take_fleet_seat(
     taken: list[fleet.Seat] = []
 
     async def asks() -> bool:
-        seat = await offering.take_seat(room, the_fleet, dispatch)
+        seat = await ask_for_seat(offering, room, the_fleet, dispatch)
         if seat is not None:
             taken.append(seat)
         return seat is not None
 
-    async def full() -> None:
+    async def count() -> tuple[int, int]:
         async with sessions.begin() as session:
             totals = await fleet.totals_of(session, roster, the_fleet, time.time())
-        said = FleetFull(channel=Channel.web, workers=totals.workers, active=totals.active)
+        return totals.workers, totals.active
+
+    async def full() -> None:
+        workers, active = await when_free(count)
+        said = FleetFull(channel=Channel.web, workers=workers, active=active)
         await logs.agent(agent).append("fleet.full", said.dump())
 
     await wait_for_slot(asks, full, env=env)
     return taken[0]
+
+
+# A pool with no connection for the ask is a seat not got this time: the caller asks again in two
+# seconds, as it does of a full fleet, and its place in the line is its own from its first ask. Until
+# 2026-11-25 the one ask that found the pool full ended a caller that had waited minutes.
+async def ask_for_seat(offering: fleet.Offering, room: str, the_fleet: str, dispatch: Dispatch) -> fleet.Seat | None:
+    """Ask the fleet for the room's seat; None when it is not its turn yet, or no connection was free to ask."""
+    try:
+        return await offering.take_seat(room, the_fleet, dispatch)
+    except DatabaseError as refused:
+        if not is_pool_timeout(refused):
+            raise
+        return None
 
 
 async def wait_for_slot(

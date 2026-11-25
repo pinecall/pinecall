@@ -13,7 +13,7 @@ from runtime.calls.log import Logs, Store, Subscription
 from runtime.evals.service import turns
 from runtime.evals.service.hearing import Said
 from runtime.evals.service.turn_checks import TurnRun
-from runtime.exceptions import PinecallError
+from runtime.kit.loops import is_cancellation
 from runtime.kit.text import JsonObject
 from runtime.providers import service as providers
 from runtime.session import service as session
@@ -64,12 +64,14 @@ class WrittenLine:
         self._said_at = self._store.clock()
         return self
 
-    # A line that broke on our side ends the call it opened: left open, it holds the org's line.
+    # A line that broke on our side ends the call it opened: left open, it holds the org's line. Whatever
+    # broke it: until 2026-11-25 only a refusal of ours did, and a call whose caller met a database
+    # error or a vendor's own stayed open with nobody on it.
     async def __aexit__(
         self, kind: type[BaseException] | None, error: BaseException | None, trace: TracebackType | None
     ) -> None:
         """End the call as broken when the conversation broke on it."""
-        if isinstance(error, PinecallError):
+        if isinstance(error, Exception) and not is_cancellation(error):
             await session.end(self._running, *BROKE)
 
     async def say(self, text: str) -> ModelUsage | None:

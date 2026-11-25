@@ -190,16 +190,22 @@ def voice_vendor(catalog: Catalog, persona: judging.Persona | None) -> tuple[str
     return (in_use, None) if chosen is None else (chosen.vendor, chosen.model or None)
 
 
-# Read in a transaction of its own: the model is held for a whole call, and no connection is.
-@asynccontextmanager
-async def open_caller_model(
+# Read in a transaction of its own: the model is held for a whole call, and no connection is. Apart
+# from the opening, so whoever plays a call with nobody waiting on it can ask the database again when
+# it is busy (`postgres.when_free`) with no model opened yet.
+async def stage_of_caller(
     sessions: async_sessionmaker[AsyncSession], vault: Vault, scope: Scope, persona: judging.Persona
-) -> AsyncGenerator[CallerModel]:
-    """The model that improvises the caller's lines: the persona's, else the box's caller's."""
+) -> Running:
+    """The stage a caller's lines are improvised on: the persona's model, else the box's caller's, on its key."""
     async with sessions.begin() as session:
         catalog = await providers.get_catalog(session)
         keys = await providers.keys_of(session, vault, scope)
-    stage = caller_stage(catalog, keys, persona)
+    return caller_stage(catalog, keys, persona)
+
+
+@asynccontextmanager
+async def open_caller_model(stage: Running) -> AsyncGenerator[CallerModel]:
+    """The model that improvises the caller's lines, open on its stage for as long as the call lasts."""
     async with providers.open_answerer(stage) as model:
         yield CallerModel(model, name_of(stage))
 
