@@ -91,15 +91,16 @@ class FlowsTest < Minitest::Test
     sent = []
     remind = Pinecall.flow("remind-visit") do |visit, step|
       sent << step.template(visit[:phone], Reminder, "visit_reminder", language: "en_US", variables: ["Ana", "9:30"])
-      @kept.templated = { sent: true, simulated: false, message_id: "wamid.1", from: "+14155550134" }
-      sent << step.template(visit[:phone], Reminder, "visit_reminder", language: "en_US", from: "+14155550134")
+      @kept.templated = { sent: true, simulated: false, message_id: "wamid.1", from: "+14155550134", call: "call_7" }
+      sent << step.template(visit[:phone], Reminder, "visit_reminder", language: "en_US", text: "Hi Ana, your cleaning is tomorrow.")
     end
 
     assert_equal "done", remind.advance(@door, remind.started(@door, "visit-7", { phone: "+59899000001" }), SLUG_OF).status
     asked = { agent: "brightside-reminder", to: "+59899000001", template: "visit_reminder", language: "en_US", variables: ["Ana", "9:30"] }
     assert_equal asked, @kept.runs["run_1"][:steps].first[:asked]
     assert_equal [true, true, nil], [sent.first.sent, sent.first.simulated, sent.first.message_id]
-    assert_equal [true, false, "wamid.1", "+14155550134"], [sent.last.sent, sent.last.simulated, sent.last.message_id, sent.last.from]
+    assert_equal [true, false, "wamid.1", "call_7"], [sent.last.sent, sent.last.simulated, sent.last.message_id, sent.last.call]
+    assert_equal "Hi Ana, your cleaning is tomorrow.", @kept.runs["run_1"][:steps].last[:asked][:text]
   end
 
   def test_a_step_the_gateway_could_not_write_leaves_the_run_as_it_was

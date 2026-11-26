@@ -1,6 +1,12 @@
 # Changelog
 
 ## Unreleased
+- **A template's words open the contact's conversation.** `text` on `POST /v1/agents/{slug}/template` (and on a flow's
+  `template` step) is what the template says once filled: it is the first turn of an outbound WhatsApp call of the
+  contact's, with `metadata` on its `call.started`, and the answer names the `call`. What the contact answers lands on
+  it with those words before it, the console's thread shows the message, and a conversation that went quiet is carried
+  on as any is. Until now a template was said nowhere: a contact's "sí" opened a call that began on it. The turn is
+  sent by nobody (the template carried it); a contact whose conversation is still open is written on it, with no template.
 
 - **An agent sends a WhatsApp template through the gateway, and the sandbox answers it without sending.** `POST
   /v1/agents/{slug}/template {to, template, language, variables?, from?}`, on the `talk` scope, sends one template

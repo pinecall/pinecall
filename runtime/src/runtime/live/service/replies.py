@@ -153,6 +153,31 @@ class ByEmail:
         """None: an email's attachments are not read."""
 
 
+# A WhatsApp conversation the agent opens starts on a template, which Meta is asked for apart: the
+# words it carried are the conversation's first turn, and reach the contact once.
+@dataclass(slots=True)
+class FirstSaid:
+    """A way to a contact who already reads the conversation's first words: its first send is not sent."""
+
+    way: Reaches
+    waits: bool = True
+
+    async def send(self, to: whatsapp.Inbound, text: str) -> None:
+        """Nothing for the first words, which the template carried; every later reply by the way itself."""
+        if self.waits:
+            self.waits = False
+            return
+        await self.way.send(to, text)
+
+    async def mark_read(self, message: whatsapp.Inbound, *, typing: bool) -> None:
+        """As the way itself does."""
+        await self.way.mark_read(message, typing=typing)
+
+    async def hear_note(self, message: whatsapp.Inbound) -> str | None:
+        """As the way itself does."""
+        return await self.way.hear_note(message)
+
+
 # The one place that tells the channels apart for a reply. `opens`: the agent writes first, which only
 # an email's thread tells apart (its first message threads nothing).
 async def way_to(

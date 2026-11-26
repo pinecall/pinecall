@@ -130,17 +130,17 @@ describe("a run", () => {
     const sent: Templated[] = [];
     const remind = flow("remind-visit", async (visit, step) => {
       sent.push(await step.template(String(visit["phone"]), Reminder, "visit_reminder", { language: "en_US", variables: ["Ana", "9:30"] }));
-      kept.templated = { sent: true, simulated: false, message_id: "wamid.1", from: "+14155550134" };
-      sent.push(await step.template(String(visit["phone"]), Reminder, "visit_reminder", { language: "en_US", from: "+14155550134" }));
+      kept.templated = { sent: true, simulated: false, message_id: "wamid.1", from: "+14155550134", call: "call_7" };
+      sent.push(await step.template(String(visit["phone"]), Reminder, "visit_reminder", { language: "en_US", from: "+14155550134", text: "Hi Ana, your cleaning is tomorrow.", metadata: { visit: "v-812" } }));
     });
 
     const run = await started(kept.door, remind, "visit-7", { phone: "+14155550142" });
     expect(await advance(kept.door, remind, run, slugOf)).toEqual({ status: "done" });
     expect(kept.runs.get(run.id)!.steps.map((step) => [step.kind, step.asked])).toEqual([
       ["template", { agent: "brightside-reminder", to: "+14155550142", template: "visit_reminder", language: "en_US", variables: ["Ana", "9:30"] }],
-      ["template", { agent: "brightside-reminder", to: "+14155550142", template: "visit_reminder", language: "en_US", from: "+14155550134" }],
+      ["template", { agent: "brightside-reminder", to: "+14155550142", template: "visit_reminder", language: "en_US", from: "+14155550134", text: "Hi Ana, your cleaning is tomorrow.", metadata: { visit: "v-812" } }],
     ]);
-    expect(sent).toEqual([{ sent: true, simulated: true }, { sent: true, simulated: false, messageId: "wamid.1", from: "+14155550134" }]);
+    expect(sent).toEqual([{ sent: true, simulated: true }, { sent: true, simulated: false, messageId: "wamid.1", from: "+14155550134", call: "call_7" }]);
   });
 
   it("waits for an event, and reads null when it gave up", async () => {

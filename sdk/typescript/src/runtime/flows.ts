@@ -37,6 +37,8 @@ export interface Templated {
   messageId?: string;
   /** The number it left from. */
   from?: string;
+  /** The conversation its words were said on, when `text` was given. */
+  call?: string;
   refused?: string;
   message?: string;
 }
@@ -49,6 +51,10 @@ export interface TemplateOptions {
   variables?: string[];
   /** Which of the agent's WhatsApp numbers it leaves from. */
   from?: string;
+  /** What the template says once filled: given, it is the first turn of the contact's conversation, so what they answer reaches the agent with those words before it. */
+  text?: string;
+  /** What that conversation's call.started carries, as a text's does. */
+  metadata?: Data;
 }
 
 /** What a call a flow places opens with. */

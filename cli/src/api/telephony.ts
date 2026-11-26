@@ -292,6 +292,10 @@ export interface TemplateBody {
   /** What fills the body's {{1}}, {{2}}…, in order. */
   variables?: string[] | undefined;
   from?: string | undefined;
+  /** What the template says once filled: given, it is the first turn of the contact's conversation. */
+  text?: string | undefined;
+  /** A text's: what that conversation's call.started carries. */
+  metadata?: Record<string, unknown> | undefined;
 }
 
 /** A template sent, or kept: in the sandbox nothing is asked of Meta, and `simulated` says so. */
@@ -303,6 +307,8 @@ export interface Templated {
   template: string;
   simulated: boolean;
   message_id: string | null;
+  /** The conversation its words were said on; null when none were given. */
+  call: string | null;
 }
 
 /** `POST /v1/agents/{slug}/template`: the agent sends a contact one WhatsApp template; the sandbox answers and sends nothing. */

@@ -110,19 +110,35 @@ as the agent:
 
 ```http
 POST /v1/agents/front-desk/template
-{"to": "+5491155550134", "template": "visit_request", "language": "es_AR", "variables": ["Marta", "Friday at 11"]}
+{"to": "+5491155550134", "template": "visit_request", "language": "es_AR", "variables": ["Marta", "Friday at 11"],
+ "text": "Hola Marta, recibimos tu consulta. ¿Coordinamos una visita el viernes a las 11?", "metadata": {"listing": 2821756}}
 ```
 
-`202 {agent, to, from, env, template, simulated, message_id}`. `variables` fill the body's `{{1}}`,
+`202 {agent, to, from, env, template, simulated, message_id, call}`. `variables` fill the body's `{{1}}`,
 `{{2}}`… in order; `from` names the number it leaves from when the agent answers WhatsApp at
 several. It is sent from the number's own account on the org's token, and `message_id` is Meta's id
 of the message.
 
+**`text` puts it on the contact's conversation.** It is what the template says once filled, which
+only the caller knows: Meta keeps the template's body. Given, those words are the first turn of an
+outbound WhatsApp call of the contact's (`call` in the answer), whose `call.started` carries
+`metadata` as a text's does. What the contact answers lands on that call, with those words before
+it, so a "sí" is read as the answer it is; the console's thread shows the message; and a
+conversation that went quiet is carried on by the contact's next one, as any is. The template goes
+to Meta first, so its refusal opens nothing, and the turn itself is sent by nobody. A contact whose
+conversation still has idle time left wrote inside the 24 hours: the words are said on it as one
+more message, no template is sent, and `message_id` is `null`. Somebody must be holding the agent
+(`409` otherwise). With no `text` the template is said on no conversation, `call` is `null`, and
+what the contact answers opens a call as any message does. Until 2026-11-26 that was the only way,
+and an agent knew what it had asked a contact only by what its app kept.
+
 **The sandbox sends nothing.** There the answer is the same with `simulated: true` and no
-`message_id`: Meta is not asked, nobody is written to, nothing is charged, and the agent needs no
-WhatsApp number. An agent's goldens hand a conversation over dozens of times a run, and each of
-those would be a paid message on a real person's phone. An app sends its templates through this
-door, in both environments, and holds no token of Meta's.
+`message_id`: Meta is not asked, nobody is written to, nothing is charged. An agent's goldens hand a
+conversation over dozens of times a run, and each of those would be a paid message on a real
+person's phone. An agent with no WhatsApp number in the sandbox is answered so with no conversation
+(`call: null`); one that has a number there has its conversation opened on `text` as in production,
+with nothing sent. An app sends its templates through this door, in both environments, and holds no
+token of Meta's.
 
 Refused before anything is sent: `400` for a number that is not `+`, the country's code and the
 number; `403` for a contact who asked for no more messages, in either environment; in production,
@@ -130,16 +146,13 @@ number; `403` for a contact who asked for no more messages, in either environmen
 org's to send from. What Meta refuses (a template it does not know, a number not on WhatsApp) is a
 `502` in its own words.
 
-The same send is the CLI's `pinecall template <agent> <name> --to <number> --language <code> [--var …]`
-(`cli/docs/the-cli.md`, "`template`"), the MCP server's tool `template`, the console's **Write first with a
-template** on a WhatsApp number's page, and a flow's step
-(`step.template(to, Agent, name, { language, variables })` in the three SDKs; [flows.md](flows.md), kind
-`template`). A hosted app that is in no flow asks the door itself, with the `PINECALL_URL` and `PINECALL_KEY`
-it is started with.
-
-The template is not said on the contact's conversation: their answer opens a call as any message
-does, and the app tells the agent what it wrote. No row is kept of a template sent or simulated: the
-answer is the record, and an app writes it on its call's log.
+The same send is the CLI's `pinecall template <agent> <name> --to <number> --language <code> [--var …]
+[--text …]` (`cli/docs/the-cli.md`, "`template`"), the MCP server's tool `template`, the console's
+**Write first with a template** on a WhatsApp number's page, and a flow's step
+(`step.template(to, Agent, name, { language, variables, text })` in the three SDKs; [flows.md](flows.md),
+kind `template`). A hosted app that is in no flow asks the door itself, with the `PINECALL_URL` and
+`PINECALL_KEY` it is started with. No row is kept of a template sent with no `text`: the answer is
+the record, and an app writes it on its call's log.
 
 ## Nobody holding the agent
 

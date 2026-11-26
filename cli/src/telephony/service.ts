@@ -255,7 +255,7 @@ export async function textOut(ctx: Context, input: TextInput): Promise<api.Texte
   return api.text(ctx.gateway(), input.agent, { to: input.to, text: input.text, from: input.from, subject: input.subject, metadata: input.metadata, instruction: input.instruction });
 }
 
-/** What `template` takes: the agent, the contact's number, the template approved at Meta, its language, what fills its body, the number it leaves from. */
+/** What `template` takes: the agent, the contact's number, the template approved at Meta, its language, what fills its body, the number it leaves from; and its words, which open the contact's conversation, with a text's metadata. */
 export const TemplateInput = z.object({
   agent: z.string().min(1),
   to: z.string().min(1),
@@ -263,12 +263,14 @@ export const TemplateInput = z.object({
   language: z.string().min(2).max(16),
   variables: z.array(z.string()).max(32).optional(),
   from: z.string().min(1).optional(),
+  text: z.string(WORDS).min(1, WORDS).max(1600, WORDS).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 export type TemplateInput = z.infer<typeof TemplateInput>;
 
 /** Have the agent send a contact one WhatsApp template: sent in production, answered and never sent in the sandbox. */
 export async function templateOut(ctx: Context, input: TemplateInput): Promise<api.Templated> {
-  return api.template(ctx.gateway(), input.agent, { to: input.to, template: input.template, language: input.language, variables: input.variables, from: input.from });
+  return api.template(ctx.gateway(), input.agent, { to: input.to, template: input.template, language: input.language, variables: input.variables, from: input.from, text: input.text, metadata: input.metadata });
 }
 
 /** Have the agent call a number: the call it became, before anything rings. */

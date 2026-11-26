@@ -157,7 +157,8 @@ async def test_a_template_in_the_sandbox_is_answered_as_simulated_and_one_with_n
     sent = await _post(gateway, tenant, f"/runs/{run}/steps", {"seq": 1, "kind": "template", "asked": asked})
     assert sent["status"] == "ready", "a template is over as it is answered"
     read = (await gateway.http.get(f"{APP}/runs/{run}", headers=tenant.person)).json()
-    assert read["steps"][0]["result"] == {"sent": True, "simulated": True, "message_id": None, "from": None}
+    kept = {"sent": True, "simulated": True, "message_id": None, "from": None, "call": None}
+    assert read["steps"][0]["result"] == kept
     stopped = {"seq": 2, "kind": "template", "asked": {**asked, "to": "14155550142"}}
     refused = await _post(gateway, tenant, f"/runs/{run}/steps", stopped)
     assert refused["status"] == "ready"

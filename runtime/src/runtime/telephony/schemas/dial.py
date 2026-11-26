@@ -102,6 +102,17 @@ class TemplateRequest(Schema):
     # What fills the body's {{1}}, {{2}}…, in order.
     variables: list[str] = Field(default_factory=list[str], max_length=32)
     from_: str | None = Field(None, alias="from")
+    # What the template says once filled: given, it is the first turn of the contact's conversation.
+    text: str | None = Field(default=None, min_length=1, max_length=1600)
+    # A text's: what that conversation's `call.started` carries.
+    metadata: JsonObject = Field(default_factory=dict[str, Json])
+
+    @field_validator("metadata")
+    @classmethod
+    def _fits_a_dispatch(cls, given: JsonObject) -> JsonObject:
+        if len(json.dumps(given)) > OPENING_BYTES:
+            raise ValueError(f"what a written call opens with is {OPENING_BYTES} bytes of JSON at most")
+        return given
 
 
 class TemplateResponse(Row):
@@ -115,3 +126,5 @@ class TemplateResponse(Row):
     # The sandbox's: nothing was asked of Meta, nobody was written to, and there is no id.
     simulated: bool
     message_id: str | None
+    # The conversation the template's words were said on; null when no `text` was given.
+    call: str | None

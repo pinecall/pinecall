@@ -7,6 +7,7 @@ import secrets
 import time
 from dataclasses import dataclass, field
 
+import httpx
 import jwt
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -24,9 +25,11 @@ from runtime.telephony.repository import RouteRepository, RouteToWrite
 from runtime.telephony.service import accounts
 from runtime.telephony.service.email_account import EmailAccount
 from runtime.telephony.service.twilio_carrier import TwilioCarrier
+from runtime.telephony.service.whatsapp_number import WhatsappNumber
 from runtime.wire.dispatch import Dispatch
 from tests.conftest import Gateway, Tenant, holding, needs_the_services, received
 from tests.fakes import acme
+from tests.fakes.internet import Internet
 from tests.fakes.twilio import Twilio
 from tests.telephony.service.test_email_message import an_email
 
@@ -288,6 +291,48 @@ async def test_the_sandbox_answers_a_whatsapp_template_as_simulated_and_writes_t
             "template": "consulta_derivada",
             "simulated": True,
             "message_id": None,
+            "call": None,
         }
         refused = await gateway.http.post(door, json={**asked, "to": "1155"}, headers=tenant.person)
         assert refused.status_code == 400, refused.text
+
+
+@needs_the_services
+async def test_a_template_with_its_words_opens_the_contacts_conversation_and_the_sandbox_asks_meta_nothing(
+    gateway: Gateway, tenant: Tenant, agent: str, sessions: async_sessionmaker[AsyncSession], internet: Internet
+) -> None:
+    """The words are the first turn of an outbound WhatsApp call, with its metadata; the next words go on it too."""
+    number, contact = f"+1555{secrets.randbelow(10**7):07d}", f"+5491{secrets.randbelow(10**9):09d}"
+    meta_id, vault = f"10{secrets.randbelow(10**9):09d}", Vault(os.environ["PINECALL_VAULT_KEY"])
+    at_meta = WhatsappNumber(org=tenant.org, phone_number_id=meta_id, access_token="the org's token")
+    route = RouteToWrite(
+        org=tenant.org, number=number, agent=agent, channel=Channel.whatsapp, env=Env.sandbox, account=meta_id
+    )
+    asked_of_meta: list[str] = []
+
+    def graph(request: httpx.Request) -> httpx.Response:
+        asked_of_meta.append(f"{request.method} {request.url.path}")
+        return httpx.Response(200, json={"messages": [{"id": "wamid.never"}]})
+
+    words = "Hola Marta, recibimos tu consulta por la casa de Olazaval al 400. ¿Coordinamos una visita?"
+    asked = {"to": contact, "template": "visit_request", "language": "es_AR", "variables": ["Marta"], "text": words}
+    with internet.serving("graph.facebook.com", graph):
+        async with holding(gateway, tenant, agent):
+            async with sessions.begin() as session:
+                await accounts.put_carrier(session, vault, at_meta)
+                await RouteRepository(session).put(route)
+            door = f"/v1/agents/{agent}/template"
+            sent = await gateway.http.post(
+                door, json={**asked, "metadata": {"listing": 2821756}}, headers=tenant.person
+            )
+            assert sent.status_code == 202, sent.text
+            said = sent.json()
+            assert (said["from"], said["simulated"], said["message_id"]) == (number, True, None)
+            entries = await entries_until(gateway, tenant, said["call"], "turn.agent")
+            started = next(entry["data"] for entry in entries if entry["type"] == "call.started")
+            assert (started["channel"], started["direction"], started["medium"]) == ("whatsapp", "outbound", "text")
+            assert started["metadata"]["listing"] == 2821756
+            assert [entry["data"]["text"] for entry in entries if entry["type"] == "turn.agent"] == [words]
+            again = await gateway.http.post(door, json={**asked, "text": "Una cosa más."}, headers=tenant.person)
+            assert again.json()["call"] == said["call"], "a conversation with idle time left takes the next words too"
+    assert asked_of_meta == [], "the sandbox asks Meta for no template, and the first words are sent by nobody"

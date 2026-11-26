@@ -13,6 +13,7 @@ from runtime.flows.service import Dial, Holders, LiveSide
 from runtime.kit.text import parse_slug
 from runtime.live import service as live
 from runtime.live.auth import AppKey, TheLive, TheWhatsappThreads
+from runtime.wire.parts import Supervisor
 
 # An app's runs are read with the key its process serves with, or by who reads the calls.
 ReadsRuns = Annotated[Actor, Depends(Authenticator(KeyScope.app, KeyScope.calls))]
@@ -64,8 +65,10 @@ def live_side_of(parts: TheLive, threads: TheWhatsappThreads) -> LiveSide:
     async def text(session: AsyncSession, texting: live.Texting) -> live.Texted:
         return await live.send_text(session, parts, threads, texting)
 
-    async def template(session: AsyncSession, scope: Scope, agent: str, asked: live.Templating) -> live.Templated:
-        return await live.send_template(session, parts, scope, agent, asked)
+    async def template(
+        session: AsyncSession, scope: Scope, agent: str, asked: live.Templating, by: Supervisor
+    ) -> live.Templated:
+        return await live.send_template(session, parts, threads, scope, agent, asked, by)
 
     return LiveSide(holders_of(parts), dial_of(parts), text, template)
 

@@ -71,6 +71,7 @@ class Templated:
     simulated: bool = False
     message_id: str | None = None
     from_: str | None = None
+    call: str | None = None
     refused: str | None = None
     message: str | None = None
 
@@ -258,11 +259,14 @@ class Step:
         language: str,
         variables: list[str] | None = None,
         from_: str | None = None,
+        text: str | None = None,
+        metadata: JsonObject | None = None,
     ) -> Templated:
         """Have an agent, its class or its slug, send a contact one WhatsApp template.
 
         `language` is Meta's code of the one it was approved in, `variables` fill its body in order.
-        In the sandbox it is answered `simulated` and never sent.
+        `text`, what the template says once filled, opens the contact's conversation as its first
+        turn, with `metadata`. In the sandbox it is answered `simulated` and never sent.
         """
         cls = _config.agent_named(agent) if isinstance(agent, str) else agent
         slug = None if cls is None else self._slug_of(cls)
@@ -274,8 +278,12 @@ class Step:
             asked["variables"] = [*variables]
         if from_ is not None:
             asked["from"] = from_
+        if text is not None:
+            asked["text"] = text
+        if metadata is not None:
+            asked["metadata"] = metadata
         said = cast("JsonObject", await self._waited("template", asked) or {})
-        known = {name: said.get(name) for name in ("message_id", "refused", "message")}
+        known = {name: said.get(name) for name in ("message_id", "call", "refused", "message")}
         return Templated(
             sent=bool(said.get("sent")),
             simulated=bool(said.get("simulated")),

@@ -18,7 +18,7 @@ module Pinecall
 
     # What a WhatsApp template a flow sent came to. `simulated`: the sandbox, where it is answered and
     # never sent; `refused` names why nothing was sent.
-    Templated = Data.define(:sent, :simulated, :message_id, :from, :refused, :message)
+    Templated = Data.define(:sent, :simulated, :message_id, :from, :call, :refused, :message)
 
     # Where a stretch of a run left it; a failed one says what its function raised.
     Advanced = Data.define(:status, :error)
@@ -139,13 +139,16 @@ module Pinecall
 
       # Have an agent send a contact one WhatsApp template, in the `language` it was approved in at Meta,
       # its body filled by `variables` in order. In the sandbox it is answered `simulated` and never sent.
-      def template(to, agent, template, language:, variables: nil, from: nil)
+      # `text`, what the template says once filled, opens the contact's conversation as its first turn,
+      # with `metadata`.
+      def template(to, agent, template, language:, variables: nil, from: nil, text: nil, metadata: nil)
         slug = @slug_of.call(agent)
         raise DeclarationRefused, "#{@flow.name}: #{agent} is no agent this process serves" if slug.nil?
 
-        said = waited("template", { agent: slug, to:, template:, language:, variables:, from: }.compact) || {}
+        asked = { agent: slug, to:, template:, language:, variables:, from:, text:, metadata: }.compact
+        said = waited("template", asked) || {}
         Templated.new(sent: said[:sent] == true, simulated: said[:simulated] == true, message_id: said[:message_id],
-                      from: said[:from], refused: said[:refused], message: said[:message])
+                      from: said[:from], call: said[:call], refused: said[:refused], message: said[:message])
       end
 
       # Wait for an event of the app whose data has what `match` names; nil when it gave up.

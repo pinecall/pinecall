@@ -24,7 +24,7 @@ from runtime.live.peers import THREADS, ThreadKey
 from runtime.live.service import resuming, written
 from runtime.live.service.handed import hand, hand_receipt, message_of, receipt_of
 from runtime.live.service.opt_outs import Stop, refuses_messages, take_off, take_word
-from runtime.live.service.replies import Reaches, way_to
+from runtime.live.service.replies import FirstSaid, Reaches, way_to
 from runtime.live.service.resuming import OVER, find_earlier
 from runtime.live.service.waiting import Waiting, keep_waiting, list_waiting, mark_taken
 from runtime.scoping import box_task
@@ -111,6 +111,9 @@ class FirstMessage:
     call: str
     metadata: Mapping[str, Json] = field(default_factory=dict[str, Json])
     opens_itself: bool = False
+    # The contact already reads its first words (a WhatsApp template carried them): they are said on
+    # the call and sent by nobody.
+    said: bool = False
 
 
 # What `whatsapp`'s webhook is handed (`whatsapp.service.Threads`): the contacts' conversations.
@@ -357,6 +360,8 @@ class Threads:
             except PinecallError as refused:
                 logger.warning("whatsapp: agent %s cannot answer at %s: %s", route.agent, inbound.number, refused)
                 return None
+        if first is not None and first.said:
+            reaches = FirstSaid(reaches)
         thread = OpenThread(session=running, inbound=inbound, reaches=reaches)
         thread.refuses = partial(refuses_messages, live, Scope(route.org, route.env), inbound.caller)
         # Before the session starts, so every turn the contact is owed reaches them.

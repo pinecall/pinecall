@@ -5,6 +5,7 @@ Every change a person using this gem would notice. The format is
 maintainer's call.
 
 ## [Unreleased]
+- **`step.template` takes `text:` and `metadata:`.** `text:`, what the template says once filled, opens the contact's conversation as its first turn, so their answer reaches the agent with those words before it; `Templated#call` is that conversation.
 
 - **`step.template` sends a WhatsApp template from a flow.** `step.template(visit[:phone], Reminder, "visit_reminder", language: "en_US", variables: ["Ana", "9:30"])` sends the template approved at Meta as the agent and answers a `Templated` (`sent`, `simulated`, `message_id`, `from`, `refused`, `message`). In the sandbox it is answered `simulated` and never sent. Needs a gateway at this release.
 

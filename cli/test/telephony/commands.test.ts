@@ -168,7 +168,7 @@ describe("pinecall dial", () => {
 
 describe("pinecall template", () => {
   const ASKED = ["template", "reminder", "visit_reminder", "--to", "+14155550142", "--language", "en_US", "--var", "Ana", "--var", "tomorrow at 9:30"];
-  const KEPT = { agent: "reminder", to: "+14155550142", from: null, env: "sandbox", template: "visit_reminder", simulated: true, message_id: null };
+  const KEPT = { agent: "reminder", to: "+14155550142", from: null, env: "sandbox", template: "visit_reminder", simulated: true, message_id: null, call: null };
 
   it("asks with the variables in order, and says the sandbox sent nothing", async () => {
     const sent = answer("post", "/v1/agents/reminder/template", KEPT);
@@ -182,6 +182,13 @@ describe("pinecall template", () => {
     answer("post", "/v1/agents/reminder/template", { ...KEPT, from: "+14155550134", env: "production", simulated: false, message_id: "wamid.1" });
     const ran = await run(["--prod", ...ASKED]);
     expect(ran.out).toContain("reminder sent visit_reminder to +14155550142 from +14155550134 · production · wamid.1");
+  });
+
+  it("sends its words and what the conversation opens with, and names the conversation", async () => {
+    const sent = answer("post", "/v1/agents/reminder/template", { ...KEPT, from: "+14155550134", env: "production", simulated: false, message_id: "wamid.1", call: "call_7" });
+    const ran = await run(["--prod", ...ASKED, "--text", "Hi Ana, your cleaning is tomorrow at 9:30.", "--metadata", '{"visit":"v-812"}']);
+    expect(sent[0]!.body).toMatchObject({ text: "Hi Ana, your cleaning is tomorrow at 9:30.", metadata: { visit: "v-812" } });
+    expect(ran.out).toContain("pinecall sessions call_7 reads the conversation its words opened");
   });
 
   it("is refused with no language", async () => {

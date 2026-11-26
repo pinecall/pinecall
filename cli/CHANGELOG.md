@@ -5,6 +5,10 @@ that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pin
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
+- **`pinecall template --text`: the template's words open the contact's conversation.** `--text <words>` is what the
+  template says once filled: the first turn of the contact's conversation, so what they answer reaches the agent with
+  those words before it; `--metadata <json>` is what that conversation's `call.started` carries, and the answer names
+  the call. The MCP's `template` takes `text` and `metadata` too.
 
 - **`pinecall template`: an agent sends a WhatsApp template.** `pinecall template <agent> <name> --to <number> --language <code>
   [--var <words>]…` sends the template approved at Meta from the number the agent answers WhatsApp at, each `--var` filling

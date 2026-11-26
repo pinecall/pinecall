@@ -6,6 +6,9 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 maintainer's call, so everything sits under Unreleased until one is cut.
 
 ## Unreleased
+- **`step.template` takes `text` and `metadata`.** `text`, what the template says once filled, opens the contact's
+  conversation as its first turn, so their answer reaches the agent with those words before it; the answer carries
+  `call`, that conversation.
 
 - **`step.template` sends a WhatsApp template from a flow.** `step.template(visit.phone, Reminder, "visit_reminder",
   { language: "en_US", variables: ["Ana", "9:30"] })` sends the template approved at Meta as the agent and answers

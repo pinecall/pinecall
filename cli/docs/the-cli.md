@@ -2486,7 +2486,7 @@ to by nobody (`pinecall data consent <number|address>` says who did).
 ## `template`
 
 ```
-pinecall template <agent> <name> --to <number> --language <code> [--var <words>]… [--from <number>]
+pinecall template <agent> <name> --to <number> --language <code> [--var <words>]… [--from <number>] [--text <words>] [--metadata <json>]
 ```
 
 ```console
@@ -2505,8 +2505,14 @@ WhatsApp at (`--from` picks one of several) and the line ends with Meta's id of 
 sandbox nothing is sent**: the answer says what would have gone, and the agent needs no WhatsApp
 number there. A contact who asked for no more messages is written to by nobody (`pinecall data
 consent <number>` says who did). What Meta refuses (a template it does not know, a number not on
-WhatsApp) is said in its own words. The template is not said on the contact's conversation: what they
-answer opens one as any message does.
+WhatsApp) is said in its own words.
+
+`--text` is what the template says once filled, and it puts the message on the contact's
+conversation: those words are the first turn of an outbound WhatsApp call, what the contact answers
+reaches the agent with them before it, and a second line names the call (`pinecall sessions <call>`).
+`--metadata` is what that call's `call.started` carries. Somebody must be holding the agent. A
+contact whose conversation is still open is written on it, and no template is sent. With no `--text`
+the template is said on no conversation: what they answer opens one as any message does.
 
 ## `email`
 

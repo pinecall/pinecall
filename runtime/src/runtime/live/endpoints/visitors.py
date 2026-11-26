@@ -22,6 +22,7 @@ from runtime.telephony.schemas.dial import (
     TextRequest,
     TextResponse,
 )
+from runtime.wire.parts import Supervisor
 
 router = APIRouter()
 
@@ -94,13 +95,22 @@ async def text_out(
 # for. The sandbox answers and sends nothing.
 @router.post("/v1/agents/{slug}/template", status_code=202)
 async def send_template(
-    slug: KnownAgent, body: TemplateRequest, actor: TalkKey, live: TheLive, session: Session
+    slug: KnownAgent,
+    body: TemplateRequest,
+    actor: TalkKey,
+    live: TheLive,
+    threads: TheWhatsappThreads,
+    session: Session,
 ) -> TemplateResponse:
-    """Send a contact one WhatsApp template as the agent; in the sandbox, answered `simulated` and never sent."""
-    asked = templating.Templating(body.to, body.template, body.language, tuple(body.variables), body.from_)
-    sent = await templating.send_template(session, live, actor.scope, slug, asked)
+    """Send a contact one WhatsApp template as the agent, its words on their conversation; simulated in the sandbox."""
+    asked = templating.Templating(
+        body.to, body.template, body.language, tuple(body.variables), body.from_, body.text, body.metadata
+    )
+    by = Supervisor(id=actor.asked_by, name=None if actor.person is None else actor.person.name)
+    sent = await templating.send_template(session, live, threads, actor.scope, slug, asked, by)
     answer = {"agent": slug, "to": sent.to, "from": sent.shown, "env": actor.env, "template": body.template}
-    return TemplateResponse.model_validate({**answer, "simulated": sent.simulated, "message_id": sent.message_id})
+    kept = {"simulated": sent.simulated, "message_id": sent.message_id, "call": sent.call}
+    return TemplateResponse.model_validate({**answer, **kept})
 
 
 # The page says it before it leaves the room, over HTTP, which a closing tab still completes

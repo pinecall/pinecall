@@ -100,7 +100,7 @@ class TextStep(_Asked):
 
 
 class TemplateStep(_Asked):
-    """`template` asks `{agent, to, template, language, variables?, from?}` as the template endpoint does."""
+    """`template` asks `{agent, to, template, language, variables?, from?, text?, metadata?}` as its endpoint does."""
 
     agent: str
     to: str
@@ -108,6 +108,9 @@ class TemplateStep(_Asked):
     language: str = Field(min_length=2, max_length=16)
     variables: list[str] = Field(default_factory=list[str], max_length=32)
     from_: Words = Field(default=None, alias="from")
+    # What the template says once filled: given, it opens the contact's conversation, with `metadata`.
+    text: str | None = Field(default=None, min_length=1, max_length=1600)
+    metadata: Data = Field(default_factory=dict[str, Json])
 
 
 class EmitStep(_Asked):

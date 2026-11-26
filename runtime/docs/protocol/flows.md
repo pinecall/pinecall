@@ -64,7 +64,7 @@ since the function changed under its run. Only a `ready` run takes a new step.
 | `call` | `{agent, to, from?, state?, metadata?, greeting?, instruction?}` | places the call as `POST /v1/agents/{agent}/dial` does, after the same guards ([numbers.md](numbers.md)); the run is `calling` until the call ends |
 
 | `text` | `{agent, to, text?, from?, subject?, metadata?, instruction?}` | sends the contact one SMS, or an address the first email of a thread, as `POST /v1/agents/{agent}/text` does, after the same guards ([numbers.md](numbers.md), "SMS"; [email.md](email.md), "The agent writes first"); over as it is written |
-| `template` | `{agent, to, template, language, variables?, from?}` | sends the contact one WhatsApp template as `POST /v1/agents/{agent}/template` does ([whatsapp.md](whatsapp.md), "The agent writes first"); in the sandbox it is answered and never sent; over as it is answered |
+| `template` | `{agent, to, template, language, variables?, from?, text?, metadata?}` | sends the contact one WhatsApp template as `POST /v1/agents/{agent}/template` does ([whatsapp.md](whatsapp.md), "The agent writes first"): with `text`, its words open the contact's conversation; in the sandbox it is answered and never sent; over as it is answered |
 
 Each step reads back as `{seq, kind, asked, over, result}`. A `sleep` ends with `null`, a `wait`
 with the event's data, a `call` with `{answered, reason, call}`: `reason` is the call's end reason,
@@ -73,8 +73,8 @@ agent nobody is holding, is the step's result and no error: `{answered: false, r
 written at once with the run still `ready`, so the function reads which guard and goes on. A `text`
 ends with `{sent: true, call, from}`, the conversation it was said on, or `{sent: false, refused,
 message}` the same way: a guard, a contact who stopped the messages, nobody holding the agent. A
-`template` ends with `{sent: true, simulated, message_id, from}` (`simulated: true` and no `message_id` in the
-sandbox, where Meta is not asked), or `{sent: false, refused, message}`. The
+`template` ends with `{sent: true, simulated, message_id, from, call}` (`simulated: true` and no `message_id` in the
+sandbox, where Meta is not asked; `call` is the conversation its `text` opened), or `{sent: false, refused, message}`. The
 call's metadata carries `flow_run`, the run that placed it. Cancelling a run does not end a call it
 placed.
 

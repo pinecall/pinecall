@@ -181,8 +181,10 @@ export function texted(sent: Texted): string[] {
 /** A template sent, with Meta's id of the message; or, in the sandbox, what would have gone and that nothing did. */
 export function templated(sent: Templated): string[] {
   const from = sent.from === null ? "" : ` from ${sent.from}`;
-  if (sent.simulated) return [`${sent.agent} would send ${sent.template} to ${sent.to}${from} · ${sent.env} · simulated: nothing was sent`, formatHint("--prod sends it: Meta charges the number's account for a template")];
-  return [`${sent.agent} sent ${sent.template} to ${sent.to}${from} · ${sent.env} · ${sent.message_id ?? ""}`];
+  const conversation = sent.call === null ? [] : [formatHint(`pinecall sessions ${sent.call} reads the conversation its words opened`)];
+  if (sent.simulated) return [`${sent.agent} would send ${sent.template} to ${sent.to}${from} · ${sent.env} · simulated: nothing was sent`, ...conversation, formatHint("--prod sends it: Meta charges the number's account for a template")];
+  // A contact whose conversation has idle time left is written on it: no template went, and Meta named no message.
+  return [`${sent.agent} sent ${sent.template} to ${sent.to}${from} · ${sent.env} · ${sent.message_id ?? "said on the open conversation"}`, ...conversation];
 }
 
 export function callbacks(page: CallbackPage): string[] {

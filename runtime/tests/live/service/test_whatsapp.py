@@ -17,7 +17,7 @@ from runtime.kit import sms as texts
 from runtime.live.parts import LiveParts
 from runtime.live.peers import THREADS, ThreadKey
 from runtime.live.service import whatsapp, written
-from runtime.live.service.replies import BySms, ByWhatsapp, Ears
+from runtime.live.service.replies import BySms, ByWhatsapp, Ears, FirstSaid
 from runtime.live.service.whatsapp import OpenThread
 from runtime.providers import service as providers
 from runtime.providers.service import transcription
@@ -97,6 +97,24 @@ async def test_a_message_taken_up_is_marked_read_and_typing_is_shown_only_while_
         assert await whatsapp.take_up(side.parts, thread, message) is None
     assert meta.read == [("wamid.1", agents_line)]
     assert asked == ["quiero un turno"]
+
+
+# ── a conversation a template opened ──
+
+
+@needs_the_database
+async def test_the_words_a_template_carried_are_not_sent_again_and_every_reply_after_them_is(side: Side) -> None:
+    """The first turn of a conversation the agent opened on a template is said on the call and sent by nobody."""
+    meta = Graph()
+    (message,) = webhook.messages_in(a_body(a_text("sí")))
+    async with httpx.AsyncClient(transport=httpx.MockTransport(meta.answer)) as http:
+        way = FirstSaid(ByWhatsapp(http, "the number's token", Ears(side.parts, SCOPE)))
+        await way.send(message, "Hola Marta, recibimos tu consulta por la casa.")
+        assert meta.sent == [], "the template was those words"
+        await way.send(message, "Tiene tres dormitorios.")
+        await way.mark_read(message, typing=False)
+    assert [sent["text"] for sent in meta.sent] == [{"body": "Tiene tres dormitorios.", "preview_url": False}]
+    assert meta.read == [("wamid.1", False)]
 
 
 @needs_the_database

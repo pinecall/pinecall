@@ -81,7 +81,7 @@ class Holders(Protocol):
 
 type Dial = Callable[[AsyncSession, live.Placement], Awaitable[live.PlacedCall]]
 type SendText = Callable[[AsyncSession, live.Texting], Awaitable[live.Texted]]
-type SendTemplate = Callable[[AsyncSession, Scope, str, live.Templating], Awaitable[live.Templated]]
+type SendTemplate = Callable[[AsyncSession, Scope, str, live.Templating, Supervisor], Awaitable[live.Templated]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -314,7 +314,7 @@ async def write_step(
         case TextStep() as asked:
             row.result = {"value": await _text(session, side, app, asked, asked_by)}
         case TemplateStep() as asked:
-            row.result = {"value": await _template(session, side, app, asked)}
+            row.result = {"value": await _template(session, side, app, asked, asked_by)}
     if found.status == RunStatus.ready:
         found.leased_until, found.moved_at = now() + LEASED_FOR, now()
     await steps.add(row)
@@ -388,14 +388,18 @@ async def _text(session: AsyncSession, side: LiveSide, app: App, asked: TextStep
 
 
 # A WhatsApp template is over as Meta takes it, and in the sandbox as it is answered: nothing is sent
-# there, and the step's answer says so (`simulated`). It opens no conversation, so nobody need hold the agent.
-async def _template(session: AsyncSession, side: LiveSide, app: App, asked: TemplateStep) -> JsonObject:
-    wanted = live.Templating(asked.to, asked.template, asked.language, tuple(asked.variables), asked.from_)
+# there, and the step's answer says so (`simulated`). With its words given it opens the contact's
+# conversation, which somebody must hold the agent for; with none it opens nothing.
+async def _template(session: AsyncSession, side: LiveSide, app: App, asked: TemplateStep, asked_by: str) -> JsonObject:
+    wanted = live.Templating(
+        asked.to, asked.template, asked.language, tuple(asked.variables), asked.from_, asked.text, asked.metadata
+    )
     try:
-        sent = await side.template(session, app.scope, asked.agent, wanted)
+        sent = await side.template(session, app.scope, asked.agent, wanted, Supervisor(id=asked_by, name=None))
     except PinecallError as refused:
         return {"sent": False, "refused": type(refused).__name__, "message": refused.message}
-    return {"sent": True, "simulated": sent.simulated, "message_id": sent.message_id, "from": sent.shown}
+    said = {"sent": True, "simulated": sent.simulated, "message_id": sent.message_id, "from": sent.shown}
+    return {**said, "call": sent.call}
 
 
 async def _park(session: AsyncSession, run: FlowRun, on: Clock | Event) -> None:

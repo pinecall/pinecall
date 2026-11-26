@@ -172,7 +172,7 @@ Have an agent write to a contact first: one SMS to a number, from a number it an
 
 Have an agent send a contact one WhatsApp template, the message approved at Meta that opens a conversation there. In production it is sent and Meta charges the number's account; in the sandbox it is answered `simulated` and never sent.
 
-`template` sends one WhatsApp template as the agent and answers where it went: the number it left from, the environment, `simulated`, and Meta's id of the message. Outside the 24 hours after a contact's last message a template is the only thing WhatsApp lets a business write, and it is the one message Meta charges for. In the sandbox nothing is asked of Meta: the answer is the same with `simulated: true` and no `message_id`, nobody is written to, and the agent needs no WhatsApp number; `prod: true` sends it, from a number the agent answers WhatsApp at (`numbers` imports one with `channel: whatsapp`). A contact who asked for no more messages is refused in both: `compliance consent` says who did. What Meta refuses (a template it does not know, a number not on WhatsApp) comes back in its own words. The template is not said on the contact's conversation: what they answer opens one as any message does.
+`template` sends one WhatsApp template as the agent and answers where it went: the number it left from, the environment, `simulated`, and Meta's id of the message. Outside the 24 hours after a contact's last message a template is the only thing WhatsApp lets a business write, and it is the one message Meta charges for. In the sandbox nothing is asked of Meta: the answer is the same with `simulated: true` and no `message_id`, nobody is written to, and the agent needs no WhatsApp number; `prod: true` sends it, from a number the agent answers WhatsApp at (`numbers` imports one with `channel: whatsapp`). A contact who asked for no more messages is refused in both: `compliance consent` says who did. What Meta refuses (a template it does not know, a number not on WhatsApp) comes back in its own words. Give `text`, the words the template says once filled, and they open the contact's conversation as its first turn: the answer carries `call`, what the contact answers lands on it with those words before it, and somebody must be holding the agent. A contact whose conversation is still open is written on it, with no template sent. With no `text` the template is said on no conversation, and what they answer opens one as any message does.
 
 | parameter | takes | | what it is |
 |---|---|---|---|
@@ -182,6 +182,8 @@ Have an agent send a contact one WhatsApp template, the message approved at Meta
 | `language` | text | required | Meta's code of the language it was approved in: `es_AR`, `en_US` |
 | `variables` | a list of texts |  | what fills the body's {{1}}, {{2}}…, in order |
 | `from` | text |  | which of the agent's WhatsApp numbers it leaves from; the first when left out |
+| `text` | text |  | what the template says once filled: given, it is the first turn of the contact's conversation, so what they answer reaches the agent with those words before it |
+| `metadata` | an object |  | what that conversation's `call.started` carries |
 | `prod` | true or false |  | true acts in production; left out or false, in the sandbox |
 
 ## `email`

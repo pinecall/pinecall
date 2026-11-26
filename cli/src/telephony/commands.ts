@@ -86,6 +86,12 @@ answers WhatsApp at, its body's {{1}}, {{2}}… filled by each --var in order:
 
   $ pinecall template reminder visit_reminder --to +14155550142 --language en_US --var Ana --var "tomorrow at 9:30" --prod
 
+With --text, the words the template says, they are the first turn of the contact's conversation: what
+they answer reaches the agent with those words before it, and the console shows them. Somebody must be
+holding the agent then.
+
+  $ pinecall template reminder visit_reminder --to +14155550142 --language en_US --var Ana --text "Hi Ana, your cleaning is tomorrow at 9:30. Reply here to change it." --prod
+
 In the sandbox nothing is sent: the answer says what would have gone, marked simulated, and the
 agent needs no WhatsApp number there. A contact who asked for no more messages is written to by nobody.
 `;
@@ -326,9 +332,11 @@ export function register(program: Command, ctx: Context): void {
     .requiredOption("--language <code>", "Meta's code of the language it was approved in: es_AR, en_US")
     .option("--var <words>", "what fills the body's next {{n}}; again for another, in order", repeated)
     .option("--from <number>", "which of the agent's WhatsApp numbers it leaves from")
+    .option("--text <words>", "what the template says once filled: the first turn of the contact's conversation")
+    .option("--metadata <json>", "what that conversation's call.started carries")
     .addHelpText("after", TEMPLATE)
     .action(async (agent, name, flags) => {
-      const input = service.TemplateInput.parse({ agent, to: flags.to, template: name, language: flags.language, variables: flags.var, from: flags.from });
+      const input = service.TemplateInput.parse({ agent, to: flags.to, template: name, language: flags.language, variables: flags.var, from: flags.from, text: flags.text, metadata: jsonOf("--metadata", flags.metadata) });
       ctx.io.result(await service.templateOut(ctx, input), render.templated);
     });
 

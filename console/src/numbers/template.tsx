@@ -11,8 +11,9 @@ import { e164, shown } from "./words";
 
 /** What became of the last one, as a line: where it went and Meta's id, or that the sandbox sent nothing. */
 function said(sent: Templated): string {
-  if (sent.simulated) return `Simulated: ${sent.template} would go to ${shown(sent.to)}. Nothing was sent.`;
-  return `Sent ${sent.template} to ${shown(sent.to)}${sent.from == null ? "" : ` from ${shown(sent.from)}`} · ${sent.message_id ?? ""}`;
+  const onTheirs = sent.call == null ? "" : " Its words opened their conversation, in Calls.";
+  if (sent.simulated) return `Simulated: ${sent.template} would go to ${shown(sent.to)}. Nothing was sent.${onTheirs}`;
+  return `Sent ${sent.template} to ${shown(sent.to)}${sent.from == null ? "" : ` from ${shown(sent.from)}`} · ${sent.message_id ?? "said on their open conversation"}.${onTheirs}`;
 }
 
 /** `agent` answers WhatsApp at `number`: the template leaves from it. */
@@ -22,6 +23,7 @@ export function SendTemplate({ agent, number }: { agent: string; number: string 
   const [template, setTemplate] = useState("");
   const [language, setLanguage] = useState("");
   const [variables, setVariables] = useState("");
+  const [words, setWords] = useState("");
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState<Templated | null>(null);
   const [refused, setRefused] = useState<string | null>(null);
@@ -35,7 +37,9 @@ export function SendTemplate({ agent, number }: { agent: string; number: string 
     try {
       // One variable a line, in the order the template's {{1}}, {{2}}… take them.
       const filled = variables.split("\n").map((line) => line.trim()).filter((line) => line !== "");
-      setSent(await sendTemplate(credentials, agent, { to: e164(to), template: template.trim(), language: language.trim(), variables: filled, from: number }));
+      // Its words, when given, are the first message of the contact's conversation: their answer lands after them.
+      const said = words.trim() === "" ? {} : { text: words.trim() };
+      setSent(await sendTemplate(credentials, agent, { to: e164(to), template: template.trim(), language: language.trim(), variables: filled, from: number, ...said }));
     } catch (failed) {
       setRefused(saidBy(failed));
     } finally {
@@ -59,6 +63,7 @@ export function SendTemplate({ agent, number }: { agent: string; number: string 
         <input className="cfg-input" aria-label="Template" placeholder="Template: visit_reminder" required spellCheck={false} autoComplete="off" value={template} onChange={(event) => setTemplate(event.target.value)} />
         <input className="cfg-input num-template-language" aria-label="Language" placeholder="Language: en_US" required spellCheck={false} autoComplete="off" value={language} onChange={(event) => setLanguage(event.target.value)} />
         <textarea className="cfg-input cfg-area num-template-variables" rows={3} aria-label="Variables" placeholder={"What fills {{1}}, {{2}}…, one a line"} value={variables} onChange={(event) => setVariables(event.target.value)} />
+        <textarea className="cfg-input cfg-area num-template-variables" rows={2} aria-label="What it says" placeholder="What it says once filled (optional): the first message of their conversation, so their answer reaches the agent after it" value={words} onChange={(event) => setWords(event.target.value)} />
         {real ? (
           ready && !busy && <ConfirmButton label="Send it" asks="Send it? Meta charges it" onConfirm={() => void send()} />
         ) : (
