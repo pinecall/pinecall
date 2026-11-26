@@ -12,6 +12,10 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   the agent needs no WhatsApp number there; `--prod` sends it, and Meta charges the number's account. The MCP server has
   the same as the tool `template`.
 
+## Unreleased
+
+- **The benchmark's page is lighter to read.** A white page in black ink, hairline tables and plain headings (Results, How the calls went, Calls that failed, Listen to any call) in place of the night ground and its capitals. Nothing it shows changed.
+
 ## 0.11.53 — a benchmark of your agent from one command: spoken calls placed by a callers service, a report that plays every call, and a gate for CI (2026-11-26)
 
 - **A benchmark prices what its gateway did not.** `--price <model=usd>`, again for each: a model the gateway priced

@@ -57,7 +57,7 @@
   if (won && several) {
     const card = el("div", "card");
     const about = el("div");
-    about.append(el("u", "", "THE ONE TO TAKE"), el("h3", "", short(won.name)), el("p", "", `${won.kind}. ${R.verdict.says}.`));
+    about.append(el("u", "", "The one to take"), el("h3", "", short(won.name)), el("p", "", `${won.kind}. ${R.verdict.says}.`));
     const number = (value, label, cls) => { const box = el("div", "n"); box.append(el("b", cls, value), el("span", "", label)); return box; };
     card.append(about, number(pct(won.completed.share), "completed", "good"), number(secs(won.reply.p50), "reply", "hi"), number(usd(won.cost.per_completed), "a completed call", ""));
     $("winner").append(card);
@@ -175,7 +175,7 @@
   };
   for (const one of R.callers) {
     const card = el("div", "card");
-    card.append(el("u", "", "CALLER"), el("h3", "", one.name), el("p", "", one.about || one.goal));
+    card.append(el("u", "", "Caller"), el("h3", "", one.name), el("p", "", one.about || one.goal));
     if (one.expects.length > 0) { const list = el("ol"); for (const line of one.expects) list.append(el("li", "", line)); card.append(list); }
     const line = behaving(one.behavior);
     if (line) card.append(el("i", "", line));

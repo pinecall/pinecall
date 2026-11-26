@@ -17,16 +17,16 @@
       <h1 id="title"></h1>
       <p class="lead" id="lead"></p>
       <div class="bars">
-        <div><u>THE FLOOR</u><b class="good" id="floor"></b><span>of the calls end with the caller getting everything it called for</span></div>
-        <div><u>THE CEILING</u><b class="hi" id="ceiling"></b><span>the middle reply: the caller's last word to the agent's first</span></div>
-        <div><u>THE VERDICT</u><b id="verdict"></b><span id="says"></span></div>
+        <div><u>Floor · completed calls</u><b class="good" id="floor"></b><span>of the calls end with the caller getting everything it called for</span></div>
+        <div><u>Ceiling · reply</u><b class="hi" id="ceiling"></b><span>the middle reply: the caller's last word to the agent's first</span></div>
+        <div><u>Verdict</u><b id="verdict"></b><span id="says"></span></div>
       </div>
     </section>
 
     <section class="winner" id="winner" hidden></section>
 
     <section>
-      <h2>The table</h2>
+      <h2>Results</h2>
       <p class="note">Best first. Completed is the share of counted calls in which the caller got everything it asked for, as a judge read the finished call, with the range the true share plausibly sits in after this many calls (95%). Reply is the middle of the calls' own middle replies; p90 is the reply nine in ten were faster than.</p>
       <div class="table" id="table"></div>
     </section>
@@ -38,7 +38,7 @@
     </section>
 
     <section id="quality-part" hidden>
-      <h2>How each heard its callers</h2>
+      <h2>How the calls went</h2>
       <p class="note">What a simulation knows and a real call does not: what the caller really said, and when. Counted over each setup's calls.</p>
       <div class="table" id="quality"></div>
     </section>
@@ -50,20 +50,20 @@
     </section>
 
     <section>
-      <h2>The callers</h2>
+      <h2>Callers</h2>
       <p class="note">Who rang, what each wanted, and how it behaves on the line.</p>
       <div class="callers" id="callers"></div>
     </section>
 
     <section>
-      <h2>Every call</h2>
+      <h2>Every call at a glance</h2>
       <p class="note">A dot is one call: green when the caller got everything, red when not, hollow when it does not count. The last column is each round: one call of every caller, so a row shows how far one run moves from the next.</p>
       <div class="filters" id="grid-of"></div>
       <div class="grid" id="grid"></div>
     </section>
 
     <section id="failures-part" hidden>
-      <h2>The calls that failed</h2>
+      <h2>Calls that failed</h2>
       <p class="note">Each one with its judge's reason. Open it to hear it and read its log.</p>
       <div class="list" id="failures"></div>
     </section>
@@ -75,7 +75,7 @@
     </section>
 
     <section>
-      <h2>The calls, one by one</h2>
+      <h2>Listen to any call</h2>
       <p class="note">Open one to hear it and read its log: what the caller said, what the agent said, every tool it called and what came back.</p>
       <div class="filters" id="filters"></div>
       <div class="list" id="list"></div>
