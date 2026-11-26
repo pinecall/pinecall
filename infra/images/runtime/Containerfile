@@ -15,7 +15,8 @@ ARG UV=ghcr.io/astral-sh/uv:0.9.30@sha256:538e0b39736e7feae937a65983e49d2ab75e15
 
 FROM ${UV} AS uv
 
-# The pages: the console and what it takes from the workspace (packages/core), installed from
+# The pages: the console and what it takes from the workspace (packages/core, and the SDK for its
+# pure `evals` entry point), installed from
 # pnpm-lock.yaml and refused when the lock and a manifest disagree; pnpm is the version the root
 # package.json names. scripts/console is the one way they are built, here and for PyPI's wheel.
 FROM ${NODE} AS pages

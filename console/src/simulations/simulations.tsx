@@ -10,7 +10,8 @@ import { ago, dayLabel, lengthOf, percent, utcDay } from "../lib/format";
 import { useOrg } from "../lib/org";
 import { WORLD } from "../lib/world";
 import { PageHead } from "../shell/page-head";
-import { Board } from "./board";
+import { THE_BARS } from "./benchmark";
+import { Board, TOGETHER, type Alongside } from "./board";
 import { CheckCall } from "./check";
 import { Composer, type Typical } from "./composer";
 import { readRuns, setupKey, setupUnder, standingOf, type PersonaRun, type Standing } from "./door";
@@ -104,13 +105,19 @@ function RunRow({ run }: { run: PersonaRun }): ReactNode {
   );
 }
 
-function ComparisonRow({ id, runs }: { id: string; runs: PersonaRun[] }): ReactNode {
+/** A comparison's row in a few words, for the board that offers it beside the one open. */
+function saidOf(runs: readonly PersonaRun[]): string {
+  const first = runs.at(-1) ?? runs[0];
+  return `${ago(first?.started_at ?? null)} · ${runs.length} ${runs.length === 1 ? "call" : "calls"}`;
+}
+
+function ComparisonRow({ id, runs, open }: { id: string; runs: PersonaRun[]; open: readonly string[] }): ReactNode {
   const live = runs.some((run) => run.ended_at === null);
   const models = new Set(runs.map((run) => setupKey(run.against ?? {}))).size;
   const tasks = new Set(runs.map((run) => run.persona)).size;
   const first = runs.at(-1) ?? runs[0];
   return (
-    <NavLink to={`${HOME}/compare/${id}`} className={rowClass}>
+    <NavLink to={`${HOME}/compare/${id}`} className={(link) => rowClass({ isActive: link.isActive || open.includes(id) })}>
       {first !== undefined && <CallerMark run={first} />}
       <span className="app-row-words">
         <span className="app-row-top">
@@ -159,6 +166,8 @@ export function SimulationsPage(): ReactNode {
   const [total, setTotal] = useState(0);
   const [next, setNext] = useState<string | null>(null);
   const [refused, setRefused] = useState<string | null>(null);
+  // The bars are the reader's for as long as the page is open, whichever comparison is.
+  const [bars, setBars] = useState(THE_BARS);
 
   const reread = useCallback(async (): Promise<void> => {
     // An org holding no agent has no run to list: no name at all would ask for every one.
@@ -220,6 +229,12 @@ export function SimulationsPage(): ReactNode {
   const judged = ended.filter((run) => run.valid && run.score !== null && run.score.judged > 0);
   const held = judged.filter((run) => run.score?.passed === true).length;
 
+  // The comparisons of the open one's agent, the list's order: any of them may be read with it as one table.
+  const open = comparison?.split(TOGETHER) ?? [];
+  const tables = listed(runs ?? []).flatMap((row) => (row.kind === "comparison" ? [row] : []));
+  const theAgent = tables.find((row) => row.id === open[0])?.runs[0]?.agent;
+  const alongside: Alongside[] = theAgent === undefined ? [] : tables.filter((row) => row.runs[0]?.agent === theAgent).map((row) => ({ id: row.id, said: saidOf(row.runs) }));
+
   const list = (
     <aside className="app-list" aria-label={LISTED}>
       <div className="app-list-head">
@@ -241,7 +256,7 @@ export function SimulationsPage(): ReactNode {
         {byDay(listed(runs ?? [])).map((day) => (
           <div key={day.name} className="sim-day-group">
             <div className="sim-day">{day.name}</div>
-            {day.rows.map((row) => (row.kind === "run" ? <RunRow key={row.run.call} run={row.run} /> : <ComparisonRow key={row.id} id={row.id} runs={row.runs} />))}
+            {day.rows.map((row) => (row.kind === "run" ? <RunRow key={row.run.call} run={row.run} /> : <ComparisonRow key={row.id} id={row.id} runs={row.runs} open={open} />))}
           </div>
         ))}
         {runs !== null && runs.length === 0 && <p className="dash-quiet app-none">{CHECKING ? "No check call yet. The first one shows up here." : "No simulation yet. The first one shows up here."}</p>}
@@ -265,7 +280,7 @@ export function SimulationsPage(): ReactNode {
           {refused !== null && <p className="app-refused app-open-note">{refused}</p>}
           {comparison !== undefined ? (
             <div className="app-main">
-              <Board key={comparison} comparison={comparison} />
+              <Board key={comparison} comparison={comparison} bars={bars} onBars={setBars} alongside={alongside} onTogether={(ids) => void navigate(`${HOME}/compare/${ids.join(TOGETHER)}`)} />
             </div>
           ) : (
             <>

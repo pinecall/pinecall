@@ -971,7 +971,7 @@ same callers is seen. Read the report.
 **The folder.** `index.html` is the page: the verdict, a row a setup, how each setup heard its callers, what
 each judge answered, a grid of every caller under every setup round by round, the calls that failed with their
 judge's reason, the calls that do not count, and every call to play with its lines, its tools and what each
-tool answered. `report.json` holds every number of the page (`version: 1`; `bars`, `verdict`, `callers`,
+tool answered. `report.json` holds every number of the page (`version: 2`; `bars`, `verdict`, `callers`,
 `setups[]`, `calls[]`, `refused[]`, `comparisons[]`, the `command` that made it, the `gateway` and `made_at`).
 `report.data.js` is the same for the page opened from the disk, and `calls/<call>.ogg` is each recording as the
 gateway kept it (Ogg Opus, two sides: Chrome, Edge and Firefox play it; a browser that does not says so, and the
@@ -988,6 +988,11 @@ own simulated caller broke are listed with whose fault and why, and are in no nu
 than it has left is held to no bar and named in the verdict: six calls that went well of twenty placed say
 nothing of the fourteen. A gateway since
 2026-11-26 says it on each row (`valid`, `invalid`); from an earlier one the same is read off the call's log.
+
+**In the console.** A comparison opened in the console's Simulations is the same benchmark: its numbers are made
+by the code that makes this report's (`@pinecall/agents/evals`), its bars are typed on the screen, several
+comparisons of an agent are ticked into one table, and **Download report.json** hands over this file with each
+call's lines and no recording beside it. Conditions are read here alone.
 
 **A gate.** `--gate` exits 1 when no setup clears both bars and 2 when nobody judged a call. `--baseline
 <report.json>` holds each setup against its row in an earlier report: it regressed when its share fell by more

@@ -1,39 +1,23 @@
-/** A comparison's board: the setups ranked by the tasks each got done, how often, how fast and for how much; and under them every task against every setup, each run its call. */
+/** A comparison's board, which is its benchmark: the setups held to two bars and ranked, every task against every setup with each run its call, and under them the judges, the rounds, what failed and what does not count. */
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 
+import { nameOf, rowsOf, type Bars, type Setup } from "@pinecall/agents/evals";
 import { saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
-import { cellOf, countedOf, qualityOf, readComparison, replyOf, setupKey, setupName, setupUnder, THE_GOAL, type AgentValues, type Cell, type Comparison, type ComparisonRow } from "./door";
+import { benchmarkOf, readAllHeard, type Heard } from "./benchmark";
+import { TheBars, UnderTheBoard } from "./benchmark-sections";
+import { cellOf, countedOf, qualityOf, readComparison, replyOf, setupKey, setupName, setupUnder, THE_GOAL, type Cell, type Comparison, type ComparisonRow } from "./door";
+
+/** Several comparisons read as one are named together in the address, a plus between them. */
+export const TOGETHER = "+";
 
 // The board is read again this often while a call of it waits, is on the line or is being judged.
 const ASKED_EVERY_MS = 4000;
 
 const WAITING: readonly Cell[] = ["live", "scoring"];
 const RUN_SAID: Record<Cell, string> = { live: "On the line", scoring: "Being judged", passed: "Done", failed: "Failed", unjudged: "Not judged", unstarted: "Did not start", uncounted: "Not counted" };
-
-/** One setup of the comparison, with what its calls add up to. */
-interface Standing {
-  key: string;
-  against: AgentValues;
-  rows: ComparisonRow[];
-  /** Its runs that did their task, of the ones that were judged on it. */
-  done: number;
-  judged: number;
-  /** The tasks it did every time it was put to them, of the tasks in the comparison. */
-  always: number;
-  /** The share of the other judges' verdicts that held, over its calls: how well, apart from whether. */
-  quality: number | null;
-  reply: number | null;
-  slowest: number | null;
-  /** The agent's replies the callers talked over, of all it gave. */
-  cut: number;
-  replies: number;
-  cost: number | null;
-  /** Over its spoken calls that were measured: the replies the room cut off and the turns nobody said, the lines never answered of those said, and the words heard wrong. */
-  heard: { faults: number; unanswered: number; lines: number; wrong: number | null } | null;
-}
 
 function middle(values: readonly number[]): number | null {
   if (values.length === 0) return null;
@@ -42,53 +26,42 @@ function middle(values: readonly number[]): number | null {
   return sorted.length % 2 === 1 ? (sorted[half] ?? null) : ((sorted[half - 1] ?? 0) + (sorted[half] ?? 0)) / 2;
 }
 
-/** The setups in the order asked, each with its rows; one made before plans were kept is what its rows say. */
-function columns(read: Comparison): { key: string; against: AgentValues; rows: ComparisonRow[] }[] {
-  const asked = read.against.length > 0 ? read.against : [...new Map(read.rows.map((row) => [setupKey(row.against), row.against])).values()];
-  return asked.map((against) => ({ key: setupKey(against), against, rows: read.rows.filter((row) => setupKey(row.against) === setupKey(against)) }));
+// Several comparisons are one table, as `pinecall benchmark a b` reads them: a caller rung again under
+// the same setup is another round of it. What is still being placed is summed.
+/** The comparisons named, as the one the board draws. */
+function together(tables: readonly Comparison[]): Comparison {
+  const first = tables[0] as Comparison;
+  if (tables.length === 1) return first;
+  const against = [...new Map(tables.flatMap((table) => table.against).map((one) => [setupKey(one), one])).values()];
+  return {
+    ...first,
+    personas: [...new Set(tables.flatMap((table) => table.personas))],
+    against,
+    rows: rowsOf(tables),
+    // Each comparison rang its own setups its own times: a cell is owed what the one that asked most asked.
+    repeats: Math.max(...tables.map((table) => table.repeats)),
+    planned: tables.reduce((sum, table) => sum + table.planned, 0),
+    waiting: tables.reduce((sum, table) => sum + table.waiting, 0),
+    playing: tables.some((table) => table.playing),
+    abandoned: tables.some((table) => table.abandoned),
+    stopped: tables.flatMap((table) => table.stopped),
+    refused: tables.flatMap((table) => table.refused),
+  };
 }
 
-function standings(read: Comparison): Standing[] {
-  const all = columns(read).map(({ key, against, rows }) => {
-    const cells = rows.map((row) => cellOf(row));
-    const counted = countedOf(rows);
-    const quality = counted.map(qualityOf);
-    const verdicts = quality.reduce((sum, one) => sum + one.judged, 0);
-    const slowest = counted.flatMap((row) => row.slowest_reply ?? []);
-    const costs = counted.flatMap((row) => row.cost_usd ?? []);
-    const hearings = counted.flatMap((row) => row.hearing ?? []);
-    const always = read.personas.filter((task) => {
-      const runs = rows.filter((row) => row.persona === task).map((row) => cellOf(row));
-      return runs.length > 0 && runs.every((cell) => cell === "passed");
-    }).length;
-    return {
-      key,
-      against,
-      rows,
-      done: cells.filter((cell) => cell === "passed").length,
-      judged: cells.filter((cell) => cell === "passed" || cell === "failed").length,
-      always,
-      quality: verdicts === 0 ? null : quality.reduce((sum, one) => sum + one.held, 0) / verdicts,
-      reply: middle(counted.flatMap((row) => replyOf(row) ?? [])),
-      slowest: slowest.length === 0 ? null : Math.max(...slowest),
-      cut: counted.reduce((sum, row) => sum + row.cut_off, 0),
-      replies: counted.reduce((sum, row) => sum + row.replies, 0),
-      cost: costs.length === 0 ? null : costs.reduce((sum, cost) => sum + cost, 0) / costs.length,
-      heard:
-        hearings.length === 0
-          ? null
-          : {
-              faults: hearings.reduce((sum, one) => sum + one.cut_by_the_room + one.phantom_turns, 0),
-              unanswered: hearings.reduce((sum, one) => sum + one.unanswered, 0),
-              lines: hearings.reduce((sum, one) => sum + one.lines, 0),
-              wrong: middle(hearings.flatMap((one) => one.word_error_rate ?? [])),
-            },
-    };
-  });
-  const share = (one: Standing): number => (one.judged === 0 ? 0 : one.done / one.judged);
-  // The best is the one a person would pick: the most of its runs done, then the best quality, then the fastest reply, then the cheapest.
-  return all.sort((one, other) => share(other) - share(one) || other.done - one.done || (other.quality ?? 0) - (one.quality ?? 0) || (one.reply ?? Infinity) - (other.reply ?? Infinity) || (one.cost ?? Infinity) - (other.cost ?? Infinity));
+/** What the board adds to a setup's benchmark numbers, from its rows: the other judges' share that held, and the replies a caller talked over. */
+function besides(rows: readonly ComparisonRow[]): { quality: number | null; cut: number; replies: number } {
+  const counted = countedOf(rows);
+  const quality = counted.map(qualityOf);
+  const verdicts = quality.reduce((sum, one) => sum + one.judged, 0);
+  return {
+    quality: verdicts === 0 ? null : quality.reduce((sum, one) => sum + one.held, 0) / verdicts,
+    cut: counted.reduce((sum, row) => sum + row.cut_off, 0),
+    replies: counted.reduce((sum, row) => sum + row.replies, 0),
+  };
 }
+
+const percent = (share: number | null): string => (share === null ? "—" : `${Math.round(share * 100)}%`);
 
 function replied(seconds: number | null): string {
   if (seconds === null) return "—";
@@ -134,22 +107,29 @@ function CellView({ rows, asked, waiting }: { rows: ComparisonRow[]; asked: numb
   );
 }
 
-export function Board({ comparison }: { comparison: string }): ReactNode {
+/** Another comparison of the same agent, as the board offers it to be read with the one open. */
+export interface Alongside {
+  id: string;
+  said: string;
+}
+
+export function Board({ comparison, bars, onBars, alongside, onTogether }: { comparison: string; bars: Bars; onBars: (bars: Bars) => void; alongside: readonly Alongside[]; onTogether: (ids: string[]) => void }): ReactNode {
   const credentials = useCredentials();
-  const [read, setRead] = useState<Comparison | null>(null);
+  const [tables, setTables] = useState<Comparison[] | null>(null);
   const [refused, setRefused] = useState<string | null>(null);
+  const [heard, setHeard] = useState<ReadonlyMap<string, Heard>>(new Map());
 
   useEffect(() => {
     let gone = false;
     let timer: number | undefined;
     const ask = async (): Promise<void> => {
       try {
-        const answered = await readComparison(credentials, comparison);
+        const answered = await Promise.all(comparison.split(TOGETHER).map((id) => readComparison(credentials, id)));
         if (gone) return;
-        setRead(answered);
+        setTables(answered);
         setRefused(null);
-        const placing = (answered.waiting > 0 || answered.playing) && !answered.abandoned;
-        if (placing || answered.rows.some((row) => WAITING.includes(cellOf(row)))) timer = window.setTimeout(() => void ask(), ASKED_EVERY_MS);
+        const placing = answered.some((one) => (one.waiting > 0 || one.playing) && !one.abandoned);
+        if (placing || answered.some((one) => one.rows.some((row) => WAITING.includes(cellOf(row))))) timer = window.setTimeout(() => void ask(), ASKED_EVERY_MS);
       } catch (failed) {
         if (!gone) setRefused(saidBy(failed));
       }
@@ -161,32 +141,69 @@ export function Board({ comparison }: { comparison: string }): ReactNode {
     };
   }, [credentials, comparison]);
 
-  if (read === null) return <p className={refused === null ? "dash-quiet" : "app-refused"}>{refused ?? "Reading the comparison…"}</p>;
+  const read = useMemo(() => (tables === null ? null : together(tables)), [tables]);
+  const placing = read !== null && (read.waiting > 0 || read.playing) && !read.abandoned;
+  const going = read !== null && (placing || read.rows.some((row) => WAITING.includes(cellOf(row))));
+  // Each call's own replies are in its log: read once the calls are over, for the reply nine in ten are under.
+  const over = read === null || going ? "" : read.rows.flatMap((row) => (row.ended_at === null ? [] : [`${row.call} ${row.started_at}`])).join("\n");
+  useEffect(() => {
+    if (over === "") return;
+    let gone = false;
+    const rows = over.split("\n").map((line) => ({ call: line.split(" ")[0] ?? "", started_at: Number(line.split(" ")[1]) }));
+    void readAllHeard(credentials, rows).then((found) => {
+      if (!gone) setHeard(found);
+    });
+    return () => {
+      gone = true;
+    };
+  }, [credentials, over]);
+  const made = useMemo(() => (tables === null ? null : benchmarkOf(tables, bars, heard)), [tables, bars, heard]);
 
-  const ranked = standings(read);
+  if (read === null || made === null) return <p className={refused === null ? "dash-quiet" : "app-refused"}>{refused ?? "Reading the comparison…"}</p>;
+
+  const ranked = made.setups;
+  const rowsUnder = (one: Setup): ComparisonRow[] => read.rows.filter((row) => nameOf(row.against) === one.name);
   const tasks = read.personas;
-  const placing = (read.waiting > 0 || read.playing) && !read.abandoned;
-  const going = placing || read.rows.some((row) => WAITING.includes(cellOf(row)));
-  const best = !going && (ranked[0]?.judged ?? 0) > 0 ? ranked[0]?.key : undefined;
-  const fastest = Math.min(...ranked.flatMap((one) => one.reply ?? []));
-  const cheapest = Math.min(...ranked.flatMap((one) => one.cost ?? []));
+  const best = going ? null : made.verdict.winner;
+  // A typed call has no spoken reply: its setups are told apart by the model's first token.
+  const replyOn = (one: Setup): number | null => (read.voice ? one.reply.p50 : one.stages.llm_ttft);
+  const fastest = Math.min(...ranked.flatMap((one) => replyOn(one) ?? []));
+  // A setup with a model nobody priced has no cost to be the cheapest by.
+  const cheapest = Math.min(...ranked.flatMap((one) => (one.cost.unpriced.length > 0 ? [] : (one.cost.per_completed ?? []))));
   const planned = read.planned > 0 ? read.planned : read.rows.length;
   // A call that did not count stands for none of the calls planned: the one placed in its stead does.
   const ended = read.rows.filter((row) => row.valid && !WAITING.includes(cellOf(row))).length;
   const repeated = read.repeats > 1;
+  const open = comparison.split(TOGETHER);
+  const several = open.length > 1;
 
   return (
     <div className="cmp">
       <header className="cmp-head">
         <h2 className="app-name">
           {ranked.length} {ranked.length === 1 ? "setup" : "setups"} on {tasks.length} {tasks.length === 1 ? "task" : "tasks"}
-          {repeated && `, ${read.repeats} times each`}
+          {repeated && !several && `, ${read.repeats} times each`}
+          {several && ` · ${open.length} comparisons read as one`}
         </h2>
         <p className="dash-quiet">
           {read.agent} · {read.voice ? "spoken" : "typed"} · a task is done when its caller got what it expected; quality is the other judges
         </p>
       </header>
+      {alongside.length > 1 && (
+        <div className="cmp-with" role="group" aria-label="Read as one table with">
+          <span className="dash-quiet">One table of</span>
+          {alongside.map((one) => {
+            const on = open.includes(one.id);
+            return (
+              <button key={one.id} type="button" role="checkbox" aria-checked={on} disabled={on && !several} className={on ? "app-button cmp-with-on" : "app-button"} onClick={() => onTogether(on ? open.filter((id) => id !== one.id) : [...open, one.id])}>
+                {one.said}
+              </button>
+            );
+          })}
+        </div>
+      )}
       {refused !== null && <p className="app-refused">{refused}</p>}
+      <TheBars tables={tables ?? []} made={made} bars={bars} onBars={onBars} going={going} />
       {going && (
         <div className="cmp-progress" role="status">
           <span className="cmp-progress-track">
@@ -217,94 +234,118 @@ export function Board({ comparison }: { comparison: string }): ReactNode {
       )}
 
       <div className="cmp-ranks">
-        {ranked.map((one, at) => (
-          <section key={one.key} className={one.key === best ? "dash-card cmp-rank cmp-rank-best" : "dash-card cmp-rank"} aria-label={setupName(one.against)}>
-            <div className="cmp-rank-top">
-              <span className="cmp-place">{at + 1}</span>
-              <span className="cmp-rank-words">
-                <span className="cmp-rank-name dash-clip">{setupName(one.against)}</span>
-                {setupUnder(one.against) !== "" && <span className="cmp-rank-under dash-clip">{setupUnder(one.against)}</span>}
-              </span>
-              {one.key === best && <span className="ui-badge">Best</span>}
-            </div>
-            <div className="cmp-done">
-              <b>{repeated ? (one.judged === 0 ? "—" : `${Math.round((one.done / one.judged) * 100)}%`) : one.done}</b>
-              <span>{repeated ? `of runs done · ${one.always} of ${tasks.length} tasks every time` : `of ${tasks.length} ${tasks.length === 1 ? "task" : "tasks"} done`}</span>
-            </div>
-            <div className="cmp-pips" aria-hidden>
-              {tasks.map((task) => {
-                const runs = one.rows.filter((mine) => mine.persona === task).map((row) => cellOf(row));
-                const tone = runs.length === 0 ? "none" : runs.some((cell) => WAITING.includes(cell)) ? "live" : runs.every((cell) => cell === "passed") ? "passed" : runs.some((cell) => cell === "passed") ? "mixed" : runs.some((cell) => cell === "failed" || cell === "unstarted") ? "failed" : "none";
-                return <span key={task} className={`cmp-pip cmp-pip-${tone}`} />;
-              })}
-            </div>
-            <dl className="cmp-facts">
-              <div>
-                <dt>{read.voice ? "Typical reply" : "First token"}</dt>
-                <dd className={one.reply !== null && one.reply === fastest && ranked.length > 1 ? "cmp-top" : ""}>{replied(one.reply)}</dd>
+        {ranked.map((one, at) => {
+          const rows = rowsUnder(one);
+          const beside = besides(rows);
+          const reply = replyOn(one);
+          const always = one.by_caller.filter((task) => task.every).length;
+          return (
+            <section key={one.name} className={one.name === best ? "dash-card cmp-rank cmp-rank-best" : "dash-card cmp-rank"} aria-label={setupName(one.values)}>
+              <div className="cmp-rank-top">
+                <span className="cmp-place">{at + 1}</span>
+                <span className="cmp-rank-words">
+                  <span className="cmp-rank-name dash-clip">{setupName(one.values)}</span>
+                  {setupUnder(one.values) !== "" && <span className="cmp-rank-under dash-clip">{setupUnder(one.values)}</span>}
+                </span>
+                {one.name === best && <span className="ui-badge">{ranked.length === 1 ? "Clears both bars" : "The one to take"}</span>}
+                {one.thin && <span className="ui-badge ui-badge-quiet">Most calls not counted</span>}
               </div>
-              <div>
-                <dt>Slowest reply</dt>
-                <dd>{replied(one.slowest)}</dd>
+              <div className="cmp-done">
+                <b className={one.thin || one.clears.floor === null ? "" : one.clears.floor ? "cmp-top" : "cmp-low"}>{percent(one.completed.share)}</b>
+                {one.completed.of === 0 ? (
+                  <span>None of its calls was judged</span>
+                ) : (
+                  <span>
+                    {one.completed.completed} of {one.completed.of} calls completed
+                    {one.completed.low !== null && one.completed.high !== null && ` · plausibly ${percent(one.completed.low)}–${percent(one.completed.high)}`}
+                    {repeated && ` · ${always} of ${tasks.length} tasks every time`}
+                  </span>
+                )}
               </div>
-              <div>
-                <dt>Cost a call</dt>
-                <dd className={one.cost !== null && one.cost === cheapest && ranked.length > 1 ? "cmp-top" : ""}>{cost(one.cost)}</dd>
+              <div className="cmp-pips" aria-hidden>
+                {tasks.map((task) => {
+                  const runs = rows.filter((mine) => mine.persona === task).map((row) => cellOf(row));
+                  const tone = runs.length === 0 ? "none" : runs.some((cell) => WAITING.includes(cell)) ? "live" : runs.every((cell) => cell === "passed") ? "passed" : runs.some((cell) => cell === "passed") ? "mixed" : runs.some((cell) => cell === "failed" || cell === "unstarted") ? "failed" : "none";
+                  return <span key={task} className={`cmp-pip cmp-pip-${tone}`} />;
+                })}
               </div>
-              <div>
-                <dt>Quality</dt>
-                <dd title="The other judges that held, apart from the task itself">{one.quality === null ? "—" : `${Math.round(one.quality * 100)}%`}</dd>
-              </div>
-              <div>
-                <dt>Cut off</dt>
-                <dd title="The agent's replies a caller talked over">{one.replies === 0 ? "—" : `${one.cut} of ${one.replies}`}</dd>
-              </div>
-              {one.heard !== null && (
-                <>
-                  <div>
-                    <dt>Not answered</dt>
-                    <dd className={one.heard.unanswered > 0 ? "cmp-low" : ""} title="The caller's lines the agent said nothing to">
-                      {one.heard.unanswered} of {one.heard.lines}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Heard the room</dt>
-                    <dd className={one.heard.faults > 0 ? "cmp-low" : ""} title="Replies cut off with nobody speaking, and turns heard that nobody said">
-                      {one.heard.faults}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Words wrong</dt>
-                    <dd className={one.heard.wrong !== null && one.heard.wrong > 0.15 ? "cmp-low" : ""} title="Word error rate against what the callers really said">
-                      {one.heard.wrong === null ? "—" : `${Math.round(Math.min(one.heard.wrong, 9.99) * 100)}%`}
-                    </dd>
-                  </div>
-                </>
-              )}
-            </dl>
-          </section>
-        ))}
+              <dl className="cmp-facts">
+                <div>
+                  <dt>{read.voice ? "Typical reply" : "First token"}</dt>
+                  <dd className={read.voice && one.clears.ceiling === false ? "cmp-low" : reply !== null && reply === fastest && ranked.length > 1 ? "cmp-top" : ""}>{replied(reply)}</dd>
+                </div>
+                <div>
+                  <dt>Nine in ten under</dt>
+                  <dd title="The reply nine in ten of its replies are under, read from each call's log">{replied(one.reply.p90)}</dd>
+                </div>
+                <div>
+                  <dt>Slowest reply</dt>
+                  <dd>{replied(one.reply.slowest)}</dd>
+                </div>
+                <div>
+                  <dt>A completed call</dt>
+                  <dd className={one.cost.unpriced.length === 0 && one.cost.per_completed !== null && one.cost.per_completed === cheapest && ranked.length > 1 ? "cmp-top" : ""} title={one.cost.unpriced.length > 0 ? `Not priced: ${one.cost.unpriced.join(", ")}` : "Everything its calls cost, over the calls that were completed"}>
+                    {one.cost.unpriced.length > 0 && one.cost.total === 0 ? "Not priced" : cost(one.cost.per_completed)}
+                    {one.cost.unpriced.length > 0 && one.cost.total > 0 && "*"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Quality</dt>
+                  <dd title="The other judges that held, apart from the task itself">{percent(beside.quality)}</dd>
+                </div>
+                <div>
+                  <dt>Cut off</dt>
+                  <dd title="The agent's replies a caller talked over">{beside.replies === 0 ? "—" : `${beside.cut} of ${beside.replies}`}</dd>
+                </div>
+                {one.hearing !== null && (
+                  <>
+                    <div>
+                      <dt>Not answered</dt>
+                      <dd className={one.hearing.unanswered > 0 ? "cmp-low" : ""} title="The caller's lines the agent said nothing to">
+                        {one.hearing.unanswered} of {one.hearing.lines}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Heard the room</dt>
+                      <dd className={one.hearing.cut_by_the_room + one.hearing.phantom_turns > 0 ? "cmp-low" : ""} title="Replies cut off with nobody speaking, and turns heard that nobody said">
+                        {one.hearing.cut_by_the_room + one.hearing.phantom_turns}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Words wrong</dt>
+                      <dd className={one.hearing.word_error_rate !== null && one.hearing.word_error_rate > 0.15 ? "cmp-low" : ""} title="Word error rate against what the callers really said">
+                        {one.hearing.word_error_rate === null ? "—" : `${Math.round(Math.min(one.hearing.word_error_rate, 9.99) * 100)}%`}
+                      </dd>
+                    </div>
+                  </>
+                )}
+              </dl>
+            </section>
+          );
+        })}
       </div>
 
       <section className="dash-card cmp-matrix" aria-label="Every task against every setup">
         <div className="cmp-grid" style={{ gridTemplateColumns: `minmax(140px, 1.1fr) repeat(${ranked.length}, minmax(160px, 1fr))` }}>
           <span className="cmp-corner dash-quiet">Task</span>
           {ranked.map((one) => (
-            <span key={one.key} className="cmp-col dash-clip">
-              {setupName(one.against)}
+            <span key={one.name} className="cmp-col dash-clip">
+              {setupName(one.values)}
             </span>
           ))}
           {tasks.map((task) => (
             <div key={task} className="cmp-row">
               <span className="cmp-task dash-clip">{task}</span>
               {ranked.map((one) => (
-                <CellView key={one.key} rows={one.rows.filter((mine) => mine.persona === task)} asked={read.repeats} waiting={placing} />
+                <CellView key={one.name} rows={rowsUnder(one).filter((mine) => mine.persona === task)} asked={read.repeats} waiting={placing} />
               ))}
             </div>
           ))}
         </div>
         <p className="dash-quiet cmp-foot">Each dot is one run: open it to read its call and what each judge said.</p>
       </section>
+
+      <UnderTheBoard made={made} />
     </div>
   );
 }

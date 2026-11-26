@@ -57,6 +57,9 @@ importers:
 
   console:
     dependencies:
+      '@pinecall/agents':
+        specifier: workspace:^
+        version: link:../sdk/typescript
       '@pinecall/core':
         specifier: workspace:*
         version: link:../packages/core

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **A comparison in the console is its benchmark, with the numbers `pinecall benchmark` prints.** The board of a
+  comparison holds each setup to two bars typed on the screen (90% of calls completed, a reply within 1.5 s) and
+  says the verdict; a setup's card has the share completed with the range it plausibly sits in, the reply (middle,
+  90th and slowest), what a completed call cost and how it heard its callers; under the grid of tasks are each
+  judge and each round a setup a column, the calls that failed with their judge's reason and the ones that do not
+  count with why, each a row that opens the call. The numbers are made by the code the CLI's report is made with
+  (`@pinecall/agents/evals`): the board had its own, which counted a setup's share its own way and had no interval,
+  no 90th reply and no bar. Other comparisons of the same agent are offered over the board and read with the open
+  one as one table (`/simulations/compare/cmp_…+cmp_…`); **Download report.json** hands over the CLI's file, each
+  call's lines read, no recording beside it. Conditions stay the CLI's.
 - **A comparison places again a call that did not count, and rings no more a vendor that refused for good.** A call
   its caller, the platform or a vendor's own failure broke stays a row, `valid: false`, and another is placed in
   its stead: twice at most for each call planned of its caller and setup, never past the org's `comparison_calls`,

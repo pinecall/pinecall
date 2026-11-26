@@ -12,6 +12,7 @@
     "check": "pnpm build && pnpm lint"
   },
   "dependencies": {
+    "@pinecall/agents": "workspace:^",
     "@pinecall/core": "workspace:*",
     "livekit-client": "^2.22.4",
     "react": "^19.2.8",

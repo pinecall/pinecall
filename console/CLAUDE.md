@@ -8,7 +8,7 @@ This folder builds a bundle and publishes nothing to npm; it has no version and 
 What ships of the console is `dist/`, copied into the gateway by the runtime's
 `scripts/console` and carried to the cluster by the runtime's `make deploy`.
 
-This folder is the page; `../packages/core` (`@pinecall/core`) is what it stands on, taken as source. Pinecall's supervisor app and its notifier live in a private repository of their
+This folder is the page; `../packages/core` (`@pinecall/core`) is what it stands on, taken as source. One thing more comes from the workspace: `@pinecall/agents/evals`, the SDK's pure entry point a benchmark's numbers are made in, so that a comparison's board and `pinecall benchmark` cannot disagree; nothing else of the SDK is imported here. Pinecall's supervisor app and its notifier live in a private repository of their
 own, beside this one's checkout, and take `packages/core` the same way: a change to core is a change
 to them too, so its exports are a contract.
 
