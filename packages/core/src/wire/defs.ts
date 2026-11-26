@@ -6,13 +6,7 @@ import { z } from "zod";
  * The door the public came through: a phone call over SIP, the browser widget over WebRTC, or
  * WhatsApp text.
  */
-export const ChannelSchema = z.enum([
-  "phone",
-  "web",
-  "whatsapp",
-  "sms",
-  "email",
-]);
+export const ChannelSchema = z.enum(["phone", "web", "whatsapp", "sms", "email"]);
 
 /** Whether a call is spoken or written: the widget's voice call and its chat share the `web` channel. */
 export const MediumSchema = z.enum(["voice", "text"]);
@@ -38,28 +32,7 @@ export const EnvSchema = z.enum(["production", "sandbox"]);
  * the drift of the last two windows, and the reproductions a broken run left on that disk.
  * Everything else a console needs is a door of the gateway.
  */
-export const DevVerbSchema = z.enum([
-  "chat.roster",
-  "chat.start",
-  "chat.say",
-  "chat.end",
-  "view.render",
-  "simulate.start",
-  "goldens.roster",
-  "goldens.run",
-  "knowledge.roster",
-  "knowledge.push",
-  "knowledge.eval",
-  "memory.roster",
-  "memory.eval",
-  "memory.extraction",
-  "promote.roster",
-  "promote.write",
-  "personas.write",
-  "drift.read",
-  "reproductions.roster",
-  "reproductions.read",
-]);
+export const DevVerbSchema = z.enum(["chat.roster", "chat.start", "chat.say", "chat.end", "view.render", "simulate.start", "goldens.roster", "goldens.run", "knowledge.roster", "knowledge.push", "knowledge.eval", "memory.roster", "memory.eval", "memory.extraction", "promote.roster", "promote.write", "personas.write", "drift.read", "reproductions.roster", "reproductions.read"]);
 
 export type DevVerb = z.infer<typeof DevVerbSchema>;
 
@@ -69,27 +42,10 @@ export type DevVerb = z.infer<typeof DevVerbSchema>;
  * the agent closed its socket mid-call, so nothing was rendering the prompt or answering a tool —
  * both are nobody's fault and neither is an error.
  */
-export const EndReasonSchema = z.enum([
-  "caller_hung_up",
-  "agent_hung_up",
-  "supervisor_ended",
-  "transferred",
-  "no_answer",
-  "busy",
-  "dial_failed",
-  "timeout",
-  "drained",
-  "app_detached",
-  "error",
-]);
+export const EndReasonSchema = z.enum(["caller_hung_up", "agent_hung_up", "supervisor_ended", "transferred", "no_answer", "busy", "dial_failed", "timeout", "drained", "app_detached", "error"]);
 
 /** Whose action ended the call. platform covers timeouts, errors and a drained worker. */
-export const EndedBySchema = z.enum([
-  "caller",
-  "agent",
-  "supervisor",
-  "platform",
-]);
+export const EndedBySchema = z.enum(["caller", "agent", "supervisor", "platform"]);
 
 /**
  * What one judge answered about a finished call. Held: the rule held. Broken: it did not, and the
@@ -98,14 +54,7 @@ export const EndedBySchema = z.enum([
  * judge was asked and could not settle it. Skipped: nobody asked it — no model was reachable, the
  * call's judging ceiling was reached, or the org's evals for the month are used up.
  */
-export const ScoreVerdictSchema = z.enum([
-  "held",
-  "broken",
-  "classified",
-  "na",
-  "deferred",
-  "skipped",
-]);
+export const ScoreVerdictSchema = z.enum(["held", "broken", "classified", "na", "deferred", "skipped"]);
 
 /**
  * Cold: the caller is sent on with a REFER on their SIP leg and the call ends here. Warm: the
@@ -131,38 +80,20 @@ export const UserStateSchema = z.enum(["listening", "speaking", "away"]);
  * What the agent is doing right now, in the session's own words: warming up, waiting, hearing the
  * caller, generating, or playing audio.
  */
-export const AgentStateSchema = z.enum([
-  "initializing",
-  "idle",
-  "listening",
-  "thinking",
-  "speaking",
-]);
+export const AgentStateSchema = z.enum(["initializing", "idle", "listening", "thinking", "speaking"]);
 
 /**
  * Who a participant is to the call: the person the agent serves (over SIP or the widget), the
  * agent itself, a supervisor who took a seat in the room, a listener who only hears, or a second
  * SIP leg that room.invite brought in.
  */
-export const ParticipantKindSchema = z.enum([
-  "caller",
-  "agent",
-  "supervisor",
-  "listener",
-  "sip",
-]);
+export const ParticipantKindSchema = z.enum(["caller", "agent", "supervisor", "listener", "sip"]);
 
 /** What a track carries: a microphone's audio, a camera's video, or a screen share. */
 export const TrackKindSchema = z.enum(["audio", "video", "screen"]);
 
 /** Where a track comes from, as livekit's TrackSource names it, in lower case. */
-export const TrackSourceSchema = z.enum([
-  "microphone",
-  "camera",
-  "screen_share",
-  "screen_share_audio",
-  "unknown",
-]);
+export const TrackSourceSchema = z.enum(["microphone", "camera", "screen_share", "screen_share_audio", "unknown"]);
 
 /**
  * Where an outside fact came from: the tenant's backend over the app socket (app), or a
@@ -192,8 +123,9 @@ export const ContactSchema = z.strictObject({
 });
 
 /**
- * What the gateway saw of a web visitor's browser when their call opened: the address it asked from,
- * how it named itself, and the country that address is in (ISO 3166 alpha-2, DB-IP's table). The tenant's to read.
+ * Where a web call's visitor was, as the gateway saw their browser when it minted the call's ticket:
+ * the address, how the browser named itself, and the country that address is in (ISO 3166 alpha-2,
+ * DB-IP's table). On a list's row asked with `visitors`; no entry of a call carries it.
  */
 export const VisitorSchema = z.strictObject({
   ip: z.string().nullish(),
@@ -274,19 +206,8 @@ export const DocSourceSchema = z.strictObject({
  * never converted, and the rate it carried dropped — as the runtime reads it (wire/parts.py,
  * wire/scores.py, `AliasChoices`). A log is never rewritten, so its old word is read here, once.
  */
-export function inDollars(
-  raw: unknown,
-  said: string,
-  means: string,
-  carried: readonly string[] = [],
-): unknown {
-  if (
-    typeof raw !== "object" ||
-    raw === null ||
-    Array.isArray(raw) ||
-    !(said in raw)
-  )
-    return raw;
+export function inDollars(raw: unknown, said: string, means: string, carried: readonly string[] = []): unknown {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw) || !(said in raw)) return raw;
   const { [said]: sum, ...rest } = raw as Record<string, unknown>;
   for (const word of carried) delete rest[word];
   return means in rest ? rest : { ...rest, [means]: sum };
@@ -296,26 +217,13 @@ export function inDollars(
 const CostRowShape = z.strictObject({
   provider: z.string(),
   model: z.string(),
-  unit: z.enum([
-    "input_tokens",
-    "cached_input_tokens",
-    "cache_creation_tokens",
-    "output_tokens",
-    "characters",
-    "audio_seconds",
-    "requests",
-    "session_seconds",
-    "minutes",
-  ]),
+  unit: z.enum(["input_tokens", "cached_input_tokens", "cache_creation_tokens", "output_tokens", "characters", "audio_seconds", "requests", "session_seconds", "minutes"]),
   quantity: z.number(),
   unit_price_usd: z.number(),
   usd: z.number(),
 });
 
-export const CostRowSchema = z.preprocess(
-  (raw) => inDollars(raw, "eur", "usd"),
-  CostRowShape,
-);
+export const CostRowSchema = z.preprocess((raw) => inDollars(raw, "eur", "usd"), CostRowShape);
 
 /** A usage row the price table does not know. It is listed, never priced at zero. */
 export const UnpricedRowSchema = z.strictObject({
@@ -398,3 +306,4 @@ export const MemoryConfigSchema = z.strictObject({
   remember: z.array(z.string()).nullish(),
   forget: z.array(z.string()).nullish(),
 });
+

@@ -52,7 +52,7 @@ export const SessionLineSchema = z.strictObject({
   from: z.string().nullable(),
   to: z.string().nullable(),
   caller: ContactSchema.nullable(),
-  /** A web call's: the visitor's address, browser and country, as the gateway saw them when it opened. */
+  /** Where a web call's visitor was, on a list asked with `visitors`: their address, browser and country. */
   visitor: VisitorSchema.nullish(),
   started_at: z.number().nullable(),
   ended_at: z.number().nullable(),
@@ -95,3 +95,4 @@ export const SessionListSchema = z.strictObject({
   total: z.int().nullable().nullish(),
   next: z.string().nullable().nullish(),
 });
+

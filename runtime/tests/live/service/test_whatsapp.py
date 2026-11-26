@@ -108,12 +108,20 @@ async def test_the_words_a_template_carried_are_not_sent_again_and_every_reply_a
     meta = Graph()
     (message,) = webhook.messages_in(a_body(a_text("sí")))
     async with httpx.AsyncClient(transport=httpx.MockTransport(meta.answer)) as http:
-        way = FirstSaid(ByWhatsapp(http, "the number's token", Ears(side.parts, SCOPE)))
-        await way.send(message, "Hola Marta, recibimos tu consulta por la casa.")
+        words = "Hola Marta, recibimos tu consulta por la casa."
+        way = FirstSaid(ByWhatsapp(http, "the number's token", Ears(side.parts, SCOPE)), words)
+        await way.send(message, words)
         assert meta.sent == [], "the template was those words"
         await way.send(message, "Tiene tres dormitorios.")
+        await way.send(message, words)
         await way.mark_read(message, typing=False)
-    assert [sent["text"] for sent in meta.sent] == [{"body": "Tiene tres dormitorios.", "preview_url": False}]
+        # Were the template's turn never said, the agent's first answer still reaches the contact.
+        unsaid = FirstSaid(ByWhatsapp(http, "the number's token", Ears(side.parts, SCOPE)), words)
+        await unsaid.send(message, "Sí, te cuento.")
+    bodies = [sent["text"]["body"] for sent in meta.sent]  # type: ignore[index]
+    assert bodies == ["Tiene tres dormitorios.", words, "Sí, te cuento."], (
+        "only the first saying of those words is unsent"
+    )
     assert meta.read == [("wamid.1", False)]
 
 

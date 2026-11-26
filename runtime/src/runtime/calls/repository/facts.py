@@ -32,6 +32,7 @@ KEPT_COLUMNS = frozenset(
         "placed",
         "line",
         "persona",
+        "visitor",
     }
 )
 

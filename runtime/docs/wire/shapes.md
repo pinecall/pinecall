@@ -190,7 +190,7 @@ Who is on the line, as far as the platform knows. Everything is optional: a web 
 
 ### `Visitor`
 
-What the gateway saw of a web visitor's browser when their call opened, at the door that minted its room's token: a page Pinecall serves reads the browser's own request; `POST /v1/tokens` takes what the tenant's server says of it (`visitor_ip`, `user_agent`). The tenant's to read: the public projection carries none of it.
+What the gateway saw of a web visitor's browser when their call opened, at the door that minted its room's token: a page Pinecall serves reads the browser's own request; `POST /v1/tokens` takes what the tenant's server says of it (`visitor_ip`, `user_agent`). It rides the signed dispatch to the worker, which says it again when it opens the call; it is kept beside the call's facts, and said on a row of `GET /v1/sessions?visitors=true`. No entry of the call carries it, so no app reads it.
 
 | field | type | required | meaning |
 |---|---|---|---|

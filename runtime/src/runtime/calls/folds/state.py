@@ -197,8 +197,6 @@ def _call(state: State, data: WireModel) -> None:
 
 def _line(state: State, data: CallRinging | CallDialing | CallStarted) -> None:
     state.channel, state.from_, state.to, state.caller = data.channel, data.from_, data.to, data.caller
-    if isinstance(data, CallStarted) and data.visitor is not None:
-        state.visitor = data.visitor
 
 
 # A turn keeps only the fields that were on the wire, so it is built from what was written.

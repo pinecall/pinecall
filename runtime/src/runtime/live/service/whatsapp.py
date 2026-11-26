@@ -111,9 +111,9 @@ class FirstMessage:
     call: str
     metadata: Mapping[str, Json] = field(default_factory=dict[str, Json])
     opens_itself: bool = False
-    # The contact already reads its first words (a WhatsApp template carried them): they are said on
-    # the call and sent by nobody.
-    said: bool = False
+    # The words the contact already reads (a WhatsApp template carried them): the turn that says them
+    # is on the call and sent by nobody.
+    said: str | None = None
 
 
 # What `whatsapp`'s webhook is handed (`whatsapp.service.Threads`): the contacts' conversations.
@@ -360,8 +360,8 @@ class Threads:
             except PinecallError as refused:
                 logger.warning("whatsapp: agent %s cannot answer at %s: %s", route.agent, inbound.number, refused)
                 return None
-        if first is not None and first.said:
-            reaches = FirstSaid(reaches)
+        if first is not None and first.said is not None:
+            reaches = FirstSaid(reaches, first.said)
         thread = OpenThread(session=running, inbound=inbound, reaches=reaches)
         thread.refuses = partial(refuses_messages, live, Scope(route.org, route.env), inbound.caller)
         # Before the session starts, so every turn the contact is owed reaches them.

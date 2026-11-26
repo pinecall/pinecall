@@ -1,5 +1,6 @@
 """The agent writes first on WhatsApp: a template approved at Meta, its words said on the contact's conversation."""
 
+import logging
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -10,7 +11,7 @@ from runtime.actor import Scope
 from runtime.calls.context import new_call_id
 from runtime.compliance import service as compliance
 from runtime.enums import Channel, Env
-from runtime.exceptions import Conflict, Forbidden, NotFound, ValidationError
+from runtime.exceptions import Conflict, Forbidden, NotFound, PinecallError, ValidationError
 from runtime.kit.text import Json
 from runtime.live.holders import NoApp
 from runtime.live.parts import LiveParts
@@ -21,6 +22,8 @@ from runtime.telephony.models import Route
 from runtime.whatsapp import service as whatsapp
 from runtime.wire.commands import SayVerb
 from runtime.wire.parts import Supervisor
+
+logger = logging.getLogger(__name__)
 
 # A number as it is dialled from anywhere: a plus, the country's code, the number.
 E164 = re.compile(r"\+[1-9]\d{7,14}")
@@ -71,6 +74,8 @@ class Templated:
 # message. The template goes first, for Meta's refusal to open nothing; then the conversation, whose
 # first turn is those words and is sent by nobody (`FirstSaid`). A contact whose conversation has
 # idle time left wrote within Meta's 24 hours: the words are one more message of it, no template sent.
+# Once the template went, nothing is refused: a conversation that could not open is said in the log,
+# and the answer names none, so the caller does not send the contact the same template twice.
 async def send_template(
     session: AsyncSession, live: LiveParts, threads: Threads, scope: Scope, slug: str, asked: Templating, by: Supervisor
 ) -> Templated:
@@ -100,9 +105,17 @@ async def send_template(
     contact = _contact_of(route, asked.to)
     going = await threads.find_going(registration.scope, slug, contact)
     message_id = None if simulated or going is not None else await _send(session, live, route, asked)
-    first = FirstMessage(going or new_call_id(), asked.metadata, said=going is None)
-    call = await threads.open_to(registration, route, contact, first)
-    await send_verb(live, Supervising(call, by), SayVerb(text=asked.text))
+    first = FirstMessage(going or new_call_id(), asked.metadata, said=asked.text if going is None else None)
+    try:
+        call: str | None = await threads.open_to(registration, route, contact, first)
+        await send_verb(live, Supervising(call, by), SayVerb(text=asked.text))
+    except PinecallError as refused:
+        # The template is with the contact already: refusing now would have the caller send it again.
+        # The answer names no conversation, and what they answer opens one as any message does.
+        if message_id is None:
+            raise
+        logger.warning("whatsapp: a template to %s went and its conversation did not open: %s", asked.to, refused)
+        call = None
     return Templated(to=asked.to, shown=route.number, simulated=simulated, message_id=message_id, call=call)
 
 

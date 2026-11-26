@@ -72,25 +72,6 @@ class Route(Protocol):
         ...
 
 
-class Visitor(Protocol):
-    """What the gateway saw of a web visitor's browser: its address, its own name, its country."""
-
-    @property
-    def ip(self) -> str | None:
-        """The address the visitor's browser asked from."""
-        ...
-
-    @property
-    def user_agent(self) -> str | None:
-        """How the visitor's browser named itself."""
-        ...
-
-    @property
-    def country(self) -> str | None:
-        """The country the address is in, ISO 3166 alpha-2."""
-        ...
-
-
 class Contact(Protocol):
     """What is known about the caller; a web visitor may be anonymous."""
 
@@ -196,11 +177,6 @@ class CallContext(Protocol):
     @property
     def continues(self) -> str | None:
         """The ended call this one carries on."""
-        ...
-
-    @property
-    def visitor(self) -> Visitor | None:
-        """A web call's: what the gateway saw of the visitor's browser when it opened."""
         ...
 
     @property

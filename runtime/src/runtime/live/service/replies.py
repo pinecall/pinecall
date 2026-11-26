@@ -154,18 +154,20 @@ class ByEmail:
 
 
 # A WhatsApp conversation the agent opens starts on a template, which Meta is asked for apart: the
-# words it carried are the conversation's first turn, and reach the contact once.
+# words it carried are the conversation's first turn, and reach the contact once. Told apart by the
+# words themselves, not by being first: were that turn never said (its app gone that moment), the
+# agent's first answer to the contact would be the one left unsent.
 @dataclass(slots=True)
 class FirstSaid:
-    """A way to a contact who already reads the conversation's first words: its first send is not sent."""
+    """A way to a contact who already reads these words: the turn that says them is not sent again."""
 
     way: Reaches
-    waits: bool = True
+    words: str | None
 
     async def send(self, to: whatsapp.Inbound, text: str) -> None:
-        """Nothing for the first words, which the template carried; every later reply by the way itself."""
-        if self.waits:
-            self.waits = False
+        """Nothing for the words the template carried, once; every other reply by the way itself."""
+        if self.words is not None and text == self.words:
+            self.words = None
             return
         await self.way.send(to, text)
 

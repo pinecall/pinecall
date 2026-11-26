@@ -115,7 +115,8 @@ class CallRow(Row):
     from_: str | None = Field(alias="from")
     to: str | None
     caller: Contact | None
-    # A web call's: the visitor's address, browser and country, as the gateway saw them when it opened.
+    # Where a web call's visitor was, to a list asked with visitors: their address, browser and country, as
+    # the gateway saw them when it minted the call's ticket. Null for any other call.
     visitor: Visitor | None = None
     started_at: float | None
     ended_at: float | None
@@ -161,6 +162,8 @@ class ListQuery(Schema):
     runs: bool = False
     # Each row also says whether the call is spoken (spoken): a web call by voice reads as a website's chat without it.
     spoken: bool = False
+    # Each row of a web call also says where its visitor was (visitor): their address, browser and country.
+    visitors: bool = False
 
 
 # ── the inbox ──

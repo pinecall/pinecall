@@ -12,10 +12,11 @@
   the new call's caller is the visitor it names. A page Pinecall hosts keeps it in a cookie of its own name
   (`pinecall_visitor`, HttpOnly, Partitioned), so a reload, a new chat or a call after a chat is one contact.
   Until now each new conversation was a new `web_…` visitor, and one person's visit was five or ten rows.
-- **Where a web visitor was.** A web call's `call.started` carries `visitor {ip, user_agent, country}`: a hosted page's
-  door reads the browser's own request, `POST /v1/tokens` takes `visitor_ip` and `user_agent` from the tenant's
-  server, and the country is read from the address with DB-IP's free table (CC BY 4.0), which the image carries
-  (`PINECALL_COUNTRIES_FILE`). The list's rows and the state carry it; the public projection does not.
+- **Where a web visitor was.** A web call keeps `visitor {ip, user_agent, country}` beside its facts (migration 000037),
+  said on a row of `GET /v1/sessions?visitors=true`: a hosted page's door reads the browser's own request,
+  `POST /v1/tokens` takes `visitor_ip` and `user_agent` from the tenant's server, and the country is read from the
+  address with DB-IP's free table (CC BY 4.0), which the image carries (`PINECALL_COUNTRIES_FILE`). No entry of the
+  call carries it: an SDK released before refuses an entry with a field it does not know.
 
 - **An agent sends a WhatsApp template through the gateway, and the sandbox answers it without sending.** `POST
   /v1/agents/{slug}/template {to, template, language, variables?, from?}`, on the `talk` scope, sends one template

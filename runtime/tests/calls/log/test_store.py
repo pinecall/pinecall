@@ -738,3 +738,29 @@ async def test_a_call_is_taken_up_from_the_count_its_asker_read_and_never_while_
     assert (await store.count_taken_up(call), await other.count_taken_up(call)) == (1, 1)
     assert await store.take_up(call, 1)
     await other.writer.drain()
+
+
+# Where a web visitor was is kept beside the call's fold, since no entry says it: an app reads every entry
+# of its call, and one built before a field existed refuses the entry that carries it.
+async def test_a_row_says_where_its_visitor_was_only_to_a_reader_who_asks_and_no_entry_says_it(
+    sessions: async_sessionmaker[AsyncSession], call: str
+) -> None:
+    ticks = iter(entry.ts for entry in GOLDEN)
+    store = Store(sessions, Writer(sessions), clock=lambda: next(ticks))
+    for entry in GOLDEN:
+        await store.write("entry", call, entry.agent, entry.type, entry.data, ephemeral=entry.ephemeral)
+    await store.writer.drain()
+    seen = {"ip": "181.47.10.5", "user_agent": "Mozilla/5.0 Firefox/140.0", "country": "AR"}
+    async with sessions.begin() as session:
+        await FactsRepository(session).keep(call, visitor=seen)
+    logs = logs_on(store).logs
+    async with sessions() as session:
+        (plain,) = await lists.list_rows(session, logs, [call], {})
+        (asked,) = await lists.list_rows(session, logs, [call], {}, lists.Said(visitors=True))
+    assert "visitor" not in plain, "an app built before strict-parses the row it knew"
+    assert asked["visitor"] == seen
+    assert all("visitor" not in entry.data for entry in await store.whole_of(call))
+    await store.seal(call)
+    async with sessions() as session:
+        (sealed,) = await lists.list_rows(session, logs, [call], {}, lists.Said(visitors=True))
+    assert sealed["visitor"] == seen, "the seal writes the line and leaves what is kept beside it"

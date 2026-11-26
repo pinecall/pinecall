@@ -200,6 +200,8 @@ export function DetailsPanel({
   const { state, entries } = watched;
   const over = state.status === "ended";
   const number = (state.direction === "outbound" ? state.to : state.from) ?? null;
+  // Where a web visitor was is on the call's row of the list, never in its log.
+  const seen = person?.lines.find((one) => one.call === call)?.visitor;
   return (
     // Escape belongs to the desk's fields here, and a stray one must not fold a call being worked.
     <SidePanel title="Details" icon="quality" width={420} closesOnEscape={false} onClose={onClose}>
@@ -213,7 +215,7 @@ export function DetailsPanel({
       )}
       {over && <Judges score={score} onCite={onCite} />}
       <Tiles state={state} latencies={latencies} />
-      {state.visitor != null && <VisitorPart visitor={state.visitor} />}
+      {seen != null && <VisitorPart visitor={seen} />}
       <Models call={call} state={state} entries={entries} />
       {person !== undefined && <OtherCalls person={person} shown={call} search={search} />}
       {over && <Proofs state={state} entries={entries} />}

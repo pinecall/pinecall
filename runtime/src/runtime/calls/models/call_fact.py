@@ -66,6 +66,7 @@ class CallFact(Model):
             "caller_line",
             "placed",
             "line",
+            "visitor",
         ),
         exported_by="calls.service.exporting.export_calls",
     )
@@ -132,3 +133,7 @@ class CallFact(Model):
     # it instead of folding the log. NULL while the call is live, and for a call sealed before this
     # column existed, until `facts rebuild` writes it.
     line: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # A web call's: what the gateway saw of the visitor's browser when it minted the room's token (their
+    # address, how the browser named itself, the country the address is in). No entry says it, so that no
+    # app reads it: kept when the call opens, and said on a list's row to a reader who asks.
+    visitor: Mapped[dict[str, Any] | None] = mapped_column(JSONB)

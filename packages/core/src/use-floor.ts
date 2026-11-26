@@ -60,7 +60,8 @@ export function useFloor(limit = FLOOR_ROWS): Floor {
           // `holders`: each row says whose copy took it, so a sandbox list of every copy can name it.
           // `runs`: each row says the test run it is one of, so a golden's call is not read as a visitor's.
           // `spoken`: each row says whether it is had by voice, so a web call is told from a website's chat.
-          const listed = SessionListSchema.parse(await read(credentials, "/v1/sessions", { limit, holders: "true", runs: "true", spoken: "true" }));
+          // `visitors`: each row of a web call says where its visitor was, for the flag and the browser.
+          const listed = SessionListSchema.parse(await read(credentials, "/v1/sessions", { limit, holders: "true", runs: "true", spoken: "true", visitors: "true" }));
           setLines(listed.calls);
           setError(null);
           setRefusedWith(null);

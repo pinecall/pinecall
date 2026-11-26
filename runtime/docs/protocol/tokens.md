@@ -46,7 +46,7 @@ a client may not set.
 | `participant_attributes` | LiveKit's | published verbatim; the `pinecall.` prefix is ours and refused |
 | `resume` | ours | an earlier answer's `resume_token`: back into that call while it waits, else a new call that carries it on ([below](#resuming-a-conversation)); `agent` may then be left out |
 | `visitor_token` | ours | an earlier answer's `visitor_token`: the new call's caller is the visitor it names, so every conversation one browser opens is one contact ([below](#one-visitor-every-conversation)) |
-| `visitor_ip` · `user_agent` | ours | the visitor's browser as the server that asks saw it: the address it came from and its `User-Agent`. They ride the dispatch to the call's `call.started` as `visitor`, with the country the gateway reads from the address |
+| `visitor_ip` · `user_agent` | ours | the visitor's browser as the server that asks saw it: the address it came from and its `User-Agent`. They are kept beside the call's facts with the country the gateway reads from the address ([below](#one-visitor-every-conversation)) |
 | `room_name` · `participant_name` · `participant_metadata` | LiveKit's | refused, `400`, each with its reason |
 
 The answer is `201` with LiveKit's two fields and three more every SDK ignores:
@@ -134,8 +134,10 @@ from, through the proxies the box trusts (`PINECALL_TRUSTED_PROXIES`), and its `
 `browserOf` reads them off its own request. The gateway adds the country the address is in, from
 DB-IP's "IP to Country Lite" table (db-ip.com, CC BY 4.0), which the runtime's image carries
 packed (`PINECALL_COUNTRIES_FILE`); a box without it says no country. The three ride the signed
-dispatch to the call's `call.started` as `visitor` ([events-call.md](../../wire/events-call.md)),
-reach the call's state and its row in `GET /v1/sessions`, and the public projection drops them.
+dispatch to the worker, which says them again when it opens the call (`POST /v1/calls`), and are
+kept beside the call's facts: a row of `GET /v1/sessions?visitors=true` says them as `visitor`
+([shapes.md](../../wire/shapes.md), `Visitor`). No entry of the call carries them, so no app reads
+them, and the public projection never could.
 
 ## Refusals
 

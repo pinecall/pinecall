@@ -368,6 +368,14 @@ class CallContact(_OfACall):
     external_id: str | None = None
 
 
+class CallVisitor(_OfACall):
+    """What the gateway saw of a web visitor's browser: its address, how it named itself, its country."""
+
+    ip: str | None = None
+    user_agent: str | None = None
+    country: str | None = None
+
+
 # Field for field `calls.context.CallContext`, which reads it back (`read_context`) and holds it to its rules.
 class CallOpened(_OfACall):
     """A call as its worker sees it when it starts: its id, who calls, the route it came in by, its day."""
@@ -387,6 +395,8 @@ class CallOpened(_OfACall):
     holder: str | None = None
     state: dict[str, Any] = Field(default_factory=dict[str, Any])
     continues: str | None = None
+    # A web call's: what the gateway saw of the visitor's browser when it minted the room's token.
+    visitor: CallVisitor | None = None
 
 
 class OpenCallRequest(WireModel):

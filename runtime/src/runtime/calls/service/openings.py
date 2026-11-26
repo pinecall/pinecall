@@ -23,6 +23,7 @@ from runtime.agents.declaration import (
 from runtime.calls.context import CallContext, dump_context, read_context
 from runtime.calls.log.private import open_entries
 from runtime.calls.repository.entries import EntryRepository
+from runtime.calls.repository.facts import FactsRepository
 from runtime.calls.repository.openings import OpeningRepository
 from runtime.calls.repository.private import PrivateRepository
 from runtime.kit.crypto import Vault
@@ -54,6 +55,9 @@ async def keep_opening(session: AsyncSession, org: str, context: CallContext, de
     written = dump_declaration(declaration)
     hashed = sha256_of(json.dumps(written, sort_keys=True))
     await OpeningRepository(session).keep(context.call, org, dump_context(context), hashed, written)
+    # Where a web visitor was: beside the call's fold, since no entry says it (an app reads every entry).
+    if context.visitor is not None:
+        await FactsRepository(session).keep(context.call, visitor=dataclasses.asdict(context.visitor))
 
 
 async def opening_of(session: AsyncSession, call: str) -> Opening | None:

@@ -70,6 +70,17 @@ class Asked:
     holders: bool = False
     runs: bool = False
     spoken: bool = False
+    visitors: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class Said:
+    """What each row also says, to a reader who asks: whose copy, its run, whether spoken, where its visitor was."""
+
+    holders: bool = False
+    runs: bool = False
+    spoken: bool = False
+    visitors: bool = False
 
 
 async def list_calls(session: AsyncSession, logs: Logs, actor: Actor, asked: Asked) -> CallPage:
@@ -88,7 +99,7 @@ async def list_calls(session: AsyncSession, logs: Logs, actor: Actor, asked: Ask
     if wanted.agent:
         by_agent[wanted.agent] = (await agents.agent_of(session, actor.scope, wanted.agent)).declaration
     rows = await list_rows(
-        session, logs, found.calls, by_agent, holders=asked.holders, runs=asked.runs, spoken=asked.spoken
+        session, logs, found.calls, by_agent, Said(asked.holders, asked.runs, asked.spoken, asked.visitors)
     )
     return CallPage(calls=rows, total=found.total, next=found.next)
 
@@ -114,15 +125,13 @@ async def list_rows(
     logs: Logs,
     calls: Sequence[str],
     by_agent: Mapping[str, Declaration | None],
-    *,
-    holders: bool = False,
-    runs: bool = False,
-    spoken: bool = False,
+    said: Said | None = None,
 ) -> list[JsonObject]:
-    """The calls as a list shows them, none nothing was written to; whose copy, its run, whether spoken, when asked."""
+    """The calls as a list shows them, none nothing was written to; with what the reader asked each row to say."""
+    said = said or Said()
     heads = await HeadRepository(session).heads_of(calls)
     facts = await FactsRepository(session).list_with_agent(calls)
-    names = await _name_holders(session, heads.values()) if holders else None
+    names = await _name_holders(session, heads.values()) if said.holders else None
     rows: list[JsonObject] = []
     for call in calls:
         head, fact = heads.get(call), facts.get(call)
@@ -136,8 +145,9 @@ async def list_rows(
             continue
         row = _row(call, head, line, fact, names)
         # Said only to a reader who asked, as a holder is: an app built before strict-parses the row it knew.
-        row = {**row, "run": head.run} if runs else row
-        rows.append({**row, "spoken": _is_spoken(line, fact)} if spoken else row)
+        row = {**row, "run": head.run} if said.runs else row
+        row = {**row, "spoken": _is_spoken(line, fact)} if said.spoken else row
+        rows.append({**row, "visitor": None if fact is None else fact.row.visitor} if said.visitors else row)
     return rows
 
 

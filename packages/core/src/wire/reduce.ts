@@ -3,12 +3,7 @@
 import { type Event, eventOf } from "./codec.js";
 import { type Entry } from "./envelope.js";
 import { type ParticipantJoined } from "./room.js";
-import {
-  type Confirm,
-  type Participant,
-  type State,
-  type ToolRun,
-} from "./state.js";
+import { type Confirm, type Participant, type State, type ToolRun } from "./state.js";
 
 /** The state of an empty log: nothing known, every list empty, status idle. */
 export function initialState(): State {
@@ -31,17 +26,7 @@ export function initialState(): State {
     agent_state: null,
     live: { user: null, agent: null },
     turns: [],
-    metrics: {
-      llm: [],
-      stt: [],
-      tts: [],
-      vad: [],
-      eou: [],
-      eot: [],
-      interruption: [],
-      realtime: [],
-      avatar: [],
-    },
+    metrics: { llm: [], stt: [], tts: [], vad: [], eou: [], eot: [], interruption: [], realtime: [], avatar: [] },
     tools: [],
     app_state: {},
     events: [],
@@ -136,8 +121,7 @@ function applyEvent(state: State, entry: Entry, event: Event): void {
       state.end_reason = event.data.reason;
       state.live = { user: null, agent: null };
       // A caller who hung up while waiting for a person was never answered.
-      if (state.attention?.status === "open")
-        state.attention = { ...state.attention, status: "lapsed" };
+      if (state.attention?.status === "open") state.attention = { ...state.attention, status: "lapsed" };
       return;
     case "call.transferred":
       state.transfer = {
@@ -169,9 +153,7 @@ function applyEvent(state: State, entry: Entry, event: Event): void {
       return;
     case "agent.transcript":
       // A delta: one word of a spoken reply, or one token of a written one.
-      state.live.agent = event.data.final
-        ? null
-        : saidSoFar(state.live.agent, event.data);
+      state.live.agent = event.data.final ? null : saidSoFar(state.live.agent, event.data);
       return;
     case "turn.user":
       state.turns.push({ role: "user", ...event.data });
@@ -226,11 +208,7 @@ function applyEvent(state: State, entry: Entry, event: Event): void {
       state.app_state = { ...event.data.state };
       return;
     case "prompt.changed":
-      state.prompt[event.data.name] = {
-        hash: event.data.hash,
-        chars: event.data.chars,
-        seq: entry.seq,
-      };
+      state.prompt[event.data.name] = { hash: event.data.hash, chars: event.data.chars, seq: entry.seq };
       return;
     case "tools.changed":
       state.tools_visible = [...event.data.visible];
@@ -245,10 +223,7 @@ function applyEvent(state: State, entry: Entry, event: Event): void {
       });
       return;
     case "confirm.granted":
-      settleConfirm(state, event.data.call_id, {
-        status: "granted",
-        said: event.data.said,
-      });
+      settleConfirm(state, event.data.call_id, { status: "granted", said: event.data.said });
       return;
     case "confirm.declined":
       settleConfirm(state, event.data.call_id, {
@@ -265,56 +240,28 @@ function applyEvent(state: State, entry: Entry, event: Event): void {
       state.handoff = { active: false, by: null };
       return;
     case "supervisor.transferred":
-      state.transfer = {
-        to: event.data.to,
-        mode: event.data.mode,
-        status: "requested",
-        by: "supervisor",
-      };
+      state.transfer = { to: event.data.to, mode: event.data.mode, status: "requested", by: "supervisor" };
       return;
     case "attention.requested":
-      state.attention = {
-        reason: event.data.reason,
-        wait_s: event.data.wait_s,
-        status: "open",
-        asked_at: entry.ts,
-        by: null,
-      };
+      state.attention = { reason: event.data.reason, wait_s: event.data.wait_s, status: "open", asked_at: entry.ts, by: null };
       return;
     case "attention.answered":
       if (state.attention !== null && state.attention !== undefined) {
-        state.attention = {
-          ...state.attention,
-          status: event.data.ok ? "answered" : "lapsed",
-          by: event.data.by,
-        };
+        state.attention = { ...state.attention, status: event.data.ok ? "answered" : "lapsed", by: event.data.by };
       }
       return;
     case "agent.registered":
       state.routes = [...event.data.routes];
       return;
     case "error":
-      state.errors.push({
-        seq: entry.seq,
-        code: event.data.code,
-        message: event.data.message,
-      });
+      state.errors.push({ seq: entry.seq, code: event.data.code, message: event.data.message });
       return;
     case "custom":
-      state.custom.push({
-        seq: entry.seq,
-        name: event.data.name,
-        data: { ...event.data.data },
-      });
+      state.custom.push({ seq: entry.seq, name: event.data.name, data: { ...event.data.data } });
       return;
     // ── the room and the outside world ──
     case "room.opened":
-      state.room = {
-        name: event.data.name,
-        sid: event.data.sid,
-        participants: [],
-        caller: null,
-      };
+      state.room = { name: event.data.name, sid: event.data.sid, participants: [], caller: null };
       return;
     case "participant.joined":
       onParticipantJoined(state, entry, event.data);
@@ -353,48 +300,26 @@ function applyEvent(state: State, entry: Entry, event: Event): void {
 
 function rememberTheLine(
   state: State,
-  line: {
-    channel: State["channel"];
-    from: string;
-    to: string;
-    caller: State["caller"];
-    visitor?: State["visitor"];
-  },
+  line: { channel: State["channel"]; from: string; to: string; caller: State["caller"] },
 ): void {
   state.channel = line.channel;
   state.from = line.from;
   state.to = line.to;
   state.caller = line.caller;
-  // call.started alone says it, and a ring before it says nothing: what it said stands.
-  if (line.visitor != null) state.visitor = line.visitor;
 }
 
-function onToolResult(
-  state: State,
-  result: Event & { type: "tool.result" } extends { data: infer D } ? D : never,
-): void {
+function onToolResult(state: State, result: Event & { type: "tool.result" } extends { data: infer D } ? D : never): void {
   const index = lastIndex(state.tools, (run) => run.call_id === result.call_id);
   if (index === -1) {
     return;
   }
   const { call_id: _callId, name: _name, ...outcome } = result;
   const run = state.tools[index] as ToolRun;
-  state.tools[index] = {
-    ...run,
-    ...outcome,
-    status: outcome.error !== undefined ? "failed" : "done",
-  };
+  state.tools[index] = { ...run, ...outcome, status: outcome.error !== undefined ? "failed" : "done" };
 }
 
-function settleConfirm(
-  state: State,
-  callId: string,
-  verdict: Partial<Confirm>,
-): void {
-  const index = lastIndex(
-    state.confirms,
-    (confirm) => confirm.call_id === callId,
-  );
+function settleConfirm(state: State, callId: string, verdict: Partial<Confirm>): void {
+  const index = lastIndex(state.confirms, (confirm) => confirm.call_id === callId);
   if (index === -1) {
     return;
   }
@@ -403,19 +328,11 @@ function settleConfirm(
 }
 
 // joined_at is the entry's ts; the event does not repeat it.
-function onParticipantJoined(
-  state: State,
-  entry: Entry,
-  joined: ParticipantJoined,
-): void {
+function onParticipantJoined(state: State, entry: Entry, joined: ParticipantJoined): void {
   if (state.room === null) {
     return;
   }
-  state.room.participants.push({
-    ...joined,
-    joined_at: entry.ts,
-    speaking: false,
-  });
+  state.room.participants.push({ ...joined, joined_at: entry.ts, speaking: false });
   if (joined.kind === "caller") {
     state.room.caller = joined.identity;
   }
@@ -426,9 +343,7 @@ function onParticipantLeft(state: State, identity: string): void {
   if (state.room === null) {
     return;
   }
-  const seat = state.room.participants.findIndex(
-    (one) => one.identity === identity,
-  );
+  const seat = state.room.participants.findIndex((one) => one.identity === identity);
   if (seat !== -1) {
     state.room.participants.splice(seat, 1);
   }
@@ -437,16 +352,12 @@ function onParticipantLeft(state: State, identity: string): void {
   }
 }
 
-function participantIn(
-  state: State,
-  identity: string,
-): Participant | undefined {
+function participantIn(state: State, identity: string): Participant | undefined {
   return state.room?.participants.find((one) => one.identity === identity);
 }
 
 function onLogGap(state: State, event: Event & { type: "log.gap" }): State {
-  const next =
-    event.data.snapshot !== null ? structuredClone(event.data.snapshot) : state;
+  const next = event.data.snapshot !== null ? structuredClone(event.data.snapshot) : state;
   next.gaps.push({ from_seq: event.data.from_seq, to_seq: event.data.to_seq });
   return next;
 }
@@ -464,13 +375,8 @@ function lastIndex<T>(items: T[], matches: (item: T) => boolean): number {
  * Append a delta to the reply in flight. Aligned voice words arrive bare and are joined with a
  * space; written tokens carry their own spacing ("clean" + "ing" must not gain a space).
  */
-function saidSoFar(
-  soFar: string | null,
-  delta: { text: string; start?: number | null | undefined },
-): string {
+function saidSoFar(soFar: string | null, delta: { text: string; start?: number | null | undefined }): string {
   if (soFar === null || soFar === "") return delta.text;
   const apart = /\s$/.test(soFar) || /^\s/.test(delta.text);
-  return delta.start != null && !apart
-    ? `${soFar} ${delta.text}`
-    : `${soFar}${delta.text}`;
+  return delta.start != null && !apart ? `${soFar} ${delta.text}` : `${soFar}${delta.text}`;
 }
