@@ -83,6 +83,25 @@ async def list_carried(session: AsyncSession, vault: Vault, call: str) -> list[E
     return turns
 
 
+# What a judge is shown of the conversations a call carried on: a line a turn, the last of them only.
+CARRIED_READ_AT_MOST = 6000
+
+
+async def read_carried(session: AsyncSession, vault: Vault, call: str) -> str:
+    """The conversations the call carried on, a line a turn, oldest first; empty for a call of its own."""
+    opening = await opening_of(session, call)
+    carried = None if opening is None else opening.context.continues
+    if carried is None:
+        return ""
+    lines: list[str] = []
+    for entry in await list_carried(session, vault, carried):
+        text = entry.data.get("text")
+        if entry.type in ("turn.user", "turn.agent") and isinstance(text, str) and text.strip():
+            lines.append(f"{'Agent' if entry.type == 'turn.agent' else 'Contact'}: {text.strip()}")
+    said = "\n".join(lines)
+    return said if len(said) <= CARRIED_READ_AT_MOST else "…\n" + said[-CARRIED_READ_AT_MOST:]
+
+
 # One way to read a log with what it sealed aside. Until 2026-11 there were two, eight lines apart:
 # the store's own session for one, the request's for the other.
 async def read_whole(session: AsyncSession, vault: Vault, call: str) -> list[Entry]:

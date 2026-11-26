@@ -47,6 +47,7 @@ from runtime.calls.service.openings import (
     keep_opening,
     list_carried,
     opening_of,
+    read_carried,
     read_declaration,
     read_whole,
 )
@@ -118,6 +119,7 @@ __all__ = [
     "measure_latencies",
     "move_logs",
     "opening_of",
+    "read_carried",
     "read_declaration",
     "read_finished",
     "read_for_key",

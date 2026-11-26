@@ -95,8 +95,10 @@ async def judge_again(parts: Harness, actor: Actor, call: str, *, again: bool) -
         raise Conflict(f"call {call} is still going: it is judged when it hangs up")
     if not again and any(entry.type == "call.score" and entry.data.get("passed") is not None for entry in read.entries):
         raise Conflict(f"call {call} was judged at hang-up: ?again=true judges it again, and pays for it again")
+    async with parts.sessions.begin() as session_:
+        earlier = await calls.read_carried(session_, parts.vault, call)
     judged = await judging.judge_call(
-        parts.sessions, parts.vault, parts.prompts, read.entries, read.declaration, actor.scope
+        parts.sessions, parts.vault, parts.prompts, read.entries, read.declaration, actor.scope, earlier=earlier
     )
     await parts.logs.writing(call, read.agent).rescore(judged.score.dump())
     async with parts.sessions.begin() as session_:
@@ -111,11 +113,12 @@ async def _try_on(parts: Harness, actor: Actor, call: str, spec: judging.JudgeSp
             return _skip(call, NOT_FINISHED)
         # As the seal reads it: the agent's settings over its class, for the judge it names is theirs to set.
         declaration = await _as_the_call_ran(session_, actor, read.entries, read.declaration, call)
+        earlier = await calls.read_carried(session_, parts.vault, call)
     transcript = judging.transcript_of(read.entries, declaration)
     if spec.when is JudgeRunsWhen.simulations and not transcript.simulated:
         return _skip(call, ON_SIMULATIONS.format(name=spec.name))
     judged = await judging.judge_call(
-        parts.sessions, parts.vault, parts.prompts, read.entries, declaration, actor.scope, only=spec
+        parts.sessions, parts.vault, parts.prompts, read.entries, declaration, actor.scope, only=spec, earlier=earlier
     )
     score = judged.score
     return Tried(call, next(iter(score.judges), None), score.not_judged), score

@@ -234,7 +234,11 @@ async def score(live: LiveParts, closing: Closing, entries: Sequence[Entry]) -> 
         judged_here = await accounts.is_judged(session, scope.org)
     if not judged_here:
         return _leave_unjudged(JUDGING_OFF.format(call=closing.call))
-    judged = await judging.judge_call(live.sessions, live.vault, live.prompts, entries, closing.declaration, scope)
+    async with live.sessions.begin() as session:
+        earlier = await calls.read_carried(session, live.vault, closing.call)
+    judged = await judging.judge_call(
+        live.sessions, live.vault, live.prompts, entries, closing.declaration, scope, earlier=earlier
+    )
     if judged.out_of_evals:
         async with live.sessions.begin() as own:
             limit = (await billing.get_quotas(own, scope.org, scope.env)).evals or 0
