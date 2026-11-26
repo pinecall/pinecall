@@ -11,6 +11,7 @@ import { WORLD } from "../lib/world";
 import { Select } from "../ui/select";
 import { addNumber, moveNumber, releaseNumber, type Carrier, type Catalog, type NumberRow, type WantedNumber, type Wired } from "./door";
 import { Path, Plan, useMove } from "./parts";
+import { SendTemplate } from "./template";
 import { EmailTemplate } from "../channels/email-template";
 import { MailboxCard } from "../channels/mailbox";
 import { anArriving, arrivingMany, arrivingOn, CHANNEL_NAMES, comesThrough, RINGS, ringsSaid, shown } from "./words";
@@ -77,6 +78,8 @@ export function NumberView({ row, carriers, catalog, agents, onChanged, onGone }
         <span className="dash-eyebrow dash-eyebrow-head">What {anArriving(row.route.channel)} to it goes through</span>
         <Path number={number} channel={row.route.channel} round={round} />
       </section>
+
+      {row.route.channel === "whatsapp" && <SendTemplate agent={row.route.agent} number={number} />}
 
       {mailbox !== undefined && (
         <section className="dash-card num-card">

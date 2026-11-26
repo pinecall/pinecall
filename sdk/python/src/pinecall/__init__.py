@@ -44,6 +44,7 @@ from pinecall.flows import Flow as Flow
 from pinecall.flows import FlowChanged as FlowChanged
 from pinecall.flows import Step as Step
 from pinecall.flows import StepUnwritten as StepUnwritten
+from pinecall.flows import Templated as Templated
 from pinecall.flows import Texted as Texted
 from pinecall.flows import flow as flow
 from pinecall.panels import Drawing as Drawing
@@ -89,6 +90,7 @@ __all__ = [
     "Step",
     "StepUnwritten",
     "Task",
+    "Templated",
     "Texted",
     "ToolFailed",
     "UnauthoredWrite",

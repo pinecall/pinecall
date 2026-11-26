@@ -166,6 +166,31 @@ describe("pinecall dial", () => {
   });
 });
 
+describe("pinecall template", () => {
+  const ASKED = ["template", "reminder", "visit_reminder", "--to", "+14155550142", "--language", "en_US", "--var", "Ana", "--var", "tomorrow at 9:30"];
+  const KEPT = { agent: "reminder", to: "+14155550142", from: null, env: "sandbox", template: "visit_reminder", simulated: true, message_id: null };
+
+  it("asks with the variables in order, and says the sandbox sent nothing", async () => {
+    const sent = answer("post", "/v1/agents/reminder/template", KEPT);
+    const ran = await run(ASKED);
+    expect(sent[0]!.body).toEqual({ to: "+14155550142", template: "visit_reminder", language: "en_US", variables: ["Ana", "tomorrow at 9:30"] });
+    expect(ran.out).toContain("reminder would send visit_reminder to +14155550142 · sandbox · simulated: nothing was sent");
+    expect(ran.out).toContain("--prod sends it");
+  });
+
+  it("prints the number it left from and Meta's id of one production sent", async () => {
+    answer("post", "/v1/agents/reminder/template", { ...KEPT, from: "+14155550134", env: "production", simulated: false, message_id: "wamid.1" });
+    const ran = await run(["--prod", ...ASKED]);
+    expect(ran.out).toContain("reminder sent visit_reminder to +14155550142 from +14155550134 · production · wamid.1");
+  });
+
+  it("is refused with no language", async () => {
+    const ran = await run(["template", "reminder", "visit_reminder", "--to", "+14155550142"]);
+    expect(ran.code).toBe(2);
+    expect(ran.err).toContain("--language");
+  });
+});
+
 describe("pinecall callbacks", () => {
   it("prints the page on stdout, nothing before it, with the cursor to read on", async () => {
     answer("get", "/v1/callbacks", {

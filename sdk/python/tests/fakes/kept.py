@@ -26,6 +26,7 @@ class KeptApp:
         self.refuses: object = None
         # What a text step is answered: it is over as it is written.
         self.texted: object = {"sent": True, "call": "call_text", "from": "+14155550134"}
+        self.templated: object = {"sent": True, "simulated": True, "message_id": None, "from": None}
         self.staged = 202
         self.down: str | None = None
         self._runner: web.AppRunner | None = None
@@ -121,6 +122,8 @@ class KeptApp:
             step["over"], step["result"] = True, self.refuses
         elif kind == "text":
             step["over"], step["result"] = True, self.texted
+        elif kind == "template":
+            step["over"], step["result"] = True, self.templated
         else:
             run["status"] = WAITS[kind]
         if kind == "emit":

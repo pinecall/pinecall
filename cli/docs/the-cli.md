@@ -69,6 +69,8 @@ path end to end, with every output under it.
 | [`voices`](#voices) | a vendor's voices in a language, and one of them played here before it is chosen | yes |
 | [`walks`](#walks) | a tutor agent's walks, recorded in its voice for a visitor to play with no call; one played here | yes |
 | [`dial`](#dial) | an agent calls a number, with what its call opens with | yes |
+| [`text`](#text) | an agent sends a contact one SMS, or the first email of a thread | yes |
+| [`template`](#template) | an agent sends a contact one WhatsApp template; the sandbox answers and sends nothing | yes |
 | [`callbacks`](#callbacks) | the numbers people left when every seat was taken | yes |
 | [`data`](#data) | the org's data: erasures and their trail, its policy, consent, the do-not-call list, export | yes |
 | [`deploy`](#deploy) | this project run by the platform itself: uploaded as a release, installed and started there; list, releases, rollback, logs, stop, start, rm | yes |
@@ -2480,6 +2482,31 @@ what it is for, which the agent reads throughout. Somebody must be holding the a
 SMS conversation is still open is written on it; any other passes the org's guards first, as a dial
 does, and one that is refused is sent nothing. A contact who asked for no more messages is written
 to by nobody (`pinecall data consent <number|address>` says who did).
+
+## `template`
+
+```
+pinecall template <agent> <name> --to <number> --language <code> [--var <words>]… [--from <number>]
+```
+
+```console
+$ pinecall template reminder visit_reminder --to +14155550142 --language en_US --var Ana --var "tomorrow at 9:30"
+reminder would send visit_reminder to +14155550142 · sandbox · simulated: nothing was sent
+  → --prod sends it: Meta charges the number's account for a template
+$ pinecall template reminder visit_reminder --to +14155550142 --language en_US --var Ana --var "tomorrow at 9:30" --prod
+reminder sent visit_reminder to +14155550142 from +14155550134 · production · wamid.HBgLMTQxNTU1NTAxNDIVAgARGBI4MjdBQTFFQzEyNDY5NERFQjcA
+```
+
+The agent sends the contact one WhatsApp template: the message approved at Meta that opens a
+conversation there, and the one Meta charges for, on the account of whoever owns the number. `<name>`
+is the template's name and `--language` the code of the language it was approved in; each `--var`
+fills the body's next `{{n}}`, in order. In production it leaves from the number the agent answers
+WhatsApp at (`--from` picks one of several) and the line ends with Meta's id of the message. **In the
+sandbox nothing is sent**: the answer says what would have gone, and the agent needs no WhatsApp
+number there. A contact who asked for no more messages is written to by nobody (`pinecall data
+consent <number>` says who did). What Meta refuses (a template it does not know, a number not on
+WhatsApp) is said in its own words. The template is not said on the contact's conversation: what they
+answer opens one as any message does.
 
 ## `email`
 

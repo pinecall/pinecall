@@ -282,3 +282,30 @@ export interface Texted {
 export async function text(gw: GatewayClient, slug: string, body: TextBody): Promise<Texted> {
   return gw.post<Texted>(`/v1/agents/${seg(slug)}/text`, body);
 }
+
+/** What a WhatsApp template the agent sends takes: the contact, the template approved at Meta, its language, what fills it. */
+export interface TemplateBody {
+  to: string;
+  template: string;
+  /** Meta's code of the language the template was approved in: `es_AR`, `en_US`. */
+  language: string;
+  /** What fills the body's {{1}}, {{2}}…, in order. */
+  variables?: string[] | undefined;
+  from?: string | undefined;
+}
+
+/** A template sent, or kept: in the sandbox nothing is asked of Meta, and `simulated` says so. */
+export interface Templated {
+  agent: string;
+  to: string;
+  from: string | null;
+  env: Env;
+  template: string;
+  simulated: boolean;
+  message_id: string | null;
+}
+
+/** `POST /v1/agents/{slug}/template`: the agent sends a contact one WhatsApp template; the sandbox answers and sends nothing. */
+export async function template(gw: GatewayClient, slug: string, body: TemplateBody): Promise<Templated> {
+  return gw.post<Templated>(`/v1/agents/${seg(slug)}/template`, body);
+}

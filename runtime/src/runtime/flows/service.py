@@ -19,7 +19,7 @@ from runtime.kit.text import Json, JsonObject
 from runtime.kit.time import now
 from runtime.live import service as live
 from runtime.scoping import box_wide
-from runtime.wire.flows import CallStep, EmitStep, RunStep, SleepStep, StepSent, TextStep, WaitStep
+from runtime.wire.flows import CallStep, EmitStep, RunStep, SleepStep, StepSent, TemplateStep, TextStep, WaitStep
 from runtime.wire.parts import Supervisor
 
 # A process that took work and died gives it back after this long; one that lives asks again sooner.
@@ -81,15 +81,17 @@ class Holders(Protocol):
 
 type Dial = Callable[[AsyncSession, live.Placement], Awaitable[live.PlacedCall]]
 type SendText = Callable[[AsyncSession, live.Texting], Awaitable[live.Texted]]
+type SendTemplate = Callable[[AsyncSession, Scope, str, live.Templating], Awaitable[live.Templated]]
 
 
 @dataclass(frozen=True, slots=True)
 class LiveSide:
-    """What a step reaches of the live side: who holds an agent, the dial, the text."""
+    """What a step reaches of the live side: who holds an agent, the dial, the text, the template."""
 
     holders: Holders
     dial: Dial
     text: SendText
+    template: SendTemplate
 
 
 # ── a run's moves ──
@@ -311,6 +313,8 @@ async def write_step(
                 row.result = {"value": refused}
         case TextStep() as asked:
             row.result = {"value": await _text(session, side, app, asked, asked_by)}
+        case TemplateStep() as asked:
+            row.result = {"value": await _template(session, side, app, asked)}
     if found.status == RunStatus.ready:
         found.leased_until, found.moved_at = now() + LEASED_FOR, now()
     await steps.add(row)
@@ -381,6 +385,17 @@ async def _text(session: AsyncSession, side: LiveSide, app: App, asked: TextStep
     except PinecallError as refused:
         return {"sent": False, "refused": type(refused).__name__, "message": refused.message}
     return {"sent": True, "call": texted.call, "from": texted.shown}
+
+
+# A WhatsApp template is over as Meta takes it, and in the sandbox as it is answered: nothing is sent
+# there, and the step's answer says so (`simulated`). It opens no conversation, so nobody need hold the agent.
+async def _template(session: AsyncSession, side: LiveSide, app: App, asked: TemplateStep) -> JsonObject:
+    wanted = live.Templating(asked.to, asked.template, asked.language, tuple(asked.variables), asked.from_)
+    try:
+        sent = await side.template(session, app.scope, asked.agent, wanted)
+    except PinecallError as refused:
+        return {"sent": False, "refused": type(refused).__name__, "message": refused.message}
+    return {"sent": True, "simulated": sent.simulated, "message_id": sent.message_id, "from": sent.shown}
 
 
 async def _park(session: AsyncSession, run: FlowRun, on: Clock | Event) -> None:

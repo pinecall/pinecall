@@ -60,6 +60,21 @@ class Texted:
     message: str | None = None
 
 
+@dataclass(frozen=True)
+class Templated:
+    """What a WhatsApp template a flow sent came to.
+
+    `simulated`: the sandbox, where it is answered and never sent. `refused` names why none was.
+    """
+
+    sent: bool
+    simulated: bool = False
+    message_id: str | None = None
+    from_: str | None = None
+    refused: str | None = None
+    message: str | None = None
+
+
 @dataclass
 class Flow:
     """A flow by its name, which is how the gateway knows its runs."""
@@ -230,6 +245,40 @@ class Step:
         known = {name: said.get(name) for name in ("call", "refused", "message")}
         return Texted(
             sent=bool(said.get("sent")),
+            from_=cast("str | None", said.get("from")),
+            **cast("dict[str, str | None]", known),
+        )
+
+    async def template(  # noqa: PLR0913 - each is a part of what a template is sent with
+        self,
+        to: str,
+        agent: type | str,
+        template: str,
+        *,
+        language: str,
+        variables: list[str] | None = None,
+        from_: str | None = None,
+    ) -> Templated:
+        """Have an agent, its class or its slug, send a contact one WhatsApp template.
+
+        `language` is Meta's code of the one it was approved in, `variables` fill its body in order.
+        In the sandbox it is answered `simulated` and never sent.
+        """
+        cls = _config.agent_named(agent) if isinstance(agent, str) else agent
+        slug = None if cls is None else self._slug_of(cls)
+        if slug is None:
+            named = agent if isinstance(agent, str) else agent.__name__
+            raise DeclarationRefused(f"{self._of.name}: {named} is no agent this process serves")
+        asked: JsonObject = {"agent": slug, "to": to, "template": template, "language": language}
+        if variables is not None:
+            asked["variables"] = [*variables]
+        if from_ is not None:
+            asked["from"] = from_
+        said = cast("JsonObject", await self._waited("template", asked) or {})
+        known = {name: said.get(name) for name in ("message_id", "refused", "message")}
+        return Templated(
+            sent=bool(said.get("sent")),
+            simulated=bool(said.get("simulated")),
             from_=cast("str | None", said.get("from")),
             **cast("dict[str, str | None]", known),
         )

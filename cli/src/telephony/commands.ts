@@ -4,6 +4,7 @@ import type { Command } from "@commander-js/extra-typings";
 
 import type { Context } from "../context.js";
 import { GatewayError, UsageError } from "../errors.js";
+import { repeated } from "../kit/flags.js";
 import { secretReader } from "../kit/stdin.js";
 import * as render from "./render.js";
 import * as service from "./service.js";
@@ -76,6 +77,17 @@ the call is for: the agent reads it for the whole call and, with no greeting, op
 
 Somebody must be holding the agent. Every dial passes the org's guards first (who may be called,
 when, how often); one that is refused rings nobody and says which guard refused it.
+`;
+
+const TEMPLATE = `
+A template is the one message WhatsApp lets a business open a conversation with, and the one Meta
+charges for, on the account of whoever owns the number. The agent sends it from the number it
+answers WhatsApp at, its body's {{1}}, {{2}}… filled by each --var in order:
+
+  $ pinecall template reminder visit_reminder --to +14155550142 --language en_US --var Ana --var "tomorrow at 9:30" --prod
+
+In the sandbox nothing is sent: the answer says what would have gone, marked simulated, and the
+agent needs no WhatsApp number there. A contact who asked for no more messages is written to by nobody.
 `;
 
 const TEXT = `
@@ -303,6 +315,21 @@ export function register(program: Command, ctx: Context): void {
     .action(async (agent, to, words, flags) => {
       const input = service.TextInput.parse({ agent, to, text: words, from: flags.from, subject: flags.subject, metadata: jsonOf("--metadata", flags.metadata), instruction: flags.instruction });
       ctx.io.result(await service.textOut(ctx, input), render.texted);
+    });
+
+  program
+    .command("template")
+    .description("have an agent send a contact one WhatsApp template; the sandbox answers and sends nothing")
+    .argument("<agent>", "the agent's slug")
+    .argument("<name>", "the template's name, as Meta approved it")
+    .requiredOption("--to <number>", "the contact's number, in +E.164")
+    .requiredOption("--language <code>", "Meta's code of the language it was approved in: es_AR, en_US")
+    .option("--var <words>", "what fills the body's next {{n}}; again for another, in order", repeated)
+    .option("--from <number>", "which of the agent's WhatsApp numbers it leaves from")
+    .addHelpText("after", TEMPLATE)
+    .action(async (agent, name, flags) => {
+      const input = service.TemplateInput.parse({ agent, to: flags.to, template: name, language: flags.language, variables: flags.var, from: flags.from });
+      ctx.io.result(await service.templateOut(ctx, input), render.templated);
     });
 
   program

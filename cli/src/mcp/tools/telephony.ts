@@ -1,4 +1,4 @@
-/** The `line`, `numbers`, `carriers`, `dial`, `text`, `email`, `callbacks` and `compliance` tools: the telephony domain and who may be reached, over their services. */
+/** The `line`, `numbers`, `carriers`, `dial`, `text`, `template`, `email`, `callbacks` and `compliance` tools: the telephony domain and who may be reached, over their services. */
 
 import { z } from "zod";
 
@@ -115,6 +115,24 @@ export const text = tool({
   manual:
     "`text` writes to a contact as the agent and answers with the conversation it was said on: the call's id, the number or address it left from and the environment. What the contact answers reaches the agent on that conversation, with these words before it. To an address it is an email: under `subject`, from an address the agent answers email at (`numbers` imports one with `channel: email`), its words `text` or, left out, written by the agent on `instruction` as a dialled call with no greeting opens; the contact's reply lands on the same conversation. Somebody must be holding the agent, and the agent must answer SMS at a number (`numbers` imports one with `channel: sms`) for an SMS. A contact whose SMS conversation is still open is written on it; any other passes the org's guards as a dial does (a stranger, no consent, quiet hours, too many today), and a refusal says which guard and sends nothing. A contact who asked for no more messages is refused whatever else is true: `compliance consent` says who did.",
   handler: async (args, ctx) => await service.textOut(ctx, service.TextInput.parse(args)),
+});
+
+export const template = tool({
+  name: "template",
+  title: "Send a WhatsApp template",
+  destroys: true,
+  description: "Have an agent send a contact one WhatsApp template, the message approved at Meta that opens a conversation there. In production it is sent and Meta charges the number's account; in the sandbox it is answered `simulated` and never sent.",
+  schema: {
+    agent: z.string().min(1).describe("the agent that writes: its slug"),
+    to: z.string().min(1).describe("the contact's number, in +E.164"),
+    template: z.string().min(1).max(512).describe("the template's name, as Meta approved it"),
+    language: z.string().min(2).max(16).describe("Meta's code of the language it was approved in: `es_AR`, `en_US`"),
+    variables: z.array(z.string()).max(32).optional().describe("what fills the body's {{1}}, {{2}}…, in order"),
+    from: z.string().optional().describe("which of the agent's WhatsApp numbers it leaves from; the first when left out"),
+  },
+  manual:
+    "`template` sends one WhatsApp template as the agent and answers where it went: the number it left from, the environment, `simulated`, and Meta's id of the message. Outside the 24 hours after a contact's last message a template is the only thing WhatsApp lets a business write, and it is the one message Meta charges for. In the sandbox nothing is asked of Meta: the answer is the same with `simulated: true` and no `message_id`, nobody is written to, and the agent needs no WhatsApp number; `prod: true` sends it, from a number the agent answers WhatsApp at (`numbers` imports one with `channel: whatsapp`). A contact who asked for no more messages is refused in both: `compliance consent` says who did. What Meta refuses (a template it does not know, a number not on WhatsApp) comes back in its own words. The template is not said on the contact's conversation: what they answer opens one as any message does.",
+  handler: async (args, ctx) => await service.templateOut(ctx, service.TemplateInput.parse(args)),
 });
 
 export const email = tool({

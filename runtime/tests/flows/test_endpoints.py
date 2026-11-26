@@ -133,7 +133,7 @@ async def test_a_call_nobody_can_place_is_the_steps_answer_and_the_run_goes_on(
 
 
 @needs_the_services
-async def test_a_text_nobody_can_send_is_the_steps_answer_and_one_with_no_words_is_refused(
+async def test_a_text_nobody_can_send_is_the_steps_answer_and_one_with_no_contact_is_refused(
     gateway: Gateway, tenant: Tenant
 ) -> None:
     run = await _started(gateway, tenant)
@@ -142,9 +142,30 @@ async def test_a_text_nobody_can_send_is_the_steps_answer_and_one_with_no_words_
     assert texted["status"] == "ready", "a text is over as it is written"
     read = (await gateway.http.get(f"{APP}/runs/{run}", headers=tenant.person)).json()
     assert (read["steps"][0]["result"]["sent"], read["steps"][0]["result"]["refused"]) == (False, "no_app")
-    wordless = {"seq": 2, "kind": "text", "asked": {"agent": "reminder", "to": "+14155550142"}}
-    refused = await gateway.http.post(f"{APP}/runs/{run}/steps", json=wordless, headers=tenant.person)
-    assert refused.status_code == 400 and "a text step asks {agent, to, text}" in refused.text
+    # An email's words may be left to the agent since 2026-11, so a step with none is read; one with no contact is not.
+    to_nobody = {"seq": 2, "kind": "text", "asked": {"agent": "reminder", "text": "Your cleaning is tomorrow."}}
+    refused = await gateway.http.post(f"{APP}/runs/{run}/steps", json=to_nobody, headers=tenant.person)
+    assert refused.status_code == 400 and "a text step asks {agent, to, text?" in refused.text
+
+
+@needs_the_services
+async def test_a_template_in_the_sandbox_is_answered_as_simulated_and_one_with_no_language_is_refused(
+    gateway: Gateway, tenant: Tenant
+) -> None:
+    run = await _started(gateway, tenant)
+    asked = {"agent": "reminder", "to": "+14155550142", "template": "visit_reminder", "language": "en_US"}
+    sent = await _post(gateway, tenant, f"/runs/{run}/steps", {"seq": 1, "kind": "template", "asked": asked})
+    assert sent["status"] == "ready", "a template is over as it is answered"
+    read = (await gateway.http.get(f"{APP}/runs/{run}", headers=tenant.person)).json()
+    assert read["steps"][0]["result"] == {"sent": True, "simulated": True, "message_id": None, "from": None}
+    stopped = {"seq": 2, "kind": "template", "asked": {**asked, "to": "14155550142"}}
+    refused = await _post(gateway, tenant, f"/runs/{run}/steps", stopped)
+    assert refused["status"] == "ready"
+    read = (await gateway.http.get(f"{APP}/runs/{run}", headers=tenant.person)).json()
+    assert (read["steps"][1]["result"]["sent"], read["steps"][1]["result"]["refused"]) == (False, "ValidationError")
+    bare = {"seq": 3, "kind": "template", "asked": {"agent": "reminder", "to": "+14155550142", "template": "x"}}
+    unread = await gateway.http.post(f"{APP}/runs/{run}/steps", json=bare, headers=tenant.person)
+    assert unread.status_code == 400 and "a template step asks {agent, to, template, language" in unread.text
 
 
 @needs_the_services

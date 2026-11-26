@@ -4,6 +4,14 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+- **`pinecall template`: an agent sends a WhatsApp template.** `pinecall template <agent> <name> --to <number> --language <code>
+  [--var <words>]…` sends the template approved at Meta from the number the agent answers WhatsApp at, each `--var` filling
+  the body's next `{{n}}`. In the sandbox nothing is sent: the answer says what would have gone, marked simulated, and
+  the agent needs no WhatsApp number there; `--prod` sends it, and Meta charges the number's account. The MCP server has
+  the same as the tool `template`.
+
 ## 0.11.53 — a benchmark of your agent from one command: spoken calls placed by a callers service, a report that plays every call, and a gate for CI (2026-11-26)
 
 - **A benchmark prices what its gateway did not.** `--price <model=usd>`, again for each: a model the gateway priced

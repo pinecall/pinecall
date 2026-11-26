@@ -5,6 +5,13 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
+## Unreleased
+
+- **`step.template` sends a WhatsApp template from a flow.** `step.template(visit.phone, Reminder, "visit_reminder",
+  { language: "en_US", variables: ["Ana", "9:30"] })` sends the template approved at Meta as the agent and answers
+  `{ sent, simulated, messageId, from }`. In the sandbox it is answered `simulated` and never sent, so a flow is tried
+  whole at no cost; `refused` names why nothing was sent. Needs a gateway at this release.
+
 ## 0.11.53 — a benchmark of your agent from one command: spoken calls placed by a callers service, a report that plays every call, and a gate for CI (2026-11-26)
 
 - **`@pinecall/agents/evals`: what a table of simulated calls comes to.** A new entry point, pure and importing

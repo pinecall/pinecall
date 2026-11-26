@@ -97,6 +97,13 @@
 .num-test-form { display: flex; flex: 1; align-items: center; gap: 8px; min-width: 240px; }
 .num-test-form .cfg-input { flex: 1; min-width: 0; height: 30px; }
 .num-test-refused { flex-basis: 100%; }
+.num-template-about { margin: 0 0 10px; max-width: 720px; }
+.num-template { display: grid; grid-template-columns: 1fr 1fr 150px; gap: 8px; max-width: 720px; }
+.num-template .cfg-input { min-width: 0; }
+.num-template-variables { grid-column: 1 / -1; }
+.num-template .app-button { justify-self: start; }
+.num-template-said { margin: 10px 0 0; }
+@media (max-width: 720px) { .num-template { grid-template-columns: 1fr; } }
 /* On its own, outside a channel's panel, it is a card; in the wizard, a row among the ways. */
 .app-main > .num-test { max-width: 880px; padding: 7px 16px; border-radius: 10px; background: var(--panel); }
 .num-ways > .num-test { padding: 7px 12px; border: 1px solid var(--line); border-radius: 10px; }

@@ -3,7 +3,7 @@
 import type { Limit } from "../billing/service.js";
 import { count, date, formatHint, formatNotice } from "../kit/format.js";
 import { table } from "../kit/table.js";
-import type { AvailableNumbers, Callback, CallbackPage, Carrier, CarrierListed, CarrierShown, Dialed, NumberBought, NumberPlan, NumberRow, OwnedNumber, Texted, TheLine } from "./service.js";
+import type { AvailableNumbers, Callback, CallbackPage, Carrier, CarrierListed, CarrierShown, Dialed, NumberBought, NumberPlan, NumberRow, OwnedNumber, Templated, Texted, TheLine } from "./service.js";
 
 export const NO_NUMBERS = "no number answers in this env: `pinecall numbers import <+34…> --agent <slug>`";
 export const NO_CARRIERS = "the org holds no carrier account: `pinecall carriers add twilio --account-sid AC… --user SK…`";
@@ -176,6 +176,13 @@ export function dialed(placed: Dialed): string[] {
 
 export function texted(sent: Texted): string[] {
   return [`${sent.agent} wrote to ${sent.to} from ${sent.from} · ${sent.env}`, formatHint(`pinecall sessions ${sent.call} reads the conversation`)];
+}
+
+/** A template sent, with Meta's id of the message; or, in the sandbox, what would have gone and that nothing did. */
+export function templated(sent: Templated): string[] {
+  const from = sent.from === null ? "" : ` from ${sent.from}`;
+  if (sent.simulated) return [`${sent.agent} would send ${sent.template} to ${sent.to}${from} · ${sent.env} · simulated: nothing was sent`, formatHint("--prod sends it: Meta charges the number's account for a template")];
+  return [`${sent.agent} sent ${sent.template} to ${sent.to}${from} · ${sent.env} · ${sent.message_id ?? ""}`];
 }
 
 export function callbacks(page: CallbackPage): string[] {

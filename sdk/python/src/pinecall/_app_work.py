@@ -12,7 +12,7 @@ from pinecall.client import detail_of
 from pinecall.errors import PinecallError
 from pinecall.wire._names import Env, JsonObject
 
-StepKind = Literal["sleep", "call", "wait", "run", "emit", "text"]
+StepKind = Literal["sleep", "call", "wait", "run", "emit", "text", "template"]
 
 
 @dataclass(frozen=True)

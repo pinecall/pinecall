@@ -92,7 +92,7 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `api/knowledge.ts` | 121 | The knowledge endpoints: the bases, a contact's memory, the recall and extraction goldens, and the settings an attachment lives in. |
 | `api/providers.ts` | 66 | The providers endpoints: the vendor catalog, and the org's own provider keys, written and named but never read. |
 | `api/studio.ts` | 143 | The Studio endpoints: the org's agents built in the console — listed, made, read, saved, deployed, a tool tried, the code zipped. |
-| `api/telephony.ts` | 196 | The telephony endpoints: the org's numbers and routes, its carrier accounts, an agent's line, the callbacks waiting. |
+| `api/telephony.ts` | 311 | The telephony endpoints: the org's numbers and routes, its carrier accounts, an agent's line, the callbacks waiting. |
 
 ### `project/` — the tenant's folder
 
@@ -166,9 +166,9 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 
 | file | lines | what it is |
 |---|---|---|
-| `telephony/commands.ts` | 226 | `pinecall numbers | carriers | line | callbacks`: the org's numbers and accounts, whose terminal a ring lands in, who to call back. |
-| `telephony/render.ts` | 176 | Telephony as a terminal reads it: the numbers, what the accounts own, a plan's steps, the carriers, the line, the callbacks. |
-| `telephony/service.ts` | 202 | Telephony: the org's numbers and routes, its carrier accounts, whose terminal an agent's number rings in, and the callbacks waiting. |
+| `telephony/commands.ts` | 365 | `pinecall numbers | carriers | line | callbacks`: the org's numbers and accounts, whose terminal a ring lands in, who to call back. |
+| `telephony/render.ts` | 209 | Telephony as a terminal reads it: the numbers, what the accounts own, a plan's steps, the carriers, the line, the callbacks. |
+| `telephony/service.ts` | 321 | Telephony: the org's numbers and routes, its carrier accounts, whose terminal an agent's number rings in, and the callbacks waiting. |
 
 ### `judging/`
 
@@ -300,7 +300,7 @@ billing · accounts · providers · agents · knowledge · telephony · judging 
 | `mcp/tools/scaffold.ts` | 79 | The `project` tool: which project the tools act on, opening another, writing a new one, generating into it. |
 | `mcp/tools/site.ts` | 52 | The docs tools: `docs_search` finds the sections of docs.pinecall.io that answer a question, `get_doc` reads a page whole. |
 | `mcp/tools/studio.ts` | 43 | The `studio` tool: the studio domain, over its service. |
-| `mcp/tools/telephony.ts` | 98 | The `line`, `numbers`, `carriers`, `dial` and `callbacks` tools: the telephony domain, over its service. |
+| `mcp/tools/telephony.ts` | 211 | The `line`, `numbers`, `carriers`, `dial`, `text`, `template`, `email`, `callbacks` and `compliance` tools: the telephony domain and who may be reached, over their services. |
 
 ## 4. What a verb is started with
 

@@ -22,7 +22,6 @@ from runtime.telephony.schemas.dial import (
     TextRequest,
     TextResponse,
 )
-from runtime.whatsapp import service as whatsapp
 
 router = APIRouter()
 
@@ -98,10 +97,8 @@ async def send_template(
     slug: KnownAgent, body: TemplateRequest, actor: TalkKey, live: TheLive, session: Session
 ) -> TemplateResponse:
     """Send a contact one WhatsApp template as the agent; in the sandbox, answered `simulated` and never sent."""
-    template = whatsapp.Template(body.template, body.language, tuple(body.variables))
-    sent = await templating.send_template_as_agent(
-        session, live, actor, slug, templating.Asked(body.to, template, body.from_)
-    )
+    asked = templating.Templating(body.to, body.template, body.language, tuple(body.variables), body.from_)
+    sent = await templating.send_template(session, live, actor.scope, slug, asked)
     answer = {"agent": slug, "to": sent.to, "from": sent.shown, "env": actor.env, "template": body.template}
     return TemplateResponse.model_validate({**answer, "simulated": sent.simulated, "message_id": sent.message_id})
 

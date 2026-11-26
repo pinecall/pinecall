@@ -472,6 +472,7 @@ gateway hands it the runs that are ready.
 | `step.sleepUntil(at, { before })` | until a time, a `Date` or an ISO string, or that long before it |
 | `step.call(to, Agent, { state, metadata, greeting, instruction, from })` | the agent calls the number, as `pinecall dial` does, and the step answers how the call ended: `{ answered, reason, call }`. A dial the org's guards refused answers at once with `{ answered: false, refused, message }` |
 | `step.text(to, Agent, words, { from, subject, metadata, instruction })` | the agent sends the contact one SMS first, as `pinecall text` does, or, to an address, the first email of a thread under `subject` (`step.text(to, Agent, { subject, instruction })` leaves its words to the agent), and the step answers at once: `{ sent, call, from }`, or `{ sent: false, refused, message }` |
+| `step.template(to, Agent, name, { language, variables, from })` | the agent sends the contact one WhatsApp template, as `pinecall template` does: approved at Meta in `language`, its body filled by `variables` in order; answers `{ sent, simulated, messageId, from }`, or `{ sent: false, refused, message }`. In the sandbox it is answered `simulated` and never sent |
 | `step.waitFor(event, { match, within })` | the run waits for an event sent to the app whose data has what `match` names; it answers the event's data, or `null` once `within` passed |
 | `step.run(() => …)` | runs your own code once and keeps what it returned |
 | `step.emit(name, data)` | sends an event to the app |

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Agent } from "../../src/agent/agent.js";
 import { DeclarationRefused } from "../../src/agent/tools.js";
-import { advance, cancelled, flow, secondsOf, started, StepUnwritten, type Called, type Texted } from "../../src/runtime/flows.js";
+import { advance, cancelled, flow, secondsOf, started, StepUnwritten, type Called, type Templated, type Texted } from "../../src/runtime/flows.js";
 
 import { KeptApp } from "./kept/gateway.js";
 
@@ -124,6 +124,23 @@ describe("a run", () => {
       ["text", { agent: "brightside-reminder", to: "+14155550142", text: "One more thing." }],
     ]);
     expect(sent).toEqual([{ sent: true, call: "call_text", from: "+14155550134" }, { sent: false, refused: "Forbidden", message: "+14155550142 asked for no more messages" }]);
+  });
+
+  it("sends a WhatsApp template as the agent's slug, and reads the sandbox's answer and Meta's id", async () => {
+    const sent: Templated[] = [];
+    const remind = flow("remind-visit", async (visit, step) => {
+      sent.push(await step.template(String(visit["phone"]), Reminder, "visit_reminder", { language: "en_US", variables: ["Ana", "9:30"] }));
+      kept.templated = { sent: true, simulated: false, message_id: "wamid.1", from: "+14155550134" };
+      sent.push(await step.template(String(visit["phone"]), Reminder, "visit_reminder", { language: "en_US", from: "+14155550134" }));
+    });
+
+    const run = await started(kept.door, remind, "visit-7", { phone: "+14155550142" });
+    expect(await advance(kept.door, remind, run, slugOf)).toEqual({ status: "done" });
+    expect(kept.runs.get(run.id)!.steps.map((step) => [step.kind, step.asked])).toEqual([
+      ["template", { agent: "brightside-reminder", to: "+14155550142", template: "visit_reminder", language: "en_US", variables: ["Ana", "9:30"] }],
+      ["template", { agent: "brightside-reminder", to: "+14155550142", template: "visit_reminder", language: "en_US", from: "+14155550134" }],
+    ]);
+    expect(sent).toEqual([{ sent: true, simulated: true }, { sent: true, simulated: false, messageId: "wamid.1", from: "+14155550134" }]);
   });
 
   it("waits for an event, and reads null when it gave up", async () => {

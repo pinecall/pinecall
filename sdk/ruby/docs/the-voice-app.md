@@ -98,6 +98,7 @@ already in the journal answers what it came to. What must happen once goes insid
 | `step.sleep_until(at, before: "24h")` | until a `Time` or an ISO string, or that long before it |
 | `step.call(to, Agent, state:, metadata:, greeting:, instruction:, from:)` | the agent calls the number; a `Flow::Called` says how it ended, or why nothing rang |
 | `step.text(to, Agent, words, from:, subject:, metadata:, instruction:)` | the agent sends the contact one SMS first, or, to an address, the first email of a thread under `subject:` (its `words` left out, the agent writes it on `instruction:`); a `Flow::Texted` says the call it was said on, or why nothing was sent |
+| `step.template(to, Agent, name, language:, variables:, from:)` | the agent sends the contact one WhatsApp template, approved at Meta in `language:`, its body filled by `variables:` in order; a `Flow::Templated` says `sent`, `simulated`, `message_id` and `from`, or `refused` and `message`. In the sandbox it is answered `simulated` and never sent |
 | `step.wait_for(event, match:, within:)` | an event sent to the app whose data has what `match` names; nil once `within` passed |
 | `step.run { … }` | your own code, once; what it returned is kept |
 | `step.emit(name, data)` | sends an event to the app |

@@ -12,11 +12,10 @@ from runtime.compliance.service import keywords
 from runtime.enums import Channel, Env, KeyScope
 from runtime.exceptions import Forbidden, NotFound, ValidationError
 from runtime.live.service import templating
-from runtime.live.service.templating import Asked, Sent
+from runtime.live.service.templating import Templated, Templating
 from runtime.telephony.repository import RouteRepository, RouteToWrite
 from runtime.telephony.service import accounts
 from runtime.telephony.service.whatsapp_number import WhatsappNumber
-from runtime.whatsapp.service.graph import Template
 from tests.conftest import Tenant, needs_the_database
 from tests.fakes.meta import Graph, outside
 from tests.fakes.twilio import Twilio
@@ -24,7 +23,7 @@ from tests.fakes.webhooks import Receiver
 from tests.live.conftest import Side
 
 CONTACT = "+5491155550134"
-HANDED = Template("consulta_derivada", "es_AR", ("Juan Cruz", "Marta Ruiz"))
+HANDED = ("consulta_derivada", "es_AR", ("Juan Cruz", "Marta Ruiz"))
 
 
 def a_key(tenant: Tenant, env: Env) -> Actor:
@@ -54,12 +53,16 @@ async def test_the_sandbox_answers_a_template_and_asks_nothing_of_meta(
     """With no number at all, and with one: answered `simulated`, no id, and nothing left the box."""
     key = a_key(tenant, Env.sandbox)
     async with sessions() as session:
-        kept = await templating.send_template_as_agent(session, side.parts, key, "front-desk", Asked(CONTACT, HANDED))
-    assert kept == Sent(to=CONTACT, shown=None, simulated=True, message_id=None)
+        kept = await templating.send_template(
+            session, side.parts, key.scope, "front-desk", Templating(CONTACT, *HANDED)
+        )
+    assert kept == Templated(to=CONTACT, shown=None, simulated=True, message_id=None)
     number = await a_whatsapp_number(sessions, side, tenant, Env.sandbox)
     async with sessions() as session:
-        kept = await templating.send_template_as_agent(session, side.parts, key, "front-desk", Asked(CONTACT, HANDED))
-    assert kept == Sent(to=CONTACT, shown=number, simulated=True, message_id=None)
+        kept = await templating.send_template(
+            session, side.parts, key.scope, "front-desk", Templating(CONTACT, *HANDED)
+        )
+    assert kept == Templated(to=CONTACT, shown=number, simulated=True, message_id=None)
 
 
 @needs_the_database
@@ -73,8 +76,8 @@ async def test_production_sends_the_template_filled_from_the_agents_number_on_th
         parts = dataclasses.replace(side.parts, http=http)
         async with sessions() as session:
             key = a_key(tenant, Env.production)
-            sent = await templating.send_template_as_agent(session, parts, key, "front-desk", Asked(CONTACT, HANDED))
-    assert sent == Sent(to=CONTACT, shown=number, simulated=False, message_id="wamid.1")
+            sent = await templating.send_template(session, parts, key.scope, "front-desk", Templating(CONTACT, *HANDED))
+    assert sent == Templated(to=CONTACT, shown=number, simulated=False, message_id="wamid.1")
     (asked,) = meta.sent
     assert (asked["to"], asked["type"]) == ("5491155550134", "template")
     assert asked["template"] == {
@@ -98,16 +101,16 @@ async def test_a_template_is_refused_before_anything_is_sent(
     sandbox, production = a_key(tenant, Env.sandbox), a_key(tenant, Env.production)
     async with sessions() as session:
         with pytest.raises(ValidationError, match="not a number a template is sent to"):
-            await templating.send_template_as_agent(
-                session, side.parts, sandbox, "front-desk", Asked("1155550134", HANDED)
+            await templating.send_template(
+                session, side.parts, sandbox.scope, "front-desk", Templating("1155550134", *HANDED)
             )
         with pytest.raises(NotFound, match="answers WhatsApp at no number in the production"):
-            await templating.send_template_as_agent(
-                session, side.parts, production, "front-desk", Asked(CONTACT, HANDED)
+            await templating.send_template(
+                session, side.parts, production.scope, "front-desk", Templating(CONTACT, *HANDED)
             )
         with pytest.raises(ValidationError, match="not a number agent front-desk answers WhatsApp at"):
-            asked = Asked(CONTACT, HANDED, shown="+15550000000")
-            await templating.send_template_as_agent(session, side.parts, sandbox, "front-desk", asked)
+            asked = Templating(CONTACT, *HANDED, shown="+15550000000")
+            await templating.send_template(session, side.parts, sandbox.scope, "front-desk", asked)
     async with sessions.begin() as session:
         await keywords.stop_writing_to(
             session,
@@ -120,4 +123,6 @@ async def test_a_template_is_refused_before_anything_is_sent(
         )
     async with sessions() as session:
         with pytest.raises(Forbidden, match="asked for no more messages"):
-            await templating.send_template_as_agent(session, side.parts, sandbox, "front-desk", Asked(CONTACT, HANDED))
+            await templating.send_template(
+                session, side.parts, sandbox.scope, "front-desk", Templating(CONTACT, *HANDED)
+            )

@@ -28,6 +28,29 @@ export interface Texted {
   message?: string;
 }
 
+/** What a WhatsApp template a flow sent came to. `simulated`: the sandbox, where it is answered and never sent. `refused` names why nothing was sent. */
+export interface Templated {
+  sent: boolean;
+  /** True in the sandbox: Meta was not asked, nobody was written to, and there is no `messageId`. */
+  simulated?: boolean;
+  /** Meta's id of the message. */
+  messageId?: string;
+  /** The number it left from. */
+  from?: string;
+  refused?: string;
+  message?: string;
+}
+
+/** What a template is sent with: the language it was approved in, and what fills its body. */
+export interface TemplateOptions {
+  /** Meta's code of the language the template was approved in: `"en_US"`, `"es_AR"`. */
+  language: string;
+  /** What fills the body's {{1}}, {{2}}…, in order. */
+  variables?: string[];
+  /** Which of the agent's WhatsApp numbers it leaves from. */
+  from?: string;
+}
+
 /** What a call a flow places opens with. */
 export interface Opening {
   state?: Data;
@@ -64,6 +87,8 @@ export interface Step {
   text(to: string, agent: Ctor, words: string, options?: TextOptions): Promise<Texted>;
   /** Have an agent write an address the first email of a thread itself, on `instruction`: `step.text(visit.email, Reminder, { subject: "Your visit", instruction: "Remind Ana of her cleaning." })`. */
   text(to: string, agent: Ctor, options: TextOptions & { subject: string }): Promise<Texted>;
+  /** Have an agent send a contact one WhatsApp template, the one message that opens a conversation there: `step.template(visit.phone, Reminder, "visit_reminder", { language: "en_US", variables: ["Ana", "9:30"] })`. In the sandbox it is answered `simulated` and never sent. */
+  template(to: string, agent: Ctor, template: string, options: TemplateOptions): Promise<Templated>;
   /** Wait for an event of the app whose data has what `match` names, for `within` at most; null when it gave up. */
   waitFor(event: string, options?: { match?: Data; within?: string }): Promise<Data | null>;
   /** Run something once: what it returned is kept, and read back instead of run again. */
@@ -176,7 +201,7 @@ export async function advance(door: AppDoor, of: Flow, run: KeptRun, slugOf: (ag
     return before;
   };
   // A step that waits: written, and the function left there unless the gateway answered it at once.
-  const waited = async (kind: "sleep" | "wait" | "call" | "text", asked: Data): Promise<unknown> => {
+  const waited = async (kind: "sleep" | "wait" | "call" | "text" | "template", asked: Data): Promise<unknown> => {
     const before = written(kind);
     if (before?.over === true) return before.result;
     if (before !== undefined) throw new Parked();
@@ -203,6 +228,16 @@ export async function advance(door: AppDoor, of: Flow, run: KeptRun, slugOf: (ag
       const [text, options] = typeof words === "string" ? [{ text: words }, more] : [{}, words ?? {}];
       const given = Object.fromEntries(Object.entries(options).filter(([, value]) => value !== undefined)) as Data;
       return (await waited("text", { agent: slug, to, ...text, ...given })) as Texted;
+    },
+    // Over as it is answered: the gateway's `message_id` is read as `messageId`, and the template is never sent twice.
+    template: async (to, agent, template, options) => {
+      const slug = slugOf(agent);
+      if (slug === undefined) throw new DeclarationRefused(`${of.name}: ${agent.name} is no agent this process serves`);
+      const given = Object.fromEntries(Object.entries(options).filter(([, value]) => value !== undefined)) as Data;
+      const { message_id: messageId, ...answered } = ((await waited("template", { agent: slug, to, template, ...given })) ?? {}) as Data;
+      // What the sandbox has none of (an id, a number) comes as null: left out, as a field not there.
+      const said = Object.fromEntries(Object.entries(answered).filter(([, value]) => value !== null));
+      return { ...said, ...(typeof messageId === "string" ? { messageId } : {}) } as unknown as Templated;
     },
     waitFor: async (event, options = {}) => {
       const until = options.within === undefined ? {} : { until: new Date(Date.now() + secondsOf(options.within) * 1000).toISOString() };

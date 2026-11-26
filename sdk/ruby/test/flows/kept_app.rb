@@ -8,7 +8,7 @@ class KeptApp
   APP = "brightside"
 
   attr_reader :runs, :events, :heard, :asked
-  attr_accessor :refuses, :texted, :staged, :down
+  attr_accessor :refuses, :texted, :templated, :staged, :down
 
   def initialize
     @runs = {}
@@ -19,6 +19,7 @@ class KeptApp
     @refuses = nil
     # What a text step is answered: it is over as it is written.
     @texted = { sent: true, call: "call_text", from: "+14155550134" }
+    @templated = { sent: true, simulated: true, message_id: nil, from: nil }
     @staged = 202
     @down = nil
     @server = TCPServer.new("127.0.0.1", 0)
@@ -123,6 +124,8 @@ class KeptApp
       step.merge!(over: true, result: @refuses)
     elsif kind == "text"
       step.merge!(over: true, result: @texted)
+    elsif kind == "template"
+      step.merge!(over: true, result: @templated)
     else
       run[:status] = WAITS.fetch(kind)
     end

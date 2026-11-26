@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from runtime.actor import Actor
+from runtime.actor import Actor, Scope
 from runtime.auth import Authenticator
 from runtime.enums import KeyScope
 from runtime.flows.repository import App
@@ -56,14 +56,18 @@ def holders_of(parts: TheLive) -> Holders:
     return parts.holders
 
 
-# A text step writes as the text endpoint does, on the threads this gateway keeps.
+# A text step writes as the text endpoint does, on the threads this gateway keeps; a template step as the
+# template endpoint does.
 def live_side_of(parts: TheLive, threads: TheWhatsappThreads) -> LiveSide:
     """What a step reaches of the live side, bound to what serves calls and threads on this gateway."""
 
     async def text(session: AsyncSession, texting: live.Texting) -> live.Texted:
         return await live.send_text(session, parts, threads, texting)
 
-    return LiveSide(holders_of(parts), dial_of(parts), text)
+    async def template(session: AsyncSession, scope: Scope, agent: str, asked: live.Templating) -> live.Templated:
+        return await live.send_template(session, parts, scope, agent, asked)
+
+    return LiveSide(holders_of(parts), dial_of(parts), text, template)
 
 
 TheLiveSide = Annotated[LiveSide, Depends(live_side_of)]

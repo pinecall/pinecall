@@ -278,6 +278,7 @@ class StepKind(StrEnum):
     run = "run"
     emit = "emit"
     text = "text"
+    template = "template"
 
 
 class AppKind(StrEnum):

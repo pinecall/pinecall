@@ -57,6 +57,7 @@ THE_DOOR = [
     "Step",
     "StepUnwritten",
     "Task",
+    "Templated",
     "Texted",
     "VoiceApp",
     "flow",

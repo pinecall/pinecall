@@ -168,6 +168,22 @@ Have an agent write to a contact first: one SMS to a number, from a number it an
 | `instruction` | text |  | what this conversation is for: the agent reads it throughout and, with no `text`, writes its email on it |
 | `prod` | true or false |  | true acts in production; left out or false, in the sandbox |
 
+## `template`
+
+Have an agent send a contact one WhatsApp template, the message approved at Meta that opens a conversation there. In production it is sent and Meta charges the number's account; in the sandbox it is answered `simulated` and never sent.
+
+`template` sends one WhatsApp template as the agent and answers where it went: the number it left from, the environment, `simulated`, and Meta's id of the message. Outside the 24 hours after a contact's last message a template is the only thing WhatsApp lets a business write, and it is the one message Meta charges for. In the sandbox nothing is asked of Meta: the answer is the same with `simulated: true` and no `message_id`, nobody is written to, and the agent needs no WhatsApp number; `prod: true` sends it, from a number the agent answers WhatsApp at (`numbers` imports one with `channel: whatsapp`). A contact who asked for no more messages is refused in both: `compliance consent` says who did. What Meta refuses (a template it does not know, a number not on WhatsApp) comes back in its own words. The template is not said on the contact's conversation: what they answer opens one as any message does.
+
+| parameter | takes | | what it is |
+|---|---|---|---|
+| `agent` | text | required | the agent that writes: its slug |
+| `to` | text | required | the contact's number, in +E.164 |
+| `template` | text | required | the template's name, as Meta approved it |
+| `language` | text | required | Meta's code of the language it was approved in: `es_AR`, `en_US` |
+| `variables` | a list of texts |  | what fills the body's {{1}}, {{2}}…, in order |
+| `from` | text |  | which of the agent's WhatsApp numbers it leaves from; the first when left out |
+| `prod` | true or false |  | true acts in production; left out or false, in the sandbox |
+
 ## `email`
 
 How the org's agents' emails are set: an HTML layout shown, kept, tried on words (nothing sent) or cleared back to the plain one, or text alone with no template.

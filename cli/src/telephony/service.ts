@@ -8,7 +8,7 @@ import * as billing from "../billing/service.js";
 import type { Context } from "../context.js";
 import { UsageError } from "../errors.js";
 
-export type { AvailableNumbers, Callback, CallbackPage, Carrier, CarrierBody, Dialed, NumberPlan, NumberRoute, NumberRow, OwnedNumber, Texted, TheLine } from "../api/telephony.js";
+export type { AvailableNumbers, Callback, CallbackPage, Carrier, CarrierBody, Dialed, NumberPlan, NumberRoute, NumberRow, OwnedNumber, Templated, Texted, TheLine } from "../api/telephony.js";
 
 // The gateway's sentence when the org holds several accounts and the import named none.
 export const SEVERAL_ACCOUNTS = "name one of them";
@@ -253,6 +253,22 @@ export type TextInput = z.infer<typeof TextInput>;
 /** Have the agent send a contact one SMS, or the first email of a thread: the conversation it was said on. */
 export async function textOut(ctx: Context, input: TextInput): Promise<api.Texted> {
   return api.text(ctx.gateway(), input.agent, { to: input.to, text: input.text, from: input.from, subject: input.subject, metadata: input.metadata, instruction: input.instruction });
+}
+
+/** What `template` takes: the agent, the contact's number, the template approved at Meta, its language, what fills its body, the number it leaves from. */
+export const TemplateInput = z.object({
+  agent: z.string().min(1),
+  to: z.string().min(1),
+  template: z.string().min(1).max(512),
+  language: z.string().min(2).max(16),
+  variables: z.array(z.string()).max(32).optional(),
+  from: z.string().min(1).optional(),
+});
+export type TemplateInput = z.infer<typeof TemplateInput>;
+
+/** Have the agent send a contact one WhatsApp template: sent in production, answered and never sent in the sandbox. */
+export async function templateOut(ctx: Context, input: TemplateInput): Promise<api.Templated> {
+  return api.template(ctx.gateway(), input.agent, { to: input.to, template: input.template, language: input.language, variables: input.variables, from: input.from });
 }
 
 /** Have the agent call a number: the call it became, before anything rings. */

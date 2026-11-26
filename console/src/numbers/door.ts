@@ -207,6 +207,15 @@ export async function forgetPhone(credentials: Credentials): Promise<void> {
   await drop(sandbox(credentials), "/v1/line/from");
 }
 
+const TemplatedSchema = z.looseObject({ agent: z.string(), to: z.string(), from: z.string().nullable(), template: z.string(), simulated: z.boolean(), message_id: z.string().nullable() });
+/** A WhatsApp template sent, or, in the sandbox, answered and never sent. */
+export type Templated = z.infer<typeof TemplatedSchema>;
+
+/** The agent sends a contact one WhatsApp template, in the world the page is in: only production asks Meta. */
+export async function sendTemplate(credentials: Credentials, agent: string, asked: { to: string; template: string; language: string; variables: string[]; from: string }): Promise<Templated> {
+  return TemplatedSchema.parse(await post(credentials, `/v1/agents/${encodeURIComponent(agent)}/template`, asked));
+}
+
 /** How many numbers the org may still buy here: null where the door says no limit, or says nothing. */
 export async function readStock(credentials: Credentials): Promise<{ used: number; limit: number | null } | null> {
   const limits = z.looseObject({ numbers: z.looseObject({ used: z.number(), limit: z.number().nullable() }).optional() }).parse(await read(credentials, "/v1/limits"));

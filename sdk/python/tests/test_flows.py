@@ -2,7 +2,7 @@
 
 import pytest
 
-from pinecall import Agent, Called, DeclarationRefused, Step, Texted, _config, flow
+from pinecall import Agent, Called, DeclarationRefused, Step, Templated, Texted, _config, flow
 from pinecall._app_work import AppDoor
 from pinecall.flows import FlowChanged, StepUnwritten, advance, cancelled, seconds_of, started
 from pinecall.wire._names import JsonObject
@@ -126,6 +126,57 @@ async def test_a_text_step_writes_as_the_agents_slug_and_reads_what_it_came_to(
     assert sent == [
         Texted(sent=True, call="call_text", from_="+14155550134"),
         Texted(sent=False, refused="Forbidden", message="they stopped"),
+    ]
+
+
+async def test_a_template_step_sends_as_the_agents_slug_and_reads_the_sandboxs_answer_and_metas_id(
+    door: AppDoor, kept: KeptApp
+) -> None:
+    sent: list[Templated] = []
+
+    @flow("remind-visit")
+    async def remind(visit: JsonObject, step: Step) -> None:
+        phone = str(visit["phone"])
+        filled = ["Ana", "9:30"]
+        sent.append(
+            await step.template(
+                phone, Reminder, "visit_reminder", language="en_US", variables=filled
+            )
+        )
+        kept.templated = {
+            "sent": True,
+            "simulated": False,
+            "message_id": "wamid.1",
+            "from": "+14155550134",
+        }
+        sent.append(
+            await step.template(
+                phone, Reminder, "visit_reminder", language="en_US", from_="+14155550134"
+            )
+        )
+
+    run = await started(door, remind, "visit-7", {"phone": "+59899000001"})
+    assert (await advance(door, remind, run, slug_of)).status == "done"
+    steps = kept.runs[run.id]["steps"]
+    assert [step["asked"] for step in steps] == [  # type: ignore[union-attr]
+        {
+            "agent": "brightside-reminder",
+            "to": "+59899000001",
+            "template": "visit_reminder",
+            "language": "en_US",
+            "variables": ["Ana", "9:30"],
+        },
+        {
+            "agent": "brightside-reminder",
+            "to": "+59899000001",
+            "template": "visit_reminder",
+            "language": "en_US",
+            "from": "+14155550134",
+        },
+    ]
+    assert sent == [
+        Templated(sent=True, simulated=True),
+        Templated(sent=True, simulated=False, message_id="wamid.1", from_="+14155550134"),
     ]
 
 

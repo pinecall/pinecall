@@ -22,7 +22,7 @@ export interface OwedEvent {
 /** One step of a run's journal; `result` is what it came to once `over`. */
 export interface JournalStep {
   seq: number;
-  kind: "sleep" | "call" | "wait" | "run" | "emit" | "text";
+  kind: "sleep" | "call" | "wait" | "run" | "emit" | "text" | "template";
   asked: Record<string, unknown>;
   over: boolean;
   result: unknown;

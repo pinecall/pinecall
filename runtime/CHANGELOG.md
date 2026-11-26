@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- **An agent sends a WhatsApp template through the gateway, and the sandbox answers it without sending.** `POST
+  /v1/agents/{slug}/template {to, template, language, variables?, from?}`, on the `talk` scope, sends one template
+  approved at Meta from the number the agent answers WhatsApp at, on the org's own token, and answers Meta's id of the
+  message. In the sandbox nothing is asked of Meta: the same answer with `simulated: true`, no id, and no WhatsApp number
+  needed, so an agent's goldens cost no message. A contact who asked for no more messages is refused in both. The door
+  itself shipped in 0.11.53, with no line here. New with it: a flow's `template` step (`{agent, to, template, language,
+  variables?, from?}`), which ends with `{sent, simulated, message_id, from}`.
+
 ## 0.11.53 — a benchmark of your agent from one command: spoken calls placed by a callers service, a report that plays every call, and a gate for CI (2026-11-26)
 
 - **A model billed by the minute is priced.** A speech-to-speech model whose vendor bills the minute of its session

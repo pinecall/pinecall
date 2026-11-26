@@ -130,8 +130,16 @@ number; `403` for a contact who asked for no more messages, in either environmen
 org's to send from. What Meta refuses (a template it does not know, a number not on WhatsApp) is a
 `502` in its own words.
 
-Not yet: the template is not said on the contact's conversation. Their answer opens a call as any
-message does, and the app tells the agent what it wrote.
+The same send is the CLI's `pinecall template <agent> <name> --to <number> --language <code> [--var …]`
+(`cli/docs/the-cli.md`, "`template`"), the MCP server's tool `template`, the console's **Write first with a
+template** on a WhatsApp number's page, and a flow's step
+(`step.template(to, Agent, name, { language, variables })` in the three SDKs; [flows.md](flows.md), kind
+`template`). A hosted app that is in no flow asks the door itself, with the `PINECALL_URL` and `PINECALL_KEY`
+it is started with.
+
+The template is not said on the contact's conversation: their answer opens a call as any message
+does, and the app tells the agent what it wrote. No row is kept of a template sent or simulated: the
+answer is the record, and an app writes it on its call's log.
 
 ## Nobody holding the agent
 

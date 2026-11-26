@@ -20,6 +20,10 @@ A_TEXT_ASKS = (
     "a text step asks {agent, to, text?, subject?}: the agent that writes, the number in +E.164 or an address, "
     "and the words (an email's, under its subject, may be left to the agent)"
 )
+A_TEMPLATE_ASKS = (
+    "a template step asks {agent, to, template, language, variables?}: the agent that writes, the number in "
+    "+E.164, the template approved at Meta and its language's code, and what fills its body in order"
+)
 
 
 def fit(given: JsonObject) -> JsonObject:
@@ -95,6 +99,17 @@ class TextStep(_Asked):
     instruction: Words = None
 
 
+class TemplateStep(_Asked):
+    """`template` asks `{agent, to, template, language, variables?, from?}` as the template endpoint does."""
+
+    agent: str
+    to: str
+    template: str = Field(min_length=1, max_length=512)
+    language: str = Field(min_length=2, max_length=16)
+    variables: list[str] = Field(default_factory=list[str], max_length=32)
+    from_: Words = Field(default=None, alias="from")
+
+
 class EmitStep(_Asked):
     """`emit` asks `{name, data?}`: an event sent to the run's own app."""
 
@@ -108,7 +123,7 @@ class RunStep(WireModel):
     result: Json = None
 
 
-type Step = SleepStep | WaitStep | CallStep | RunStep | EmitStep | TextStep
+type Step = SleepStep | WaitStep | CallStep | RunStep | EmitStep | TextStep | TemplateStep
 
 
 # What it asks is read after the journal was looked at (`flows.service.write_step`), never as the body
@@ -137,5 +152,7 @@ class StepSent(WireModel):
                 return EmitStep.parse(self.asked, AN_EMIT_ASKS)
             case StepKind.text:
                 return TextStep.parse(self.asked, A_TEXT_ASKS)
+            case StepKind.template:
+                return TemplateStep.parse(self.asked, A_TEMPLATE_ASKS)
             case StepKind.run:
                 return RunStep(result=self.result)

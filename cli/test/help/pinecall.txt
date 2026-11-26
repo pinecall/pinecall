@@ -96,6 +96,9 @@ Commands:
                                        its call opens with
   text [options] <agent> <to> [words]  have an agent send a contact one SMS, or
                                        the first email of a thread
+  template [options] <agent> <name>    have an agent send a contact one WhatsApp
+                                       template; the sandbox answers and sends
+                                       nothing
   callbacks [options]                  the numbers people left when every seat
                                        was taken: who to call back
   email                                how the org's agents' emails are set: an
