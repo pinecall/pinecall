@@ -17,7 +17,7 @@ describe("the public surfaces", () => {
     expect(Object.keys(react).sort()).toEqual(["Screen", "useKaraoke", "useRoom", "useStore"]);
   });
 
-  it("@pinecall/room/server is the three calls a key makes, and the refusal", () => {
-    expect(Object.keys(server).sort()).toEqual(["GatewayRefused", "dial", "expect", "mint"]);
+  it("@pinecall/room/server is the three calls a key makes, the refusal, and the visitor's browser read off a request", () => {
+    expect(Object.keys(server).sort()).toEqual(["GatewayRefused", "browserOf", "dial", "expect", "mint"]);
   });
 });
