@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { movedSince, percentile, setupOf, shareOf, verdictOf, type BenchCall, type Setup } from "../../../src/evals/service/scorecard.js";
+import { movedSince, percentile, setupOf, shareOf, verdictOf, type BenchCall, type Setup } from "../../src/evals/scorecard.js";
 
 const BARS = { floor: 0.9, ceiling_s: 1.5 };
 

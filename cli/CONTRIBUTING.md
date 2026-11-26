@@ -79,7 +79,8 @@ setup · billing · accounts · providers · agents · knowledge · telephony ·
 8. **Boring names.** Modules are nouns, functions are `verbObject`, types are singular nouns.
    The vocabulary below names one word per concept; the banned words are a test.
 9. **Size.** A module is at most 400 lines; `main.ts` and `program.ts` at most 150.
-10. **Never the framework.** `src/` imports `@pinecall/agents/client` and `@pinecall/agents/wire`,
+10. **Never the framework.** `src/` imports `@pinecall/agents/client`, `@pinecall/agents/wire` and
+    `@pinecall/agents/evals` (a benchmark's numbers, which the console shows too),
     never `@pinecall/agents` bare and never `/serve`: a class runs in its serve entry, started as
     a child whose door is in its environment and never in its argv. Nothing listens on a port.
 11. **Tests mirror the tree**, fake the gateway at HTTP (msw, `test/support/gateway.ts`) and never

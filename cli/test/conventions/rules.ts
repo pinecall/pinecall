@@ -154,10 +154,10 @@ export function size(all: Source[]): string[] {
     .map((one) => `${one.path}: ${one.lines.length - 1} lines`);
 }
 
-/** Rule 10 — never the framework: client and wire only; no serve entry imported; nothing listens on a port. */
+/** Rule 10 — never the framework: client, wire and evals only; no serve entry imported; nothing listens on a port. */
 export function neverTheFramework(all: Source[]): string[] {
   return all.flatMap((one) => [
-    ...lines(one, /from "@pinecall\/agents"|from "@pinecall\/agents\/serve/).map((at) => `${one.path}:${at}: the CLI imports @pinecall/agents/client and /wire alone`),
+    ...lines(one, /from "@pinecall\/agents"|from "@pinecall\/agents\/serve/).map((at) => `${one.path}:${at}: the CLI imports @pinecall/agents/client, /wire and /evals alone`),
     ...lines(one, /\.listen\(/).map((at) => `${one.path}:${at}: nothing listens on a port`),
   ]);
 }

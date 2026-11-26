@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 
 import { clearsBoth, flagOf, heldUnderEvery, inputUnder, parseCondition, parsePlayed, requireTold, sayLine, shiftsOf, underEach } from "../../../src/evals/service/conditions.js";
-import { setupOf, type BenchCall } from "../../../src/evals/service/scorecard.js";
+import { setupOf, type BenchCall } from "@pinecall/agents/evals";
 import { SimulateInput } from "../../../src/evals/service/simulation.js";
 
 const BARS = { floor: 0.9, ceiling_s: 1.5 };

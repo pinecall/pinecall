@@ -2,7 +2,7 @@
 
 import type { AgentValues } from "../../api/evals.js";
 import { UsageError } from "../../errors.js";
-import { movedSince, setupOf, type Bars, type BenchCall, type Setup, type Shift, type Under } from "./scorecard.js";
+import { movedSince, setupOf, type Bars, type BenchCall, type Setup, type Shift, type Under } from "@pinecall/agents/evals";
 import { SimulateInput } from "./simulation.js";
 
 /** What a condition may change of the line, each as `simulate`'s own flag names it, and the input it sets. */

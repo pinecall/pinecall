@@ -110,12 +110,14 @@ so tests and the example run from sources with no build step.
 | `views/` | JSX-to-text rendering and the prompt's named blocks |
 | `call/` | the live call as a value, reduced from log entries |
 | `client/` | `@pinecall/agents/client`: the WebSocket client and the wire, nothing else |
+| `evals/` | `@pinecall/agents/evals`: what a table of simulated calls comes to, a benchmark's numbers. Pure, importing nothing: the CLI's report and the console's board stand on it |
 | `runtime/` | the bridge between the class and the wire |
 | `serve/` | `@pinecall/agents/serve`: the entry the CLI starts an agent with, `start` and `prompt` |
 
 `test/the-imports.test.ts` enforces which directory may import which. The public exports are
 `@pinecall/agents`, `@pinecall/agents/panels`, `@pinecall/agents/client`,
-`@pinecall/agents/client/testing`, `@pinecall/agents/serve`, `@pinecall/agents/wire`, the JSX
+`@pinecall/agents/client/testing`, `@pinecall/agents/serve`, `@pinecall/agents/wire`,
+`@pinecall/agents/evals`, the JSX
 runtimes `@pinecall/agents/views/jsx-runtime` and `jsx-dev-runtime`, and
 `@pinecall/agents/tsconfig.tenant.json`, pinned by
 `test/index.test.ts` and `test/client/index.test.ts`.

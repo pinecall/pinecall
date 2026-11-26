@@ -54,7 +54,8 @@ export {
 } from "./personas.js";
 export { readPolicy, replayCall, type Replayed, type Verdict } from "./replay.js";
 export { diffRuns, DRIFT_CALLS, drifted, DriftInput, driftOf, listRuns, movedBetween, PromoteInput, promoteCall, RUNS_MOST, RunsLimit, secondsOf, showRun, THRESHOLD, type Drift, type JudgeDrift, type Moved, type Promoted, type Rate } from "./runs.js";
-export { benchmark, BenchmarkInput, requireCleared, type Benchmark, type Benchmarked } from "./benchmark.js";
+export { benchmark, BenchmarkInput, requireCleared, type Benchmarked } from "./benchmark.js";
+export type { Benchmark } from "@pinecall/agents/evals";
 export { inputUnder, parseCondition, parsePlayed, requireTold, sayLine, type Condition } from "./conditions.js";
 export { AGAINST_KNOBS, AgentValuesInput, compare, parseAgainst, simulateAgainst, type Compared } from "./comparison.js";
 export { callerOf, requireHeld, SimulateInput, simulate, TURNS, VIAS, type Reached, type Simulated, type SimulationListeners } from "./simulation.js";

@@ -6,6 +6,12 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **A benchmark's numbers are one implementation, shared with the console.** The scorecard, the reading of a call's
+  log and the report's shape moved to `@pinecall/agents/evals`, which the console's comparison board stands on too:
+  a row reads the same in the terminal, on the report's page and on the screen. `report.json` is the same file,
+  byte for byte, for the same calls. A setup that changes `smart_interruptions` alone (a comparison placed in the
+  console) is now a setup of its own, named `… · smart interruptions off`, where it was counted with the one
+  beside it.
 - **Several conditions, one benchmark.** `pinecall simulate … --report --condition clean --condition
   television-20:ambience=television,background-noise=20` places the same callers under the same setups on each
   line, one comparison after another, and `pinecall benchmark --condition clean:cmp_… --condition

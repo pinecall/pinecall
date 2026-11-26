@@ -7,6 +7,12 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 
 ## Unreleased
 
+- **`@pinecall/agents/evals`: what a table of simulated calls comes to.** A new entry point, pure and importing
+  nothing: a comparison's rows as a benchmark's calls (`callOf`, `numberRounds`), each setup's numbers
+  (`setupOf`: the share completed with Wilson's interval, the reply's middle and 90th, the cost of a completed
+  call, how it heard its callers, each judge, each round), the verdict against two bars (`verdictOf`), several
+  comparisons as one table (`standingsOf`) and the shape of `report.json` (`Benchmark`, `VERSION`). It is the
+  CLI's scorecard, moved here so that the CLI's report and the console's board are the same numbers.
 - **The state a call opens in is the call's: every agent that takes it starts from it.** A golden's, a persona's or
   `?state=`'s state was laid over the instance that answered and no other. A call passed to a teammate
   (`transfer_to_…`, `call.handoff`) now lays it over the instance that takes it too, after its `onCall`, in the fields

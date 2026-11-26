@@ -26,11 +26,12 @@ folder of its own that the runtime builds into the gateway.
 
 ## Structure
 
-- `src/` — seven directories, kept apart by the import table in `test/the-imports.test.ts`
+- `src/` — eight directories, kept apart by the import table in `test/the-imports.test.ts`
   - `agent/` the class · `views/` JSX→text · `call/` the live call as a value
   - `client/` `@pinecall/agents/client`: the socket, and nothing above it · `runtime/` the bridge
   - `serve/` `@pinecall/agents/serve`: the entry the CLI starts an agent with — `start`, `prompt`
   - `wire/` `@pinecall/agents/wire`: the runtime's shapes, which the CLI reads too
+  - `evals/` `@pinecall/agents/evals`: a benchmark's numbers from a comparison's calls, pure and importing nothing; the CLI's report and the console's board are the same numbers because both stand on it
 - `test/` mirrors `src/`; `the-tree`, `the-imports`, `index` and `client/index` are the tree's rules
 - `../../examples/typescript/` one tenant written the way a customer writes one — and what the nightly drives
 - `docs/` how to build an agent · `docs/decisions/` the maintainer's notebook, **git-ignored**:

@@ -8,20 +8,16 @@ import { z } from "zod";
 
 import { getVersion } from "../../api/accounts.js";
 import * as calls from "../../api/calls.js";
-import type { Behavior } from "../../api/cases.js";
 import * as api from "../../api/evals.js";
 import type { Context } from "../../context.js";
 import { PinecallError, UsageError } from "../../errors.js";
 import { clearsBoth, flagOf, heldUnderEvery, sayLine, underEach, type Condition, type Line } from "./conditions.js";
 import { listPersonas } from "./personas.js";
-import { movedSince, nameOf, setupOf, verdictOf, type Bars, type BenchCall, type Earlier, type Setup, type Verdict } from "./scorecard.js";
-import { linesOf, notCountedOf, READ, recordingBegan, repliesOf, unpricedOf } from "./transcript.js";
+import { byStanding, callersOf, callOf as counted, linesOf, movedSince, nameOf, notCountedOf, numberRounds, READ, recordingBegan, repliesOf, setupOf, unpricedOf, verdictOf, VERSION, type Bars, type BenchCall, type Benchmark, type Earlier, type Setup } from "@pinecall/agents/evals";
 
 /** The page a report is read in: its markup, its style and its script, copied beside the report's data. */
 export const PAGE_ROOT = fileURLToPath(new URL("../../../pages/benchmark/", import.meta.url));
 const PAGE_FILES = ["index.html", "benchmark.css", "benchmark.js"] as const;
-/** The report's shape: a reader of `report.json` checks it. 2 added conditions (2026-11-26); a baseline may be a report of either. */
-export const VERSION = 2;
 const READ_AS_A_BASELINE: readonly number[] = [1, VERSION];
 // A call's log and its recording are two reads; this many calls are read at once.
 const READ_AT_ONCE = 6;
@@ -42,41 +38,6 @@ export const BenchmarkInput = z.object({
   gateUnder: z.array(z.string().min(1)).default([]),
 });
 export type BenchmarkInput = z.infer<typeof BenchmarkInput>;
-
-/** A simulated caller as the report presents it. */
-export interface Caller {
-  name: string;
-  about: string;
-  goal: string;
-  expects: string[];
-  behavior: Behavior | null;
-}
-
-/** `report.json`: every number of the page, and every call under them. */
-export interface Benchmark {
-  version: typeof VERSION;
-  made_at: string;
-  agent: string;
-  gateway: { url: string; env: string; version: string | null };
-  comparisons: string[];
-  /** The conditions the calls were placed under, the baseline first; none when the benchmark is of one line. */
-  conditions: { name: string; line: Line | null; says: string; comparisons: string[]; calls: number; counted: number }[];
-  spoken: boolean;
-  /** The command that places the same calls again. */
-  command: string;
-  bars: Bars;
-  verdict: Verdict;
-  callers: Caller[];
-  /** Best first: the share completed, then the reply. */
-  setups: Setup[];
-  /** What the gateway never placed, in its words. */
-  refused: { caller: string; setup: string; why: string; condition?: string }[];
-  /** Calls still on the line when the report was made: in none of its numbers. */
-  on_the_line: number;
-  /** The earlier report the setups are held against, when one was given. */
-  baseline: { made_at: string; comparisons: string[] } | null;
-  calls: BenchCall[];
-}
 
 /** A report made: its numbers, and the folder it was written into when one was. */
 export interface Benchmarked {
@@ -106,56 +67,20 @@ async function logOf(ctx: Context, call: string): Promise<calls.Entry[]> {
   }
 }
 
-function didIt(row: api.ComparisonRow): boolean | null {
-  if (row.goal !== undefined && row.goal !== null) return row.goal === "held";
-  return row.score === null ? null : row.score.passed;
-}
-
 /** One row of a comparison as the report's call: its log read, its recording kept beside the page. */
 async function callOf(ctx: Context, row: api.ComparisonRow & { comparison: string; condition?: string }, folder: string | null): Promise<BenchCall> {
   const entries = await logOf(ctx, row.call);
   const began = recordingBegan(entries, row.started_at);
   const audio = folder === null ? null : await calls.getRecording(ctx.gateway(), row.call);
   if (folder !== null && audio !== null) writeFileSync(join(folder, "calls", `${row.call}.ogg`), audio);
-  const goal = row.judges?.find((judge) => judge.name === "expected-outcome");
-  return {
-    call: row.call,
-    comparison: row.comparison,
-    caller: row.persona,
-    setup: nameOf(row.against),
-    ...(row.condition === undefined ? {} : { condition: row.condition }),
-    round: 0,
+  return counted(row, {
     not_counted: notCountedOf(row, entries),
-    completed: didIt(row),
-    reason: goal?.reason ?? row.score?.reason ?? null,
-    ended: row.end_reason,
-    started_at: row.started_at,
-    length_s: row.ended_at === null ? null : row.ended_at - row.started_at,
-    reply_s: row.latency.e2e_latency,
     replies_s: repliesOf(entries),
-    slowest_reply_s: row.slowest_reply ?? null,
-    cost_usd: row.cost_usd,
     unpriced: unpricedOf(entries),
-    stages: { llm_ttft: row.latency.llm_node_ttft, tts_ttfb: row.latency.tts_node_ttfb, transcription_delay: row.latency.transcription_delay, end_of_turn_delay: row.latency.end_of_turn_delay ?? null },
-    judges: row.judges ?? [],
-    hearing: row.hearing ?? null,
     recording: audio === null ? null : `calls/${row.call}.ogg`,
     timed: began.said,
     lines: linesOf(entries, began.at),
-  };
-}
-
-// Several comparisons are one table: rounds placed apart. A caller's calls under a setup are numbered
-// in the order they started, whichever comparison placed them, and a call that does not count takes
-// no round: the one placed in its stead does. Each condition numbers its own.
-function numberRounds(all: BenchCall[]): void {
-  const seen = new Map<string, number>();
-  for (const call of [...all].sort((one, other) => one.started_at - other.started_at)) {
-    if (call.not_counted !== null) continue;
-    const pair = `${call.condition ?? ""}\n${call.setup}\n${call.caller}`;
-    call.round = (seen.get(pair) ?? 0) + 1;
-    seen.set(pair, call.round);
-  }
+  });
 }
 
 function commandOf(agent: string, spoken: boolean, callers: readonly string[], setups: readonly Setup[], conditions: readonly Condition[]): string {
@@ -218,7 +143,7 @@ export async function benchmark(ctx: Context, input: BenchmarkInput): Promise<Be
   all.sort((one, other) => one.started_at - other.started_at);
 
   const bars: Bars = { floor: input.floor, ceiling_s: input.ceiling };
-  const callers = [...new Set(tables.flatMap((table) => (table.personas.length > 0 ? table.personas : [table.persona])))];
+  const callers = callersOf(tables);
   const values = new Map<string, api.AgentValues>();
   for (const row of ended) if (!values.has(nameOf(row.against))) values.set(nameOf(row.against), row.against);
   // With conditions a setup's own numbers are the baseline's line, and each condition's are beside them.
@@ -228,7 +153,7 @@ export async function benchmark(ctx: Context, input: BenchmarkInput): Promise<Be
     const each = underEach(one, its, conditions, callers, bars);
     return { ...each.baseline, under: each.under };
   });
-  setups.sort((one, other) => Number(one.thin) - Number(other.thin) || (other.completed.share ?? -1) - (one.completed.share ?? -1) || (one.reply.p50 ?? Infinity) - (other.reply.p50 ?? Infinity));
+  setups.sort(byStanding);
   if (earlier !== null) for (const setup of setups) {
     const was = earlier.setups.find((one) => one.name === setup.name) as Earlier | undefined;
     if (was !== undefined) setup.baseline = movedSince(setup, was);

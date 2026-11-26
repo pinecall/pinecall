@@ -2,25 +2,23 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { Entry } from "../../../src/api/calls.js";
-import type { ComparisonRow } from "../../../src/api/evals.js";
-import { linesOf, notCountedOf, recordingBegan, repliesOf } from "../../../src/evals/service/transcript.js";
+import type { Entry, Row } from "../../src/evals/calls.js";
+import { linesOf, notCountedOf, recordingBegan, repliesOf } from "../../src/evals/transcript.js";
 
-const A_ROW: ComparisonRow = {
+const A_ROW: Row = {
   call: "call_1",
   persona: "books-a-visit",
   against: { llm: "openai/gpt-5.4-mini" },
   started_at: 100,
   ended_at: 190,
-  turns: 4,
   end_reason: "caller_hung_up",
-  score: { held: 1, judged: 1, passed: true, reason: null },
+  score: { passed: true, reason: null },
   cost_usd: 0.05,
   latency: { e2e_latency: 1.2, llm_node_ttft: null, tts_node_ttfb: null, transcription_delay: null, end_of_turn_delay: null },
   why: null,
 };
 
-const entry = (seq: number, ts: number, type: string, data: Record<string, unknown> = {}): Entry => ({ seq, ts, type, data });
+const entry = (_seq: number, ts: number, type: string, data: Record<string, unknown> = {}): Entry => ({ ts, type, data });
 
 describe("a call's lines", () => {
   const log = [
@@ -64,6 +62,6 @@ describe("why a call does not count", () => {
   it("is the platform's when the call ended in error or never started, and nothing for a model that was only wrong", () => {
     expect(notCountedOf({ ...A_ROW, end_reason: "error" }, [])).toEqual({ kind: "platform", why: "the call ended in error" });
     expect(notCountedOf({ ...A_ROW, why: "no agent joined room in 110s" }, [])?.kind).toBe("platform");
-    expect(notCountedOf({ ...A_ROW, score: { held: 0, judged: 1, passed: false, reason: "moved it to Tuesday" } }, [])).toBeNull();
+    expect(notCountedOf({ ...A_ROW, score: { passed: false, reason: "moved it to Tuesday" } }, [])).toBeNull();
   });
 });

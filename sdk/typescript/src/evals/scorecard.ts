@@ -1,6 +1,17 @@
 /** A benchmark's numbers from its calls: each setup's share with its interval, replies, cost, hearing, judges, rounds, and the verdict against two bars. */
 
-import type { AgentValues } from "../../api/evals.js";
+/** What a setup runs the agent on over its own settings: the test values a comparison's row carries. Nothing here is the agent's own. */
+export interface AgentValues {
+  stt?: string | undefined;
+  llm?: string | undefined;
+  tts?: string | undefined;
+  realtime?: string | undefined;
+  voice?: string | undefined;
+  language?: string | undefined;
+  temperature?: number | undefined;
+  end_of_turn?: "stt" | "livekit" | "smart-turn" | undefined;
+  smart_interruptions?: boolean | undefined;
+}
 
 /** The bars a setup is held to: the share of its counted calls completed, and its middle reply in seconds. */
 export interface Bars {
@@ -147,7 +158,7 @@ const Z = 1.959964;
 
 /** The agent's values in a few words, as the comparison's table says them. */
 export function nameOf(values: AgentValues): string {
-  const pairs: [string, string | number | undefined][] = [["talks", values.realtime], ["hears", values.stt], ["thinks", values.llm], ["speaks", values.tts], ["voice", values.voice], ["language", values.language], ["temperature", values.temperature], ["end of turn", values.end_of_turn]];
+  const pairs: [string, string | number | undefined][] = [["talks", values.realtime], ["hears", values.stt], ["thinks", values.llm], ["speaks", values.tts], ["voice", values.voice], ["language", values.language], ["temperature", values.temperature], ["end of turn", values.end_of_turn], ["smart interruptions", values.smart_interruptions === undefined ? undefined : values.smart_interruptions ? "on" : "off"]];
   const said = pairs.flatMap(([name, value]) => (value === undefined ? [] : [`${name} ${String(value)}`]));
   return said.length === 0 ? "the agent's own settings" : said.join(" · ");
 }
@@ -247,6 +258,11 @@ export function setupOf(values: AgentValues, all: readonly BenchCall[], callers:
     not_counted: all.length - counted.length,
     thin: all.length - counted.length > counted.length,
   };
+}
+
+/** The order a benchmark lists its setups in: one that lost most of its calls last, then the larger share completed, then the faster reply. */
+export function byStanding(one: Setup, other: Setup): number {
+  return Number(one.thin) - Number(other.thin) || (other.completed.share ?? -1) - (one.completed.share ?? -1) || (one.reply.p50 ?? Infinity) - (other.reply.p50 ?? Infinity);
 }
 
 /** Whether a setup's cost is a cost: something was charged and no model went unpriced. */

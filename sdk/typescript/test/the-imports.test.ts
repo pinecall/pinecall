@@ -14,6 +14,8 @@ const MAY_IMPORT: Record<string, string[]> = {
   "wire": ["zod"],
   // The socket: wire only.
   "client": ["wire", "ws"],
+  // What a table of simulated calls comes to: numbers, standing on nothing.
+  "evals": [],
   // `views` only for the type `render()` returns; the JSX runtime imports nothing of ours.
   "agent": ["call", "views", "wire", "oxc-parser", "zod"],
   "call": ["agent", "wire"],

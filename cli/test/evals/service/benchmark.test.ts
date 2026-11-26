@@ -2,9 +2,9 @@
 
 import { describe, expect, it } from "vitest";
 
-import { requireCleared, type Benchmark } from "../../../src/evals/service/benchmark.js";
+import { requireCleared } from "../../../src/evals/service/benchmark.js";
 import { heldUnderEvery, underEach, type Condition } from "../../../src/evals/service/conditions.js";
-import { verdictOf, type BenchCall, type Setup } from "../../../src/evals/service/scorecard.js";
+import { verdictOf, type BenchCall, type Benchmark, type Setup } from "@pinecall/agents/evals";
 
 const BARS = { floor: 0.9, ceiling_s: 1.5 };
 const CLEAN: Condition = { name: "clean", line: {}, comparisons: ["cmp_1"] };

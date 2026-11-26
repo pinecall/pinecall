@@ -1,7 +1,6 @@
 /** A call's log read for a benchmark: its lines against its recording's clock, each reply's seconds, what went unpriced, and why it may not count. */
 
-import type { Entry } from "../../api/calls.js";
-import type { ComparisonRow } from "../../api/evals.js";
+import type { Entry, Row } from "./calls.js";
 import type { Line, NotCounted } from "./scorecard.js";
 
 /** The entries a benchmark reads of a call's log. */
@@ -74,7 +73,7 @@ export function unpricedOf(entries: readonly Entry[]): string[] {
 // same three faults are read off what it does say: a row that never started, a stage its vendor
 // refused (the log's own `error`, in the vendor's words), a call that ended in error.
 /** Why the call measured nothing of its agent, or null for one that counts. */
-export function notCountedOf(row: ComparisonRow, entries: readonly Entry[]): NotCounted | null {
+export function notCountedOf(row: Row, entries: readonly Entry[]): NotCounted | null {
   if (row.valid === false) return row.invalid ?? { kind: "platform", why: "the gateway says this call does not count" };
   if (row.valid === true) return null;
   if (row.why !== null) return { kind: "platform", why: `it never started: ${row.why}` };

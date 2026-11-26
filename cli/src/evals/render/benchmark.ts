@@ -4,7 +4,7 @@ import { BROKEN, HELD } from "../../judging/render.js";
 import { count, formatHint } from "../../kit/format.js";
 import { table } from "../../kit/table.js";
 import type { Benchmarked } from "../service/benchmark.js";
-import type { Setup, Shift, Under } from "../service/scorecard.js";
+import type { Setup, Shift, Under } from "@pinecall/agents/evals";
 
 const percent = (share: number | null): string => (share === null ? "" : `${String(Math.round(share * 100))}%`);
 const seconds = (value: number | null): string => (value === null ? "" : value >= 1 ? `${value.toFixed(2)} s` : `${String(Math.round(value * 1000))} ms`);

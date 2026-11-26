@@ -43,6 +43,11 @@
       "import": "./src/wire/index.ts",
       "default": "./src/wire/index.ts"
     },
+    "./evals": {
+      "types": "./src/evals/index.ts",
+      "import": "./src/evals/index.ts",
+      "default": "./src/evals/index.ts"
+    },
     "./views/jsx-runtime": {
       "types": "./src/views/jsx-runtime.ts",
       "import": "./src/views/jsx-runtime.ts",
@@ -108,6 +113,10 @@
       "./wire": {
         "types": "./dist/wire/index.d.ts",
         "import": "./dist/wire/index.js"
+      },
+      "./evals": {
+        "types": "./dist/evals/index.d.ts",
+        "import": "./dist/evals/index.js"
       },
       "./views/jsx-runtime": {
         "types": "./dist/views/jsx-runtime.d.ts",

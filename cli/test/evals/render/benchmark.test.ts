@@ -3,9 +3,8 @@
 import { describe, expect, it } from "vitest";
 
 import { benchmark, shiftOf } from "../../../src/evals/render/benchmark.js";
-import type { Benchmark } from "../../../src/evals/service/benchmark.js";
 import { underEach, type Condition } from "../../../src/evals/service/conditions.js";
-import { verdictOf, type BenchCall } from "../../../src/evals/service/scorecard.js";
+import { verdictOf, type BenchCall, type Benchmark } from "@pinecall/agents/evals";
 
 const BARS = { floor: 0.9, ceiling_s: 1.5 };
 const CLEAN: Condition = { name: "clean", line: {}, comparisons: ["cmp_1"] };

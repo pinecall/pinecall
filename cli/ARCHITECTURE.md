@@ -10,7 +10,8 @@ The CLI is a client of the gateway's endpoints and of nothing else, and it never
 class: it starts the class's language's serve entry in a child process and drives it through the
 gateway. So one CLI serves a TypeScript project, a Ruby one and a Python one alike. It reaches the
 framework two ways only: it **imports** `@pinecall/agents/client` (the socket, signed requests, the
-feed) and `@pinecall/agents/wire` (the runtime's shapes) — never `@pinecall/agents` bare, never
+feed), `@pinecall/agents/wire` (the runtime's shapes) and `@pinecall/agents/evals` (what a table of
+simulated calls comes to, one implementation with the console's) — never `@pinecall/agents` bare, never
 `/serve`; and `start` (and `prompt`, which prints and leaves) **starts** a serve entry, its door in
 `PINECALL_URL`, `PINECALL_KEY` and `PINECALL_ENV`, never in its argv.
 
