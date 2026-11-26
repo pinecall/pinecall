@@ -75,11 +75,13 @@ sys.exit(f'{path}: sha256 {digest}, not {sys.argv[2]}') if digest != sys.argv[2]
 ENV PINECALL_FLOOR_MODEL=/opt/models/hub/models--pipecat-ai--backchannel-detector/snapshots/${FLOOR_REVISION}/backchannel-fp32.onnx
 # The country a web visitor's address is in: DB-IP's "IP to Country Lite" (db-ip.com, CC BY 4.0, the
 # console names it where it shows a country), one month's table fetched and refused unless its hash
-# matches, packed into ranges the gateway halves. A new month is these two lines changed.
+# matches, packed into ranges the gateway halves. A new month is these two lines changed. Asked with a
+# User-Agent of its own: DB-IP refuses Python's (403).
 ARG DBIP_MONTH=2026-11
 ARG DBIP_SHA256=e5c8459d638a272ece7f4d7cfa49dce18d91b4f403f6940ba9249bf0db3781fd
 RUN python -c "import hashlib, sys, urllib.request; \
-data = urllib.request.urlopen(f'https://download.db-ip.com/free/dbip-country-lite-{sys.argv[1]}.csv.gz', timeout=120).read(); \
+asked = urllib.request.Request(f'https://download.db-ip.com/free/dbip-country-lite-{sys.argv[1]}.csv.gz', headers={'User-Agent': 'pinecall-runtime-image'}); \
+data = urllib.request.urlopen(asked, timeout=120).read(); \
 digest = hashlib.sha256(data).hexdigest(); \
 sys.exit(f'dbip {sys.argv[1]}: sha256 {digest}, not {sys.argv[2]}') if digest != sys.argv[2] else open('/tmp/dbip.csv.gz', 'wb').write(data)" \
   "${DBIP_MONTH}" "${DBIP_SHA256}" \
