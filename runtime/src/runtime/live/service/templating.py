@@ -107,8 +107,9 @@ async def send_template(
     message_id = None if simulated or going is not None else await _send(session, live, route, asked)
     first = FirstMessage(going or new_call_id(), asked.metadata, said=asked.text if going is None else None)
     try:
-        call: str | None = await threads.open_to(registration, route, contact, first)
-        await send_verb(live, Supervising(call, by), SayVerb(text=asked.text))
+        opened = await threads.open_to(registration, route, contact, first)
+        await send_verb(live, Supervising(opened, by), SayVerb(text=asked.text))
+        call: str | None = opened
     except PinecallError as refused:
         # The template is with the contact already: refusing now would have the caller send it again.
         # The answer names no conversation, and what they answer opens one as any message does.
