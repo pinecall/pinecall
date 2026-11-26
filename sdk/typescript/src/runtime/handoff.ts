@@ -3,6 +3,7 @@
 import type { ToolSpec } from "../wire/defs.js";
 
 import type { Agent } from "../agent/agent.js";
+import { snapshot, type Snapshot } from "../agent/state.js";
 import { DeclarationRefused } from "../agent/tools.js";
 import type { CallLine } from "../call/call.js";
 
@@ -47,6 +48,12 @@ export async function answeredBy(answers: Answering, line: CallLine, bound: Ctor
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** The part of the state a call opened in that names fields this instance has: what was written for another class of the call is left out. */
+export function ownIn(agent: Agent, openedIn: Snapshot): Snapshot {
+  const has = new Set(Object.keys(snapshot(agent)));
+  return Object.fromEntries(Object.entries(openedIn).filter(([field]) => has.has(field)));
 }
 
 /** What a class says it takes, in the words a model reads to choose it; undefined when it takes no passes. */

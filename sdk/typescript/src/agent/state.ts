@@ -98,12 +98,6 @@ export function restore(agent: object, state: Snapshot): void {
   });
 }
 
-/** The part of `state` that names fields this instance has: a state written for another class of the call leaves the rest out. */
-export function ownIn(agent: object, state: Snapshot): Snapshot {
-  const has = new Set(Object.keys(snapshot(agent)));
-  return Object.fromEntries(Object.entries(state).filter(([field]) => has.has(field)));
-}
-
 /** A change log collapsed into one summary entry. */
 export interface Collapsed {
   summary: string;
