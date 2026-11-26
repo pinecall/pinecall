@@ -28,6 +28,9 @@ module Pinecall
       # What memory recalled about this caller in this call: what `remembers?` answers from; and whether
       # the call was handed over mid-conversation, the view's `resumed`.
       attr_accessor :agent, :klass, :tools_shown, :remembered, :resumed, :transfers, :passes, :draws
+      # The state the call opened in, when its opener asked for one (a golden, a persona, `?state=`): it is
+      # the call's, and every instance that takes the call starts from it.
+      attr_accessor :opened_in
 
       def initialize(agent, world, klass: agent.class, asking: Asking.new([]), team: nil, rules: [], last: nil, draws: false)
         @agent = agent
@@ -98,7 +101,7 @@ module Pinecall
       agent = client.agent(name, **options)
       serve = { client:, last:, tasks:, team:, rules:, draws: }
       agent.on("call.started") { |started, call| start(klass, live, call, serve, started[:state], answers) }
-      agent.on("call.attached") { |_data, call| attached(klass, live, call, serve) }
+      agent.on("call.attached") { |data, call| attached(klass, live, call, serve, data.dig(:started, :state)) }
       agent.on("call.ended") { |_data, call| finish(live, call) }
       Mounted.new(slug: name, agent:, options:, live:)
     end
@@ -142,12 +145,13 @@ module Pinecall
     # A call handed to this process mid-conversation: no `on_call`, the state the gateway kept
     # instead. One served here already (the gateway restarted) keeps its instance, and its whole
     # prompt is sent again, which the gateway may have lost.
-    def attached(klass, live, call, serve)
+    def attached(klass, live, call, serve, opened_in)
       held = live[call.id]
       return held.later { resend(held, call) } unless held.nil?
 
       serving = served(klass, live, call, serve)
       serving.resumed = true
+      serving.opened_in = opened_in
       serving.later do
         serving.agent.restore(Screened.unscreened(call.state))
         sync(serving, call)
@@ -180,6 +184,7 @@ module Pinecall
         routed(serving, call, answers) unless answers.nil? || serving.team.nil?
         instance = serving.agent
         hooked(serving, call, :on_call, serving.world)
+        serving.opened_in = opened_in
         instance.start_in(opened_in) unless opened_in.nil?
         call.set_state(state_of(serving), *opening(instance))
         sync(serving, call)

@@ -8,6 +8,7 @@ from typing_extensions import override
 
 from pinecall import Agent, GetEmail, part, tool
 from pinecall.bridge import Mounted, mount
+from pinecall.call import CallWorld
 from pinecall.client import Client
 from tests.fakes.gateway import KEY, FakeGateway
 
@@ -132,3 +133,51 @@ async def test_a_tool_that_shows_a_scene_puts_it_up_on_the_screen_the_state_carr
     last = cast("dict[str, object]", screens[-1])
     assert last["screen"] == [{"part": "agenda", "props": {"open": True}, "children": []}]
     assert await called(gateway, "show_screen", {"scene": "none"}, 2) == "shown"
+
+
+class Reception(Agent):
+    """You book and move visits."""
+
+    takes = "anything about a visit"
+    patient: str = ""
+    visits: list[str] = []  # noqa: RUF012 - a state field's default, copied by the instance
+
+    @override
+    def on_call(self, call: CallWorld) -> None:
+        """Start with nobody on the line."""
+        self.patient = "nobody yet"
+        self.visits = []
+
+    @tool
+    def on_the_books(self) -> int:
+        """How many visits the caller has on the books."""
+        return len(self.visits)
+
+
+class Bills(Agent):
+    """You answer questions about bills."""
+
+    takes = "questions about a bill"
+    invoice: str = ""
+
+
+# 2026-11-25: two simulated calls passed to billing and back found, on their return, a reception
+# with none of the visits their caller was seeded with: the state was laid over the first instance.
+async def test_a_call_that_opened_in_a_state_is_served_from_it_by_every_agent_that_takes_it(
+    gateway: FakeGateway,
+) -> None:
+    client = Client(gateway.url, KEY)
+    mount(Reception, client, slug="front-desk", team={Reception: "front-desk", Bills: "bills"})
+    await client.connect()
+    opened_in = {"patient": "Tom Baker", "visits": ["v-207"], "invoice": "inv_9"}
+    await gateway.emit("front-desk", "CA_1", "call.started", STARTED | {"state": opened_in})
+    await gateway.until(lambda: bool(sent(gateway, "tools.set")))
+    assert sent(gateway, "state.set")[-1]["state"] == {"patient": "Tom Baker", "visits": ["v-207"]}
+
+    await called(gateway, "transfer_to_bills", {}, 1)
+    assert sent(gateway, "state.set")[-1]["state"] == {"invoice": "inv_9"}
+
+    await called(gateway, "transfer_to_reception", {}, 2)
+    assert sent(gateway, "state.set")[-1]["state"] == {"patient": "Tom Baker", "visits": ["v-207"]}
+    assert await called(gateway, "on_the_books", {}, 3) == 1
+    await client.close()

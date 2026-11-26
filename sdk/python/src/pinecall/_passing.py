@@ -94,6 +94,11 @@ async def passed(
     served.passes += 1
     running = _running.run(_author.hook("on_call"), served.agent.on_call, served.world)
     await hooked(served.call, "on_call", running)
+    # The state the call opened in is the call's, not its first agent's: whoever takes it starts
+    # from the fields of it that are its own, after its on_call as the first did. Until 2026-11-26
+    # a call that came back to the agent that answered it found a new instance with none of it.
+    if served.opened_in:
+        served.agent.start_in(served.opened_in)
     served.call.set_state(state_of(served))
     synced(served)
     follow(served)

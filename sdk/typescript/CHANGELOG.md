@@ -7,6 +7,12 @@ maintainer's call, so everything sits under Unreleased until one is cut.
 
 ## Unreleased
 
+- **The state a call opens in is the call's: every agent that takes it starts from it.** A golden's, a persona's or
+  `?state=`'s state was laid over the instance that answered and no other. A call passed to a teammate
+  (`transfer_to_…`, `call.handoff`) now lays it over the instance that takes it too, after its `onCall`, in the fields
+  that class has and no others; so does a call that comes back to the agent that answered it, which found a new
+  instance with none of it. What an instance changed before it passed the call on is still gone with it:
+  `call.shared` is what outlives a pass.
 - `observe` (and `sseFrames`) open a stream again when its first opening is answered `503` with `Retry-After`: a
   gateway whose database had no connection free for a moment, which asking again outlasts. Four openings in all, then
   the refusal is thrown as any first failure is; a wrong key or an unknown door is thrown at once, as before.

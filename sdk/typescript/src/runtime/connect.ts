@@ -14,7 +14,7 @@ import { CallWorld, type Searching } from "../call/call.js";
 import { describe } from "../agent/docstrings.js";
 import { searchesKnowledge } from "../agent/searching.js";
 import { runHook } from "../agent/lifecycle.js";
-import { restore, snapshot, type LastCall, type Snapshot } from "../agent/state.js";
+import { ownIn, restore, snapshot, type LastCall, type Snapshot } from "../agent/state.js";
 import { toolNamed } from "../agent/tools.js";
 import { viewOf } from "../agent/view.js";
 import { PROMPT_BLOCKS } from "../views/layout.js";
@@ -182,7 +182,7 @@ export function mount(
     }
     const send: Send = (type, id, data) => agent.command(type, id, data);
     const searching: Searching = (query, k) => pc.search(call.id, query, k);
-    adopt(ctor, live, call, attached.state as Snapshot, send, searching, last, team);
+    adopt(ctor, live, call, attached.state as Snapshot, attached.started.state ?? undefined, send, searching, last, team);
   });
   agent.on("call.ended", (_payload, call) => {
     if (call !== null) void end(live, call);
@@ -232,6 +232,7 @@ async function start(
   await hooked(call, "onCall", runHook(link.agent, "onCall", hookCall(call)));
   const author = hookAuthor("onCall");
   const wrote = changes(link.agent).some((change) => change.author === author);
+  link.serving.openedIn = openedIn;
   if (openedIn !== undefined) link.agent.startIn(openedIn);
   call.setState(stateWith(link.agent, link.screened), undefined, wrote ? causeOf(author, link.serving.call) : undefined);
   sync(link, call);
@@ -240,17 +241,9 @@ async function start(
 
 // call.attached: take over a call from another process. Synchronous, because pending tool calls
 // arrive next and must find the instance. No onCall; the gateway's snapshot is restored instead.
-function adopt(
-  ctor: Ctor,
-  live: Map<string, Live>,
-  call: SdkCall,
-  state: Snapshot,
-  send: Send,
-  searching: Searching,
-  last?: LastCall,
-  team?: Team,
-): void {
+function adopt(ctor: Ctor, live: Map<string, Live>, call: SdkCall, state: Snapshot, openedIn: Snapshot | undefined, send: Send, searching: Searching, last?: LastCall, team?: Team): void {
   const link = serve(ctor, live, call, send, searching, last, team);
+  link.serving.openedIn = openedIn;
   restore(link.agent, unscreened(state));
   sync(link, call);
   follow(link, call);
@@ -296,6 +289,10 @@ async function pass(link: Live, call: SdkCall, team: Team, to: Ctor, data: Recor
   Object.assign(link.serving, { agent, ctor: to });
   Object.assign(link, { agent, passes: link.passes + 1, transfers: transfersOf(to, team), unlog: onLog(agent, (entry) => call.log(entry.name, dataOf(entry.data))) });
   await hooked(call, "onCall", runHook(agent, "onCall", hookCall(call)));
+  // The state the call opened in is the call's, not its first agent's: whoever takes it starts from the
+  // fields of it that are its own, after its onCall as the first did. Until 2026-11-26 a call that came
+  // back to the agent that answered it found a new instance with none of what its caller was seeded with.
+  if (link.serving.openedIn !== undefined) agent.startIn(ownIn(agent, link.serving.openedIn));
   call.setState(stateWith(agent, link.screened));
   sync(link, call);
   follow(link, call);

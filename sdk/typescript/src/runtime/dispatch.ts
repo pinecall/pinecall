@@ -3,6 +3,7 @@
 import { emitEvent, type EventHeard } from "../agent/agent.js";
 import { eventAuthor, withAuthorAsync } from "../agent/authors.js";
 import { accepts, type EventMeta, type EventSource } from "../agent/accepts.js";
+import type { Snapshot } from "../agent/state.js";
 import type { CallWorld } from "../call/call.js";
 
 /** One `event.received` entry as the wire carries it. */
@@ -23,6 +24,8 @@ export interface Serving {
   warned: Set<string>;
   /** Serializes this call's events so a write's cause is the event currently running. */
   queue: Promise<unknown>;
+  /** The state the call opened in, when its opener asked for one (a golden, a persona, `?state=`): it is the call's, and every instance that takes the call starts from it. */
+  openedIn?: Snapshot | undefined;
 }
 
 /**

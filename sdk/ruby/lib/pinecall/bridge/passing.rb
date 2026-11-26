@@ -54,6 +54,10 @@ module Pinecall
       become(serving, to, call)
       serving.passes += 1
       hooked(serving, call, :on_call, serving.world)
+      # The state the call opened in is the call's, not its first agent's: whoever takes it starts from the
+      # fields of it that are its own, after its on_call as the first did. Until 2026-11-26 a call that came
+      # back to the agent that answered it found a new instance with none of it.
+      serving.agent.start_in(serving.opened_in) unless serving.opened_in.nil?
       call.set_state(state_of(serving))
       sync(serving, call)
       listen(serving, call)

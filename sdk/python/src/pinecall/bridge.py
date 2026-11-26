@@ -127,6 +127,7 @@ def mount(  # noqa: PLR0913 - one keyword for each thing a voice app adds to its
             served.jobs.put_nowait(lambda: resent(served))
             return
         served = serve(call)
+        served.opened_in = event.started.state or None
         served.jobs.put_nowait(lambda: adopted(served, dict(event.state)))
 
     def ended(_: WireModel, call: Call | None) -> None:
@@ -227,6 +228,7 @@ async def opening(served: Live, state: JsonObject | None, answers: Answering | N
     author = _author.hook("on_call")
     await hooked(served.call, "on_call", _running.run(author, served.agent.on_call, served.world))
     wrote = any(change.author == author for change in served.agent.changes())
+    served.opened_in = state or None
     if state:
         served.agent.start_in(state)
     # The prompt before the state: the caller's first turn needs the prompt, only the log reads

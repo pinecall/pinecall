@@ -23,7 +23,8 @@ nobody keyed `503` (the sentence a persona written for it is refused with, so a 
 `POST /v1/evals/voice` `{call, agent, persona, turns, interferer_db?, packet_loss?, ambience?, pause_s?, via?,
 delay_ms?, jitter_ms?, rate_kbps?, state?}` places
 a spoken call: the agent is dispatched into the room named `call` with the persona, its rule and
-`state` (the object the agent opens the call in, on its `call.started`; absent, the class's own) on
+`state` (the object the agent opens the call in, on its `call.started`; absent, the class's own; a call
+passed between a team's agents lays it over each one that takes it, in the fields that are its own) on
 the dispatch, the caller joins and speaks in a voice the agent does not use (the persona's own unless it is the
 voice the agent speaks with, the one it declared or the operator's for its language; else one of the
 operator's voices for the language), and the room is deleted at the end whatever

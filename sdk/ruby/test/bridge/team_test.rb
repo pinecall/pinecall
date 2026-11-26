@@ -31,6 +31,28 @@ class TeamTest < Minitest::Test
     def find_bill(number:) = number
   end
 
+  # You book and move visits.
+  class Reception < Pinecall::Agent
+    takes "anything about a visit"
+    state :patient, ""
+    state :visits, []
+
+    def on_call(_call)
+      self.patient = "nobody yet"
+      self.visits = []
+    end
+
+    # How many visits the caller has on the books.
+    tool
+    def on_the_books = visits.length
+  end
+
+  # You answer questions about invoices.
+  class Bills < Pinecall::Agent
+    takes "questions about an invoice"
+    state :invoice, ""
+  end
+
   def setup
     @gateway = Pinecall::Testing::Gateway.new
     @mounted = Pinecall.mount(FrontDesk, client: @gateway, slug: "front-desk", team: { FrontDesk => "front-desk", Billing => "billing" })
@@ -48,6 +70,23 @@ class TeamTest < Minitest::Test
 
     assert_equal({ from: "front-desk", to: "billing", reason: "a bill" }, logged.first.data[:data])
     assert_equal ["find_bill"], @call.tools
+  end
+
+  # 2026-11-25: two simulated calls passed to billing and back found, on their return, a reception with none
+  # of the visits their caller was seeded with: the state was laid over the first instance alone.
+  def test_a_call_that_opened_in_a_state_is_served_from_it_by_every_agent_that_takes_it
+    gateway = Pinecall::Testing::Gateway.new
+    Pinecall.mount(Reception, client: gateway, slug: "reception", team: { Reception => "reception", Bills => "bills" })
+    call = gateway.call_started(state: { patient: "Tom Baker", visits: ["v-207"], invoice: "inv_9" })
+
+    assert_equal({ patient: "Tom Baker", visits: ["v-207"] }, call.state)
+    call.tool("transfer_to_bills")
+
+    assert_equal({ invoice: "inv_9" }, call.state)
+    call.tool("transfer_to_reception")
+
+    assert_equal({ patient: "Tom Baker", visits: ["v-207"] }, call.state)
+    assert_equal 1, call.tool("on_the_books")[:output]
   end
 
   def test_a_tool_that_asks_leaves_one_tool_open_and_finishes_once_it_is_given

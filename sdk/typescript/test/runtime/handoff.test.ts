@@ -15,12 +15,13 @@ import { answeredBy, mateNamed, MOST_PASSES, teamTools, transfersOf, type Team }
 
 import Billing from "./team/billing.js";
 import FrontDesk from "./team/front-desk.js";
+import Reception from "./team/reception.js";
 import Twice from "./team/twice.js";
 
 const KEY = "pk_test";
 const CALL = "CA_1";
 
-for (const [ctor, name] of [[FrontDesk, "front-desk"], [Billing, "billing"], [Twice, "twice"]] as const) {
+for (const [ctor, name] of [[FrontDesk, "front-desk"], [Billing, "billing"], [Twice, "twice"], [Reception, "reception"]] as const) {
   const file = fileURLToPath(new URL(`./team/${name}.ts`, import.meta.url));
   describe_(ctor, readFileSync(file, "utf8"), file);
 }
@@ -144,5 +145,43 @@ describe("a call passed to a teammate", () => {
     }
     const refused = await called("transfer_to_front_desk", {}, "last");
     expect(JSON.stringify(refused)).toContain(`passed ${MOST_PASSES} times already`);
+  });
+});
+
+// 2026-11-25: two simulated calls whose model passed them to billing and back found, on their return, a
+// reception with none of the visits their caller was seeded with: the state was laid over the first instance alone.
+describe("a call that opened in a state, passed to a teammate and back", () => {
+  it("is served from that state by every agent that takes it, each in the fields that are its own", async () => {
+    const gateway = await FakeGateway.start({ apiKey: KEY });
+    const pc = new Pinecall({ url: gateway.url, apiKey: KEY });
+    pc.onErrors(() => {});
+    const team: Team = new Map<new () => Agent, string>([[Reception, "reception"], [Billing, "billing"]]);
+    mount(Reception, { pc, slug: "reception", team });
+    await pc.connect();
+    const settled = async (): Promise<void> => {
+      for (let turn = 0; turn < 30; turn++) await new Promise((resolve) => setTimeout(resolve, 1));
+    };
+    const state = (): Record<string, unknown> => gateway.commandsOf("state.set").at(-1)?.data["state"] as Record<string, unknown>;
+    const called = async (name: string, id: string): Promise<void> => {
+      gateway.emit("reception", CALL, "tool.call", { call_id: id, name, arguments: {} });
+      await settled();
+    };
+    await settled();
+    const openedIn = { patient: "Tom Baker", visits: ["v-207"], invoice: "inv_9" };
+    gateway.emit("reception", CALL, "call.started", { channel: "phone", direction: "inbound", from: "+34600000001", to: "+34910000000", caller: null, started_at: Date.now() / 1000, state: openedIn });
+    await settled();
+    expect(state()).toMatchObject({ patient: "Tom Baker", visits: ["v-207"] });
+
+    await called("transfer_to_billing", "t1");
+    expect(state()).toMatchObject({ invoice: "inv_9" });
+    expect(state()).not.toHaveProperty("visits");
+
+    await called("transfer_to_reception", "t2");
+    expect(state()).toMatchObject({ patient: "Tom Baker", visits: ["v-207"] });
+    await called("onTheBooks", "t3");
+    const answered = gateway.commandsOf("tool.result").map((command) => command.data).find((result) => result["callId"] === "t3" || result["call_id"] === "t3");
+    expect(answered).toMatchObject({ output: 1 });
+    pc.close();
+    await gateway.close();
   });
 });

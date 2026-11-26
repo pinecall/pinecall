@@ -11,6 +11,7 @@ from pinecall._handoff import Team
 from pinecall._screened import Screened
 from pinecall.agent import Agent, LastCall
 from pinecall.call import CallWorld
+from pinecall.wire._names import JsonObject
 from pinecall.wire.parts import ToolSpec
 
 Job = Callable[[], Awaitable[None]]
@@ -38,6 +39,9 @@ class Live:
     remembered: list[str] = field(default_factory=list[str])
     # A call handed over mid-conversation: the view's `resumed` is true for it from then on.
     resumed: bool = False
+    # The state the call opened in, when its opener asked for one (a golden, a persona, `?state=`):
+    # it is the call's, and every instance that takes the call starts from it.
+    opened_in: JsonObject | None = None
     stops: dict[str, Callable[[], None]] = field(default_factory=dict[str, Callable[[], None]])
     warned: set[str] = field(default_factory=set[str])
     # A tool's thread and the loop may both sync: what was sent is read and written under it.
