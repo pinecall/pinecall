@@ -5,7 +5,7 @@
 - **A model billed by the minute is priced.** A speech-to-speech model whose vendor bills the minute of its session
   (xAI's `grok-voice-3.0`, $0.08) reports no token and was listed unpriced on every call. A rate in `minutes` for a
   model now prices its usage row by the session's seconds, and the shipped price list carries
-  `xai,grok-voice,minutes,0.08`. A box set up before it takes the row with `pinecall-runtime providers prices`.
+  `xai,grok-voice-3,minutes,0.08`. A box set up before it takes the row with `pinecall-runtime providers prices`.
 - **A comparison in the console is its benchmark, with the numbers `pinecall benchmark` prints.** The board of a
   comparison holds each setup to two bars typed on the screen (90% of calls completed, a reply within 1.5 s) and
   says the verdict; a setup's card has the share completed with the range it plausibly sits in, the reply (middle,
