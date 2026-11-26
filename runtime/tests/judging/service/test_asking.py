@@ -212,6 +212,32 @@ async def test_a_judge_that_reads_nothing_more_is_shown_its_question_and_the_cal
         assert block not in prompt
 
 
+# Until 2026-11-26 a judge read the call alone: the agent that took up the offices it had sent in the
+# conversation before was judged to have made them up, and one that had said it was a virtual assistant
+# there was judged never to have said so.
+async def test_every_judge_reads_the_conversations_the_call_carried_on_before_the_call_and_apart_from_it() -> None:
+    model = a_judge(("held", "ok"))
+    earlier = "Agent: Hola, soy el asistente virtual. Te paso las oficinas.\nContact: Gracias"
+    await ask(SLOT, offered(), Context(earlier=earlier), model)
+    prompt = prompts_of(model)[0]
+    assert "Earlier conversations with this same contact" in prompt
+    assert earlier in prompt
+    assert prompt.index(earlier) < prompt.index("Conversation:\n"), "the call judged comes after what it carried on"
+    assert "#2 agent: El viernes a las diez." in prompt.split(earlier)[1]
+
+
+async def test_a_trigger_reads_the_conversations_the_call_carried_on_too() -> None:
+    asked_first = answering({"name": "submit_applies", "arguments": {"applies": False, "reason": "no refund asked"}})
+    await ask(REFUND, offered(), Context(earlier="Contact: quiero un reembolso"), asked_first)
+    assert "Contact: quiero un reembolso" in prompts_of(asked_first)[0]
+
+
+async def test_a_call_of_its_own_is_shown_no_earlier_conversations() -> None:
+    model = a_judge(("held", "ok"))
+    await ask(SLOT, offered(), Context(), model)
+    assert "Earlier conversations" not in prompts_of(model)[0]
+
+
 async def test_each_block_a_judge_reads_reaches_it() -> None:
     reading = JudgeSpec(
         name="reads-all",

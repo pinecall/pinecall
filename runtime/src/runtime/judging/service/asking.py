@@ -75,6 +75,9 @@ class Context:
     # The log position of what the platform said before the agent's own first words, shown to every
     # judge as the platform's line; None on a call that opened with the agent.
     platforms: int | None = None
+    # The conversations this call carried on, as the agent read them before it opened: what it said or
+    # learnt there stands here too. Shown to every judge, and judged by none. Empty for a call of its own.
+    earlier: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,7 +132,9 @@ async def _ask_whether_it_applies(
     spec: JudgeSpec, transcript: Transcript, context: Context, model: providers.Answerer
 ) -> tuple[bool, str, LLMModelUsage | None]:
     said = conversation_of(transcript, platforms=context.platforms)
-    question = f"Does this hold of the conversation below? {spec.trigger}\n\nConversation:\n{said}"
+    question = (
+        f"Does this hold of the conversation below? {spec.trigger}\n\n{_earlier_of(context)}Conversation:\n{said}"
+    )
     fields, usage = await force_tool(model, JUDGE, question, APPLIES)
     return fields.get("applies") is True, str(fields.get("reason", "")), usage
 
@@ -142,8 +147,24 @@ def _question_of(spec: JudgeSpec, transcript: Transcript, context: Context) -> s
         blocks.append(f"Evidence the call carried:\n{context.evidence or '(none)'}")
     if "facts" in spec.reads:
         blocks.append(f"Facts about this call:\n{context.facts or '(none)'}")
+    if context.earlier:
+        blocks.append(_earlier_of(context).rstrip())
     blocks.append(f"Conversation:\n{conversation_of(transcript, platforms=context.platforms)}")
     return "\n\n".join(blocks)
+
+
+# Until 2026-11-26 a judge read the call alone: an agent that took up what an earlier conversation said
+# ("the offices I sent you") was judged to have made it up, and one that said it was a virtual assistant
+# in the first conversation was judged never to have said so in the next (Bernardo, 2026-11-26).
+def _earlier_of(context: Context) -> str:
+    if not context.earlier:
+        return ""
+    return (
+        "Earlier conversations with this same contact, which the agent read before this one began "
+        "(not judged: what the agent said, showed or learnt there counts as said, shown or known in "
+        "this conversation; judge only the conversation after them):\n"
+        f"{context.earlier}\n\n"
+    )
 
 
 def _tool_of(spec: JudgeSpec) -> JsonObject:

@@ -1,6 +1,9 @@
 # Changelog
 
 ## Unreleased
+- **A judge reads the conversations a call carried on.** A call that continues earlier ones with the same contact is
+  judged with their turns before it (the last 6000 characters of up to ten calls), marked as not judged: until now an
+  agent that took up what it said there was judged to have made it up, or never to have said it was a virtual assistant.
 - **A template's words open the contact's conversation.** `text` on `POST /v1/agents/{slug}/template` (and on a flow's
   `template` step) is what the template says once filled: it is the first turn of an outbound WhatsApp call of the
   contact's, with `metadata` on its `call.started`, and the answer names the `call`. What the contact answers lands on

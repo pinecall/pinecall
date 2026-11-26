@@ -2,7 +2,7 @@
 
 import logging
 from collections.abc import Collection, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Protocol
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -11,6 +11,7 @@ from runtime.accounts import service as accounts
 from runtime.actor import Scope
 from runtime.agents import service as agents
 from runtime.agents.declaration import Declaration
+from runtime.calls import service as calls
 from runtime.compliance import service as compliance
 from runtime.enums import Direction, JudgeRunsWhen
 from runtime.exceptions import PinecallError
@@ -106,7 +107,7 @@ async def judge_call(
     """The panel over a finished call: the library's judges switched on, then the org's own; or one judge alone."""
     try:
         async with sessions.begin() as session:
-            panel = await _read_panel(session, prompts, entries, declaration, scope, only)
+            panel = await _read_panel(session, vault, prompts, entries, declaration, scope, only)
             try:
                 judge = await judge_model_of(session, vault, panel.catalog, scope, declaration)
             except Unjudged as none:
@@ -210,6 +211,26 @@ async def surroundings_of(session: AsyncSession, org: str, call: str, declaratio
     )
 
 
+# The turns the call opened on, as the agent read them: the calls its opening carries on, ten at most.
+# A judge reads the last of them, enough for what the agent took up, and none of a long history whole.
+EARLIER_AT_MOST = 6000
+
+
+async def earlier_of(session: AsyncSession, vault: Vault, call: str) -> str:
+    """The conversations a call carried on, a line a turn, oldest first; empty for a call of its own."""
+    opened = await calls.opening_of(session, call)
+    carried = None if opened is None else opened.context.continues
+    if carried is None:
+        return ""
+    lines: list[str] = []
+    for entry in await calls.list_carried(session, vault, carried):
+        text = entry.data.get("text")
+        if entry.type in ("turn.user", "turn.agent") and isinstance(text, str) and text.strip():
+            lines.append(f"{'Agent' if entry.type == 'turn.agent' else 'Contact'}: {text.strip()}")
+    said = "\n".join(lines)
+    return said if len(said) <= EARLIER_AT_MOST else "…\n" + said[-EARLIER_AT_MOST:]
+
+
 # Each block's last text, as the call's last turn was told it; a block the org never kept is
 # left out rather than guessed.
 async def prompt_of(session: AsyncSession, prompts: PromptTexts, org: str, entries: Sequence[Entry]) -> str:
@@ -236,6 +257,7 @@ def evidence_at(positions: Sequence[int], entries: Sequence[Entry]) -> JudgmentE
 
 async def _read_panel(
     session: AsyncSession,
+    vault: Vault,
     prompts: PromptTexts,
     entries: Sequence[Entry],
     declaration: Declaration | None,
@@ -250,6 +272,7 @@ async def _read_panel(
         roster = alone(only)
     around = await surroundings_of(session, scope.org, transcript.call, declaration)
     context = context_of(transcript, around, await prompt_of(session, prompts, scope.org, entries))
+    context = replace(context, earlier=await earlier_of(session, vault, transcript.call))
     return Panel(transcript, panel_of(roster, transcript), context, await providers.get_catalog(session))
 
 
