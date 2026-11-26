@@ -120,6 +120,17 @@ class Contact(WireModel):
     external_id: str | None = None
 
 
+# What the gateway saw of a web visitor's browser when their call opened: its address, how it named
+# itself, and the country that address is in (ISO 3166 alpha-2, from DB-IP's free table). The tenant's
+# to read; a public page reads none of it.
+class Visitor(WireModel):
+    """Where a web visitor's call came from: their address, their browser's own name, their country."""
+
+    ip: str | None = None
+    user_agent: str | None = None
+    country: str | None = None
+
+
 class Route(WireModel):
     """One way to an agent: a channel and, for phone and WhatsApp, the number that answers."""
 

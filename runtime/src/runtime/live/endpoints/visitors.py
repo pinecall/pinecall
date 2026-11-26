@@ -37,7 +37,9 @@ async def mint_room_token(
     session: Session,
 ) -> schemas.MintTokenResponse:
     """A room token for one of the key's agents: a new call, or one resumed."""
-    wanted = visitors.Mint(**body.model_dump())
+    asked = body.model_dump(exclude={"visitor_ip", "user_agent"})
+    seen = visitors.SeenBrowser(ip=body.visitor_ip, user_agent=body.user_agent)
+    wanted = visitors.Mint(**asked, seen=seen)
     return schemas.MintTokenResponse.of(await visitors.mint_room_token(session, live, signer, roster, actor, wanted))
 
 

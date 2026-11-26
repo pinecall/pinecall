@@ -60,6 +60,43 @@ async def test_a_page_is_seated_with_its_own_attributes_and_its_contact_and_read
     assert reading["sub"] == seat["sub"]
 
 
+def dispatch_of(room_token: str) -> Dispatch:
+    """The dispatch a room token carries to the worker that takes its call."""
+    config = claims_of(room_token)["roomConfig"]
+    return Dispatch.parse(config["agents"][0]["metadata"])
+
+
+# A visitor is the same visitor in every conversation their browser opens: the token their first one
+# answered names them, and is answered again. Their browser rides the dispatch, with its country.
+@needs_the_services
+async def test_a_visitor_token_is_the_same_visitor_in_a_new_conversation_and_the_browser_rides_the_dispatch(
+    gateway: Gateway, tenant: Tenant, agent: str
+) -> None:
+    """A second ticket asked with the first's visitor token seats the same visitor in a new call."""
+    browser = {"visitor_ip": "181.47.10.5", "user_agent": "Mozilla/5.0 (iPhone) Safari/605.1.15"}
+    async with holding(gateway, tenant, agent):
+        first = await gateway.http.post(
+            "/v1/tokens", json={"agent": agent, "scope": "chat", **browser}, headers=tenant.person
+        )
+        assert first.status_code == 201, first.text
+        kept = first.json()["visitor_token"]
+        again = await gateway.http.post(
+            "/v1/tokens", json={"agent": agent, "scope": "chat", "visitor_token": kept}, headers=tenant.person
+        )
+        assert again.status_code == 201, again.text
+        forged = await gateway.http.post(
+            "/v1/tokens", json={"agent": agent, "scope": "chat", "visitor_token": "web_someone"}, headers=tenant.person
+        )
+    one, two, other = (claims_of(answer.json()["participant_token"])["sub"] for answer in (first, again, forged))
+    assert one.startswith("web_") and one == two, "the visitor token names the same visitor"
+    assert first.json()["call"] != again.json()["call"], "in a conversation of its own"
+    assert other not in (one, two), "a token the gateway never signed names nobody"
+    carried = dispatch_of(first.json()["participant_token"])
+    assert carried.visitor is not None
+    assert (carried.visitor.ip, carried.visitor.user_agent) == ("181.47.10.5", "Mozilla/5.0 (iPhone) Safari/605.1.15")
+    assert dispatch_of(again.json()["participant_token"]).visitor is None, "a ticket that said no browser carries none"
+
+
 # A test room's own voice is asked for at the token and carried to the worker in its dispatch.
 @needs_the_services
 async def test_a_room_token_carries_the_values_in_its_dispatch_and_asks_for_nothing_it_may_not(

@@ -1,31 +1,27 @@
 /** The column of conversations: one thread per person under its day, the search and the filters over them, and j and k to move through them. */
 
-import { Fragment, useEffect, useRef, useState, type ReactNode, type Ref } from "react";
+import { Fragment, useEffect, useRef, type ReactNode, type Ref } from "react";
 import { Link, useNavigate } from "react-router";
 
 import { elapsed, isLive, wantsAPerson } from "@pinecall/core/calls";
 import { type SessionLine } from "@pinecall/core/wire/rest";
 import { useCallMenu } from "./call-menu";
+import { ReadsOn } from "./older";
+import { browserOf, countryName, flagOf } from "./visitor";
 import { useOrg } from "../lib/org";
 import { Face } from "./face";
 import { AgentPick, StatusChips, TypePick } from "./filters";
 import { lengthOf } from "../lib/format";
 import { copyOf, dayOf, hourOf } from "./format";
 import { useSubject } from "./subject";
-import { dayName, isOnTheLine, lastOf, lettersOf, threadDays, titleOf, type Thread, type ThreadDay } from "./threads";
+import { dayName, isOnTheLine, lastOf, lettersOf, threadDays, titleOf, type Thread } from "./threads";
 import { kindSaid, thingOf } from "./kind";
 import { CALLS, TYPES, type CallsUrl } from "./url";
 import { useNow } from "./use-now";
 
 // A busy day shows this many threads and a button for the next as many.
-const A_PAGE = 5;
 
 /** The threads a day shows: a page, or as many as "Show more" asked for; always down to the one open, and every one on the line. */
-function shownOf(day: ThreadDay, open: Thread | undefined, more: ReadonlyMap<string, number>): Thread[] {
-  if (day.name === "live") return day.lines;
-  const reaching = open === undefined ? 0 : day.lines.indexOf(open) + 1;
-  return day.lines.slice(0, Math.max(more.get(day.key) ?? A_PAGE, reaching));
-}
 
 // Typing is typing: only with the focus outside every field do the letters move the list.
 function inAField(target: EventTarget | null): boolean {
@@ -61,13 +57,21 @@ function ThreadRow({ thread, to, on, now, held, onErased }: { thread: Thread; to
   const name = titleOf(thread);
   // An email thread is listed by its subject, as a mailbox lists it; any other by how it went.
   const subject = useSubject(line.call, line.channel === "email");
-  const where = [line.agent, kindSaid(line), copyOf(line, whose?.subject ?? null)].filter((one) => one !== undefined && one !== null).join(" · ");
+  const where = [line.agent, kindSaid(line), browserOf(line.visitor?.user_agent), copyOf(line, whose?.subject ?? null)].filter((one) => one !== undefined && one !== null).join(" · ");
+  const flag = flagOf(line.visitor?.country);
   return (
     <Link ref={held} to={to} className={on ? "app-row app-row-on calls-row" : "app-row calls-row"} aria-current={on ? "true" : undefined} onContextMenu={(event) => menu(event, line, name)}>
       <Face name={name} letters={lettersOf(thread)} on={asking ? "asking" : live ? "live" : null} />
       <span className="calls-row-main">
         <span className="calls-row-top">
-          <span className="dash-clip">{name}</span>
+          <span className="dash-clip">
+            {flag !== null && (
+              <span className="calls-flag" title={countryName(line.visitor?.country) ?? undefined} aria-label={countryName(line.visitor?.country) ?? undefined}>
+                {flag}
+              </span>
+            )}
+            {name}
+          </span>
           {/* The day heads the group, so a row says its hour, or on the line how long it has been. */}
           <span className={asking ? "calls-row-time dash-mood-warn" : live ? "calls-row-time dash-mood-good" : "calls-row-time"}>{live ? elapsed(line.started_at, now) : line.started_at === null ? "" : hourOf(line.started_at)}</span>
         </span>
@@ -111,14 +115,13 @@ function nothingYet(url: CallsUrl): string {
   return `Nothing yet. The first call, chat, message or email shows up here the moment it starts.${hidden}`;
 }
 
-export function ThreadList({ threads, lines, open, shown: shownCall, url, grouped, onGroup, onErased, searched, onOlder }: { threads: readonly Thread[]; /** The calls in view, before the status: what the chips count. */ lines: readonly SessionLine[]; open: Thread | undefined; /** The call on screen, one of the open thread's. */ shown: string | undefined; /** One row per person, their calls under it; else one row per call. */ grouped: boolean; onGroup: () => void; /** A call erased from a row's menu: out of the list. */ onErased: (call: string) => void; url: CallsUrl; /** The gateway searched the words: the rows are its answer, and are not narrowed again here. */ searched: boolean; /** Asks the gateway for the page before these; none when these are all. */ onOlder: (() => void) | undefined }): ReactNode {
+export function ThreadList({ threads, lines, open, shown: shownCall, url, onErased, searched, onOlder }: { threads: readonly Thread[]; /** The calls in view, before the status: what the chips count. */ lines: readonly SessionLine[]; open: Thread | undefined; /** The call on screen, one of the open thread's. */ shown: string | undefined; /** A call erased from a row's menu: out of the list. */ onErased: (call: string) => void; url: CallsUrl; /** The gateway searched the words: the rows are its answer, and are not narrowed again here. */ searched: boolean; /** Asks the gateway for the page before these, as the end of the list comes into view; none when these are all. */ onOlder: (() => void) | undefined }): ReactNode {
   const navigate = useNavigate();
-  const [more, setMore] = useState<ReadonlyMap<string, number>>(new Map());
   const now = useNow(threads.some((thread) => isOnTheLine(thread.latest)));
   const openRow = useRef<HTMLAnchorElement>(null);
   const words = url.query.trim().toLowerCase();
   const shown = searched ? threads : threads.filter((thread) => words === "" || `${titleOf(thread)} ${thread.handle} ${lastOf(thread)}`.toLowerCase().includes(words));
-  const days = threadDays(shown).map((day) => ({ day, rows: shownOf(day, open, more) }));
+  const days = threadDays(shown).map((day) => ({ day, rows: day.lines }));
   const order = days.flatMap(({ rows }) => rows);
   const hrefOf = (thread: Thread): string => `${url.base}/${encodeURIComponent(thread.latest.call)}${url.search}`;
 
@@ -149,38 +152,22 @@ export function ThreadList({ threads, lines, open, shown: shownCall, url, groupe
       <TypePick url={url} />
       <div className="calls-filters">
         <StatusChips lines={lines} url={url} />
-        {/* One row per call, or one per person: theirs to choose, kept in this browser. */}
-        <button type="button" className={grouped ? "calls-chip calls-chip-on calls-group" : "calls-chip calls-group"} aria-pressed={grouped} title={grouped ? "One row per person, their calls under it. Click for one row per call" : "One row per call. Click to group the calls of the same caller"} onClick={onGroup}>
-          {grouped ? "Ungroup" : "Group"}
-        </button>
       </div>
       <div className="app-rows">
         {threads.length === 0 && <p className="dash-quiet app-none">{lines.length === 0 ? nothingYet(url) : "Nothing here right now."}</p>}
         {threads.length > 0 && shown.length === 0 && <p className="dash-quiet app-none">Nobody here matches “{url.query}”.</p>}
-        {days.map(({ day, rows }) => {
-          const left = day.lines.length - rows.length;
-          return (
-            <Fragment key={day.key}>
-              <div className="calls-day">{dayName(day)}</div>
-              {rows.map((thread) => (
-                <Fragment key={thread.key}>
-                  <ThreadRow thread={thread} to={hrefOf(thread)} on={thread === open} now={now} held={thread === open ? openRow : undefined} onErased={onErased} />
-                  {thread === open && <ThreadCalls thread={thread} shown={shownCall} search={url.search} now={now} onErased={onErased} />}
-                </Fragment>
-              ))}
-              {left > 0 && (
-                <button type="button" className="calls-more" onClick={() => setMore(new Map(more).set(day.key, rows.length + A_PAGE))}>
-                  Show {Math.min(A_PAGE, left)} more of {left}
-                </button>
-              )}
-            </Fragment>
-          );
-        })}
-        {onOlder !== undefined && (
-          <button type="button" className="calls-more" onClick={onOlder}>
-            Load older
-          </button>
-        )}
+        {days.map(({ day, rows }) => (
+          <Fragment key={day.key}>
+            <div className="calls-day">{dayName(day)}</div>
+            {rows.map((thread) => (
+              <Fragment key={thread.key}>
+                <ThreadRow thread={thread} to={hrefOf(thread)} on={thread === open} now={now} held={thread === open ? openRow : undefined} onErased={onErased} />
+                {thread === open && <ThreadCalls thread={thread} shown={shownCall} search={url.search} now={now} onErased={onErased} />}
+              </Fragment>
+            ))}
+          </Fragment>
+        ))}
+        <ReadsOn onOlder={onOlder} />
       </div>
     </aside>
   );

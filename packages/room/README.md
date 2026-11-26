@@ -114,7 +114,7 @@ reaches the page.
 
 | route | the page sends | your server does | it answers |
 |---|---|---|---|
-| `POST /api/token` | `{scope, resume?}`, `talk` or `chat` | `mint(key, {url, agent, scope, log, resume})` | the gateway's answer whole: `{server_url, participant_token, call, log_token, resume_token}` |
+| `POST /api/token` | `{scope, resume?}`, `talk` or `chat` | `mint(key, {url, agent, scope, log, resume, visitor, browser})` | the gateway's answer whole: `{server_url, participant_token, call, log_token, resume_token, visitor_token}` |
 | `POST /api/call-me` | `{to}`, a number in E.164 | `dial(key, {url, agent, to, log})` | `{call, log_token}` |
 
 The names of the routes are yours; the page only knows the functions you give `room()`. With
@@ -122,7 +122,8 @@ Hono:
 
 ```ts
 import { Hono } from "hono";
-import { dial, GatewayRefused, mint } from "@pinecall/room/server";
+import { getCookie, setCookie } from "hono/cookie";
+import { browserOf, dial, GatewayRefused, mint } from "@pinecall/room/server";
 
 const KEY = process.env.PINECALL_KEY!;
 const url = "https://cloud.pinecall.io";
@@ -137,7 +138,13 @@ const refused = (error: unknown) => {
 
 app.post("/api/token", async (c) => {
   const { scope, resume } = await c.req.json();
-  return mint(KEY, { url, agent, scope, log: "tenant", resume }).then((minted) => c.json(minted), refused);
+  // The same visitor in every conversation their browser opens, and where they were: a cookie of yours, and their request.
+  const visitor = getCookie(c, "pinecall_visitor");
+  const browser = browserOf(c.req.raw.headers);
+  return mint(KEY, { url, agent, scope, log: "tenant", resume, visitor, browser }).then((minted) => {
+    if (minted.visitor_token) setCookie(c, "pinecall_visitor", minted.visitor_token, { maxAge: 31_536_000, httpOnly: true, secure: true, sameSite: "Lax" });
+    return c.json(minted);
+  }, refused);
 });
 
 app.post("/api/call-me", async (c) => {
@@ -145,6 +152,15 @@ app.post("/api/call-me", async (c) => {
   return dial(KEY, { url, agent, to, log: "tenant" }).then(({ call, log_token }) => c.json({ call, log_token }), refused);
 });
 ```
+
+**One visitor, every conversation.** Each mint answers a `visitor_token` too: the visitor that
+browser is, for a year. Keep it in a cookie of your own and send it back as `visitor`, and every
+conversation the browser opens (a reload, a new chat, a call after a chat) is filed under one
+contact, which the console lists as one person. `browser` is what the console shows of where each
+visitor was: their address, their browser, and the country the gateway reads from the address.
+`browserOf(headers, socketAddress)` reads both off the request your server answers (the first
+`X-Forwarded-For` behind a proxy of yours). A page Pinecall hosts needs none of it: its door reads
+the browser's own request and keeps the visitor in a cookie of the page's name.
 
 **The log is read from the gateway, not relayed.** Beside the participant's token, the gateway mints a
 `log_token`: it reads that one call's log, its state and its recording, for four hours, before

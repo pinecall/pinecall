@@ -139,6 +139,7 @@ Media is up: the caller and the agent can hear each other, or the text session i
 | `state` | `object` | no | The state the call opens in, when whoever opened it asked for one: a golden, a persona, or `?state=` on the chat endpoint. The app applies it after its call hook and before the first render. Absent otherwise: the call opens in the class's own state. |
 | `today` | `string | null` | no | The day the call runs in, `YYYY-MM-DD`, when a golden pinned one (`today` in the golden): the model is told that day, and the app reads it here rather than off `started_at`. Absent on every other call, which runs on the day `started_at` falls on. |
 | `metadata` | `object` | no | What the call was opened with and sealed: the `metadata` of the token a page minted (`POST /v1/tokens`) or of the dial, as sent. The app reads it as `call.metadata`; the public projection drops it. Absent when the call was opened with none. |
+| `visitor` | `Visitor | null` | no | A web call's: what the gateway saw of the visitor's browser when it minted the room's token, its address, its `User-Agent` and the country the address is in. The public projection drops it. Absent on any other call. |
 
 ### `call.summary`
 

@@ -13,6 +13,28 @@ export interface Minted {
   log_token: string;
   /** What the page keeps to resume this conversation later, as `resume`. A gateway before 0.1.49 sends none. */
   resume_token?: string | undefined;
+  /** What the visitor's browser keeps a year, as `visitor`, to be the same visitor in its next
+   * conversation: every one filed under one contact. A gateway before 0.11.54 sends none. */
+  visitor_token?: string | undefined;
+}
+
+/** What the gateway is told of the visitor's browser, read off the request your server is answering:
+ * its address and its User-Agent. The gateway reads the country from the address. */
+export interface Browser {
+  ip?: string | undefined;
+  user_agent?: string | undefined;
+}
+
+/** The visitor's browser as a request to your server shows it: the address it came from (the first
+ * of `X-Forwarded-For` when a proxy you run sits in front, else the one you pass) and its User-Agent. */
+export function browserOf(headers: Headers | Record<string, string | string[] | undefined>, socketAddress?: string): Browser {
+  const read = (name: string): string | undefined => {
+    if (headers instanceof Headers) return headers.get(name) ?? undefined;
+    const said = headers[name] ?? headers[name.toLowerCase()];
+    return Array.isArray(said) ? said[0] : said;
+  };
+  const forwarded = read("x-forwarded-for")?.split(",")[0]?.trim();
+  return { ip: forwarded || socketAddress || undefined, user_agent: read("user-agent") };
 }
 
 /** What `POST /v1/codes` answers: the four digits a page shows beside the agent's number, when
@@ -53,6 +75,10 @@ export interface MintOptions {
   /** A `resume_token` the page kept: back into that call while it waits for the visitor, else a new
    * call that carries it on. `agent` may then be the call's own or left empty. */
   resume?: string | undefined;
+  /** A `visitor_token` the browser kept from an earlier ticket: the same visitor, in a new conversation. */
+  visitor?: string | undefined;
+  /** The visitor's browser, so the console shows where each visitor was: `browserOf(request.headers, …)`. */
+  browser?: Browser | undefined;
   fetch?: typeof fetch | undefined;
 }
 
@@ -102,8 +128,9 @@ const TIMEOUT_MS = 10_000;
 
 /** A ticket for one seat in one new call. The key needs the `talk` scope. */
 export async function mint(key: string, options: MintOptions): Promise<Minted> {
-  const { url, agent, scope, ttl_s, contact, metadata, log, resume } = options;
-  const said = { agent: agent || undefined, scope, ttl_s, contact, metadata, log, resume };
+  const { url, agent, scope, ttl_s, contact, metadata, log, resume, visitor, browser } = options;
+  const seen = { visitor_ip: browser?.ip, user_agent: browser?.user_agent };
+  const said = { agent: agent || undefined, scope, ttl_s, contact, metadata, log, resume, visitor_token: visitor, ...seen };
   const body = await post(key, `${bare(url)}/v1/tokens`, said, options.fetch);
   if (!isMinted(body)) throw new Error("the gateway answered /v1/tokens with a shape this package does not know");
   return body;

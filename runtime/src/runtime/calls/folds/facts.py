@@ -58,6 +58,7 @@ LINE_FIELDS = (
     "from",
     "to",
     "caller",
+    "visitor",
     "started_at",
     "ended_at",
     "end_reason",

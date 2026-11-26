@@ -188,6 +188,16 @@ Who is on the line, as far as the platform knows. Everything is optional: a web 
 | `email` | `string` | no | An e-mail address, when the web widget or the app supplied one. |
 | `external_id` | `string` | no | The id the tenant's own system uses for this person, when the app told the platform. |
 
+### `Visitor`
+
+What the gateway saw of a web visitor's browser when their call opened, at the door that minted its room's token: a page Pinecall serves reads the browser's own request; `POST /v1/tokens` takes what the tenant's server says of it (`visitor_ip`, `user_agent`). The tenant's to read: the public projection carries none of it.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `ip` | `string` | no | The address the visitor's browser asked from. |
+| `user_agent` | `string` | no | How the browser named itself (its `User-Agent`), 512 characters at most. |
+| `country` | `string` | no | The country that address is in, ISO 3166 alpha-2 (`AR`), from DB-IP's free table (db-ip.com, CC BY 4.0) the runtime's image carries. Absent for an address in none, or on a box with no table. |
+
 ### `Route`
 
 One endpoint to an agent: a channel and, for phone and WhatsApp, the number that answers. A number is a route, never an agent.

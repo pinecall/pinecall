@@ -21,6 +21,8 @@ import type { WatchedCall } from "./use-watched-call";
 import { isWritten } from "./threads";
 import { kindSaid } from "./kind";
 import { CALLS } from "./url";
+import type { Visitor } from "@pinecall/core/wire/defs";
+import { browserOf, countryName, flagOf } from "./visitor";
 
 function Tile({ label, value, sub }: { label: string; value: string; sub: string }): ReactNode {
   return (
@@ -122,6 +124,45 @@ function OtherCalls({ person, shown, search }: { person: Thread; shown: string; 
   );
 }
 
+// Where a web visitor's call came from, as the gateway saw it when it opened: what tells two visitors apart
+// after the call, and where each was. The country is DB-IP's reading of the address, which its licence asks to name.
+function VisitorPart({ visitor }: { visitor: Visitor }): ReactNode {
+  const flag = flagOf(visitor.country);
+  return (
+    <section className="calls-part" aria-label="The visitor">
+      <span className="dash-eyebrow">Visitor</span>
+      <dl className="calls-visitor">
+        {visitor.country != null && (
+          <>
+            <dt>Country</dt>
+            <dd>
+              {flag !== null && <span className="calls-flag">{flag}</span>}
+              {countryName(visitor.country)}{" "}
+              <a className="dash-quiet calls-visitor-credit" href="https://db-ip.com" target="_blank" rel="noreferrer">
+                IP geolocation by DB-IP
+              </a>
+            </dd>
+          </>
+        )}
+        {visitor.ip != null && (
+          <>
+            <dt>Address</dt>
+            <dd>
+              <code>{visitor.ip}</code>
+            </dd>
+          </>
+        )}
+        {visitor.user_agent != null && (
+          <>
+            <dt>Browser</dt>
+            <dd title={visitor.user_agent}>{browserOf(visitor.user_agent)}</dd>
+          </>
+        )}
+      </dl>
+    </section>
+  );
+}
+
 export function DetailsPanel({
   call,
   watched,
@@ -172,6 +213,7 @@ export function DetailsPanel({
       )}
       {over && <Judges score={score} onCite={onCite} />}
       <Tiles state={state} latencies={latencies} />
+      {state.visitor != null && <VisitorPart visitor={state.visitor} />}
       <Models call={call} state={state} entries={entries} />
       {person !== undefined && <OtherCalls person={person} shown={call} search={search} />}
       {over && <Proofs state={state} entries={entries} />}

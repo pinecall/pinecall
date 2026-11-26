@@ -39,6 +39,15 @@ def log_name(call: str | None, agent: str) -> str:
 
 
 @dataclass(frozen=True, slots=True)
+class Visitor:
+    """What the gateway saw of a web visitor's browser when their call opened: address, browser, country."""
+
+    ip: str | None = None
+    user_agent: str | None = None
+    country: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class Contact:
     """What is known about the caller; a web visitor may be anonymous."""
 
@@ -105,6 +114,8 @@ class CallContext:
     state: Mapping[str, Json] = field(default_factory=dict[str, Json])
     # The ended call this one carries on: the agent opens on its turns, and greets no one.
     continues: str | None = None
+    # A web call's: what the gateway saw of the visitor's browser when it opened.
+    visitor: Visitor | None = None
 
     def __post_init__(self) -> None:
         if not self.call:
@@ -159,6 +170,7 @@ def read_context(kept: Mapping[str, Any]) -> CallContext:
     """The context a kept opening says."""
     route: Mapping[str, Any] = kept["route"]
     contact: Mapping[str, Any] | None = kept.get("contact")
+    seen: Mapping[str, Any] | None = kept.get("visitor")
     pinned: str | None = kept.get("pinned_day")
     return CallContext(
         call=kept["call"],
@@ -186,4 +198,7 @@ def read_context(kept: Mapping[str, Any]) -> CallContext:
         holder=kept.get("holder"),
         state=dict(kept.get("state") or {}),
         continues=kept.get("continues"),
+        visitor=None
+        if seen is None
+        else Visitor(**{one.name: seen.get(one.name) for one in dataclasses.fields(Visitor)}),
     )

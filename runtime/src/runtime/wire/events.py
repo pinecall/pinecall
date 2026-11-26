@@ -49,6 +49,7 @@ from runtime.wire.parts import (
     ToolResult,
     TransferMode,
     UserState,
+    Visitor,
 )
 from runtime.wire.room import (
     ParticipantJoined,
@@ -197,6 +198,8 @@ class CallStarted(WireModel):
     state: dict[str, Any] | None = None
     today: str | None = None
     metadata: dict[str, Any] | None = None
+    # A web call's: what the gateway saw of the visitor's browser when it opened.
+    visitor: Visitor | None = None
 
 
 class CallAttached(WireModel):

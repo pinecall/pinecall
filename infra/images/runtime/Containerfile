@@ -73,6 +73,20 @@ digest = hashlib.sha256(open(path, 'rb').read()).hexdigest(); \
 sys.exit(f'{path}: sha256 {digest}, not {sys.argv[2]}') if digest != sys.argv[2] else print(path)" \
   "${FLOOR_REVISION}" "${FLOOR_SHA256}"
 ENV PINECALL_FLOOR_MODEL=/opt/models/hub/models--pipecat-ai--backchannel-detector/snapshots/${FLOOR_REVISION}/backchannel-fp32.onnx
+# The country a web visitor's address is in: DB-IP's "IP to Country Lite" (db-ip.com, CC BY 4.0, the
+# console names it where it shows a country), one month's table fetched and refused unless its hash
+# matches, packed into ranges the gateway halves. A new month is these two lines changed.
+ARG DBIP_MONTH=2026-11
+ARG DBIP_SHA256=e5c8459d638a272ece7f4d7cfa49dce18d91b4f403f6940ba9249bf0db3781fd
+RUN python -c "import hashlib, sys, urllib.request; \
+data = urllib.request.urlopen(f'https://download.db-ip.com/free/dbip-country-lite-{sys.argv[1]}.csv.gz', timeout=120).read(); \
+digest = hashlib.sha256(data).hexdigest(); \
+sys.exit(f'dbip {sys.argv[1]}: sha256 {digest}, not {sys.argv[2]}') if digest != sys.argv[2] else open('/tmp/dbip.csv.gz', 'wb').write(data)" \
+  "${DBIP_MONTH}" "${DBIP_SHA256}" \
+ && mkdir -p /opt/pinecall \
+ && python -c "from pathlib import Path; from runtime.kit.countries import pack; \
+print(pack(Path('/tmp/dbip.csv.gz'), Path('/opt/pinecall/countries.bin')), 'ranges')" \
+ && rm /tmp/dbip.csv.gz
 ENV HF_HUB_OFFLINE=1 PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 RUN useradd --uid 10001 --create-home --shell /usr/sbin/nologin pinecall
 USER 10001

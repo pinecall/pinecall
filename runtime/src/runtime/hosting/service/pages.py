@@ -16,6 +16,7 @@ from runtime.exceptions import NotFound, ValidationError
 from runtime.hosting.repository import HostedAppRepository, ReleaseRepository
 from runtime.hosting.service.apps import App
 from runtime.kit.text import parse_slug
+from runtime.live import service as live
 from runtime.platform import service as platform
 from runtime.scoping import scope_to
 
@@ -141,6 +142,37 @@ def visitor_of(paged: Paged) -> Actor:
     app = paged.app
     key_id = f"page:{app.org}:{app.env.value}:{app.name}"
     return Actor(key_id=key_id, org=app.org, env=app.env, scopes=frozenset({KeyScope.talk}), label="page")
+
+
+# The page's visitor is the same visitor in every conversation they open from this browser: their
+# token rides a cookie of the page's own name, which the browser sends with every ask and no script
+# reads. `Partitioned` keeps it a page's own when it is a frame of another site's (a widget): there it
+# is that site's visitor, as a browser that blocks third parties' cookies allows. Written by hand:
+# Python's cookies take `Partitioned` from 3.14.
+VISITOR_COOKIE = "pinecall_visitor"
+
+
+@dataclass(frozen=True, slots=True)
+class Browser:
+    """A page's visitor as their request showed them: the address, the User-Agent, the visitor token kept."""
+
+    ip: str
+    user_agent: str | None
+    kept: str | None
+
+
+def ticket_asked(paged: Paged, scope: str, resume: str | None, browser: Browser, kept: str | None) -> live.Mint:
+    """What a page's visitor's ticket is minted with: the page's agent, the visitor this browser was, what it is."""
+    seen = live.SeenBrowser(ip=browser.ip, user_agent=browser.user_agent)
+    return live.Mint(agent=paged.page.agent, scope=scope, resume=resume, visitor_token=browser.kept or kept, seen=seen)
+
+
+def visitor_cookie(token: str) -> str:
+    """The Set-Cookie header that keeps the visitor's token on the page's own name for as long as it lasts."""
+    return (
+        f"{VISITOR_COOKIE}={token}; Max-Age={live.A_VISITOR_LASTS_S}; Path=/pinecall; "
+        "Secure; HttpOnly; SameSite=None; Partitioned"
+    )
 
 
 async def admit_visitor(tickets: platform.AttemptThrottle, client: str) -> None:

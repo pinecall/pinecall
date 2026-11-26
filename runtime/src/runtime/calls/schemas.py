@@ -8,7 +8,7 @@ from runtime.enums import Channel, Direction, Env, Medium
 from runtime.kit.schemas import Epoch, Row, Schema
 from runtime.kit.text import JsonObject
 from runtime.wire.base import Entry, WireModel
-from runtime.wire.parts import CallStatus, Contact, Cost, EndReason, SessionFlag, ThreadKind
+from runtime.wire.parts import CallStatus, Contact, Cost, EndReason, SessionFlag, ThreadKind, Visitor
 from runtime.wire.state import AttentionState
 
 # A listing's page is never longer than this, whatever the reader asks.
@@ -115,6 +115,8 @@ class CallRow(Row):
     from_: str | None = Field(alias="from")
     to: str | None
     caller: Contact | None
+    # A web call's: the visitor's address, browser and country, as the gateway saw them when it opened.
+    visitor: Visitor | None = None
     started_at: float | None
     ended_at: float | None
     end_reason: EndReason | None

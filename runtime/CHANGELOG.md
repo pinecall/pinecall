@@ -7,6 +7,15 @@
   it with those words before it, the console's thread shows the message, and a conversation that went quiet is carried
   on as any is. Until now a template was said nowhere: a contact's "sí" opened a call that began on it. The turn is
   sent by nobody (the template carried it); a contact whose conversation is still open is written on it, with no template.
+- **A web visitor is the same visitor in every conversation their browser opens.** Every mint answers a
+  `visitor_token`, signed by the gateway for a year and bound to the org and env, and takes it back as `visitor_token`:
+  the new call's caller is the visitor it names. A page Pinecall hosts keeps it in a cookie of its own name
+  (`pinecall_visitor`, HttpOnly, Partitioned), so a reload, a new chat or a call after a chat is one contact.
+  Until now each new conversation was a new `web_…` visitor, and one person's visit was five or ten rows.
+- **Where a web visitor was.** A web call's `call.started` carries `visitor {ip, user_agent, country}`: a hosted page's
+  door reads the browser's own request, `POST /v1/tokens` takes `visitor_ip` and `user_agent` from the tenant's
+  server, and the country is read from the address with DB-IP's free table (CC BY 4.0), which the image carries
+  (`PINECALL_COUNTRIES_FILE`). The list's rows and the state carry it; the public projection does not.
 
 - **An agent sends a WhatsApp template through the gateway, and the sandbox answers it without sending.** `POST
   /v1/agents/{slug}/template {to, template, language, variables?, from?}`, on the `talk` scope, sends one template

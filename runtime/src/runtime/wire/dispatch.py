@@ -9,6 +9,7 @@ from pydantic import ValidationError as PydanticValidationError
 
 from runtime.actor import Scope
 from runtime.enums import Direction, Env
+from runtime.wire.parts import Visitor
 
 # Whose sandbox copy a handed-over ring is for rides the leg's INVITE, a header each.
 ORG_HEADER = "pinecall.org"
@@ -41,6 +42,8 @@ class Dispatch(BaseModel):
     direction: Direction = Direction.inbound
     caller: str | None = None
     contact: str | None = None
+    # A web visitor's browser, as the gateway saw it when it minted the room's token.
+    visitor: Visitor | None = None
     scope: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict[str, Any])
     dial: Dialling | None = None

@@ -14,6 +14,7 @@ import {
   MediumSchema,
   RouteSchema,
   TransferModeSchema,
+  VisitorSchema,
 } from "./defs.js";
 import { JudgmentSchema } from "./events.js";
 import { AgentTurnMetricsSchema, ModelUsageSchema } from "./metrics.js";
@@ -100,6 +101,8 @@ export const CallStartedSchema = z.strictObject({
   state: z.record(z.string(), z.unknown()).nullish(),
   /** What the call was opened with and sealed: the token's `metadata`, as sent; absent when none. */
   metadata: z.record(z.string(), z.unknown()).nullish(),
+  /** A web call's: what the gateway saw of the visitor's browser when it opened; absent on any other. */
+  visitor: VisitorSchema.nullish(),
 });
 
 /** A call changed hands without ending. */

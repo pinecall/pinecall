@@ -1,6 +1,6 @@
 /** Calls: every conversation of the org, as threads beside the one open or as one table; the address says which, through which status, and which call. */
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { Navigate, useNavigate, useParams } from "react-router";
 
 import { floorMoved, useServerSearch } from "@pinecall/core/calls-search";
@@ -9,7 +9,6 @@ import { Icon } from "../shell/icons";
 import { useOrg } from "../lib/org";
 import { usePhone } from "../lib/phone";
 import { PageHead } from "../shell/page-head";
-import { useGrouped } from "./grouped";
 import { ThreadList } from "./list";
 import { OpenCall } from "./open-call";
 import { keeps } from "./status";
@@ -37,7 +36,6 @@ export function CallsPage(): ReactNode {
   const url = useCallsUrl();
   const { lines: read } = useOrg();
   const navigate = useNavigate();
-  const [grouped, flipGrouped] = useGrouped();
   // The feed says nothing of an erasure, so the list would keep the call until its next read: taken out here.
   const [erased, setErased] = useState<ReadonlySet<string>>(new Set());
   const lines = useMemo(() => (erased.size === 0 ? read : read.filter((line) => !erased.has(line.call))), [read, erased]);
@@ -61,8 +59,12 @@ export function CallsPage(): ReactNode {
     const begun = url.query.trim() === "" ? followed.filter((line) => !known.has(line.call)) : [];
     return [...begun, ...found].sort((one, other) => (other.started_at ?? Infinity) - (one.started_at ?? Infinity));
   }, [lines, searched, erased, agent, type, tests, url.query]);
-  const older = searched !== null && searched.next !== null ? () => setPages((was) => was + 1) : undefined;
-  const threads = useMemo(() => threadsOf(mine.filter((line) => keeps(status, line)), grouped), [mine, status, grouped]);
+  // The same function while there is more, so the end of the list is watched once and asks once a page.
+  const more = searched !== null && searched.next !== null;
+  const readOn = useCallback(() => setPages((was) => was + 1), []);
+  const older = more ? readOn : undefined;
+  // One row a person, their calls under it: a visitor, a number, a WhatsApp contact (Bernardo, 2026-11-25).
+  const threads = useMemo(() => threadsOf(mine.filter((line) => keeps(status, line))), [mine, status]);
   // Who the person is does not depend on the status picked: their other conversations are all of them.
   const everyone = useMemo(() => threadsOf(lines), [lines]);
   const first = threads[0];
@@ -108,7 +110,7 @@ export function CallsPage(): ReactNode {
         )}
       </PageHead>
       <div className="app-layout calls-layout">
-        <ThreadList threads={threads} lines={mine} open={holding(threads, chosen)} shown={chosen} url={url} grouped={grouped} onGroup={flipGrouped} onErased={onErased} searched={searched !== null} onOlder={older} />
+        <ThreadList threads={threads} lines={mine} open={holding(threads, chosen)} shown={chosen} url={url} onErased={onErased} searched={searched !== null} onOlder={older} />
         <div className="app-open">
           {chosen === undefined ? (
             <p className="dash-quiet app-open-note">Pick a conversation to read it here.</p>

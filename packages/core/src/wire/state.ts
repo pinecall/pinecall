@@ -16,6 +16,7 @@ import {
   SupervisorSchema,
   TransferModeSchema,
   UserStateSchema,
+  VisitorSchema,
 } from "./defs.js";
 import {
   AgentTurnMetricsSchema,
@@ -36,7 +37,13 @@ import {
  * Where the call is in its life. idle before any call.* entry, which is what an agent's own log
  * looks like.
  */
-export const CallStatusSchema = z.enum(["idle", "ringing", "dialing", "active", "ended"]);
+export const CallStatusSchema = z.enum([
+  "idle",
+  "ringing",
+  "dialing",
+  "active",
+  "ended",
+]);
 
 /** One finished turn of the caller, with what the session measured about it. */
 export const UserTurnSchema = z.strictObject({
@@ -60,7 +67,10 @@ export const AgentTurnSchema = z.strictObject({
 });
 
 /** One turn of either side, told apart by role. */
-export const TurnSchema = z.discriminatedUnion("role", [UserTurnSchema, AgentTurnSchema]);
+export const TurnSchema = z.discriminatedUnion("role", [
+  UserTurnSchema,
+  AgentTurnSchema,
+]);
 
 export type Turn = z.infer<typeof TurnSchema>;
 
@@ -225,6 +235,8 @@ export const StateSchema = z.strictObject({
   from: z.string().nullable(),
   to: z.string().nullable(),
   caller: ContactSchema.nullable(),
+  /** A web call's: what the gateway saw of the visitor's browser when it opened. */
+  visitor: VisitorSchema.nullish(),
   room: RoomSchema.nullable(),
   started_at: z.number().nullable(),
   ended_at: z.number().nullable(),

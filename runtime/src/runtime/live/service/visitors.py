@@ -15,12 +15,14 @@ from runtime.calls.context import Contact, new_call_id
 from runtime.enums import Channel, KeyScope
 from runtime.exceptions import Conflict, Forbidden, NotFound, ServiceUnavailable, ValidationError
 from runtime.fleet import service as fleet
+from runtime.kit import countries
 from runtime.kit.text import Json
 from runtime.live.parts import LiveParts
 from runtime.live.service import openings, tokens
 from runtime.live.service.codes import Codes, NoSuchCode
 from runtime.livekit import rooms_with_an_agent
 from runtime.telephony import service as telephony
+from runtime.wire import parts
 from runtime.wire.dispatch import Dispatch
 from runtime.wire.events import FleetFull
 from runtime.wire.parts import Projection
@@ -51,6 +53,14 @@ class FleetIsFull(ServiceUnavailable):
 
 
 @dataclass(frozen=True, slots=True)
+class SeenBrowser:
+    """A visitor's browser as its request showed it: the address it asked from and how it named itself."""
+
+    ip: str | None = None
+    user_agent: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class Mint:
     """What a room token is asked for: livekit's own token request, and ours beside it."""
 
@@ -69,6 +79,10 @@ class Mint:
     room_config: Mapping[str, object] | None = None
     # An earlier answer's resume token: back into that call while it waits, else one carrying it on.
     resume: str | None = None
+    # An earlier answer's visitor token: a new conversation of the same visitor, filed under one contact.
+    visitor_token: str | None = None
+    # What the browser that asks is, as whoever asks says it (a page's door reads it off the request).
+    seen: SeenBrowser | None = None
     # Named so they are refused with the reason instead of as an unknown key.
     room_name: str | None = None
     participant_name: str | None = None
@@ -84,6 +98,8 @@ class Minted:
     call: str
     log_token: str
     resume_token: str
+    # What the browser keeps a year and hands back with its next ask: `visitor_token` in a mint.
+    visitor_token: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,6 +148,8 @@ async def mint_room_token(
         accounts.check_agent(actor, earlier.agent)
     if earlier is not None and earlier.waiting:
         return _seat_again(live, signer, org_scope, scope, wanted, earlier)
+    # The visitor the browser was before, when its token is this org's and env's; else a new one.
+    known = None if wanted.visitor_token is None else tokens.read_visitor_token(signer, wanted.visitor_token, org_scope)
     named = wanted.agent or (None if earlier is None else earlier.agent)
     agent = named or fleet.client_named_agent(wanted.room_config)
     if agent is None:
@@ -144,7 +162,7 @@ async def mint_room_token(
     await openings.admit(session, live, org_scope, agent)
     call = new_call_id()
     expires_at = time.time() + min(wanted.ttl_s or tokens.ONE_VISIT_TTL_S, LONGEST_VISIT_TTL_S)
-    visitor = wanted.participant_identity or _caller_of(earlier) or f"web_{new_call_id()[5:17]}"
+    visitor = wanted.participant_identity or _caller_of(earlier) or known or f"{tokens.A_VISITOR}{new_call_id()[5:17]}"
     carried = Dispatch(
         agent=agent,
         org=org_scope.org,
@@ -157,6 +175,7 @@ async def mint_room_token(
         continues=None if earlier is None else earlier.call,
         # The dispatch's test values, under the word the wire carries them by.
         tuning=_check_test_values(wanted, actor),
+        visitor=_visitor_of(live, wanted.seen),
     )
     seated = tokens.Visitor(
         expires_at=expires_at,
@@ -173,6 +192,7 @@ async def mint_room_token(
         call=call,
         log_token=tokens.sign_log_token(signer, call, wanted.log, viewer=visitor),
         resume_token=tokens.sign_resume_token(signer, call),
+        visitor_token=_visitor_token(signer, visitor, org_scope),
     )
 
 
@@ -292,7 +312,29 @@ def _seat_again(
         call=earlier.call,
         log_token=tokens.sign_log_token(signer, earlier.call, wanted.log, viewer=earlier.caller),
         resume_token=tokens.sign_resume_token(signer, earlier.call),
+        visitor_token=_visitor_token(signer, earlier.caller, org_scope),
     )
+
+
+# Only a web visitor's id is a visitor's: a caller the tenant named (`participant_identity`) is theirs to
+# keep, and is named again by them; the token then names nobody, and is handed back unread.
+def _visitor_token(signer: tokens.Signer, caller: str, scope: Scope) -> str:
+    named = caller if caller.startswith(tokens.A_VISITOR) else f"{tokens.A_VISITOR}{new_call_id()[5:17]}"
+    return tokens.sign_visitor_token(signer, named, scope)
+
+
+# The country is the gateway's own reading of the address (DB-IP's table); what the browser said of
+# itself is kept as it said it, a line at most.
+LONGEST_USER_AGENT = 512
+
+
+def _visitor_of(live: LiveParts, seen: SeenBrowser | None) -> parts.Visitor | None:
+    if seen is None or (seen.ip is None and seen.user_agent is None):
+        return None
+    table = countries.table_at(live.settings.countries_file)
+    country = None if table is None or seen.ip is None else table.country_of(seen.ip)
+    said = None if seen.user_agent is None else seen.user_agent.strip()[:LONGEST_USER_AGENT] or None
+    return parts.Visitor(ip=seen.ip, user_agent=said, country=country)
 
 
 def _caller_of(earlier: Earlier | None) -> str | None:

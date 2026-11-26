@@ -11,7 +11,7 @@ from livekit.agents.utils import aio
 
 from runtime.actor import Scope
 from runtime.agents.declaration import Declaration
-from runtime.calls.context import CallContext, Contact, Route, dump_context
+from runtime.calls.context import CallContext, Contact, Route, Visitor, dump_context
 from runtime.enums import Channel, Direction, Env
 from runtime.exceptions import NotFound, UpstreamError
 from runtime.jobs.service.client import GatewayClient, Stages
@@ -134,6 +134,7 @@ async def read_agent(
 
 def context_of(call: str, dispatch: Dispatch, arrival: telephony.Arrival, route: Route, zone: str) -> CallContext:
     """The call as the gateway opens it, from the job's dispatch, its arrival and its route."""
+    seen = dispatch.visitor
     return CallContext(
         call=call,
         channel=route.channel,
@@ -149,6 +150,7 @@ def context_of(call: str, dispatch: Dispatch, arrival: telephony.Arrival, route:
         holder=dispatch.holder,
         state=dispatch.state,
         continues=dispatch.continues,
+        visitor=None if seen is None else Visitor(ip=seen.ip, user_agent=seen.user_agent, country=seen.country),
     )
 
 

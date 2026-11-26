@@ -58,3 +58,12 @@ class ResumeClaims(_Read):
 
     exp: float
     resumes: str
+
+
+class VisitorClaims(_Read):
+    """The claims of a token that names one web visitor of an org's env, across their conversations."""
+
+    exp: float
+    visits: str
+    org: str
+    env: str

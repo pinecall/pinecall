@@ -16,6 +16,12 @@ and the code a visitor keys from a phone of `POST /pinecall/code`, at the page's
 doors ask no captcha: what stands at them is how many asks one address makes a minute. A refusal
 is thrown with the server's own sentence, so `state.error` reads it.
 
+A visitor is the same visitor in every conversation their browser opens: the ticket's answer sets
+a cookie of the page's own name (`pinecall_visitor`, which no script reads), and the next ticket
+sends it back, so a reload, a new chat or a call after a chat are one contact in the console. The
+door reads the browser's own request too, and the console shows each visitor's country and
+browser. Nothing of the page's code does either.
+
 While you write the page, `pinecall start` answers the same routes on `http://localhost:4747` with
 your own key. A dev server passes them on (`proxy: { "/pinecall": "http://localhost:4747" }`
 in Vite), or the page names the address: `hosted({ at: "http://localhost:4747" })`.

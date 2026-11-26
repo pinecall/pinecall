@@ -63,6 +63,9 @@ class Settings(BaseSettings):
     gateway_url: str = Field("http://127.0.0.1:8080", alias="PINECALL_GATEWAY_URL")
     gateway_listen: str | None = Field(None, alias="PINECALL_GATEWAY_LISTEN")
     trusted_proxies: str = Field("127.0.0.1", alias="PINECALL_TRUSTED_PROXIES")
+    # The country a web visitor's address is in: DB-IP's free table, packed by `runtime.kit.countries`.
+    # The image carries it; a box with no such file says no country.
+    countries_file: str = Field("/opt/pinecall/countries.bin", alias="PINECALL_COUNTRIES_FILE")
     metrics_from: str = Field("127.0.0.1,::1", alias="PINECALL_METRICS_FROM")
     app_origins: str = Field("", alias="PINECALL_APP_ORIGINS")
     ops_key: SecretStr | None = Field(None, alias="PINECALL_OPS_KEY")

@@ -35,6 +35,12 @@ class MintTokenRequest(Schema):
     room_config: JsonObject | None = None
     # An earlier answer's resume_token: back into that call while it waits, else one carrying it on.
     resume: str | None = None
+    # An earlier answer's visitor_token: a new conversation of the same visitor, filed under one contact.
+    visitor_token: str | None = None
+    # The visitor's browser, as the server that asks for its ticket saw it: the address it asked from
+    # and its User-Agent. A page served by Pinecall needs neither: its door reads the browser's own request.
+    visitor_ip: str | None = Field(default=None, max_length=64)
+    user_agent: str | None = Field(default=None, max_length=1024)
     # Declared so they are refused with the reason instead of an unknown key.
     room_name: str | None = None
     participant_name: str | None = None
@@ -50,6 +56,8 @@ class MintTokenResponse(Row):
     log_token: str
     # What the browser keeps to carry this conversation on later: `resume` in a mint.
     resume_token: str
+    # What the browser keeps a year to be the same visitor in its next conversation: `visitor_token` in a mint.
+    visitor_token: str
 
 
 # ── codes ──

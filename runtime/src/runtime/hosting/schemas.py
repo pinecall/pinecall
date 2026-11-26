@@ -158,6 +158,8 @@ class PageTicketRequest(Schema):
     scope: Literal["talk", "chat"] = "talk"
     # A `resume_token` the page kept: back into that conversation.
     resume: str | None = Field(None, max_length=4096)
+    # A `visitor_token` the page kept, for a browser that sends no cookie: the same visitor as before.
+    visitor_token: str | None = Field(None, max_length=4096)
     # Taken and not read, here and on the page's other doors: a page open since before the doors stopped
     # asking a captcha still sends the token it solved.
     turnstile: str | None = None

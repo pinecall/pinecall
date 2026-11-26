@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 
 // `expect` is vitest's here: the server's is named for what it asks.
-import { dial, expect as askForACode, GatewayRefused, mint } from "../src/server/index.js";
+import { browserOf, dial, expect as askForACode, GatewayRefused, mint } from "../src/server/index.js";
 
 const KEY = "pk_test_not_a_real_key";
 
@@ -127,5 +127,16 @@ describe("the server", () => {
     const refused = mint(KEY, { url: "https://gw.example", agent: "clinica", scope: "chat", fetch });
 
     await expect(refused).rejects.toMatchObject({ status: 502, detail: null, message: "the gateway answered 502" });
+  });
+});
+
+describe("the visitor's browser", () => {
+  it("rides the mint with the visitor the browser kept, and is read off the request the server answers", async () => {
+    const gate = gateway(201, JSON.stringify({ ...MINTED, visitor_token: "visitor_1" }));
+    const browser = browserOf(new Headers({ "x-forwarded-for": "181.47.10.5, 10.0.0.1", "user-agent": "Mozilla/5.0 Firefox/140.0" }), "10.0.0.1");
+    const minted = await mint(KEY, { url: "https://gw.example", agent: "clinica", scope: "chat", visitor: "visitor_0", browser, fetch: gate.fetch });
+    expect(minted.visitor_token).toBe("visitor_1");
+    expect(gate.posted[0]?.body).toMatchObject({ visitor_token: "visitor_0", visitor_ip: "181.47.10.5", user_agent: "Mozilla/5.0 Firefox/140.0" });
+    expect(browserOf({ "user-agent": "curl/8" }, "203.0.113.9")).toEqual({ ip: "203.0.113.9", user_agent: "curl/8" });
   });
 });

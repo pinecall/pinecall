@@ -8,6 +8,7 @@ import {
   DirectionSchema,
   EndReasonSchema,
   EnvSchema,
+  VisitorSchema,
 } from "./defs.js";
 import { EntrySchema } from "./envelope.js";
 import { AttentionStateSchema, CallStatusSchema } from "./state.js";
@@ -51,6 +52,8 @@ export const SessionLineSchema = z.strictObject({
   from: z.string().nullable(),
   to: z.string().nullable(),
   caller: ContactSchema.nullable(),
+  /** A web call's: the visitor's address, browser and country, as the gateway saw them when it opened. */
+  visitor: VisitorSchema.nullish(),
   started_at: z.number().nullable(),
   ended_at: z.number().nullable(),
   end_reason: EndReasonSchema.nullable(),
@@ -92,4 +95,3 @@ export const SessionListSchema = z.strictObject({
   total: z.int().nullable().nullish(),
   next: z.string().nullable().nullish(),
 });
-

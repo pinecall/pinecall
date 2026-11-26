@@ -1,6 +1,6 @@
 /** Every call in one table: searched by the gateway, grouped by day, a whole id pasted and Enter opens it. */
 
-import { Fragment, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Fragment, useCallback, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
 
 import { byDay, elapsed, isARun, isLive, isSimulated, whoOn } from "@pinecall/core/calls";
@@ -10,6 +10,7 @@ import { AvatarOf } from "../apps/avatar";
 import { lengthOf, utcDay } from "../lib/format";
 import { useOrg } from "../lib/org";
 import { useCallMenu } from "./call-menu";
+import { ReadsOn } from "./older";
 import { Face } from "./face";
 import { AgentPick, StatusChips, TypePick } from "./filters";
 import { copyOf, goldenOf, hourOf, lettersFor, liveFirst, simulationOf, standingOf, webVisitor } from "./format";
@@ -76,6 +77,8 @@ export function CallsTable({ lines, url, onErased }: { /** What the page follows
   const wanted = (line: SessionLine): boolean => (url.type === "" || typeOf(line) === url.type) && (url.tests || !isATest(line));
   // Asked again whenever the followed list moves: a call that rang shows up in the searched page too.
   const searched = useServerSearch("", filter, pages, floorMoved(lines)).found;
+  // One page more as the end of the table comes into view: the same function while the page holds, so it is watched once.
+  const readOn = useCallback(() => setPages((was) => was + 1), []);
   const found = searched !== null ? searched.rows.filter(wanted) : lines.filter((line) => matches(line, filter.query));
   const ordered = liveFirst(found.filter((line) => keeps(url.status, line)));
   const now = useNow(ordered.some(isLive));
@@ -130,9 +133,7 @@ export function CallsTable({ lines, url, onErased }: { /** What the page follows
             <span className="dash-quiet">
               {searched.rows.length} of {searched.total}
             </span>
-            <button type="button" className="app-button" onClick={() => setPages(pages + 1)}>
-              Load more
-            </button>
+            <ReadsOn onOlder={readOn} />
           </div>
         )}
       </section>

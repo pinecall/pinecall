@@ -224,6 +224,7 @@ The whole of what a log says, at the seq it was read to.
 | `from` | `string | null` | yes | The calling number or identity, once known. |
 | `to` | `string | null` | yes | The called number or identity, once known. |
 | `caller` | `Contact | null` | yes | Who is on the line, once known. |
+| `visitor` | `Visitor | null` | no | A web call's: what the gateway saw of the visitor's browser when it opened, from its `call.started`. |
 | `room` | `Room | null` | yes | The room the call lives in and who is in it, once room.opened. Null for a text session. |
 | `started_at` | `number | null` | yes | When media came up, unix seconds. |
 | `ended_at` | `number | null` | yes | When the call ended, unix seconds. |

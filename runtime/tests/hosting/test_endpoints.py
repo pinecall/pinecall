@@ -12,7 +12,9 @@ from runtime.calls.log.feeds import Feeds
 from runtime.enums import Env
 from runtime.hosting.endpoints import pages as page_doors
 from runtime.hosting.models import HostedApp, HostedRelease
-from tests.conftest import Gateway, Tenant, needs_the_services
+from runtime.hosting.service import pages
+from tests.conftest import Gateway, Tenant, holding, needs_the_services
+from tests.live.endpoints.test_visitors import claims_of, dispatch_of
 
 
 def a_project() -> bytes:
@@ -145,3 +147,41 @@ async def test_an_apps_page_is_served_at_the_apps_own_name_and_never_at_the_gate
     # The same routes asked at the gateway's own name answer nothing: a page is never the console's document.
     assert (await gateway.http.get(f"/v1/pages/{name}/files/")).status_code == 404
     assert (await gateway.http.get("/", headers={"host": "nobody--here.pages.test"})).status_code == 404
+
+
+# A page's visitor is the same visitor in every conversation their browser opens: the cookie the first
+# ticket set names them, and is set again. The page's own request is the browser's: its address and
+# User-Agent ride the call's dispatch.
+@needs_the_services
+async def test_a_pages_visitor_is_the_same_visitor_in_a_new_conversation_by_a_cookie_of_the_pages_own_name(
+    gateway: Gateway, tenant: Tenant
+) -> None:
+    headers = {**tenant.server, "content-type": "application/gzip"}
+    sent = await gateway.http.post(
+        "/v1/hosted/support/releases",
+        params={"page_dir": "ui/dist", "page_agent": "support"},
+        content=a_project_with_a_page(),
+        headers=headers,
+    )
+    assert sent.status_code == 200, sent.text
+    at_its_name = {"host": f"support--{tenant.slug}--sandbox.pages.test", "user-agent": "Mozilla/5.0 Firefox/140.0"}
+    async with holding(gateway, tenant, "support"):
+        first = await gateway.http.post("/pinecall/token", json={"scope": "chat"}, headers=at_its_name)
+        assert first.status_code == 201, first.text
+        cookie = first.headers["set-cookie"]
+        assert cookie.startswith(f"{pages.VISITOR_COOKIE}=")
+        for said in ("HttpOnly", "Secure", "SameSite=none", "Partitioned", "Path=/pinecall"):
+            assert said.lower() in cookie.lower(), cookie
+        kept = first.cookies[pages.VISITOR_COOKIE]
+        again = await gateway.http.post(
+            "/pinecall/token",
+            json={"scope": "chat"},
+            headers={**at_its_name, "cookie": f"{pages.VISITOR_COOKIE}={kept}"},
+        )
+        assert again.status_code == 201, again.text
+    one, two = (claims_of(answer.json()["participant_token"])["sub"] for answer in (first, again))
+    assert one.startswith("web_") and one == two
+    assert first.json()["call"] != again.json()["call"]
+    carried = dispatch_of(first.json()["participant_token"])
+    assert carried.visitor is not None and carried.visitor.user_agent == "Mozilla/5.0 Firefox/140.0"
+    assert carried.visitor.ip, "the address the page's own request came from"

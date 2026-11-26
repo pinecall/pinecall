@@ -1,6 +1,6 @@
 """An app's page, served at the app's own name: what it needs, a visitor's ticket, code and dictation, and its files."""
 
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Request, Response
 
 from runtime.fleet.auth import TheRoster
 from runtime.handles import TheSettings, TheVault
@@ -44,11 +44,15 @@ async def page_ticket(
     signer: TheSigner,
     roster: TheRoster,
     session: Session,
+    request: Request,
+    response: Response,
 ) -> live_schemas.MintTokenResponse:
-    """A seat in a new call with the page's agent, for a visitor of the page."""
+    """A seat in a new call with the page's agent, for a visitor of the page: the same visitor as before."""
     await pages.admit_visitor(tickets, client)
-    wanted = live.Mint(agent=paged.page.agent, scope=body.scope, resume=body.resume)
+    browser = pages.Browser(client, request.headers.get("user-agent"), request.cookies.get(pages.VISITOR_COOKIE))
+    wanted = pages.ticket_asked(paged, body.scope, body.resume, browser, body.visitor_token)
     minted = await live.mint_room_token(session, parts, signer, roster, pages.visitor_of(paged), wanted)
+    response.headers.append("set-cookie", pages.visitor_cookie(minted.visitor_token))
     return live_schemas.MintTokenResponse.of(minted)
 
 

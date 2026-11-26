@@ -38,6 +38,9 @@ def start_of(
         started["today"] = day.isoformat()
     if context.metadata:
         started["metadata"] = dict(context.metadata)
+    seen = context.visitor
+    if seen is not None:
+        started["visitor"] = {"ip": seen.ip, "user_agent": seen.user_agent, "country": seen.country}
     return wire.CallStarted.parse(started, "call.started")
 
 

@@ -45,12 +45,14 @@ a client may not set.
 | `participant_identity` | LiveKit's | who the browser joins as; `web_<12 hex>` when absent, and the call's `from` |
 | `participant_attributes` | LiveKit's | published verbatim; the `pinecall.` prefix is ours and refused |
 | `resume` | ours | an earlier answer's `resume_token`: back into that call while it waits, else a new call that carries it on ([below](#resuming-a-conversation)); `agent` may then be left out |
+| `visitor_token` | ours | an earlier answer's `visitor_token`: the new call's caller is the visitor it names, so every conversation one browser opens is one contact ([below](#one-visitor-every-conversation)) |
+| `visitor_ip` · `user_agent` | ours | the visitor's browser as the server that asks saw it: the address it came from and its `User-Agent`. They ride the dispatch to the call's `call.started` as `visitor`, with the country the gateway reads from the address |
 | `room_name` · `participant_name` · `participant_metadata` | LiveKit's | refused, `400`, each with its reason |
 
 The answer is `201` with LiveKit's two fields and three more every SDK ignores:
 
 ```json
-{ "server_url": "wss://cloud.pinecall.io", "participant_token": "eyJ…", "call": "call_5f1c…", "log_token": "eyJ…", "resume_token": "eyJ…" }
+{ "server_url": "wss://cloud.pinecall.io", "participant_token": "eyJ…", "call": "call_5f1c…", "log_token": "eyJ…", "resume_token": "eyJ…", "visitor_token": "eyJ…" }
 ```
 
 `server_url` is the LiveKit of the token's environment: the platform's name (`PINECALL_DOMAIN`) over `wss`,
@@ -107,6 +109,33 @@ gets a new session that opens on the old one's history
 
 A resume token of another org or world reads as a call nobody opened (`404`), one for another agent
 than `agent` is `400`, and anything that is not a live resume token of this gateway's is `403`.
+
+## One visitor, every conversation
+
+Every answer carries `visitor_token` too: signed with the gateway's own key, naming one web
+visitor (`web_<12 hex>`), the org and the environment it was minted in, for a year. It joins no
+room, reads no log and resumes no call. The browser keeps it and its next mint sends it back as
+`visitor_token`: the new call's caller is that visitor, whatever conversation it is, so the
+console's list holds one row for the person and their calls under it, and an agent that remembers
+by contact remembers them. A token of another org or environment, an expired one or one that is
+not the gateway's names nobody, and the mint opens a new visitor; it is never refused. Who the call
+is with is, in this order: `participant_identity`, the call a `resume` carries on, the visitor
+token, a new visitor. A caller the tenant named is theirs to name again: the answer's token then
+names a new visitor, which nothing reads unless it is sent.
+
+A page Pinecall hosts keeps the token in a cookie of the page's own name, `pinecall_visitor`
+(`HttpOnly`, `Secure`, `SameSite=None`, `Partitioned`, `Path=/pinecall`), set on every ticket's
+answer: the page's script never reads it, and in a frame of another site (a widget) it is that
+site's visitor, as a browser that refuses third parties' cookies allows.
+
+**Where the visitor was.** The page's door reads the browser's own request: the address it came
+from, through the proxies the box trusts (`PINECALL_TRUSTED_PROXIES`), and its `User-Agent`. At
+`POST /v1/tokens` the tenant's server says them (`visitor_ip`, `user_agent`), as `@pinecall/room/server`'s
+`browserOf` reads them off its own request. The gateway adds the country the address is in, from
+DB-IP's "IP to Country Lite" table (db-ip.com, CC BY 4.0), which the runtime's image carries
+packed (`PINECALL_COUNTRIES_FILE`); a box without it says no country. The three ride the signed
+dispatch to the call's `call.started` as `visitor` ([events-call.md](../../wire/events-call.md)),
+reach the call's state and its row in `GET /v1/sessions`, and the public projection drops them.
 
 ## Refusals
 

@@ -3,7 +3,7 @@
 from dataclasses import replace
 from datetime import date
 
-from runtime.calls.context import Contact
+from runtime.calls.context import Contact, Visitor
 from runtime.enums import Channel, Medium
 from runtime.kit.time import today_in
 from runtime.session.started import start_of
@@ -53,3 +53,12 @@ def test_what_a_call_was_opened_with_is_on_the_entry_for_the_app_to_read() -> No
 def test_a_call_opened_with_no_metadata_says_none() -> None:
     """Nothing sealed into the call: the entry has no `metadata` key at all."""
     assert "metadata" not in start_of(context_of("call_1", Channel.web), AT, None, medium=Medium.text).dump()
+
+
+def test_a_web_call_says_the_visitors_browser_and_country_and_any_other_says_none() -> None:
+    """What the gateway saw when it minted the room's token is on the entry, for the console's list and the app."""
+    seen = Visitor(ip="181.47.10.5", user_agent="Mozilla/5.0 Firefox/140.0", country="AR")
+    context = replace(context_of("call_1", Channel.web), visitor=seen)
+    said = start_of(context, AT, None, medium=Medium.text).dump()["visitor"]
+    assert said == {"ip": "181.47.10.5", "user_agent": "Mozilla/5.0 Firefox/140.0", "country": "AR"}
+    assert "visitor" not in start_of(context_of("call_1", Channel.web), AT, None, medium=Medium.text).dump()

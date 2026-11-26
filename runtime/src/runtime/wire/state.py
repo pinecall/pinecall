@@ -35,6 +35,7 @@ from runtime.wire.parts import (
     Supervisor,
     TransferMode,
     UserState,
+    Visitor,
 )
 
 
@@ -213,6 +214,8 @@ class State(WireModel):
     from_: str | None = Field(alias="from")
     to: str | None
     caller: Contact | None
+    # A web call's: what the gateway saw of the visitor's browser when it opened.
+    visitor: Visitor | None = None
     room: Room | None
     started_at: float | None
     ended_at: float | None

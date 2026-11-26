@@ -28,6 +28,7 @@ from runtime.wire.tokens import (
     SUBJECT_ATTRIBUTE,
     ResumeClaims,
     TokenClaims,
+    VisitorClaims,
 )
 
 A_VISITOR = "web_"
@@ -39,6 +40,8 @@ ONE_VISIT_TTL_S = 60
 A_SEAT_LASTS_S = 15 * 60
 READ_TTL_S = 4 * 60 * 60
 RESUMES_FOR_S = 30 * 24 * 60 * 60
+# A browser is the same visitor for a year: every conversation it opens is filed under one contact.
+A_VISITOR_LASTS_S = 365 * 24 * 60 * 60
 
 
 @dataclass(frozen=True, kw_only=True, slots=True)
@@ -227,6 +230,34 @@ def read_resume_token(signer: Signer, token: str) -> str | None:
         return ResumeClaims.parse(decoded, "a resume token").resumes
     except (jwt.PyJWTError, ValidationError):
         return None
+
+
+# A visitor's browser keeps this and hands it back with its next ask, so a new conversation is the
+# same visitor's: a page reloaded, a new chat, a call after a chat. Signed with the gateway's own key
+# and naming the org and env it was minted in, so it names nobody in another org.
+def sign_visitor_token(signer: Signer, visitor: str, scope: Scope) -> str:
+    """A token that names one web visitor of the scope's org and env for a year; signed with the gateway's own key."""
+    moment = int(time.time())
+    claims = {
+        "iat": moment,
+        "exp": moment + A_VISITOR_LASTS_S,
+        "visits": visitor,
+        "org": scope.org,
+        "env": scope.env.value,
+    }
+    return jwt.encode(claims, signer.own, algorithm=SIGNED_WITH, headers={"kid": OUR_KEY_ID})
+
+
+def read_visitor_token(signer: Signer, token: str, scope: Scope) -> str | None:
+    """The visitor a token names in the scope's org and env; None for any other token, one expired or another org's."""
+    try:
+        decoded = jwt.decode(token, signer.own, algorithms=[SIGNED_WITH], options={"require": ["exp"]}, leeway=0)
+        claims = VisitorClaims.parse(decoded, "a visitor token")
+    except (jwt.PyJWTError, ValidationError):
+        return None
+    if claims.org != scope.org or claims.env != scope.env.value or not claims.visits.startswith(A_VISITOR):
+        return None
+    return claims.visits
 
 
 # The ledger row is written before the token leaves, so the dispatch spends it once (`openings.spend_token`).

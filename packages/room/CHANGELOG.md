@@ -4,6 +4,13 @@ All notable changes to `@pinecall/room`. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## Unreleased
+
+- **One visitor, every conversation.** `mint` answers `visitor_token`, the visitor a browser is for a year, and takes it
+  back as `visitor`: every conversation that browser opens is filed under one contact. `browser` (read with the new
+  `browserOf(headers, socketAddress)`) tells the gateway the visitor's address and User-Agent, and the console shows
+  their country and browser. A page Pinecall hosts gets both by itself, from a cookie of its own name.
+
 ## 0.11.53 — a benchmark of your agent from one command: spoken calls placed by a callers service, a report that plays every call, and a gate for CI (2026-11-26)
 
 - Released with the runtime: nothing of this package changed.
