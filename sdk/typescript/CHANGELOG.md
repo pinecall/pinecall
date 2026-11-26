@@ -5,7 +5,7 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call, so everything sits under Unreleased until one is cut.
 
-## Unreleased
+## 0.11.53 — a benchmark of your agent from one command: spoken calls placed by a callers service, a report that plays every call, and a gate for CI (2026-11-26)
 
 - **`@pinecall/agents/evals`: what a table of simulated calls comes to.** A new entry point, pure and importing
   nothing: a comparison's rows as a benchmark's calls (`callOf`, `numberRounds`), each setup's numbers

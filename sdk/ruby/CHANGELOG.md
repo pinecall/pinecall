@@ -4,7 +4,7 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
-## [Unreleased]
+## [0.11.53] — a benchmark of your agent from one command: spoken calls placed by a callers service, a report that plays every call, and a gate for CI (2026-11-26)
 
 - **The state a call opens in is the call's: every agent that takes it starts from it.** A golden's, a persona's or `?state=`'s state was set on the instance that answered and no other. A call passed to a teammate now sets it on the instance that takes it too, after its `on_call`, in the fields that class declares; so does a call that comes back to the agent that answered it, which found a new instance with none of it. What an instance changed before it passed the call on is still gone with it: `call.shared` is what outlives a pass.
 - **`step.text` writes the first email of a thread** to an address: `step.text("ana@example.org", Reminder, subject: "Your visit", instruction: "Remind Ana of her cleaning.")`, its words given or left to the agent; `metadata:` and `instruction:` are `step.call`'s, for an SMS too. Its signature is in `sig/pinecall.rbs`.

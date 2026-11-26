@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.53 — a benchmark of your agent from one command: spoken calls placed by a callers service, a report that plays every call, and a gate for CI (2026-11-26)
 
 - **A model billed by the minute is priced.** A speech-to-speech model whose vendor bills the minute of its session
   (xAI's `grok-voice-3.0`, $0.08) reports no token and was listed unpriced on every call. A rate in `minutes` for a
