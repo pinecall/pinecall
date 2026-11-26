@@ -96,7 +96,7 @@ export async function simulateAgainst(ctx: Context, agent: string, written: Pers
  * The persona, and every other caller named, against the agent under each of the values, placed together; every call followed to its
  * end, then the table read until every call is judged or the judges' time is up.
  */
-export async function compare(ctx: Context, agent: string, written: Persona, input: SimulateInput, against: readonly api.AgentValues[], onPlaced?: (started: api.ComparisonStarted) => void): Promise<Compared> {
+export async function compare(ctx: Context, agent: string, written: Persona, input: SimulateInput, against: readonly api.AgentValues[], onPlaced?: (started: api.ComparisonStarted) => void, onStopped?: (stopped: { against: api.AgentValues; why: string }) => void): Promise<Compared> {
   const persona = playedBy(written, input);
   const repeated = input.repeats > 1 ? { repeats: input.repeats } : {};
   const more = input.morePersonas.length > 0 ? { more_personas: input.morePersonas } : {};
@@ -107,14 +107,26 @@ export async function compare(ctx: Context, agent: string, written: Persona, inp
   await Promise.all(started.calls.map((one) => followUntilEnded(ctx, one.call)));
   const readTable = (): Promise<api.Comparison> => api.getComparison(ctx.gateway(), started.comparison);
   const again = (): Promise<void> => new Promise((wake) => setTimeout(wake, WAITING_ASKED_EVERY_MS));
-  let table = await readTable();
+  // A setup the gateway rings no more (its vendor refused a call for good) is said the moment the table says it.
+  const told = new Set<string>();
+  const tell = (read: api.Comparison): api.Comparison => {
+    for (const one of read.stopped ?? []) {
+      const setup = JSON.stringify(one.against);
+      if (told.has(setup)) continue;
+      told.add(setup);
+      onStopped?.(one);
+    }
+    return read;
+  };
+  let table = tell(await readTable());
   // The calls past the org's calls at once wait their turn in the gateway, which places each as the
   // ones before it end: the table says how many still wait, and whether their gateway left them. A
-  // gateway started again mid-comparison has its calls placed again by another, so a row may be a
-  // call this command never followed: the table is read until none of its rows is on the line.
-  while (stillPlacing(table) || (table.abandoned !== true && table.rows.some((row) => row.ended_at === null))) {
+  // gateway started again mid-comparison has its calls placed again by another, and a call that did
+  // not count is placed again too, so a row may be a call this command never followed: the table is
+  // read until its gateway says the comparison is played no more and none of its rows is on the line.
+  while (stillPlacing(table) || (table.abandoned !== true && (table.playing === true || table.rows.some((row) => row.ended_at === null)))) {
     await again();
-    table = await readTable();
+    table = tell(await readTable());
   }
   const deadline = Date.now() + JUDGED_WITHIN_MS;
   while (Date.now() < deadline && table.rows.some((row) => row.ended_at === null || row.score === null)) {

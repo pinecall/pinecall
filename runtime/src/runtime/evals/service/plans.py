@@ -1,6 +1,6 @@
 """A comparison's plan as its row keeps it: what was asked, how its placing stands, what a take-up needs."""
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -9,6 +9,7 @@ from runtime.actor import Actor, Scope
 from runtime.enums import KeyScope
 from runtime.evals.models import Comparison as ComparisonRow
 from runtime.evals.repository import ComparisonRepository
+from runtime.evals.service.validity import Validity
 from runtime.kit.text import JsonObject, a_list, a_mapping
 
 # The gateway that plays a comparison says so this often, from its first call to its last call's end.
@@ -17,6 +18,20 @@ from runtime.kit.text import JsonObject, a_list, a_mapping
 STILL_PLACING_EVERY_S = 20.0
 PICKED_UP_AFTER_S = 2 * STILL_PLACING_EVERY_S
 LEFT_AFTER_S = 3 * STILL_PLACING_EVERY_S
+# A call that did not count (`validity`) is placed again, so that the table ends with the calls it
+# planned: two more tries for each call planned of its caller and setup. Whatever breaks a third call
+# of the same place breaks them all, and placing more would spend for nothing.
+PLACED_AGAIN_AT_MOST = 2
+NEVER_COUNTED = "no call of this caller on this setup counted, {times} placed again among them: {why}"
+# A setup whose vendor refused one of its calls for good (no credit, a quota spent, a key or a model it
+# does not know) is rung no more: its calls still waiting are refused in the vendor's words.
+STOPPED = "no more calls are placed on this setup: {why}"
+NO_ROOM = (
+    "a comparison of this org places {most} calls at most and this one has: "
+    "none is placed for a call that did not count ({why})"
+)
+# The values of a setup that name a vendor, each as `vendor` or `vendor/model`.
+NAMES_A_VENDOR = ("llm", "stt", "tts", "realtime")
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,6 +40,38 @@ class Pair:
 
     persona: str
     against: JsonObject
+
+
+@dataclass(frozen=True, slots=True)
+class Judged:
+    """A call of a comparison that ended: whom it stands for, and whether it counted."""
+
+    call: str
+    pair: Pair
+    validity: Validity
+    # A vendor of the agent refused it in a way no retry changes: an account that cannot pay, a key or
+    # a model it does not know.
+    for_good: bool = False
+    # The vendor that refused because its account cannot pay, "" otherwise: every setup that names it
+    # is refused the same, whichever of them rang it first.
+    unpaid: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class Uncounted:
+    """A call that did not count, settled once: whom it stood for, and whether another was placed in its stead."""
+
+    call: str
+    pair: Pair
+    placed_again: bool
+
+
+@dataclass(frozen=True, slots=True)
+class Stopped:
+    """A setup a comparison rings no more, and why, in its vendor's words."""
+
+    against: JsonObject
+    why: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,11 +113,20 @@ class Plan:
     replaced: list[str] = field(default_factory=list[str])
     # Whether its last call ended; None for a comparison made before 2026-11-24, which nobody takes up.
     done: bool | None = None
+    # The calls that did not count, each settled once: another placed in its stead, or its place
+    # refused. Its row stays in the table, marked; the call placed after it stands for its place.
+    uncounted: list[Uncounted] = field(default_factory=list[Uncounted])
+    # The setups rung no more: a vendor refused one of their calls for good.
+    stopped: list[Stopped] = field(default_factory=list[Stopped])
 
     @property
     def planned(self) -> int:
         """Every call the comparison was to place."""
         return len(self.personas) * len(self.against) * self.repeats
+
+    def find_stop(self, against: JsonObject) -> Stopped | None:
+        """The stop of this setup, with why it is rung no more; None while it is rung."""
+        return next((one for one in self.stopped if one.against == against), None)
 
     def list_pairs(self) -> list[Pair]:
         """Every call to place, a round of every caller under every setup, then the next round."""
@@ -97,6 +153,16 @@ class Plan:
                 "by": self.by,
                 "replaced": self.replaced,
                 "done": self.done,
+                "uncounted": [
+                    {
+                        "call": one.call,
+                        "persona": one.pair.persona,
+                        "against": one.pair.against,
+                        "again": one.placed_again,
+                    }
+                    for one in self.uncounted
+                ],
+                "stopped": [{"against": one.against, "why": one.why} for one in self.stopped],
             }
         return kept
 
@@ -169,7 +235,83 @@ def read_plan(row: ComparisonRow, scope: Scope) -> Plan:
         by=dict(_object_in(kept.get("by"))) or None,
         replaced=[str(call) for call in _list_in(kept.get("replaced"))],
         done=None if done is None else bool(done),
+        uncounted=[
+            Uncounted(
+                str(one.get("call", "")),
+                Pair(str(one.get("persona", "")), dict(_object_in(one.get("against")))),
+                bool(one.get("again")),
+            )
+            for one in _list_in(kept.get("uncounted"))
+            if a_mapping(one)
+        ],
+        stopped=[
+            Stopped(dict(_object_in(one.get("against"))), str(one.get("why", "")))
+            for one in _list_in(kept.get("stopped"))
+            if a_mapping(one)
+        ],
     )
+
+
+def is_played(plan: Plan, now: float) -> bool:
+    """Whether a gateway still plays the comparison: its last call has not ended, and one said so lately."""
+    return plan.done is False and now - plan.heard_at <= LEFT_AFTER_S
+
+
+def names_vendor(against: Mapping[str, object], vendor: str) -> bool:
+    """Whether the setup rings this vendor by name, in any of its stages."""
+    said = [str(against.get(stage) or "") for stage in NAMES_A_VENDOR]
+    return any(value == vendor or value.startswith(f"{vendor}/") for value in said)
+
+
+# A vendor that refused a call for good stops its setup: an account that cannot pay stops every setup
+# that names that vendor, since the next call on any of them is refused the same.
+def stop_refused(plan: Plan, ended: Sequence[Judged]) -> list[Stopped]:
+    """Stop each setup a vendor refused one of these calls for good; the ones stopped now."""
+    now: list[Stopped] = []
+    for one in ended:
+        invalid = one.validity.invalid
+        if not one.for_good or invalid is None:
+            continue
+        named = [values for values in plan.against if one.unpaid and names_vendor(values, one.unpaid)]
+        for against in [dict(one.pair.against), *named]:
+            if plan.find_stop(against) is None:
+                stopped = Stopped(dict(against), invalid.why)
+                plan.stopped.append(stopped)
+                now.append(stopped)
+    return now
+
+
+# What the calls that ended say to a comparison still played. A vendor that refused a call for good
+# stops its setup, whose place is refused with every call of it still waiting (`find_stop`); a call
+# that did not count for any other reason (its caller's own line, our side, a vendor that failed on
+# its side) is placed again, unless its caller and setup were placed again as often as they may be or
+# the comparison has placed all the calls its org lets one place, when its place is refused saying
+# so. Each such call is settled once, in `uncounted`; what to place again is answered.
+def settle_uncounted(plan: Plan, ended: Sequence[Judged], *, room: int, most: int) -> list[Pair]:
+    """The calls to place again for those that did not count; the places refused and the setups stopped, on the plan."""
+    stop_refused(plan, ended)
+    settled = {one.call for one in plan.uncounted} | set(plan.replaced)
+    again: list[Pair] = []
+    for one in ended:
+        invalid = one.validity.invalid
+        if invalid is None or one.call in settled:
+            continue
+        settled.add(one.call)
+        times = len([kept for kept in plan.uncounted if kept.pair == one.pair and kept.placed_again])
+        stopped = plan.find_stop(one.pair.against)
+        why: str | None = None
+        if stopped is not None:
+            why = STOPPED.format(why=stopped.why)
+        elif times >= PLACED_AGAIN_AT_MOST * plan.repeats:
+            why = NEVER_COUNTED.format(times=times, why=invalid.why)
+        elif len(again) >= room:
+            why = NO_ROOM.format(most=most, why=invalid.why)
+        if why is None:
+            again.append(one.pair)
+        else:
+            plan.refused.append(Refused(one.pair.persona, one.pair.against, why))
+        plan.uncounted.append(Uncounted(one.call, one.pair, placed_again=why is None))
+    return again
 
 
 def _object_in(value: object) -> Mapping[str, object]:

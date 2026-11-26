@@ -13,13 +13,15 @@ from sqlalchemy import select
 from sqlalchemy.exc import TimeoutError as PoolTimeout
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from runtime.actor import Scope
 from runtime.billing import service as billing
 from runtime.billing.service import quotas
 from runtime.enums import Env
 from runtime.evals.models import CallerJob
 from runtime.evals.parts import Harness
-from runtime.evals.repository import CallerJobRepository
-from runtime.evals.service import caller_jobs, placing, simulated_calls
+from runtime.evals.repository import CallerJobRepository, ComparisonRepository
+from runtime.evals.service import caller_jobs, placing, plans, simulated_calls
+from runtime.evals.service.callers import Improvised
 from runtime.evals.service.simulated_calls import Simulation
 from runtime.evals.tasks import LEFT_AFTER_S, Callers
 from runtime.exceptions import ServiceUnavailable
@@ -603,7 +605,10 @@ async def test_a_comparisons_call_its_process_left_is_placed_again_and_the_table
     sessions: async_sessionmaker[AsyncSession],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(placing, "STILL_PLACING_EVERY_S", 0.1)
+    quickly(monkeypatch)
+    # The two that stand are ended here by a process that cannot play them, which is no call that counts:
+    # placed again they would wait for a process this test has not. Their places are refused instead.
+    monkeypatch.setattr(plans, "PLACED_AGAIN_AT_MOST", 0)
     against: list[dict[str, object]] = [{"llm": "acme/acme-1"}, {"temperature": 0.2}]
     body = {"agent": agent, "persona": "in-a-hurry", "voice": True, "turns": 1, "against": against}
 
@@ -659,4 +664,110 @@ async def test_a_comparisons_call_its_process_left_is_placed_again_and_the_table
         assert (await jobs_of_comparison()) and all(job.ended_at for job in await jobs_of_comparison())
         placed_on = sorted(json.dumps(row["against"], sort_keys=True) for row in read["rows"])
         assert placed_on == sorted(json.dumps(values, sort_keys=True) for values in against)
-        assert read["planned"] == len(read["rows"]) + int(read["waiting"]) + len(read["refused"]) == 2
+        assert (read["planned"], int(read["waiting"])) == (2, 0)
+
+
+# ── a comparison's call that did not count ──
+
+
+def quickly(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A comparison's passes, seconds apart on a server, cut to what a test can wait."""
+    monkeypatch.setattr(placing, "STILL_PLACING_EVERY_S", 0.1)
+    monkeypatch.setattr(placing, "A_LINE_IS_READ_EVERY_S", 0.05)
+    monkeypatch.setattr(placing, "SWEPT_EVERY_S", 0.05)
+
+
+# The suite's vendor plays no caller (it answers no tool), so a caller that does not break hangs up
+# with its first line: a call that began, ended by its caller, with nothing on its log to discount it.
+def breaking(times: int | None) -> Callable[..., Any]:
+    """The caller's next line: broken the first so many times it is asked for, or always; then a hang-up."""
+    broke = 0
+
+    async def improvise(*_: object) -> Improvised:
+        nonlocal broke
+        if times is None or broke < times:
+            broke += 1
+            raise RuntimeError("the caller's model answered nothing a line can be read from")
+        return Improvised(say="", hangup=True)
+
+    return improvise
+
+
+async def compared(gateway: Gateway, tenant: Tenant, comparison: str, ended: Callable[[dict[str, Any]], bool]) -> Any:
+    """The comparison's table, read until it says what the test waits for."""
+    table: dict[str, Any] = {}
+    for _ in range(160):
+        read = await gateway.http.get(f"/v1/simulations/compare/{comparison}", headers=tenant.person)
+        table = dict(read.json())
+        if ended(table):
+            break
+        await asyncio.sleep(0.05)
+    return table
+
+
+# 2026-11-26, cmp_cd80e04794c7: nineteen of 140 calls did not count and the table ended at 121; the
+# fourteen a vendor refused were placed again by hand, in two more comparisons.
+@needs_the_services
+@pytest.mark.timeout(30)
+async def test_a_comparisons_call_that_did_not_count_is_placed_again_and_the_table_ends_with_what_it_planned(
+    gateway: Gateway,
+    tenant: Tenant,
+    agent: str,
+    sessions: async_sessionmaker[AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    quickly(monkeypatch)
+    monkeypatch.setattr(simulated_calls, "improvise_line", breaking(1))
+    against: list[dict[str, object]] = [{"llm": "acme/acme-1"}, {"temperature": 0.2}]
+    body = {"agent": agent, "persona": "in-a-hurry", "voice": False, "turns": 1, "against": against}
+    async with holding(gateway, tenant, agent):
+        answer = await gateway.http.post("/v1/simulations/compare", json=body, headers=tenant.person)
+        assert answer.status_code == 200, answer.text
+        comparison = str(answer.json()["comparison"])
+        table = await compared(gateway, tenant, comparison, lambda read: read["playing"] is False)
+        rows: list[dict[str, Any]] = table["rows"]
+        # The call whose caller broke stays a row, marked; another was placed in its stead.
+        assert sorted(row["valid"] for row in rows) == [False, True, True]
+        (broke,) = [row for row in rows if not row["valid"]]
+        assert broke["invalid"]["kind"] == "platform"
+        counted = [row for row in rows if row["valid"]]
+        placed_on = sorted(json.dumps(row["against"], sort_keys=True) for row in counted)
+        assert placed_on == sorted(json.dumps(values, sort_keys=True) for values in against)
+        assert (table["planned"], table["waiting"], table["refused"], table["stopped"]) == (2, 0, [], [])
+        # Another gateway that takes the comparison up finds every place stood for: it places nothing.
+        async with sessions.begin() as session:
+            kept = await ComparisonRepository(session).find(tenant.org, Env.sandbox, comparison)
+            assert kept is not None
+            plan = plans.read_plan(kept, Scope(tenant.org, Env.sandbox))
+        assert [(one.call, one.placed_again) for one in plan.uncounted] == [(broke["call"], True)]
+        await placing.take_up(gateway.state["harness"], plan, time.time())
+        again = await compared(gateway, tenant, comparison, lambda read: read["playing"] is False)
+        assert sorted(row["call"] for row in again["rows"]) == sorted(row["call"] for row in rows)
+        assert (again["waiting"], again["refused"]) == (0, [])
+
+
+@needs_the_services
+@pytest.mark.timeout(30)
+async def test_a_place_whose_calls_never_count_is_refused_once_it_was_placed_again_as_often_as_it_may_be(
+    gateway: Gateway, tenant: Tenant, agent: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    quickly(monkeypatch)
+    # Once more for each call planned, where a server places twice: a test waits for every call's end.
+    monkeypatch.setattr(plans, "PLACED_AGAIN_AT_MOST", 1)
+    monkeypatch.setattr(simulated_calls, "improvise_line", breaking(None))
+    against: list[dict[str, object]] = [{"llm": "acme/acme-1"}, {"temperature": 0.2}]
+    body = {"agent": agent, "persona": "in-a-hurry", "voice": False, "turns": 1, "against": against}
+    async with holding(gateway, tenant, agent):
+        answer = await gateway.http.post("/v1/simulations/compare", json=body, headers=tenant.person)
+        assert answer.status_code == 200, answer.text
+        comparison = str(answer.json()["comparison"])
+        table = await compared(gateway, tenant, comparison, lambda read: read["playing"] is False)
+        rows: list[dict[str, Any]] = table["rows"]
+        # Each of the two places: the call asked for and one more, neither of which counted.
+        assert len(rows) == 4 and not any(row["valid"] for row in rows)
+        refused: list[dict[str, Any]] = table["refused"]
+        assert sorted(json.dumps(one["against"], sort_keys=True) for one in refused) == sorted(
+            json.dumps(values, sort_keys=True) for values in against
+        )
+        assert all("counted, 1 placed again among them" in str(one["why"]) for one in refused)
+        assert (table["planned"], table["waiting"]) == (2, 0)

@@ -83,7 +83,8 @@ in both environments.
 
 **How an org's simulations are shaped** is two numbers beside its quotas, per environment, that are
 not a month's count: `simulations_at_once`, the simulated calls it may have on the line at once, and
-`comparison_calls`, the calls one comparison may place (callers × configurations × repeats). Each
+`comparison_calls`, the calls one comparison may place (callers × configurations × repeats; a call
+placed again for one that did not count is one of them, and none is placed past it). Each
 unset is the platform's own, ten, never no limit, since every simulated call on the line is a seat
 of the fleet a real caller would take. The operator sets them (`pinecall-runtime orgs simulating <org>
 --env sandbox --at-once 20 --comparison-calls 60`, or `PUT /v1/ops/orgs/{org}/simulating {env,

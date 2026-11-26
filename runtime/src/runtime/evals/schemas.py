@@ -375,6 +375,13 @@ class ComparedRefusal(Row):
     why: str
 
 
+class ComparedStop(Row):
+    """A setup a comparison rings no more: a vendor refused one of its calls for good, said in its words."""
+
+    against: dict[str, Any]
+    why: str
+
+
 class ComparisonStarted(Row):
     """POST /v1/simulations/compare, the answer: the comparison's id, each call placed, what was refused."""
 
@@ -462,9 +469,15 @@ class Comparison(Row):
     refused: list[ComparedRefusal] = Field(default_factory=list[ComparedRefusal])
     # The gateway placing the ones that wait stopped before it placed them all: they never will be.
     abandoned: bool = False
+    # A gateway still plays the comparison: a call that did not count may yet be placed again, so a
+    # reader that waits for its end waits for this, not for the rows alone.
+    playing: bool = False
+    # The setups rung no more: a vendor refused one of their calls for good (no credit, a key or a model
+    # it does not know), and their calls still waiting were refused.
+    stopped: list[ComparedStop] = Field(default_factory=list[ComparedStop])
 
     @classmethod
-    def of_read(cls, plan: Any, rows: Sequence[Any], *, planned: int, abandoned: bool) -> Self:
+    def of_read(cls, plan: Any, rows: Sequence[Any], *, planned: int, abandoned: bool, playing: bool = False) -> Self:
         """The body a comparison read answers as: what was asked for, how its placing stands, its calls."""
         said = {
             "comparison": plan.comparison,
@@ -479,6 +492,8 @@ class Comparison(Row):
             "waiting": plan.waiting,
             "refused": plan.refused,
             "abandoned": abandoned,
+            "playing": playing,
+            "stopped": plan.stopped,
         }
         return cls.model_validate(said, from_attributes=True)
 

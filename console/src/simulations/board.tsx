@@ -148,7 +148,7 @@ export function Board({ comparison }: { comparison: string }): ReactNode {
         if (gone) return;
         setRead(answered);
         setRefused(null);
-        const placing = answered.waiting > 0 && !answered.abandoned;
+        const placing = (answered.waiting > 0 || answered.playing) && !answered.abandoned;
         if (placing || answered.rows.some((row) => WAITING.includes(cellOf(row)))) timer = window.setTimeout(() => void ask(), ASKED_EVERY_MS);
       } catch (failed) {
         if (!gone) setRefused(saidBy(failed));
@@ -165,13 +165,14 @@ export function Board({ comparison }: { comparison: string }): ReactNode {
 
   const ranked = standings(read);
   const tasks = read.personas;
-  const placing = read.waiting > 0 && !read.abandoned;
+  const placing = (read.waiting > 0 || read.playing) && !read.abandoned;
   const going = placing || read.rows.some((row) => WAITING.includes(cellOf(row)));
   const best = !going && (ranked[0]?.judged ?? 0) > 0 ? ranked[0]?.key : undefined;
   const fastest = Math.min(...ranked.flatMap((one) => one.reply ?? []));
   const cheapest = Math.min(...ranked.flatMap((one) => one.cost ?? []));
   const planned = read.planned > 0 ? read.planned : read.rows.length;
-  const ended = read.rows.filter((row) => !WAITING.includes(cellOf(row))).length;
+  // A call that did not count stands for none of the calls planned: the one placed in its stead does.
+  const ended = read.rows.filter((row) => row.valid && !WAITING.includes(cellOf(row))).length;
   const repeated = read.repeats > 1;
 
   return (
@@ -197,6 +198,11 @@ export function Board({ comparison }: { comparison: string }): ReactNode {
         </div>
       )}
       {read.abandoned && <p className="app-refused">{read.waiting} calls were never placed: the gateway placing them was restarted. Run the comparison again for those.</p>}
+      {read.stopped.map((one) => (
+        <p key={setupName(one.against)} className="app-refused">
+          No more calls are placed on {setupName(one.against)}: {one.why}
+        </p>
+      ))}
       {read.refused.length > 0 && (
         <details className="cmp-refused">
           <summary>

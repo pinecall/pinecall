@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **A comparison places again a call that did not count, and rings no more a vendor that refused for good.** A call
+  its caller, the platform or a vendor's own failure broke stays a row, `valid: false`, and another is placed in
+  its stead: twice at most for each call planned of its caller and setup, never past the org's `comparison_calls`,
+  then its place is refused saying why. A `component_dead_end` stops its setup, and a refusal for payment every
+  setup that names the vendor (`stopped: [{against, why}]`): their calls still waiting are refused in the vendor's
+  words and cost nothing. `GET /v1/simulations/compare/{id}` says `playing` while a gateway plays it, which is
+  what a reader waits on; the line is read every 5 s once all is placed. On 2026-11-26 a comparison of 140 ended
+  at 121, and xAI was rung fourteen times after its first 402.
 - **A vendor that refuses the connection for payment ends the call at once, and a callers process plays two.**
   xAI answers the realtime handshake of an account out of credit with a bare `402`, which its client reports as
   "connection error": fourteen calls were retried and said not to have been answered. The status behind a

@@ -117,6 +117,24 @@ describe("a call that does not count", () => {
   });
 });
 
+describe("a setup rung no more", () => {
+  const why = "a vendor of the agent failed the call: acme refused this call's model: no credits";
+  const refusal = { persona: "books", against: { llm: "acme/small" }, why: `no more calls are placed on this setup: ${why}` };
+  const other = { persona: "books", against: { llm: "acme/big" }, why: "the org has used 10 of its 10 simulations in the sandbox" };
+  const rows = [ran("books", "acme/big", "held", 0.04, 1.2)];
+  const table = { comparison: "cmp_1", agent: "dentist", persona: "books", personas: ["books"], voice: true, repeats: 3, rows, stopped: [{ against: { llm: "acme/small" }, why }] };
+  const lines = comparison({ comparison: "cmp_1", refused: [refusal, refusal, other, refusal], table });
+
+  it("is said once, in its vendor's words", () => {
+    expect(lines.filter((line) => line.startsWith("no more calls on"))).toEqual([`no more calls on thinks acme/small: ${why}`]);
+  });
+
+  it("has the calls it still had waiting said as one line, and a refusal of one call as its own", () => {
+    expect(lines).toContain(`not placed, 3 calls of thinks acme/small: no more calls are placed on this setup: ${why}`);
+    expect(lines).toContain("not placed, thinks acme/big: the org has used 10 of its 10 simulations in the sandbox");
+  });
+});
+
 describe("how each configuration heard its callers", () => {
   it("sums each call's hearing by configuration, with the middle word error", () => {
     const hearing = { lines: 6, unanswered: 1, cut_by_the_room: 2, cut_by_a_murmur: 0, phantom_turns: 3, talked_over: 1, reply_s: 1.1, slow_reply_s: 1.4, word_error_rate: 0.12 };

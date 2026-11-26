@@ -54,6 +54,32 @@ describe("a comparison whose calls wait their turn", () => {
   });
 });
 
+// 2026-11-26: a call that did not count is placed again by its comparison, moments after it ended. A
+// command that stopped reading once no row was on the line left before the call placed in its stead.
+describe("a comparison its gateway still plays", () => {
+  const table = { comparison: "cmp_4", agent: "dentist", persona: A_PERSONA.name, personas: [A_PERSONA.name], voice: false, rows: [], planned: 2, waiting: 0 };
+
+  it("is read until the gateway says it plays it no more, though none waits and none is on the line", async () => {
+    answer("post", "/v1/simulations/compare", { comparison: "cmp_4", voice: false, calls: [], refused: [], waiting: 1 });
+    let reads = 0;
+    answer("get", "/v1/simulations/compare/:id", () => ({ ...table, playing: (reads += 1) < 2 }));
+    const { ctx } = testContext();
+    await comparison.compare(ctx, "dentist", A_PERSONA, SimulateInput.parse({ persona: A_PERSONA.name }), [{}, { llm: "openai/gpt-5-mini" }]);
+    expect(reads).toBe(2);
+  }, 15_000);
+
+  it("says each setup it rings no more once, as the table first names it", async () => {
+    const why = "a vendor of the agent failed the call: openai refused this call's model: You have no credits remaining.";
+    answer("post", "/v1/simulations/compare", { comparison: "cmp_5", voice: false, calls: [], refused: [], waiting: 1 });
+    answer("get", "/v1/simulations/compare/:id", { ...table, comparison: "cmp_5", stopped: [{ against: { llm: "openai/gpt-5-mini" }, why }] });
+    const { ctx } = testContext();
+    const stopped: { against: object; why: string }[] = [];
+    const done = await comparison.compare(ctx, "dentist", A_PERSONA, SimulateInput.parse({ persona: A_PERSONA.name }), [{}, { llm: "openai/gpt-5-mini" }], undefined, (one) => stopped.push(one));
+    expect(stopped).toEqual([{ against: { llm: "openai/gpt-5-mini" }, why }]);
+    expect(done.table.stopped).toHaveLength(1);
+  });
+});
+
 describe("the values --against takes", () => {
   it("takes a realtime model as it takes the model to think with, and refuses a knob no test has", () => {
     expect(comparison.parseAgainst("realtime=google/gemini-3.8-live")).toEqual({ realtime: "google/gemini-3.8-live" });

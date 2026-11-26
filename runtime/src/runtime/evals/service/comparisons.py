@@ -15,7 +15,16 @@ from runtime.calls.log import Store
 from runtime.evals.parts import Harness
 from runtime.evals.repository import ComparisonRepository
 from runtime.evals.service.placing import place_as_planned, play_to_the_end
-from runtime.evals.service.plans import Pair, Plan, Refused, is_left, keep_plan, read_plan, say_who_asked
+from runtime.evals.service.plans import (
+    Pair,
+    Plan,
+    Refused,
+    is_left,
+    is_played,
+    keep_plan,
+    read_plan,
+    say_who_asked,
+)
 from runtime.evals.service.simulated_calls import Scored, score_of
 from runtime.evals.service.simulations import Scenario, Wanted, as_placed, check_talking, write_scenario
 from runtime.evals.service.validity import VALID, Invalid, Validity, judge
@@ -118,6 +127,9 @@ class Compared:
     rows: list[Row]
     planned: int
     abandoned: bool
+    # A gateway still plays it: a call that did not count may yet be placed again, though none waits
+    # and none is on the line.
+    playing: bool = False
 
 
 # ── started ──
@@ -216,7 +228,9 @@ async def get_comparison(session_: AsyncSession, parts: Harness, actor: Actor, c
     # A call lost with its gateway was placed again: the one that stands for it is the row.
     rows = [row for row in rows if row.call not in plan.replaced]
     planned = plan.planned if plan.kept else len(rows)
-    return Compared(plan, rank(rows), planned, abandoned=plan.kept and is_left(plan, parts.store.clock()))
+    now = parts.store.clock()
+    abandoned = plan.kept and is_left(plan, now)
+    return Compared(plan, rank(rows), planned, abandoned=abandoned, playing=plan.kept and is_played(plan, now))
 
 
 # What was asked for names the callers before any of them has a call. A comparison made before plans

@@ -184,8 +184,16 @@ export async function placeComparison(ctx: Context, agent: string, input: servic
     const other = await service.getPersona(ctx, agent, name);
     ctx.io.print(`${other.name} · ${other.goal}`);
   }
-  return await service.compare(ctx, agent, persona, input, against, (started) => {
-    const waiting = (started.waiting ?? 0) === 0 ? "" : ` · ${String(started.waiting)} waiting their turn`;
-    ctx.io.print(`${started.comparison} · ${count(started.calls.length, "call")} placed${waiting}${started.refused.length === 0 ? "" : ` · ${count(started.refused.length, "refusal")}`} · judged as each one ends`);
-  });
+  return await service.compare(
+    ctx,
+    agent,
+    persona,
+    input,
+    against,
+    (started) => {
+      const waiting = (started.waiting ?? 0) === 0 ? "" : ` · ${String(started.waiting)} waiting their turn`;
+      ctx.io.print(`${started.comparison} · ${count(started.calls.length, "call")} placed${waiting}${started.refused.length === 0 ? "" : ` · ${count(started.refused.length, "refusal")}`} · judged as each one ends`);
+    },
+    (stopped) => ctx.io.print(`no more calls on ${render.against(stopped.against)}: ${stopped.why}`),
+  );
 }

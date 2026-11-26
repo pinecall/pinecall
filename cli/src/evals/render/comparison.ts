@@ -150,7 +150,14 @@ export function comparison(done: Compared): string[] {
   lines.push(...hearingByConfiguration(found.rows));
   for (const row of found.rows) if (row.invalid != null) lines.push(`not counted, ${against(row.against)} (${row.invalid.kind}): ${row.invalid.why}`);
   for (const row of found.rows) if (row.why !== null && counts(row)) lines.push(`never started, ${against(row.against)}: ${row.why}`);
-  for (const one of done.refused) lines.push(`not placed, ${against(one.against)}: ${one.why}`);
+  for (const one of found.stopped ?? []) lines.push(`no more calls on ${against(one.against)}: ${one.why}`);
+  // One line a setup and a reason: the calls a stopped setup still had waiting are refused alike.
+  const refusals = new Map<string, number>();
+  for (const one of done.refused) {
+    const said = `${against(one.against)}: ${one.why}`;
+    refusals.set(said, (refusals.get(said) ?? 0) + 1);
+  }
+  for (const [said, calls] of refusals) lines.push(calls === 1 ? `not placed, ${said}` : `not placed, ${String(calls)} calls of ${said}`);
   if (found.abandoned === true) lines.push(`${String(found.waiting ?? 0)} never placed: the gateway placing them was restarted — run it again for those`);
   lines.push(formatHint("pinecall sessions <call> reads one whole"));
   return lines;

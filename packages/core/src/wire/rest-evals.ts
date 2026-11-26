@@ -298,6 +298,10 @@ export const ComparisonSchema = z.strictObject({
   refused: z.array(z.strictObject({ persona: z.string(), against: AgentValuesSchema, why: z.string() })).default([]),
   /** The gateway placing the ones that wait was restarted: they never will be placed. */
   abandoned: z.boolean().default(false),
+  /** A gateway still plays the comparison: a call that did not count may yet be placed again, though none waits and none is on the line. */
+  playing: z.boolean().default(false),
+  /** The setups rung no more: a vendor refused one of their calls for good, in its words; their calls still waiting were refused. */
+  stopped: z.array(z.strictObject({ against: AgentValuesSchema, why: z.string() })).default([]),
 });
 
 export type Comparison = z.infer<typeof ComparisonSchema>;

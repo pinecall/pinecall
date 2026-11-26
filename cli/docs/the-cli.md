@@ -924,7 +924,12 @@ among them), `platform` (our side lost the call) or `caller` (its own simulated 
 voice broke up on the way) — with the reason under the table, and it is in no count: not in how often
 a configuration did the task, not in its reply, not in what a completed call cost. A model that was
 wrong, slow or silent counts: that is the comparison. One simulation that does not count says so
-under its result the same way.
+under its result the same way. In a comparison the gateway **places such a call again**, twice at most
+for each call planned of its caller and setup, so the table ends with the calls it planned; the
+command goes on reading until the gateway says the comparison is played no more. A vendor that
+refused a call **for good** (no credit, a quota spent, a key or a model it does not know) is rung no
+more: `no more calls on <setup>: <the vendor's words>` is printed as it happens and under the table,
+and the calls of that setup still waiting are `not placed`, one line for all of them.
 
 A configuration the gateway refuses (a vendor nobody keyed, the org's limits) is said under the
 table, `not placed`, and the others go on; `--listen` is one call, so a comparison refuses it. The

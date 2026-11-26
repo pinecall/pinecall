@@ -7,11 +7,18 @@ from sqlalchemy.exc import TimeoutError as PoolTimeout
 
 from runtime.actor import Scope
 from runtime.enums import Env
-from runtime.evals.service.placing import PLACING_GIVES_UP_AFTER_S, list_left_to_place, place_waiting
-from runtime.evals.service.plans import Pair, Plan, Refused
+from runtime.evals.service.placing import (
+    PLACING_GIVES_UP_AFTER_S,
+    list_left_to_place,
+    place_waiting,
+    refusal_for_good,
+    refusing_what_stopped,
+)
+from runtime.evals.service.plans import Pair, Plan, Refused, Stopped
 from runtime.evals.tasks import TooManyAtOnce
 from runtime.exceptions import ServiceUnavailable
 from runtime.postgres import A_CONNECTION_IS_WAITED_FOR_S
+from runtime.wire.base import Entry
 
 ACME = Scope("org_acme", Env.sandbox)
 
@@ -180,3 +187,48 @@ async def test_a_placing_that_breaks_is_a_refusal_by_the_kind_of_what_broke_and_
         "the gateway could not place this call (KeyError): its log says why"
     ] * 2
     assert plan.waiting == 0
+
+
+# ── a setup rung no more ──
+
+NO_CREDIT = "a vendor of the agent failed the call: acme refused this call's model: You have no credits remaining."
+
+
+# 2026-11-26: a vendor whose account was out of credit was rung for every call still waiting of its
+# setup, each one opened, refused and paid for on the caller's side.
+async def test_the_calls_of_a_stopped_setup_are_refused_in_its_vendors_words_and_none_is_placed() -> None:
+    plan = a_plan()
+    plan.stopped.append(Stopped({"llm": "acme/quick"}, NO_CREDIT))
+    line = Line(places=4)
+    rung = refusing_what_stopped(plan, line.place)
+    await place_waiting(plan, plan.list_pairs(), rung, line.say, clock=line.clock)
+    assert line.placed == [Pair("books", {}), Pair("cancels", {})]
+    assert [(one.persona, one.against) for one in plan.refused] == [
+        ("books", {"llm": "acme/quick"}),
+        ("cancels", {"llm": "acme/quick"}),
+    ]
+    assert all(one.why == f"no more calls are placed on this setup: {NO_CREDIT}" for one in plan.refused)
+    assert plan.waiting == 0
+
+
+def an_error(code: str, message: str) -> Entry:
+    said = {"code": code, "message": message}
+    return Entry(seq=1, ts=1.0, call="call_1", agent="front-desk", type="error", ephemeral=False, data=said)
+
+
+def test_a_refusal_no_retry_changes_is_told_from_a_vendor_that_failed_and_names_who_cannot_be_paid() -> None:
+    no_credit = (
+        "openai refused this call's model: You have no credits remaining.\nlabel='livekit.plugins.openai.llm.LLM'"
+    )
+    assert refusal_for_good([an_error("component_dead_end", no_credit)]) == (True, "openai")
+    # A realtime model's refusal for payment is words alone, and its handshake's a status.
+    handshake = "xai refused this call: it answered the connection 402 Payment Required"
+    assert refusal_for_good([an_error("component_failed", handshake)]) == (True, "xai")
+    # A model the vendor does not know stops its setup, and no other of that vendor.
+    unknown = "acme refused this call's model: The model does not exist"
+    assert refusal_for_good([an_error("component_dead_end", unknown)]) == (True, "")
+    assert refusal_for_good([an_error("component_failed", "google failed on its side (504): server error")]) == (
+        False,
+        "",
+    )
+    assert refusal_for_good([an_error("never_served", "no worker served the call")]) == (False, "")

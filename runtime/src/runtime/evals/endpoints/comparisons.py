@@ -25,4 +25,6 @@ async def compare(body: schemas.ComparisonRequest, actor: EvalsKey, parts: TheHa
 async def read_comparison(comparison: str, actor: EvalsKey, parts: TheHarness, session: Session) -> schemas.Comparison:
     """The comparison's calls, each caller's best first: its goal held, every judge, the fastest, the cheapest."""
     read = await comparisons.get_comparison(session, parts, actor, comparison)
-    return schemas.Comparison.of_read(read.plan, read.rows, planned=read.planned, abandoned=read.abandoned)
+    return schemas.Comparison.of_read(
+        read.plan, read.rows, planned=read.planned, abandoned=read.abandoned, playing=read.playing
+    )

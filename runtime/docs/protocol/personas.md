@@ -214,9 +214,24 @@ judge held, then the most held, then the fastest reply, then the cheapest, a cal
 after every one that does, and a call still on the line last. The table also says what was asked for, so a call not placed yet has its place on it:
 `against` (each configuration, in the order named), `repeats`, `planned` (every call it was to
 place), `waiting` (those still without a place on the line), `refused` (each call that could not be
-placed, and why, the ones refused after the answer among them) and `abandoned`. Every call asked for
-is one of the three, so `planned` is the rows, the waiting and the refused together, and a reader
-that waits for the last call's end always sees it: a call is its comparison's row from the
+placed, and why, the ones refused after the answer among them), `abandoned`, `playing` and `stopped`.
+Every call asked for is one of the three, so `planned` is the rows that count, the waiting and the
+refused together once the comparison is played no more, and a reader that waits for the last call's
+end always sees it. **A call that did not count is placed again** by its comparison, as one lost with
+its process is: its own row stays, `valid: false`, and the call placed in its stead stands for its
+place. That is done for a call its caller, our side or a vendor's own failure broke (a `5xx`, a
+connection that broke), twice at most for each call planned of its caller and setup: a third that does
+not count is refused, `no call of this caller on this setup counted, 2 placed again among them: …`,
+and none is placed once the comparison has as many calls as its org lets one place
+(`comparison_calls`). **A vendor that refused a call for good is rung no more**: a `component_dead_end`
+(a key or a model it does not know) stops that setup, and a refusal that says the account cannot pay
+stops every setup of the comparison that names that vendor; `stopped` is `[{against, why}]`, the
+vendor's words, and the setup's calls still waiting, with the place of each that was on the line, are
+refused `no more calls are placed on this setup: …` and cost nothing. `playing` is true while a
+gateway plays the comparison (its last call has not ended, or a call that did not count may yet be
+placed again): a reader that waits for its end waits for `playing` to go false, since for some
+seconds after an invalid call ends no row is on the line and none waits. A reader of before
+2026-11-26 stops at the rows and reads a table short of the calls placed again. As to the rest: a call is its comparison's row from the
 transaction that claims it; one the gateway's database had no connection for waits its turn and is
 asked for again, twenty seconds at most, then refused `the database was busy`; and one the gateway
 broke placing is refused by the kind of its fault, the calls behind it placed all the same. A comparison is

@@ -6,6 +6,11 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **A comparison is followed until its gateway plays it no more, and a setup rung no more is said.** A call that
+  did not count is placed again by the gateway moments after it ends: `pinecall simulate` reads on while the table
+  says `playing`, where it stopped once no row was on the line. `no more calls on <setup>: …` is printed when a
+  vendor refused a call for good, as it happens and under the table, and the calls of a setup refused alike are one
+  `not placed, N calls of …` line. The MCP's comparison answers `stopped` beside `refused`.
 - **A setup that lost most of its calls is held to no bar.** A benchmark's setup with more calls left out than
   counted is listed last, marked `most of its calls not counted`, and named in the verdict: it neither clears the
   bars nor is the one to take. A model whose vendor refused fourteen of twenty calls read `6 of 6 · 100%` and first.

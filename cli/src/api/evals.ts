@@ -331,6 +331,10 @@ export interface Comparison {
   refused?: { persona: string; against: AgentValues; why: string }[];
   /** The gateway placing the ones that wait was restarted: they never will be placed. */
   abandoned?: boolean;
+  /** A gateway still plays it: a call that did not count may yet be placed again. Absent from a gateway before 2026-11-26. */
+  playing?: boolean;
+  /** The setups rung no more: a vendor refused one of their calls for good; their calls still waiting were refused. */
+  stopped?: { against: AgentValues; why: string }[];
   comparison: string;
   agent: string;
   /** The first caller; `personas` is every one, in the order placed. */

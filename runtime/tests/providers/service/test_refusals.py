@@ -114,6 +114,22 @@ def test_a_connection_that_only_broke_names_no_status_and_is_the_vendors_silence
     assert not refusals.is_unpaid(_refused_at_the_handshake(503))
 
 
+# A realtime model's refusal reaches a call's log as words alone: livekit's account of it, the vendor's
+# code inside, and a connection refused for payment as the status it was answered with.
+@pytest.mark.parametrize(
+    "words",
+    [
+        "openai refused this call: Realtime API returned an error\ntype='realtime_error' code='insufficient_quota'",
+        "xai refused this call: it answered the connection 402 Payment Required",
+        "openai refused this call's model: You have no credits remaining. Add credits to continue",
+    ],
+)
+def test_words_that_say_an_account_cannot_pay_are_told_from_any_other_refusal(words: str) -> None:
+    assert refusals.says_unpaid(words)
+    assert not refusals.says_unpaid("google failed on its side (504): gemini llm: server error")
+    assert not refusals.says_unpaid("openai refused this call's model: The model `gpt-9` does not exist")
+
+
 def test_a_rate_limit_is_not_an_unpaid_account() -> None:
     limited = APIStatusError("Rate limit reached", status_code=429, body={"error": {"code": "rate_limit_exceeded"}})
     assert not refusals.is_unpaid(limited)

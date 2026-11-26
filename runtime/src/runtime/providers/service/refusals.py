@@ -24,7 +24,8 @@ UNPAID_CODES = frozenset(
     {"insufficient_quota", "billing_hard_limit_reached", "billing_not_active", "access_terminated", "credit_exhausted"}
 )
 UNPAID_WORDS = re.compile(
-    r"no credits remaining|credit balance is too low|exceeded your current quota|spending.limit|billing.hard.limit",
+    r"no credits remaining|credit balance is too low|exceeded your current quota|spending.limit|billing.hard.limit"
+    r"|\b402 Payment Required",
     re.IGNORECASE,
 )
 
@@ -136,7 +137,14 @@ def is_unpaid(refused: APIError) -> bool:
     for holder in holders:
         if any(str(holder.get(key) or "") in UNPAID_CODES for key in ("code", "type")):
             return True
-    return UNPAID_WORDS.search(f"{sentence_of(refused)} {refused.message}") is not None
+    return says_unpaid(f"{sentence_of(refused)} {refused.message}")
+
+
+# A realtime model's refusal reaches a call's log as words alone, its vendor's code among them; and a
+# connection refused for payment as the status it was answered with (`_word`).
+def says_unpaid(text: str) -> bool:
+    """Whether these words are a vendor's refusal of an account that cannot pay."""
+    return UNPAID_WORDS.search(text) is not None or any(code in text for code in UNPAID_CODES)
 
 
 def vendor_named_in(text: str) -> str:

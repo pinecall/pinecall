@@ -2,35 +2,44 @@
 
 import asyncio
 import logging
-from collections.abc import Awaitable, Callable, Sequence
-from dataclasses import replace
+import re
+from collections.abc import Awaitable, Callable, Iterable, Sequence
+from dataclasses import dataclass, replace
 from functools import partial
 
 from runtime.actor import THE_ORGS_OWN, Actor, Scope
+from runtime.billing import service as billing
 from runtime.calls import folds
 from runtime.calls import service as calls
+from runtime.evals.models import CallerJob
 from runtime.evals.parts import Harness
 from runtime.evals.repository import ComparisonRepository
-from runtime.evals.service import caller_jobs
+from runtime.evals.service import caller_jobs, validity
 from runtime.evals.service.plans import (
     PICKED_UP_AFTER_S,
     STILL_PLACING_EVERY_S,
+    STOPPED,
+    Judged,
     Pair,
     Plan,
     Refused,
     actor_of,
     keep_plan,
     read_plan,
+    settle_uncounted,
+    stop_refused,
 )
 from runtime.evals.service.simulated_calls import say_why
 from runtime.evals.service.simulations import Scenario, as_wanted, place_simulation
 from runtime.evals.tasks import TooManyAtOnce
-from runtime.exceptions import PinecallError
+from runtime.exceptions import PinecallError, UpstreamError
 from runtime.kit.loops import is_cancellation, survive
 from runtime.kit.text import a_mapping
 from runtime.livekit import close_room
 from runtime.postgres import when_free
+from runtime.providers import service as providers
 from runtime.scoping import box_wide, within_org
+from runtime.wire.base import Entry
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +52,16 @@ NEVER_GOT_A_PLACE = (
 )
 # The most calls a comparison's table reads: past any org's `comparison_calls`.
 CALLS_READ_AT_MOST = 500
+# Whether a call is still on the line is read this often once every call is placed, so that a command
+# following the comparison hears of its end within seconds; the plan is said every STILL_PLACING_EVERY_S.
+A_LINE_IS_READ_EVERY_S = 5.0
+# The calls that ended are judged this often: one that did not count is placed again, and a vendor that
+# refused one for good has its setup rung no more from then on, not once the placing is over.
+SWEPT_EVERY_S = 10.0
+# What a stage writes when its vendor refused it for good (`session.listener`).
+A_DEAD_END = "component_dead_end"
+# A refusal's first line names who refused, as `providers.say_failure` says it.
+REFUSED_BY = re.compile(r"^(?P<vendor>[\w.-]+) refused ")
 LOST_WITH_ITS_GATEWAY = (
     "the gateway that played this call's caller was started again before the call began: the comparison places it again"
 )
@@ -123,31 +142,59 @@ def place_as_planned(parts: Harness, actor: Actor, plan: Plan) -> Callable[[Pair
 
 
 # The comparison says it is played for as long as one of its calls is: a gateway that stops saying so
-# has left it, with the calls it was playing and the ones still to place, and another takes it up.
+# has left it, with the calls it was playing and the ones still to place, and another takes it up. The
+# calls that ended are judged as it goes: one that did not count is placed again, and a setup whose
+# vendor refused for good is rung no more.
 async def play_to_the_end(
     parts: Harness, plan: Plan, waiting: Sequence[Pair], place: Callable[[Pair], Awaitable[object]]
 ) -> None:
     """Place what waits, say the comparison is played until its last call ended, then say it done."""
+    clock = parts.store.clock
+    # The calls judged and found to count: a caller's line is kept before its job is over, so it is final.
+    counted: set[str] = set()
+    swept_at = clock()
 
     async def say() -> None:
         await keep_plan(parts.sessions, plan)
 
+    def is_time_to_sweep() -> bool:
+        nonlocal swept_at
+        if clock() - swept_at < SWEPT_EVERY_S:
+            return False
+        swept_at = clock()
+        return True
+
+    # While calls still wait for a place, a vendor that refused one of the calls that ended stops its
+    # setup: the ones behind it are refused as they come up, and spend nothing.
+    async def say_and_stop() -> None:
+        if is_time_to_sweep():
+            stop_refused(plan, (await when_free(lambda: judge_ended(parts, plan, counted))).judged)
+        await say()
+
+    async def place_again() -> bool:
+        left = await _place_again_what_a_process_left(parts, plan, rung, say)
+        return await _place_again_what_did_not_count(parts, plan, rung, say, counted) or left
+
+    async def wait_for_the_line(*, sweeping: bool) -> None:
+        while await when_free(lambda: _is_any_on_the_line(parts, plan)):
+            await asyncio.sleep(A_LINE_IS_READ_EVERY_S)
+            if clock() - plan.heard_at >= STILL_PLACING_EVERY_S:
+                plan.heard_at = clock()
+                await when_free(say)
+            if sweeping and is_time_to_sweep():
+                await place_again()
+
+    rung = refusing_what_stopped(plan, place)
     # A gateway that stops saying so has its comparison taken up by another, which ends the calls it
     # finds on the line and places them again: a pool full for two seconds is no reason to stop saying.
-    await place_waiting(plan, waiting, place, say, clock=parts.store.clock)
-    while await when_free(lambda: _is_any_on_the_line(parts, plan)):
-        await asyncio.sleep(STILL_PLACING_EVERY_S)
-        plan.heard_at = parts.store.clock()
-        await when_free(say)
-        await _place_again_what_a_process_left(parts, plan, place, say)
-    # A call may be lost as the last one ends: looked for once more before the comparison is said done.
-    while await _place_again_what_a_process_left(parts, plan, place, say):
-        while await when_free(lambda: _is_any_on_the_line(parts, plan)):
-            await asyncio.sleep(STILL_PLACING_EVERY_S)
-            plan.heard_at = parts.store.clock()
-            await when_free(say)
+    await place_waiting(plan, waiting, rung, say_and_stop, clock=clock)
+    await wait_for_the_line(sweeping=True)
+    # A call may be lost, or end without counting, as the last one ends: looked for once more before
+    # the comparison is said done.
+    while await place_again():
+        await wait_for_the_line(sweeping=False)
     plan.done = True
-    plan.heard_at = parts.store.clock()
+    plan.heard_at = clock()
     await when_free(say)
 
 
@@ -161,7 +208,8 @@ async def _place_again_what_a_process_left(
     async def read() -> list[tuple[str, Pair]]:
         async with parts.sessions.begin() as session_:
             lost = await caller_jobs.list_lost(session_, plan.comparison)
-        return [(job.call, Pair(*caller_jobs.pair_of(job))) for job in lost if job.call not in plan.replaced]
+        settled = set(plan.replaced) | {one.call for one in plan.uncounted}
+        return [(job.call, Pair(*caller_jobs.pair_of(job))) for job in lost if job.call not in settled]
 
     lost = await when_free(read)
     if not lost:
@@ -172,6 +220,106 @@ async def _place_again_what_a_process_left(
     await when_free(say)
     await place_waiting(plan, [pair for _, pair in lost], place, say, clock=parts.store.clock)
     return True
+
+
+# ── a call that did not count ──
+
+
+@dataclass(frozen=True, slots=True)
+class Ended:
+    """The comparison's calls that ended and were not judged yet, and how many more it may place."""
+
+    judged: list[Judged]
+    room: int
+    most: int
+
+
+# A call that did not count (`validity`) stands for nothing in the table: it stays a row, marked, and
+# its place is placed again, a bounded number of times, or refused saying why (`plans.settle_uncounted`).
+# On 2026-11-26 a comparison of 140 calls ended with 19 that did not count (a vendor out of credit, a
+# vendor's 504, two callers' own voices) and its table short of them; fourteen were placed by hand.
+async def _place_again_what_did_not_count(
+    parts: Harness,
+    plan: Plan,
+    place: Callable[[Pair], Awaitable[object]],
+    say: Callable[[], Awaitable[None]],
+    counted: set[str],
+) -> bool:
+    ended = await when_free(lambda: judge_ended(parts, plan, counted))
+    settled = len(plan.uncounted)
+    again = settle_uncounted(plan, ended.judged, room=ended.room, most=ended.most)
+    if len(plan.uncounted) == settled:
+        return False
+    plan.waiting = len(again)
+    plan.heard_at = parts.store.clock()
+    await when_free(say)
+    if again:
+        await place_waiting(plan, again, place, say, clock=parts.store.clock)
+    return bool(again)
+
+
+# A spoken call's caller keeps how its own line went before its job is over (`simulated_calls`), so a
+# call is judged once its job is: before that its line is not known, and a call that counts then
+# counts for good. A call its process left is the other's to place again (`list_lost`).
+async def judge_ended(parts: Harness, plan: Plan, counted: set[str]) -> Ended:
+    """Judge the calls that ended and are not settled: whether each counted, and a vendor's refusal for good."""
+    settled = set(plan.replaced) | {one.call for one in plan.uncounted} | counted
+    async with parts.sessions.begin() as session_:
+        asked = calls.PersonaRunFilters(comparison=plan.comparison, holders=None)
+        found = await calls.list_persona_runs(session_, plan.scope, asked, limit=CALLS_READ_AT_MOST)
+        ended = [run for run in found.runs if run.facts.ended_at is not None and run.facts.call not in settled]
+        jobs = await caller_jobs.list_of_calls(session_, [run.facts.call for run in ended])
+        ready = [run for run in ended if _is_over(jobs.get(run.facts.call))]
+        errors = await calls.list_errors(session_, [run.facts.call for run in ready])
+        most = (await billing.get_quotas(session_, plan.scope.org, plan.scope.env)).compared_at_most
+    judged: list[Judged] = []
+    for run in ready:
+        facts = folds.facts_of(run.facts)
+        said = errors.get(facts.call, [])
+        judgement = validity.judge(said, facts.end_reason, run.facts.caller_line)
+        if judgement.valid:
+            counted.add(facts.call)
+            continue
+        for_good, unpaid = refusal_for_good(said)
+        pair = Pair(facts.persona or "", dict(run.facts.against or {}))
+        judged.append(Judged(facts.call, pair, judgement, for_good=for_good, unpaid=unpaid))
+    return Ended(judged, room=max(0, most - len(found.runs)), most=most)
+
+
+def _is_over(job: CallerJob | None) -> bool:
+    return job is None or (job.ended_at is not None and not job.lost)
+
+
+# A stage that ended the call for good (a key, a model, an account with no credit) writes a dead end;
+# a realtime model's refusal for payment reaches the log as words alone, its vendor's code among them.
+def refusal_for_good(errors: Iterable[Entry]) -> tuple[bool, str]:
+    """Whether a vendor refused the call in a way no retry changes, and the vendor when its account cannot pay."""
+    for entry in errors:
+        code, message = str(entry.data.get("code") or ""), str(entry.data.get("message") or "")
+        if code not in validity.OF_A_VENDOR:
+            continue
+        unpaid = providers.says_unpaid(message)
+        if code == A_DEAD_END or unpaid:
+            named = REFUSED_BY.match(message)
+            vendor = providers.vendor_named_in(message) or ("" if named is None else named["vendor"])
+            return True, vendor if unpaid else ""
+    return False, ""
+
+
+# A setup a vendor refused for good is not rung again: its calls are refused in that vendor's words as
+# they come to be placed, and spend nothing.
+def refusing_what_stopped(
+    plan: Plan, place: Callable[[Pair], Awaitable[object]]
+) -> Callable[[Pair], Awaitable[object]]:
+    """How a call of the comparison is placed, refused instead when its setup was stopped."""
+
+    async def rung(pair: Pair) -> object:
+        stopped = plan.find_stop(pair.against)
+        if stopped is not None:
+            raise UpstreamError(STOPPED.format(why=stopped.why))
+        return await place(pair)
+
+    return rung
 
 
 # ── taken up ──
@@ -213,9 +361,11 @@ async def take_up(parts: Harness, plan: Plan, last_said: float) -> None:
         found = await calls.list_persona_runs(session_, scope, asked, limit=CALLS_READ_AT_MOST)
         jobs = await caller_jobs.list_of_calls(session_, [run.facts.call for run in found.runs])
     played: list[Pair] = []
+    # A call that did not count stands for no place: the one placed in its stead does, or its refusal.
+    settled = set(plan.replaced) | {one.call for one in plan.uncounted}
     for run in found.runs:
         facts = folds.facts_of(run.facts)
-        if facts.call in plan.replaced:
+        if facts.call in settled:
             continue
         job = jobs.get(facts.call)
         if job is not None:
