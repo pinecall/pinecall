@@ -82,6 +82,8 @@ def _price(used: ModelUsage, catalog: Catalog) -> list[CostRow] | None:
     rate = catalog.rate_for(used.model)
     match used:
         case LLMModelUsage():
+            if rate is not None and rate.input is None and rate.minutes is not None:
+                return _session(used, rate.minutes)
             return None if rate is None or rate.input is None else _tokens(used, rate)
         case TTSModelUsage():
             # A voice is priced as its vendor bills it: by the character read, by the second of audio
@@ -123,6 +125,16 @@ def _tokens(used: LLMModelUsage, rate: Rate) -> list[CostRow]:
     ]
 
 
+# A speech-to-speech model its vendor bills by the minute its session is open, not by the token:
+# xAI's grok-voice-3.0, $0.08 a minute (docs.x.ai/developers/pricing, 2026-11-26), reports no
+# token and every call of it was unpriced until then. The usage row counts the session's seconds.
+def _session(used: LLMModelUsage, per: float) -> list[CostRow] | None:
+    if used.session_duration is None:
+        return None
+    minutes = round(used.session_duration / A_MINUTE_S, 4)
+    return [_row(used, "minutes", quantity=minutes, per=per, usd=minutes * per)]
+
+
 def _spoken_tokens(used: TTSModelUsage, rate: Rate) -> list[CostRow]:
     counted: list[tuple[Unit, int, float | None]] = [
         ("input_tokens", used.input_tokens or 0, rate.input),
@@ -151,7 +163,12 @@ def _count(
 
 # A token row carries its price per million tokens, as a pricing page prints it.
 def _row(
-    used: ModelUsage, unit: Unit | Literal["characters", "audio_seconds"], *, quantity: float, per: float, usd: float
+    used: ModelUsage,
+    unit: Unit | Literal["characters", "audio_seconds", "minutes"],
+    *,
+    quantity: float,
+    per: float,
+    usd: float,
 ) -> CostRow:
     return CostRow(
         provider=used.provider, model=used.model, unit=unit, quantity=quantity, unit_price_usd=per, usd=round(usd, 6)

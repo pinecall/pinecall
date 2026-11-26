@@ -3,7 +3,7 @@
 from runtime.enums import Stage
 from runtime.providers.catalog import Catalog, Rate, StageChoice
 from runtime.providers.service.prices import cost_of
-from runtime.wire.metrics import TTSModelUsage
+from runtime.wire.metrics import LLMModelUsage, TTSModelUsage
 
 GEMINI = TTSModelUsage(provider="Gemini", model="gemini-3.8-flash-lite-tts", characters_count=600, audio_duration=32.0)
 CARTESIA = TTSModelUsage(provider="Cartesia", model="sonic-3", characters_count=600, audio_duration=32.0)
@@ -42,3 +42,20 @@ def test_a_voice_with_no_rate_is_listed_unpriced_never_priced_at_zero() -> None:
         [],
         [("Gemini", "gemini-3.8-flash-lite-tts")],
     )
+
+
+# 2026-11-26: xAI bills grok-voice-3.0 by the minute of its session and reports no token: every call of
+# it was unpriced, and a benchmark could not say what a completed call cost.
+def test_a_model_billed_by_the_minute_is_priced_by_its_sessions_seconds() -> None:
+    grok = LLMModelUsage(
+        provider="api.x.ai", model="grok-voice-3.0", input_tokens=0, output_tokens=0, session_duration=96.4
+    )
+    cost = cost_of([grok], priced({"grok-voice": Rate(minutes=0.08)}))
+    assert [(row.unit, row.quantity, row.usd) for row in cost.rows] == [("minutes", 1.6067, 0.128536)]
+    assert cost.unpriced == []
+
+
+def test_a_model_billed_by_the_minute_with_no_session_counted_is_unpriced() -> None:
+    grok = LLMModelUsage(provider="api.x.ai", model="grok-voice-3.0", input_tokens=0, output_tokens=0)
+    cost = cost_of([grok], priced({"grok-voice": Rate(minutes=0.08)}))
+    assert cost.rows == [] and [row.model for row in cost.unpriced] == ["grok-voice-3.0"]

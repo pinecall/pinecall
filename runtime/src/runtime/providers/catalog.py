@@ -66,7 +66,7 @@ class Rate(Schema):
     cache_creation: float | None = None
     characters: float | None = None
     audio_seconds: float | None = None
-    # A phone leg's minute, each one begun billed whole.
+    # A phone leg's minute, each one begun billed whole; a model's minute of session, by the second.
     minutes: float | None = None
     as_of: str = ""
 
