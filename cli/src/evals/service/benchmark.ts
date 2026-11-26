@@ -38,6 +38,8 @@ export const BenchmarkInput = z.object({
   gateUnder: z.array(z.string().min(1)).default([]),
   // A report to publish: the calls that did not count are left out of the folder, neither listed nor kept.
   countedOnly: z.boolean().default(false),
+  // A model the gateway priced nothing for, priced here at this many dollars a minute of its session.
+  rates: z.record(z.string(), z.number().positive("a rate is dollars a minute, more than 0")).default({}),
 });
 export type BenchmarkInput = z.infer<typeof BenchmarkInput>;
 
@@ -70,15 +72,32 @@ async function logOf(ctx: Context, call: string): Promise<calls.Entry[]> {
 }
 
 /** One row of a comparison as the report's call: its log read, its recording kept beside the page. */
-async function callOf(ctx: Context, row: api.ComparisonRow & { comparison: string; condition?: string }, folder: string | null): Promise<BenchCall> {
+// A call of a gateway that priced nothing for a model billed by the minute (xAI's speech to speech
+// until 2026-11-26) costs what its session's minutes do at the rate the report was given: the usage
+// row of the call's summary counts the seconds. Nothing is priced that the report was not told.
+function pricedAt(entries: readonly calls.Entry[], unpriced: readonly string[], rates: Readonly<Record<string, number>>): { usd: number; left: string[] } {
+  const usage = (entries.find((entry) => entry.type === "call.summary")?.data["usage"] as { model?: unknown; session_duration?: unknown }[] | undefined) ?? [];
+  let usd = 0;
+  const left = unpriced.filter((model) => {
+    const rate = rates[model];
+    const seconds = usage.find((one) => one.model === model)?.session_duration;
+    if (rate === undefined || typeof seconds !== "number") return true;
+    usd += (seconds / 60) * rate;
+    return false;
+  });
+  return { usd, left };
+}
+
+async function callOf(ctx: Context, row: api.ComparisonRow & { comparison: string; condition?: string }, folder: string | null, rates: Readonly<Record<string, number>> = {}): Promise<BenchCall> {
   const entries = await logOf(ctx, row.call);
   const began = recordingBegan(entries, row.started_at);
   const audio = folder === null ? null : await calls.getRecording(ctx.gateway(), row.call);
   if (folder !== null && audio !== null) writeFileSync(join(folder, "calls", `${row.call}.ogg`), audio);
-  return counted(row, {
+  const priced = pricedAt(entries, unpricedOf(entries), rates);
+  return counted(priced.usd > 0 ? { ...row, cost_usd: (row.cost_usd ?? 0) + priced.usd } : row, {
     not_counted: notCountedOf(row, entries),
     replies_s: repliesOf(entries),
-    unpriced: unpricedOf(entries),
+    unpriced: priced.left,
     recording: audio === null ? null : `calls/${row.call}.ogg`,
     timed: began.said,
     lines: linesOf(entries, began.at),
@@ -140,7 +159,7 @@ export async function benchmark(ctx: Context, input: BenchmarkInput): Promise<Be
     for (const row of table.rows) if (!rows.has(row.call)) rows.set(row.call, { ...row, comparison: table.comparison, ...(condition === undefined ? {} : { condition }) });
   }
   const ended = [...rows.values()].filter((row) => row.ended_at !== null || row.why !== null);
-  const read = await inTurns(ended, READ_AT_ONCE, (row) => callOf(ctx, row, folder));
+  const read = await inTurns(ended, READ_AT_ONCE, (row) => callOf(ctx, row, folder, input.rates));
   // What did not count says nothing of the agent: a report made to be published leaves it out whole,
   // its recording too, and its numbers are the same (2026-11-26: fourteen calls a vendor refused for
   // credit, placed again once it was paid, were listed on a public page).
@@ -196,6 +215,7 @@ export async function benchmark(ctx: Context, input: BenchmarkInput): Promise<Be
     refused: tables.flatMap((table) => (table.refused ?? []).map((one) => ({ caller: one.persona, setup: nameOf(one.against), why: one.why, ...(under.has(table.comparison) ? { condition: under.get(table.comparison) as string } : {}) }))),
     on_the_line: rows.size - ended.length,
     baseline: earlier === null ? null : { made_at: earlier.made_at, comparisons: earlier.comparisons },
+    ...(Object.keys(input.rates).length === 0 ? {} : { rates_given: Object.entries(input.rates).map(([model, usd]) => ({ model, usd_a_minute: usd })) }),
     calls: all,
   };
   if (folder !== null) writeFolder(folder, report);

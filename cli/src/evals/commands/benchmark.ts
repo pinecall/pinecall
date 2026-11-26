@@ -22,6 +22,7 @@ export interface ReportFlags {
   gate?: true | undefined;
   gateUnder?: string[] | undefined;
   countedOnly?: true | undefined;
+  price?: string[] | undefined;
 }
 
 /** The report's flags, said once for both verbs. */
@@ -32,6 +33,20 @@ export const REPORT_FLAGS: readonly (readonly [string, string])[] = [
   ["--gate", "exit 1 when no setup clears both bars, or one fell against the baseline"],
   ["--counted-only", "a report to publish: the calls that did not count are left out, listed nowhere and their recordings not kept"],
 ];
+/** A price for a model the gateway priced nothing for, said again for each. */
+export const PRICE = ["--price <model=usd>", "a model the gateway priced nothing for, priced in the report at these dollars a minute of its session (grok-voice-3.0=0.08); again for another"] as const;
+
+// `grok-voice-3.0=0.08`: a model's id and dollars a minute. Refused here, before anything is read.
+function ratesOf(said: readonly string[]): Record<string, number> {
+  const rates: Record<string, number> = {};
+  for (const one of said) {
+    const at = one.lastIndexOf("=");
+    const usd = Number(one.slice(at + 1));
+    if (at <= 0 || !Number.isFinite(usd) || usd <= 0) throw new UsageError(`--price ${one}: a model and its dollars a minute, as grok-voice-3.0=0.08`);
+    rates[one.slice(0, at)] = usd;
+  }
+  return rates;
+}
 /** The gate held under a condition too, said again for each: it turns `--gate` on. */
 export const GATE_UNDER = ["--gate-under <condition>", "exit 1 unless one setup clears both bars under this condition too, beside the first one's line; again for another; turns --gate on"] as const;
 
@@ -40,7 +55,7 @@ function inputOf(comparisons: string[], out: string, flags: ReportFlags, conditi
   const unknown = under.find((name) => !conditions.some((condition) => condition.name === name));
   // Refused here, before a call is placed or read: a gate on a condition nobody named would pass by saying nothing.
   if (unknown !== undefined) throw new UsageError(conditions.length < 2 ? `--gate-under ${unknown} names a condition: name two or more with --condition, the first being the line the others are read against` : `--gate-under ${unknown}: the conditions are ${conditions.map((condition) => condition.name).join(", ")}`);
-  return service.BenchmarkInput.parse({ comparisons, out, floor: numberOf("--floor", flags.floor), ceiling: numberOf("--ceiling", flags.ceiling), baseline: flags.baseline, gate: flags.gate === true, countedOnly: flags.countedOnly === true, conditions: [...conditions], gateUnder: under });
+  return service.BenchmarkInput.parse({ comparisons, out, floor: numberOf("--floor", flags.floor), ceiling: numberOf("--ceiling", flags.ceiling), baseline: flags.baseline, gate: flags.gate === true, countedOnly: flags.countedOnly === true, rates: ratesOf(flags.price ?? []), conditions: [...conditions], gateUnder: under });
 }
 
 async function report(ctx: Context, input: service.BenchmarkInput): Promise<void> {
@@ -53,7 +68,7 @@ async function report(ctx: Context, input: service.BenchmarkInput): Promise<void
 
 /** Whether the line names a flag of the report with no report asked for. */
 export function namesTheReport(flags: ReportFlags): boolean {
-  return flags.floor !== undefined || flags.ceiling !== undefined || flags.baseline !== undefined || flags.gate === true || flags.countedOnly === true || (flags.gateUnder ?? []).length > 0;
+  return flags.floor !== undefined || flags.ceiling !== undefined || flags.baseline !== undefined || flags.gate === true || flags.countedOnly === true || (flags.price ?? []).length > 0 || (flags.gateUnder ?? []).length > 0;
 }
 
 // A benchmark is a comparison's: one caller under the agent's own settings, rung once, is placed as a
@@ -93,6 +108,7 @@ export function registerBenchmark(program: Command, ctx: Context): void {
     .option("--out <dir>", "the folder the report is written into", A_FOLDER);
   for (const [flag, says] of REPORT_FLAGS) verb.option(flag, says);
   verb.option(GATE_UNDER[0], GATE_UNDER[1], repeated);
+  verb.option(PRICE[0], PRICE[1], repeated);
   verb.addHelpText("after", HELP.benchmark).action(async (comparisons, flags) => {
     const read = flags as ReportFlags & { out: string; condition?: string[] };
     const conditions = (read.condition ?? []).map(service.parsePlayed);

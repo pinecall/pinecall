@@ -6,6 +6,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **A benchmark prices what its gateway did not.** `--price <model=usd>`, again for each: a model the gateway priced
+  nothing for is priced at that many dollars a minute of its session, and the page says the rate was given.
 - **A benchmark to publish.** `--counted-only` leaves out of the report the calls that did not count (a vendor
   that refused, the platform, a caller that broke): listed nowhere, their recordings not kept, the numbers the same.
 - **A benchmark's numbers are one implementation, shared with the console.** The scorecard, the reading of a call's

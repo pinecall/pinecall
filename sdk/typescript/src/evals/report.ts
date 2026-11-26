@@ -37,5 +37,7 @@ export interface Benchmark {
   on_the_line: number;
   /** The earlier report the setups are held against, when one was given. */
   baseline: { made_at: string; comparisons: string[] } | null;
+  /** Models the gateway priced nothing for, priced by this report at a rate a minute of their session it was given. */
+  rates_given?: { model: string; usd_a_minute: number }[];
   calls: BenchCall[];
 }

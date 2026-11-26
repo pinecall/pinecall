@@ -15,7 +15,7 @@ import { HELP } from "../help.js";
 
 import { registerCases, registerPersonas, registerRuns } from "./dataset.js";
 import { numberOf, repeated } from "../../kit/flags.js";
-import { A_FOLDER, benchmarkTheRun, GATE_UNDER, namesTheReport, registerBenchmark, REPORT_FLAGS, type ReportFlags } from "./benchmark.js";
+import { A_FOLDER, benchmarkTheRun, GATE_UNDER, namesTheReport, PRICE, registerBenchmark, REPORT_FLAGS, type ReportFlags } from "./benchmark.js";
 import { compareAtTheTerminal, simulateAtTheTerminal, test } from "./terminal.js";
 
 export function register(program: Command, ctx: Context): void {
@@ -81,6 +81,7 @@ export function register(program: Command, ctx: Context): void {
     .option(REPORT_FLAGS[4]![0], `with --report: ${REPORT_FLAGS[4]![1]}`)
     .option("--condition <name[:line]>", "with --report: the same calls placed again under this line, as television-20:ambience=television,background-noise=20; again for each, the first being the line the others are read against", repeated)
     .option(GATE_UNDER[0], `with --report: ${GATE_UNDER[1]}`, repeated)
+    .option(PRICE[0], `with --report: ${PRICE[1]}`, repeated)
     .option("--agent <name>")
     .option("--file <agent.tsx>")
     .addHelpText("after", HELP.simulate)

@@ -320,6 +320,7 @@
   // How it was run, and what is not in it.
   const foot = $("foot");
   foot.append(`Made by Pinecall${R.gateway.version ? ` ${R.gateway.version}` : ""} on ${new Date(R.made_at).toUTCString()} from ${R.comparisons.join(", ")}, in the ${R.gateway.env} of ${R.gateway.url}. The callers are simulated: a model plays each one${R.spoken ? ", a voice speaks its lines on a real call, and the agent hears and answers out loud" : ""}.`);
+  if (R.rates_given && R.rates_given.length > 0) foot.append(` ${R.rates_given.map((one) => `${one.model} is priced at $${one.usd_a_minute} a minute of its session, its vendor's rate, given to this report`).join("; ")}: the gateway that played these calls priced nothing for it.`);
   if (R.on_the_line > 0) foot.append(` ${R.on_the_line} call${R.on_the_line === 1 ? " was" : "s were"} still on the line and ${R.on_the_line === 1 ? "is" : "are"} in none of this.`);
   if (R.calls.some((call) => call.recording && !call.timed)) foot.append(" The gateway that played these calls did not say when each recording began: a line may be lit up to a third of a second early or late.");
   if (R.baseline) foot.append(` Held against the report of ${new Date(R.baseline.made_at).toISOString().slice(0, 10)} (${R.baseline.comparisons.join(", ")}): a setup regressed when its share fell by more than that report's own rounds moved among themselves.`);

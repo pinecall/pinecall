@@ -64,6 +64,10 @@ Options:
   --gate-under <condition>   with --report: exit 1 unless one setup clears both
                              bars under this condition too, beside the first
                              one's line; again for another; turns --gate on
+  --price <model=usd>        with --report: a model the gateway priced nothing
+                             for, priced in the report at these dollars a minute
+                             of its session (grok-voice-3.0=0.08); again for
+                             another
   --agent <name>
   --file <agent.tsx>
   -h, --help                 display help for command

@@ -29,6 +29,10 @@ Options:
   --gate-under <condition>        exit 1 unless one setup clears both bars under
                                   this condition too, beside the first one's
                                   line; again for another; turns --gate on
+  --price <model=usd>             a model the gateway priced nothing for, priced
+                                  in the report at these dollars a minute of its
+                                  session (grok-voice-3.0=0.08); again for
+                                  another
   -h, --help                      display help for command
 
 The report of comparisons `pinecall simulate` already played, written as a folder to open or
