@@ -268,3 +268,26 @@ async def test_an_email_the_contact_wrote_is_answered_by_one_email_and_nothing_g
         assert answer.text == "acme heard: Hola, ¿abren el sábado?", "the first email out is the answer"
         await asyncio.sleep(1.0)
         assert [email.text for email in sent.emails] == [answer.text], "and the only one"
+
+
+@needs_the_services
+async def test_the_sandbox_answers_a_whatsapp_template_as_simulated_and_writes_to_nobody(
+    gateway: Gateway, tenant: Tenant, agent: str
+) -> None:
+    """The door a server's key sends a template through: in the sandbox, 202, `simulated`, no id, no number needed."""
+    asked = {"to": "+5491155550134", "template": "consulta_derivada", "language": "es_AR", "variables": ["Juan Cruz"]}
+    door = f"/v1/agents/{agent}/template"
+    async with holding(gateway, tenant, agent):
+        sent = await gateway.http.post(door, json=asked, headers=tenant.person)
+        assert sent.status_code == 202, sent.text
+        assert sent.json() == {
+            "agent": agent,
+            "to": "+5491155550134",
+            "from": None,
+            "env": "sandbox",
+            "template": "consulta_derivada",
+            "simulated": True,
+            "message_id": None,
+        }
+        refused = await gateway.http.post(door, json={**asked, "to": "1155"}, headers=tenant.person)
+        assert refused.status_code == 400, refused.text

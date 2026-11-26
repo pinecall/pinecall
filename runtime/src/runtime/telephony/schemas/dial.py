@@ -90,3 +90,28 @@ class TextResponse(Row):
     to: str
     from_: str = Field(alias="from")
     env: Env
+
+
+class TemplateRequest(Schema):
+    """POST /v1/agents/{slug}/template: the contact, the template, what fills it, the number it leaves from."""
+
+    to: str
+    template: str = Field(min_length=1, max_length=512)
+    # Meta's code of the language the template was approved in: `es_AR`, `en_US`.
+    language: str = Field(min_length=2, max_length=16)
+    # What fills the body's {{1}}, {{2}}…, in order.
+    variables: list[str] = Field(default_factory=list[str], max_length=32)
+    from_: str | None = Field(None, alias="from")
+
+
+class TemplateResponse(Row):
+    """POST /v1/agents/{slug}/template, the answer: where it went, and whether Meta was asked at all."""
+
+    agent: str
+    to: str
+    from_: str | None = Field(alias="from")
+    env: Env
+    template: str
+    # The sandbox's: nothing was asked of Meta, nobody was written to, and there is no id.
+    simulated: bool
+    message_id: str | None

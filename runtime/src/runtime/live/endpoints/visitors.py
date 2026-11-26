@@ -1,4 +1,4 @@
-"""The talk key's endpoints and a visitor's own: a room token, a code keyed, a dial, a text, the hang-up."""
+"""The talk key's endpoints and a visitor's own: a room token, a code keyed, a dial, a text, a template, the hang-up."""
 
 from typing import Annotated
 
@@ -11,9 +11,18 @@ from runtime.fleet.auth import TheRoster
 from runtime.kit.time import now
 from runtime.live import schemas
 from runtime.live.auth import TalkKey, TheCallersCall, TheCodes, TheCodeVisit, TheLive, TheSigner, TheWhatsappThreads
-from runtime.live.service import commands, dialing, texting, visitors
+from runtime.live.service import commands, dialing, templating, texting, visitors
 from runtime.postgres import Session
-from runtime.telephony.schemas.dial import Consent, DialRequest, DialResponse, TextRequest, TextResponse
+from runtime.telephony.schemas.dial import (
+    Consent,
+    DialRequest,
+    DialResponse,
+    TemplateRequest,
+    TemplateResponse,
+    TextRequest,
+    TextResponse,
+)
+from runtime.whatsapp import service as whatsapp
 
 router = APIRouter()
 
@@ -80,6 +89,21 @@ async def text_out(
     texted = await texting.text_as_agent(session, live, threads, actor, slug, asked, now())
     answer = {"call": texted.call, "agent": slug, "to": texted.to, "from": texted.shown, "env": actor.env}
     return TextResponse.model_validate(answer)
+
+
+# WhatsApp's way to write first: a template approved at Meta, which Meta charges whoever owns the number
+# for. The sandbox answers and sends nothing.
+@router.post("/v1/agents/{slug}/template", status_code=202)
+async def send_template(
+    slug: KnownAgent, body: TemplateRequest, actor: TalkKey, live: TheLive, session: Session
+) -> TemplateResponse:
+    """Send a contact one WhatsApp template as the agent; in the sandbox, answered `simulated` and never sent."""
+    template = whatsapp.Template(body.template, body.language, tuple(body.variables))
+    sent = await templating.send_template_as_agent(
+        session, live, actor, slug, templating.Asked(body.to, template, body.from_)
+    )
+    answer = {"agent": slug, "to": sent.to, "from": sent.shown, "env": actor.env, "template": body.template}
+    return TemplateResponse.model_validate({**answer, "simulated": sent.simulated, "message_id": sent.message_id})
 
 
 # The page says it before it leaves the room, over HTTP, which a closing tab still completes

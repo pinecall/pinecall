@@ -1,4 +1,4 @@
-"""Meta's Graph, asked for a WhatsApp number: which number it is, a reply sent, a message read, a voice note's audio."""
+"""Meta's Graph, asked for a WhatsApp number: which it is, a reply or a template sent, a message read, a note heard."""
 
 from dataclasses import dataclass
 from typing import Any
@@ -35,6 +35,25 @@ class Media:
 
     data: bytes
     mime_type: str
+
+
+@dataclass(frozen=True, slots=True)
+class Template:
+    """A message template approved at Meta: its name, its language, and what fills its body, in order."""
+
+    name: str
+    language: str
+    variables: tuple[str, ...] = ()
+
+
+class _Message(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="ignore")
+    id: str
+
+
+class _Accepted(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="ignore")
+    messages: tuple[_Message, ...] = ()
 
 
 class _Refused(BaseModel):
@@ -85,6 +104,36 @@ async def send_text(http: httpx.AsyncClient, token: str, inbound: Inbound, text:
             "text": {"body": part, "preview_url": False},
         }
         await _ask(http, "POST", f"{inbound.phone_number_id}/messages", token, json=body)
+
+
+# What a business opens a conversation with, and the one message Meta charges for, on the account of
+# whoever owns the number (developers.facebook.com/docs/whatsapp/cloud-api/guides/send-message-templates).
+async def send_template(http: httpx.AsyncClient, token: str, phone_number_id: str, to: str, template: Template) -> str:
+    """Send the template to the number from the org's own; the id Meta names the message by."""
+    filled = [{"type": "text", "text": variable} for variable in template.variables]
+    body = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": to.lstrip("+"),
+        "type": "template",
+        "template": {
+            "name": template.name,
+            "language": {"code": template.language},
+            "components": [{"type": "body", "parameters": filled}] if filled else [],
+        },
+    }
+    answer = await _ask(http, "POST", f"{phone_number_id}/messages", token, json=body)
+    try:
+        accepted = _Accepted.model_validate_json(answer.content).messages
+    except PydanticValidationError:
+        accepted = ()
+    if not accepted:
+        raise UpstreamError(
+            f"WhatsApp: Meta named no message for the template {template.name}",
+            vendor=VENDOR,
+            answered=answer.status_code,
+        )
+    return accepted[0].id
 
 
 # One call does both: Meta shows the contact their message was read (the two blue ticks), and,

@@ -102,6 +102,37 @@ hours is taken up on its own call, the newest on its own channel. Two hours is u
 turn past the org's quota ends the conversation unanswered. A gateway that restarts takes up a
 conversation that still had idle time left, from its log, with its history.
 
+## The agent writes first — `POST /v1/agents/{slug}/template`
+
+Outside the 24-hour window Meta lets a business write only a **template** it approved, and it is the
+one message Meta charges for, on the account of whoever owns the number. A key with `talk` sends one
+as the agent:
+
+```http
+POST /v1/agents/front-desk/template
+{"to": "+5491155550134", "template": "visit_request", "language": "es_AR", "variables": ["Marta", "Friday at 11"]}
+```
+
+`202 {agent, to, from, env, template, simulated, message_id}`. `variables` fill the body's `{{1}}`,
+`{{2}}`… in order; `from` names the number it leaves from when the agent answers WhatsApp at
+several. It is sent from the number's own account on the org's token, and `message_id` is Meta's id
+of the message.
+
+**The sandbox sends nothing.** There the answer is the same with `simulated: true` and no
+`message_id`: Meta is not asked, nobody is written to, nothing is charged, and the agent needs no
+WhatsApp number. An agent's goldens hand a conversation over dozens of times a run, and each of
+those would be a paid message on a real person's phone. An app sends its templates through this
+door, in both environments, and holds no token of Meta's.
+
+Refused before anything is sent: `400` for a number that is not `+`, the country's code and the
+number; `403` for a contact who asked for no more messages, in either environment; in production,
+`404` when the agent answers WhatsApp at no number and `409` when that number has no account of the
+org's to send from. What Meta refuses (a template it does not know, a number not on WhatsApp) is a
+`502` in its own words.
+
+Not yet: the template is not said on the contact's conversation. Their answer opens a call as any
+message does, and the app tells the agent what it wrote.
+
 ## Nobody holding the agent
 
 A message whose agent no app holds waits on the agent's own log (`message.waiting`). The moment an

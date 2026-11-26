@@ -1,4 +1,4 @@
-"""Tests for Meta's Graph: a reply sent, a long one cut, a message read, a voice note fetched, a number named."""
+"""Tests for Meta's Graph: a reply or a template sent, a long one cut, a message read, a note fetched, a number."""
 
 import httpx
 import pytest
@@ -32,6 +32,47 @@ async def test_a_reply_meta_refuses_is_refused_in_metas_own_words() -> None:
         (message,) = webhook.messages_in(a_body(a_text("hola")))
         with pytest.raises(UpstreamError, match="more than 24 hours"):
             await graph.send_text(http, "a token", message, "hola")
+
+
+# ── a template ──
+
+
+async def test_a_template_goes_from_the_number_filled_in_order_and_meta_names_the_message() -> None:
+    meta = Graph()
+    async with httpx.AsyncClient(transport=outside(Twilio(), meta, Receiver())) as http:
+        filled = graph.Template("consulta_por_propiedad", "es_AR", ("Micaela", "la casa de Olazaval al 400"))
+        assert await graph.send_template(http, "a token", "1055", "+5491155550134", filled) == "wamid.1"
+        assert (
+            await graph.send_template(http, "a token", "1055", "+5491155550134", graph.Template("hola", "es"))
+            == "wamid.2"
+        )
+    with_variables, bare = meta.sent
+    assert (with_variables["from"], with_variables["to"], with_variables["type"]) == (
+        "1055",
+        "5491155550134",
+        "template",
+    )
+    assert with_variables["template"] == {
+        "name": "consulta_por_propiedad",
+        "language": {"code": "es_AR"},
+        "components": [
+            {
+                "type": "body",
+                "parameters": [
+                    {"type": "text", "text": "Micaela"},
+                    {"type": "text", "text": "la casa de Olazaval al 400"},
+                ],
+            }
+        ],
+    }
+    assert bare["template"] == {"name": "hola", "language": {"code": "es"}, "components": []}
+
+
+async def test_a_template_meta_refuses_is_refused_in_metas_own_words() -> None:
+    meta = Graph(refusal=(400, "Template name does not exist in the translation"))
+    async with httpx.AsyncClient(transport=outside(Twilio(), meta, Receiver())) as http:
+        with pytest.raises(UpstreamError, match="does not exist in the translation"):
+            await graph.send_template(http, "a token", "1055", "+5491155550134", graph.Template("nada", "es_AR"))
 
 
 # ── the number an account is ──
