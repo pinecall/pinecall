@@ -53,6 +53,9 @@ Options:
                              held against its own row there
   --gate                     with --report: exit 1 when no setup clears both
                              bars, or one fell against the baseline
+  --counted-only             with --report: a report to publish: the calls that
+                             did not count are left out, listed nowhere and
+                             their recordings not kept
   --condition <name[:line]>  with --report: the same calls placed again under
                              this line, as
                              television-20:ambience=television,background-noise=20;

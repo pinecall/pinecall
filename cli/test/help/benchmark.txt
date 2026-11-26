@@ -23,6 +23,9 @@ Options:
                                   its own row there
   --gate                          exit 1 when no setup clears both bars, or one
                                   fell against the baseline
+  --counted-only                  a report to publish: the calls that did not
+                                  count are left out, listed nowhere and their
+                                  recordings not kept
   --gate-under <condition>        exit 1 unless one setup clears both bars under
                                   this condition too, beside the first one's
                                   line; again for another; turns --gate on

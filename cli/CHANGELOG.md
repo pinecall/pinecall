@@ -6,6 +6,8 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **A benchmark to publish.** `--counted-only` leaves out of the report the calls that did not count (a vendor
+  that refused, the platform, a caller that broke): listed nowhere, their recordings not kept, the numbers the same.
 - **A benchmark's numbers are one implementation, shared with the console.** The scorecard, the reading of a call's
   log and the report's shape moved to `@pinecall/agents/evals`, which the console's comparison board stands on too:
   a row reads the same in the terminal, on the report's page and on the screen. `report.json` is the same file,

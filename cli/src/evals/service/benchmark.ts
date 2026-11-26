@@ -1,6 +1,6 @@
 /** An agent's benchmark from comparisons already played: every call read, the numbers made, and the report written as a folder anybody can open. */
 
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -36,6 +36,8 @@ export const BenchmarkInput = z.object({
   conditions: z.array(z.custom<Condition>()).default([]),
   // The conditions a setup must clear both bars under too, beside the baseline's, for the gate to pass.
   gateUnder: z.array(z.string().min(1)).default([]),
+  // A report to publish: the calls that did not count are left out of the folder, neither listed nor kept.
+  countedOnly: z.boolean().default(false),
 });
 export type BenchmarkInput = z.infer<typeof BenchmarkInput>;
 
@@ -138,7 +140,12 @@ export async function benchmark(ctx: Context, input: BenchmarkInput): Promise<Be
     for (const row of table.rows) if (!rows.has(row.call)) rows.set(row.call, { ...row, comparison: table.comparison, ...(condition === undefined ? {} : { condition }) });
   }
   const ended = [...rows.values()].filter((row) => row.ended_at !== null || row.why !== null);
-  const all = await inTurns(ended, READ_AT_ONCE, (row) => callOf(ctx, row, folder));
+  const read = await inTurns(ended, READ_AT_ONCE, (row) => callOf(ctx, row, folder));
+  // What did not count says nothing of the agent: a report made to be published leaves it out whole,
+  // its recording too, and its numbers are the same (2026-11-26: fourteen calls a vendor refused for
+  // credit, placed again once it was paid, were listed on a public page).
+  const all = input.countedOnly ? read.filter((call) => call.not_counted === null) : read;
+  if (input.countedOnly && folder !== null) for (const call of read) if (call.not_counted !== null && call.recording !== null) rmSync(join(folder, call.recording), { force: true });
   numberRounds(all);
   all.sort((one, other) => one.started_at - other.started_at);
 

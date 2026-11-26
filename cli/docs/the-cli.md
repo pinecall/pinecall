@@ -984,7 +984,9 @@ passes or fails each bar. A share is printed with the range it plausibly sits in
 interval at 95%): `19 of 20 · 95%` is `76%–99%`, and twenty calls cannot tell a 95% from an 85%.
 
 **What does not count.** A call a vendor of the agent refused or failed, one the platform lost, and one whose
-own simulated caller broke are listed with whose fault and why, and are in no number. A setup that lost more calls
+own simulated caller broke are listed with whose fault and why, and are in no number. `--counted-only`
+writes a report to publish: those calls are left out of it, listed nowhere and their recordings not kept,
+and every number is the same. A setup that lost more calls
 than it has left is held to no bar and named in the verdict: six calls that went well of twenty placed say
 nothing of the fourteen. A gateway since
 2026-11-26 says it on each row (`valid`, `invalid`); from an earlier one the same is read off the call's log.

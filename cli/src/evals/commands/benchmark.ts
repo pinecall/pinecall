@@ -21,6 +21,7 @@ export interface ReportFlags {
   baseline?: string | undefined;
   gate?: true | undefined;
   gateUnder?: string[] | undefined;
+  countedOnly?: true | undefined;
 }
 
 /** The report's flags, said once for both verbs. */
@@ -29,6 +30,7 @@ export const REPORT_FLAGS: readonly (readonly [string, string])[] = [
   ["--ceiling <seconds>", "the middle reply a setup may take, in seconds (1.5)"],
   ["--baseline <report.json>", "an earlier report: each setup is held against its own row there"],
   ["--gate", "exit 1 when no setup clears both bars, or one fell against the baseline"],
+  ["--counted-only", "a report to publish: the calls that did not count are left out, listed nowhere and their recordings not kept"],
 ];
 /** The gate held under a condition too, said again for each: it turns `--gate` on. */
 export const GATE_UNDER = ["--gate-under <condition>", "exit 1 unless one setup clears both bars under this condition too, beside the first one's line; again for another; turns --gate on"] as const;
@@ -38,7 +40,7 @@ function inputOf(comparisons: string[], out: string, flags: ReportFlags, conditi
   const unknown = under.find((name) => !conditions.some((condition) => condition.name === name));
   // Refused here, before a call is placed or read: a gate on a condition nobody named would pass by saying nothing.
   if (unknown !== undefined) throw new UsageError(conditions.length < 2 ? `--gate-under ${unknown} names a condition: name two or more with --condition, the first being the line the others are read against` : `--gate-under ${unknown}: the conditions are ${conditions.map((condition) => condition.name).join(", ")}`);
-  return service.BenchmarkInput.parse({ comparisons, out, floor: numberOf("--floor", flags.floor), ceiling: numberOf("--ceiling", flags.ceiling), baseline: flags.baseline, gate: flags.gate === true, conditions: [...conditions], gateUnder: under });
+  return service.BenchmarkInput.parse({ comparisons, out, floor: numberOf("--floor", flags.floor), ceiling: numberOf("--ceiling", flags.ceiling), baseline: flags.baseline, gate: flags.gate === true, countedOnly: flags.countedOnly === true, conditions: [...conditions], gateUnder: under });
 }
 
 async function report(ctx: Context, input: service.BenchmarkInput): Promise<void> {
@@ -51,7 +53,7 @@ async function report(ctx: Context, input: service.BenchmarkInput): Promise<void
 
 /** Whether the line names a flag of the report with no report asked for. */
 export function namesTheReport(flags: ReportFlags): boolean {
-  return flags.floor !== undefined || flags.ceiling !== undefined || flags.baseline !== undefined || flags.gate === true || (flags.gateUnder ?? []).length > 0;
+  return flags.floor !== undefined || flags.ceiling !== undefined || flags.baseline !== undefined || flags.gate === true || flags.countedOnly === true || (flags.gateUnder ?? []).length > 0;
 }
 
 // A benchmark is a comparison's: one caller under the agent's own settings, rung once, is placed as a

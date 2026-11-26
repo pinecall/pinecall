@@ -78,6 +78,7 @@ export function register(program: Command, ctx: Context): void {
     .option(REPORT_FLAGS[1]![0], `with --report: ${REPORT_FLAGS[1]![1]}`)
     .option(REPORT_FLAGS[2]![0], `with --report: ${REPORT_FLAGS[2]![1]}`)
     .option(REPORT_FLAGS[3]![0], `with --report: ${REPORT_FLAGS[3]![1]}`)
+    .option(REPORT_FLAGS[4]![0], `with --report: ${REPORT_FLAGS[4]![1]}`)
     .option("--condition <name[:line]>", "with --report: the same calls placed again under this line, as television-20:ambience=television,background-noise=20; again for each, the first being the line the others are read against", repeated)
     .option(GATE_UNDER[0], `with --report: ${GATE_UNDER[1]}`, repeated)
     .option("--agent <name>")
