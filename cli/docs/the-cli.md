@@ -773,6 +773,8 @@ pinecall simulate --persona <name>… [--judge] [--turns n (15, 1 to 40)] [--voi
                   [--via webrtc|sip] [--delay ms] [--jitter ms] [--rate kbps]
                   [--goal "I want to move my Tuesday visit"] [--llm vendor/model] [--tts vendor] [--caller-voice id]
                   [--against stt=…,llm=…,tts=…,voice=…,end_of_turn=… | realtime=…]… [--repeats n (1, 1 to 10)]
+                  [--report [dir]] [--floor 0.9] [--ceiling 1.5] [--baseline report.json] [--gate]
+                  [--condition name[:knob=value,…]]… [--gate-under condition]…
                   [--agent <name>] [--file agent.tsx]
 ```
 
@@ -996,6 +998,39 @@ than that report's own rounds moved among themselves, and `--gate` fails on that
 $ pinecall simulate --persona books-a-visit --persona hurried --voice --repeats 5 \
     --report reports/today --baseline reports/main/report.json --gate
 ```
+
+**Conditions.** The same callers under the same setups, on several lines: a clean one, a television behind
+the caller, a bad network. `--condition` names one, again for each, and the first is the line every other is
+read against:
+
+```console
+$ pinecall simulate --persona books-a-visit --persona hurried --voice --repeats 3 --report \
+    --condition clean \
+    --condition television-20:ambience=television,background-noise=20 \
+    --condition bad-line:packet-loss=0.05,delay=200 \
+    --gate-under television-20
+$ pinecall benchmark --condition clean:cmp_4f1c2a9be07d --condition television-20:cmp_91aa03c7d2e1,cmp_c07d2e1a9be1
+```
+
+On `simulate`, a condition is a name and, after a colon, what the line is under it, as the line's own flags
+name it: `ambience` (with `background-noise`, the dB under the caller), `packet-loss`, `delay`, `jitter`, `rate`,
+`via`. A name alone is the line as the callers have it. The line's flags themselves are refused beside
+`--condition`: the line is each condition's. Each condition is a comparison of its own and they are placed one
+after another, the first one first: the org's calls at once and the seats that play the callers are shared, so
+conditions placed together would be played under each other's load. With one condition, its line is the run's
+and nothing else changes. On `benchmark`, a condition is a name and the comparisons played under it; a
+comparison does not say the line it was placed on, so the report names those conditions and no more.
+
+The report (`report.json` is `version: 2`) then has `conditions[]`, each call its `condition`, and each
+setup's `under[]`: its share, its reply, its calls' length and how it heard its callers under each condition,
+with `moved` against the first one's line: the change, `regressed` when the share fell by more than the first
+line's own rounds moved among themselves, and `most`, the two numbers that line moved most, a call, of those
+it moved by a step or more: turns nobody said, replies the room cut and lines nobody answered (a step is one a
+call), seconds to reply (one), seconds a call (two minutes) and word error (a quarter of the words). The table, the judges and the verdict stay the first line's; the page adds "Under each condition", a
+row a setup and a column a line, and the verdict says which setups clear both bars under every one
+(`verdict.held_under_every`). `--gate-under <condition>`, again for each, exits 1 unless one setup clears both
+bars under that condition too, the same setup that clears them on the first line; it turns `--gate` on. A
+`--baseline` may be a report of either version: it is read by its first line.
 
 Several comparisons named together are one table: a caller rung again under the same setup is another round
 of it. A model the gateway priced nothing for is said beside its cost, and a setup with one is never "the

@@ -15,7 +15,7 @@ import { HELP } from "../help.js";
 
 import { registerCases, registerPersonas, registerRuns } from "./dataset.js";
 import { numberOf, repeated } from "../../kit/flags.js";
-import { A_FOLDER, benchmarkTheRun, namesTheReport, registerBenchmark, REPORT_FLAGS, type ReportFlags } from "./benchmark.js";
+import { A_FOLDER, benchmarkTheRun, GATE_UNDER, namesTheReport, registerBenchmark, REPORT_FLAGS, type ReportFlags } from "./benchmark.js";
 import { compareAtTheTerminal, simulateAtTheTerminal, test } from "./terminal.js";
 
 export function register(program: Command, ctx: Context): void {
@@ -78,6 +78,8 @@ export function register(program: Command, ctx: Context): void {
     .option(REPORT_FLAGS[1]![0], `with --report: ${REPORT_FLAGS[1]![1]}`)
     .option(REPORT_FLAGS[2]![0], `with --report: ${REPORT_FLAGS[2]![1]}`)
     .option(REPORT_FLAGS[3]![0], `with --report: ${REPORT_FLAGS[3]![1]}`)
+    .option("--condition <name[:line]>", "with --report: the same calls placed again under this line, as television-20:ambience=television,background-noise=20; again for each, the first being the line the others are read against", repeated)
+    .option(GATE_UNDER[0], `with --report: ${GATE_UNDER[1]}`, repeated)
     .option("--agent <name>")
     .option("--file <agent.tsx>")
     .addHelpText("after", HELP.simulate)
@@ -86,9 +88,15 @@ export function register(program: Command, ctx: Context): void {
       if (listen && flags.voice !== true) ctx.io.info("--listen is a call with audio in it: --voice is on");
       const reported = flags.report !== undefined;
       const reportFlags = flags as ReportFlags;
-      if (!reported && namesTheReport(reportFlags)) throw new UsageError("--floor, --ceiling, --baseline and --gate are the report's: add --report");
+      if (!reported && namesTheReport(reportFlags)) throw new UsageError("--floor, --ceiling, --baseline, --gate and --gate-under are the report's: add --report");
+      const conditions = (flags.condition ?? []).map(service.parseCondition);
+      service.requireTold(conditions);
+      const namesALine = [flags.backgroundNoise, flags.ambience, flags.packetLoss, flags.via, flags.delay, flags.jitter, flags.rate].some((said) => said !== undefined);
+      if (conditions.length > 0 && namesALine) throw new UsageError("with --condition the line is each condition's: say it there, as television-20:ambience=television,background-noise=20");
+      if (conditions.length > 1 && !reported) throw new UsageError("several conditions are read in one report: add --report");
+      if (conditions.some((condition) => Object.keys(condition.line ?? {}).length > 0) && flags.voice !== true && !listen) throw new UsageError("a condition changes the line of a spoken call: add --voice");
       if (reported && flags.judge !== true) ctx.io.info("--report is the calls as their judges read them: --judge is on");
-      const input = service.SimulateInput.parse({
+      const typed = service.SimulateInput.parse({
         persona: flags.persona[0],
         morePersonas: flags.persona.slice(1),
         judge: flags.judge === true || reported,
@@ -108,13 +116,15 @@ export function register(program: Command, ctx: Context): void {
         callerVoice: flags.callerVoice,
         repeats: numberOf("--repeats", flags.repeats),
       });
+      // One condition has nothing to be read against: its line is the run's, as the line's own flags would say it.
+      const input = conditions.length === 1 ? service.inputUnder(typed, conditions[0]!) : typed;
       // The gateway places the call and keeps the personas: an agent with no folder (one built in Studio) is its slug.
       const agent = ctx.slug("simulate", { file: flags.file, agent: flags.agent });
       const against = (flags.against ?? []).map(service.parseAgainst);
       if (reported) {
         if (listen) throw new UsageError("--listen plays one call: a report is of calls placed together");
         if (input.goal !== undefined && input.morePersonas.length > 0) throw new UsageError("--goal is what one caller phones about: with several callers, each phones about its own");
-        await benchmarkTheRun(ctx, agent, input, against.length === 0 ? [{}] : against, flags.report === true || flags.report === undefined ? A_FOLDER : flags.report, reportFlags);
+        await benchmarkTheRun(ctx, agent, input, against.length === 0 ? [{}] : against, flags.report === true || flags.report === undefined ? A_FOLDER : flags.report, reportFlags, conditions);
         return;
       }
       // Several configurations, several callers, or one rung several times, are several calls: placed together, read as one table.

@@ -6,6 +6,14 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- **Several conditions, one benchmark.** `pinecall simulate … --report --condition clean --condition
+  television-20:ambience=television,background-noise=20` places the same callers under the same setups on each
+  line, one comparison after another, and `pinecall benchmark --condition clean:cmp_… --condition
+  television-20:cmp_…` reads conditions already played. The first is the line the others are read against: the
+  table and the verdict are its own, and the report (`report.json` `version: 2`) adds each setup's numbers under
+  each condition, what the line moved most (turns nobody said, replies the room cut, a call's length), a column a
+  condition on the page and in the terminal, and which setups clear both bars under every one. `--gate-under
+  <condition>` fails a build unless one setup holds there too. A `--baseline` of version 1 is still read.
 - **A comparison is followed until its gateway plays it no more, and a setup rung no more is said.** A call that
   did not count is placed again by the gateway moments after it ends: `pinecall simulate` reads on while the table
   says `playing`, where it stopped once no row was on the line. `no more calls on <setup>: …` is printed when a

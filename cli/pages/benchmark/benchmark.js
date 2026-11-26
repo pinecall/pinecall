@@ -22,6 +22,10 @@
   }
 
   const several = R.setups.length > 1;
+  // The lines the calls were placed on, the first being the one every other is read against; none in a report of one line.
+  const conditions = R.conditions || [];
+  const base = conditions.length > 0 ? conditions[0].name : null;
+  const under = (call) => (call.condition ? ` · ${call.condition}` : "");
   const counted = R.calls.filter((call) => call.not_counted === null);
   const setupOf = (name) => R.setups.find((one) => one.name === name);
   // A setup's name without the words every row repeats: `thinks google/x` reads as `x`.
@@ -41,6 +45,7 @@
   $("title").innerHTML = several ? "Which setup should run <em></em>?" : "How <em></em> does on the phone";
   $("title").querySelector("em").textContent = R.agent;
   $("lead").textContent = `${R.callers.length} simulated caller${R.callers.length === 1 ? "" : "s"}, ${several ? `${R.setups.length} setups, ` : ""}${counted.length} ${R.spoken ? "spoken" : "written"} call${counted.length === 1 ? "" : "s"}, every one judged against what its caller came for${R.spoken ? ", and every one here to play back with its log" : ""}.`;
+  if (conditions.length > 0) $("lead").textContent += ` They were placed on ${conditions.length} lines (${conditions.map((one) => one.name).join(", ")}): the verdict and the tables are of ${base}, and each line has its column under them.`;
   $("floor").textContent = pct(R.bars.floor);
   $("ceiling").textContent = `${R.bars.ceiling_s} s`;
   $("verdict").textContent = R.verdict.passed === null ? "not judged" : R.verdict.passed ? "passes" : "fails";
@@ -83,6 +88,39 @@
     if (one.cost.unpriced.length > 0) cost.append(el("small", "range", `not priced: ${one.cost.unpriced.join(", ")}`));
     row.append(name, done, el("span", one.clears.ceiling === null ? "" : one.clears.ceiling ? "good" : "bad", secs(one.reply.p50)), el("span", "", `${secs(one.reply.p90)} · ${secs(one.reply.slowest)}`), cost);
     $("table").append(row);
+  }
+
+  // Under each condition: a row a setup, a column a line, the baseline's first.
+  if (conditions.length > 0) {
+    $("conditions-note").textContent = `The same callers under the same setups on ${conditions.length} lines. Every other table of this page is of ${base}, the line the others are read against. A setup holds under a condition when it clears both bars there, the floor on its counted calls and the ceiling on its middle reply: its cell is marked green, and red when it does not. Under the share is what that line moved most against ${base}, a call.`;
+    const fmt = (shift, value) => (shift.what === "word error" ? pct(value) : value >= 10 ? String(Math.round(value)) : value.toFixed(1));
+    const matrix = el("table");
+    const names = el("tr");
+    names.append(el("th", "", "The agent runs on"));
+    for (const one of conditions) { const th = el("th", "", one.name); if (one.says) th.append(el("small", "", one.says)); names.append(th); }
+    matrix.append(names);
+    for (const setup of R.setups) {
+      const row = el("tr");
+      row.append(el("td", "", short(setup.name)));
+      for (const one of conditions) {
+        const its = (setup.under || []).find((found) => found.condition === one.name);
+        const cell = el("td", "cond");
+        if (!its || its.calls === 0) { cell.append(el("small", "", its && its.not_counted > 0 ? `none counted: ${its.not_counted} set aside` : "no call")); row.append(cell); continue; }
+        const clears = !its.thin && its.clears.floor === true && its.clears.ceiling !== false;
+        if (!its.thin && its.clears.floor !== null) cell.classList.add(clears ? "held" : "fell");
+        cell.append(el("b", its.thin || its.clears.floor === null ? "" : clears ? "good" : "bad", pct(its.completed.share)), el("span", "of", `${its.completed.completed} of ${its.completed.of}`));
+        cell.append(el("small", "", `reply ${secs(its.reply.p50)} · a call ${clock(its.length_s)}`));
+        if (its.thin) cell.append(el("small", "", `${its.not_counted} of its calls set aside: held to no bar`));
+        if (its.moved) {
+          for (const shift of its.moved.most) cell.append(el("small", "shift", shift.what === "word error" && shift.now > 1 ? `more words heard than said (${fmt(shift, shift.was)} word error on ${base})` : `${fmt(shift, shift.now)} ${shift.what} (${fmt(shift, shift.was)} on ${base})`));
+          if (its.moved.regressed) cell.append(el("small", "shift", `fell by more than ${base}'s own rounds moved`));
+        }
+        row.append(cell);
+      }
+      matrix.append(row);
+    }
+    $("conditions").append(matrix);
+    show("conditions-part");
   }
 
   // How each setup heard its callers.
@@ -150,31 +188,48 @@
   const dotOf = (call) => {
     const dot = el("button", `dot${call.not_counted ? " out" : call.completed === null ? " none" : call.completed ? "" : " no"}`);
     dot.type = "button";
-    dot.title = `${short(call.setup)} · ${call.caller} · ${call.not_counted ? `not counted: ${call.not_counted.why}` : call.completed === null ? "not judged" : call.completed ? "completed" : "not completed"}`;
+    dot.title = `${short(call.setup)} · ${call.caller}${under(call)} · ${call.not_counted ? `not counted: ${call.not_counted.why}` : call.completed === null ? "not judged" : call.completed ? "completed" : "not completed"}`;
     dot.onclick = () => open(call);
     dots.set(call.call, dot);
     return dot;
   };
-  const grid = el("table");
-  const top = el("tr");
-  top.append(el("th", "", "The agent runs on"));
-  for (const caller of R.callers) top.append(el("th", "", caller.name));
-  top.append(el("th", "", "Round by round"));
-  grid.append(top);
-  for (const one of R.setups) {
-    const row = el("tr");
-    row.append(el("td", "", short(one.name)));
-    for (const caller of R.callers) {
-      const cell = el("td");
-      for (const call of R.calls.filter((found) => found.setup === one.name && found.caller === caller.name)) cell.append(dotOf(call));
-      row.append(cell);
+  // With several conditions the grid is of one at a time, the baseline's first.
+  let shown = base;
+  const drawGrid = () => {
+    dots.clear();
+    const grid = el("table");
+    const top = el("tr");
+    top.append(el("th", "", "The agent runs on"));
+    for (const caller of R.callers) top.append(el("th", "", caller.name));
+    top.append(el("th", "", "Round by round"));
+    grid.append(top);
+    for (const one of R.setups) {
+      const row = el("tr");
+      row.append(el("td", "", short(one.name)));
+      for (const caller of R.callers) {
+        const cell = el("td");
+        for (const call of R.calls.filter((found) => found.setup === one.name && found.caller === caller.name && (shown === null || found.condition === shown))) cell.append(dotOf(call));
+        row.append(cell);
+      }
+      const its = shown === null ? one : (one.under || []).find((found) => found.condition === shown) || { rounds: [] };
+      const rounds = el("td", "rounds");
+      its.rounds.forEach((round, at) => { if (at > 0) rounds.append(" · "); rounds.append(round.completed === round.of ? `${round.completed}/${round.of}` : el("b", "", `${round.completed}/${round.of}`)); });
+      row.append(rounds);
+      grid.append(row);
     }
-    const rounds = el("td", "rounds");
-    one.rounds.forEach((round, at) => { if (at > 0) rounds.append(" · "); rounds.append(round.completed === round.of ? `${round.completed}/${round.of}` : el("b", "", `${round.completed}/${round.of}`)); });
-    row.append(rounds);
-    grid.append(row);
-  }
-  $("grid").append(grid);
+    $("grid").replaceChildren(grid);
+    if (conditions.length === 0) return;
+    const group = el("div", "chips");
+    group.append(el("u", "", "condition"));
+    for (const one of conditions) {
+      const chip = el("button", shown === one.name ? "on" : "", one.name);
+      chip.type = "button";
+      chip.onclick = () => { shown = one.name; drawGrid(); };
+      group.append(chip);
+    }
+    $("grid-of").replaceChildren(group);
+  };
+  drawGrid();
 
   // One call as a row of a list.
   const rowOf = (call, cls, cells) => {
@@ -185,25 +240,25 @@
     return row;
   };
   const failed = counted.filter((call) => call.completed === false);
-  for (const call of failed) $("failures").append(rowOf(call, "f no", [el("span", "m", short(call.setup)), el("span", "", call.caller), el("span", "", call.reason || "the judge gave no reason"), el("span", "play", "▶ open")]));
+  for (const call of failed) $("failures").append(rowOf(call, "f no", [el("span", "m", short(call.setup)), el("span", "", `${call.caller}${under(call)}`), el("span", "", call.reason || "the judge gave no reason"), el("span", "play", "▶ open")]));
   if (failed.length > 0) show("failures-part");
   const out = R.calls.filter((call) => call.not_counted);
-  for (const call of out) $("out").append(rowOf(call, "f", [el("span", "m", short(call.setup)), el("span", "", `${call.caller} · ${call.not_counted.kind}`), el("span", "", call.not_counted.why), el("span", "play", "▶ open")]));
-  for (const one of R.refused) { const row = el("div", "call f"); row.append(el("span", "m", short(one.setup)), el("span", "", `${one.caller} · never placed`), el("span", "", one.why), el("span")); $("out").append(row); }
+  for (const call of out) $("out").append(rowOf(call, "f", [el("span", "m", short(call.setup)), el("span", "", `${call.caller}${under(call)} · ${call.not_counted.kind}`), el("span", "", call.not_counted.why), el("span", "play", "▶ open")]));
+  for (const one of R.refused) { const row = el("div", "call f"); row.append(el("span", "m", short(one.setup)), el("span", "", `${one.caller}${one.condition ? ` · ${one.condition}` : ""} · never placed`), el("span", "", one.why), el("span")); $("out").append(row); }
   if (out.length + R.refused.length > 0) show("out-part");
 
   // Every call, filtered by setup, by caller and by how it came out.
-  const picked = { setup: "", caller: "", result: "" };
+  const picked = { setup: "", caller: "", result: "", condition: "" };
   const resultOf = (call) => (call.not_counted ? "not counted" : call.completed === null ? "not judged" : call.completed ? "completed" : "not completed");
   const drawList = () => {
     rows.clear();
-    const shown = R.calls.filter((call) => (!picked.setup || call.setup === picked.setup) && (!picked.caller || call.caller === picked.caller) && (!picked.result || resultOf(call) === picked.result));
+    const shown = R.calls.filter((call) => (!picked.setup || call.setup === picked.setup) && (!picked.caller || call.caller === picked.caller) && (!picked.condition || call.condition === picked.condition) && (!picked.result || resultOf(call) === picked.result));
     const heading = el("div", "call h");
     for (const label of ["Setup", "Caller", "Result", "Reply", "Cost", "Length", ""]) heading.append(el("span", "", label));
     $("list").replaceChildren(heading);
     for (const call of shown) {
       const result = resultOf(call);
-      const row = rowOf(call, "", [el("span", "m", short(call.setup)), el("span", "", call.caller), el("span", result === "completed" ? "good" : result === "not completed" ? "bad" : "warn", result), el("span", "", secs(call.reply_s)), el("span", "", usd(call.cost_usd)), el("span", "", clock(call.length_s)), el("span", "play", "▶ open")]);
+      const row = rowOf(call, "", [el("span", "m", short(call.setup)), el("span", "", `${call.caller}${under(call)}`), el("span", result === "completed" ? "good" : result === "not completed" ? "bad" : "warn", result), el("span", "", secs(call.reply_s)), el("span", "", usd(call.cost_usd)), el("span", "", clock(call.length_s)), el("span", "play", "▶ open")]);
       rows.set(call.call, row);
       $("list").append(row);
     }
@@ -222,7 +277,7 @@
       return group;
     };
     const results = [...new Set(R.calls.map(resultOf))];
-    $("filters").replaceChildren(chips("setup", "setup", R.setups.map((one) => [one.name, short(one.name)])), chips("caller", "caller", R.callers.map((one) => [one.name, one.name])), chips("result", "result", results.map((one) => [one, one])));
+    $("filters").replaceChildren(...(conditions.length > 0 ? [chips("condition", "condition", conditions.map((one) => [one.name, one.name]))] : []), chips("setup", "setup", R.setups.map((one) => [one.name, short(one.name)])), chips("caller", "caller", R.callers.map((one) => [one.name, one.name])), chips("result", "result", results.map((one) => [one, one])));
   };
   drawFilters();
   drawList();
@@ -236,7 +291,7 @@
     if (dots.get(call.call)) dots.get(call.call).classList.add("on");
     if (rows.get(call.call)) rows.get(call.call).classList.add("on");
     $("player").hidden = false;
-    $("p-title").textContent = `${short(call.setup)} · ${call.caller}`;
+    $("p-title").textContent = `${short(call.setup)} · ${call.caller}${under(call)}`;
     $("p-facts").textContent = `${resultOf(call).toUpperCase()} · ${clock(call.length_s)} · reply ${secs(call.reply_s)} · ${usd(call.cost_usd)} · ${call.call}`;
     $("p-why").textContent = call.not_counted ? `Not counted (${call.not_counted.kind}): ${call.not_counted.why}` : call.reason ? `The judge: ${call.reason}` : "";
     audio.hidden = !call.recording;

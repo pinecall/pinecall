@@ -5,57 +5,65 @@ a model plays one persona against the agent, live, and the call is scored at
 hang-up
 
 Options:
-  --persona <name>          one of the agent's personas: pinecall personas lists
-                            them; again for another caller, compared
-  --judge                   read back the call.score the log seals on, and print
-                            every judge
-  --turns <n>               how many turns the caller improvises before hanging
-                            up (default: "15")
-  --voice                   a real line: a room, and the caller in a person's
-                            voice
-  --listen                  the call on this machine's speakers while it
-                            happens; turns --voice on
+  --persona <name>           one of the agent's personas: pinecall personas
+                             lists them; again for another caller, compared
+  --judge                    read back the call.score the log seals on, and
+                             print every judge
+  --turns <n>                how many turns the caller improvises before hanging
+                             up (default: "15")
+  --voice                    a real line: a room, and the caller in a person's
+                             voice
+  --listen                   the call on this machine's speakers while it
+                             happens; turns --voice on
   --background-noise <dB>
   --ambience <what>
   --packet-loss <share>
-  --pause <seconds>         silence before each of the caller's lines, over the
-                            persona's; 0 answers at once
-  --via <webrtc|sip>        how the caller reaches the agent on a spoken call:
-                            in its room, or ringing it by phone over SIP (the
-                            sandbox's)
-  --delay <ms>              the caller's network holds every packet this long, 0
-                            to 2000
-  --jitter <ms>             how far that hold moves from packet to packet, 0 to
-                            500
-  --rate <kbps>             the kilobits a second the caller's network carries;
-                            a voice needs about 64
-  --goal <text>             what the caller phones about this run, in the first
-                            person, over the persona's goal and the briefing
-  --llm <vendor/model>      the model that plays the caller this run; the
-                            persona's when unsaid
-  --tts <vendor>            the vendor the caller's voice is read by this run
-  --caller-voice <id>       the caller's voice this run: pinecall voices list
-                            names them
-  --against <values>        the agent on these for this run: stt=, llm=, tts=,
-                            voice=, language=, temperature=, end_of_turn=, or
-                            realtime= for a model that hears and speaks; again
-                            for another, compared
-  --repeats <n>             how many times the caller rings under each
-                            configuration, 1 to 10: more than once is a
-                            comparison, read as how often each got it done
-  --report [dir]            the benchmark written when the calls end, into this
-                            folder (benchmark): turns --judge on
-  --floor <share>           with --report: the share of counted calls a setup
-                            must complete, 0 to 1 (0.9)
-  --ceiling <seconds>       with --report: the middle reply a setup may take, in
-                            seconds (1.5)
-  --baseline <report.json>  with --report: an earlier report: each setup is held
-                            against its own row there
-  --gate                    with --report: exit 1 when no setup clears both
-                            bars, or one fell against the baseline
+  --pause <seconds>          silence before each of the caller's lines, over the
+                             persona's; 0 answers at once
+  --via <webrtc|sip>         how the caller reaches the agent on a spoken call:
+                             in its room, or ringing it by phone over SIP (the
+                             sandbox's)
+  --delay <ms>               the caller's network holds every packet this long,
+                             0 to 2000
+  --jitter <ms>              how far that hold moves from packet to packet, 0 to
+                             500
+  --rate <kbps>              the kilobits a second the caller's network carries;
+                             a voice needs about 64
+  --goal <text>              what the caller phones about this run, in the first
+                             person, over the persona's goal and the briefing
+  --llm <vendor/model>       the model that plays the caller this run; the
+                             persona's when unsaid
+  --tts <vendor>             the vendor the caller's voice is read by this run
+  --caller-voice <id>        the caller's voice this run: pinecall voices list
+                             names them
+  --against <values>         the agent on these for this run: stt=, llm=, tts=,
+                             voice=, language=, temperature=, end_of_turn=, or
+                             realtime= for a model that hears and speaks; again
+                             for another, compared
+  --repeats <n>              how many times the caller rings under each
+                             configuration, 1 to 10: more than once is a
+                             comparison, read as how often each got it done
+  --report [dir]             the benchmark written when the calls end, into this
+                             folder (benchmark): turns --judge on
+  --floor <share>            with --report: the share of counted calls a setup
+                             must complete, 0 to 1 (0.9)
+  --ceiling <seconds>        with --report: the middle reply a setup may take,
+                             in seconds (1.5)
+  --baseline <report.json>   with --report: an earlier report: each setup is
+                             held against its own row there
+  --gate                     with --report: exit 1 when no setup clears both
+                             bars, or one fell against the baseline
+  --condition <name[:line]>  with --report: the same calls placed again under
+                             this line, as
+                             television-20:ambience=television,background-noise=20;
+                             again for each, the first being the line the others
+                             are read against
+  --gate-under <condition>   with --report: exit 1 unless one setup clears both
+                             bars under this condition too, beside the first
+                             one's line; again for another; turns --gate on
   --agent <name>
   --file <agent.tsx>
-  -h, --help                display help for command
+  -h, --help                 display help for command
 
 A model in the gateway plays the caller: every turn improvised from the persona's goal, its style
 and its own facts — there is no script. The agent is whoever holds it — your `pinecall start`, a
@@ -82,7 +90,12 @@ larger than the org's simulated calls at once runs whole: the calls past it wait
 --report writes the agent's benchmark when the calls end, into ./benchmark or the folder named: a
 page to open or publish, report.json and each call's recording, each setup held to --floor and
 --ceiling (`pinecall benchmark --help` reads them); it turns --judge on, and --gate makes it exit 1
-when no setup clears both bars.
+when no setup clears both bars. With --report, --condition places the same calls again on another
+line, again for each: a name, and after a colon what the line is under it, as the line's own flags
+name it (ambience, background-noise, packet-loss, delay, jitter, rate, via); a name alone is the
+line as it is. The first is the line the others are read against. Each condition is a comparison
+of its own, placed after the one before it ended, and the report has a column for each;
+--gate-under names one a setup must clear both bars under too.
 
 Examples
   $ pinecall simulate --persona hurried --listen --turns 2

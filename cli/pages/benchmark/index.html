@@ -31,6 +31,12 @@
       <div class="table" id="table"></div>
     </section>
 
+    <section id="conditions-part" hidden>
+      <h2>Under each condition</h2>
+      <p class="note" id="conditions-note"></p>
+      <div class="grid" id="conditions"></div>
+    </section>
+
     <section id="quality-part" hidden>
       <h2>How each heard its callers</h2>
       <p class="note">What a simulation knows and a real call does not: what the caller really said, and when. Counted over each setup's calls.</p>
@@ -52,6 +58,7 @@
     <section>
       <h2>Every call</h2>
       <p class="note">A dot is one call: green when the caller got everything, red when not, hollow when it does not count. The last column is each round: one call of every caller, so a row shows how far one run moves from the next.</p>
+      <div class="filters" id="grid-of"></div>
       <div class="grid" id="grid"></div>
     </section>
 

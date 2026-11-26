@@ -44,7 +44,7 @@ Commands:
   simulate [options]                   a model plays one persona against the
                                        agent, live, and the call is scored at
                                        hang-up
-  benchmark [options] <comparison...>  the report of comparisons already played:
+  benchmark [options] [comparison...]  the report of comparisons already played:
                                        each setup against two bars, every call
                                        with its recording and its log
   eval [options] <call-id>             ring 3: one real call, re-evaluated by

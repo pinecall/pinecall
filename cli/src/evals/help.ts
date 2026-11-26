@@ -41,11 +41,19 @@ each setup against its row in an earlier report.json: a setup regressed when its
 than that report's own rounds moved among themselves, and with --gate that fails too. --json prints
 report.json. \`pinecall simulate … --report\` places the calls and writes the report in one go.
 
+--condition names the comparisons played on one line, again for each: the same callers under the
+same setups on a clean line, with a television behind them, on a bad network. The first is the line
+every other is read against, and the table and the verdict are its own; the report adds a column a
+condition, each setup's share there and what the line moved most, and the verdict says which setups
+clear both bars under every one. --gate-under names a condition one setup must clear both bars
+under too, beside the first one's line, and turns --gate on.
+
 Examples
   $ pinecall benchmark cmp_4f1c2a9be07d
   $ pinecall benchmark cmp_4f1c2a9be07d cmp_91aa03c7d2e1 --out reports/november
   $ pinecall benchmark cmp_4f1c2a9be07d --floor 0.95 --ceiling 1.2 --gate
   $ pinecall benchmark cmp_4f1c2a9be07d --baseline reports/october/report.json --gate
+  $ pinecall benchmark --condition clean:cmp_4f1c2a9be07d --condition television-20:cmp_91aa03c7d2e1 --gate-under television-20
 `,
   simulate: `
 A model in the gateway plays the caller: every turn improvised from the persona's goal, its style
@@ -73,7 +81,12 @@ larger than the org's simulated calls at once runs whole: the calls past it wait
 --report writes the agent's benchmark when the calls end, into ./benchmark or the folder named: a
 page to open or publish, report.json and each call's recording, each setup held to --floor and
 --ceiling (\`pinecall benchmark --help\` reads them); it turns --judge on, and --gate makes it exit 1
-when no setup clears both bars.
+when no setup clears both bars. With --report, --condition places the same calls again on another
+line, again for each: a name, and after a colon what the line is under it, as the line's own flags
+name it (ambience, background-noise, packet-loss, delay, jitter, rate, via); a name alone is the
+line as it is. The first is the line the others are read against. Each condition is a comparison
+of its own, placed after the one before it ended, and the report has a column for each;
+--gate-under names one a setup must clear both bars under too.
 
 Examples
   $ pinecall simulate --persona hurried --listen --turns 2

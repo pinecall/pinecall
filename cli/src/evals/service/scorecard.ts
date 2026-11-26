@@ -31,6 +31,8 @@ export interface BenchCall {
   comparison: string;
   caller: string;
   setup: string;
+  /** The condition its line was under, when the benchmark has several. */
+  condition?: string;
   /** The caller's nth call under its setup, from 1, in the order they started. */
   round: number;
   not_counted: NotCounted | null;
@@ -91,6 +93,31 @@ export interface Setup {
   thin: boolean;
   /** Against an earlier report, when one was given. */
   baseline?: Moved;
+  /** Its numbers under each condition, the baseline's first, when the benchmark has several: everything above is the baseline's. */
+  under?: Under[];
+}
+
+/** A number a condition moved, a call: what it was on the baseline's line and what it is under this one. */
+export interface Shift {
+  what: string;
+  was: number;
+  now: number;
+}
+
+/** A setup under one condition: what it completed there, how it heard its callers, and how that moved against the baseline's line. */
+export interface Under {
+  condition: string;
+  calls: number;
+  not_counted: number;
+  thin: boolean;
+  completed: Share;
+  reply: Setup["reply"];
+  length_s: number | null;
+  hearing: Setup["hearing"];
+  rounds: Setup["rounds"];
+  clears: Setup["clears"];
+  /** Against the baseline's line; null for the baseline itself. `most` is what moved by a step or more (a turn a call, a second of reply, two minutes of a call, a quarter of the words), the most steps first, two at most. */
+  moved: (Moved & { most: Shift[] }) | null;
 }
 
 /** How a setup moved against an earlier report of it. */
@@ -112,6 +139,8 @@ export interface Verdict {
   /** The cheapest per completed call of the setups that cleared both, where a cost was measured; else the one that completed the most. */
   winner: string | null;
   says: string;
+  /** With several conditions: the setups that clear both bars under every one of them. */
+  held_under_every?: string[];
 }
 
 const Z = 1.959964;

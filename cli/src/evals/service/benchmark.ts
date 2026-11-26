@@ -12,6 +12,7 @@ import type { Behavior } from "../../api/cases.js";
 import * as api from "../../api/evals.js";
 import type { Context } from "../../context.js";
 import { PinecallError, UsageError } from "../../errors.js";
+import { clearsBoth, flagOf, heldUnderEvery, sayLine, underEach, type Condition, type Line } from "./conditions.js";
 import { listPersonas } from "./personas.js";
 import { movedSince, nameOf, setupOf, verdictOf, type Bars, type BenchCall, type Earlier, type Setup, type Verdict } from "./scorecard.js";
 import { linesOf, notCountedOf, READ, recordingBegan, repliesOf, unpricedOf } from "./transcript.js";
@@ -19,8 +20,9 @@ import { linesOf, notCountedOf, READ, recordingBegan, repliesOf, unpricedOf } fr
 /** The page a report is read in: its markup, its style and its script, copied beside the report's data. */
 export const PAGE_ROOT = fileURLToPath(new URL("../../../pages/benchmark/", import.meta.url));
 const PAGE_FILES = ["index.html", "benchmark.css", "benchmark.js"] as const;
-/** The report's shape: a reader of `report.json` checks it, and a baseline of another is refused. */
-export const VERSION = 1;
+/** The report's shape: a reader of `report.json` checks it. 2 added conditions (2026-11-26); a baseline may be a report of either. */
+export const VERSION = 2;
+const READ_AS_A_BASELINE: readonly number[] = [1, VERSION];
 // A call's log and its recording are two reads; this many calls are read at once.
 const READ_AT_ONCE = 6;
 const A_SHARE = "--floor is the share of calls that must be completed: a number from 0 to 1, such as 0.9";
@@ -34,6 +36,10 @@ export const BenchmarkInput = z.object({
   ceiling: z.number().positive(SECONDS).default(1.5),
   baseline: z.string().min(1).optional(),
   gate: z.boolean().default(false),
+  // Several conditions: each one's comparisons, the first being the baseline every other is read against. One or none is no condition.
+  conditions: z.array(z.custom<Condition>()).default([]),
+  // The conditions a setup must clear both bars under too, beside the baseline's, for the gate to pass.
+  gateUnder: z.array(z.string().min(1)).default([]),
 });
 export type BenchmarkInput = z.infer<typeof BenchmarkInput>;
 
@@ -53,6 +59,8 @@ export interface Benchmark {
   agent: string;
   gateway: { url: string; env: string; version: string | null };
   comparisons: string[];
+  /** The conditions the calls were placed under, the baseline first; none when the benchmark is of one line. */
+  conditions: { name: string; line: Line | null; says: string; comparisons: string[]; calls: number; counted: number }[];
   spoken: boolean;
   /** The command that places the same calls again. */
   command: string;
@@ -62,7 +70,7 @@ export interface Benchmark {
   /** Best first: the share completed, then the reply. */
   setups: Setup[];
   /** What the gateway never placed, in its words. */
-  refused: { caller: string; setup: string; why: string }[];
+  refused: { caller: string; setup: string; why: string; condition?: string }[];
   /** Calls still on the line when the report was made: in none of its numbers. */
   on_the_line: number;
   /** The earlier report the setups are held against, when one was given. */
@@ -104,7 +112,7 @@ function didIt(row: api.ComparisonRow): boolean | null {
 }
 
 /** One row of a comparison as the report's call: its log read, its recording kept beside the page. */
-async function callOf(ctx: Context, row: api.ComparisonRow & { comparison: string }, folder: string | null): Promise<BenchCall> {
+async function callOf(ctx: Context, row: api.ComparisonRow & { comparison: string; condition?: string }, folder: string | null): Promise<BenchCall> {
   const entries = await logOf(ctx, row.call);
   const began = recordingBegan(entries, row.started_at);
   const audio = folder === null ? null : await calls.getRecording(ctx.gateway(), row.call);
@@ -115,6 +123,7 @@ async function callOf(ctx: Context, row: api.ComparisonRow & { comparison: strin
     comparison: row.comparison,
     caller: row.persona,
     setup: nameOf(row.against),
+    ...(row.condition === undefined ? {} : { condition: row.condition }),
     round: 0,
     not_counted: notCountedOf(row, entries),
     completed: didIt(row),
@@ -138,28 +147,31 @@ async function callOf(ctx: Context, row: api.ComparisonRow & { comparison: strin
 
 // Several comparisons are one table: rounds placed apart. A caller's calls under a setup are numbered
 // in the order they started, whichever comparison placed them, and a call that does not count takes
-// no round: the one placed in its stead does.
+// no round: the one placed in its stead does. Each condition numbers its own.
 function numberRounds(all: BenchCall[]): void {
   const seen = new Map<string, number>();
   for (const call of [...all].sort((one, other) => one.started_at - other.started_at)) {
     if (call.not_counted !== null) continue;
-    const pair = `${call.setup}\n${call.caller}`;
+    const pair = `${call.condition ?? ""}\n${call.setup}\n${call.caller}`;
     call.round = (seen.get(pair) ?? 0) + 1;
     seen.set(pair, call.round);
   }
 }
 
-function commandOf(agent: string, spoken: boolean, callers: readonly string[], setups: readonly Setup[]): string {
+function commandOf(agent: string, spoken: boolean, callers: readonly string[], setups: readonly Setup[], conditions: readonly Condition[]): string {
+  // Conditions played before do not say their lines: what makes this report again is the verb that read them.
+  if (conditions.some((condition) => condition.line === null)) return ["pinecall benchmark", ...conditions.map((condition) => `--condition ${condition.name}:${condition.comparisons.join(",")}`)].join(" ");
   const repeats = Math.max(1, ...setups.flatMap((setup) => setup.rounds.map((round) => round.round)));
   const against = setups.filter((setup) => setup.kind !== "own settings").map((setup) => `--against ${Object.entries(setup.values).map(([knob, value]) => `${knob}=${String(value)}`).join(",")}`);
-  return ["pinecall simulate", `--agent ${agent}`, ...(spoken ? ["--voice"] : []), ...callers.map((caller) => `--persona ${caller}`), ...against, ...(repeats > 1 ? [`--repeats ${String(repeats)}`] : []), "--report"].join(" ");
+  return ["pinecall simulate", `--agent ${agent}`, ...(spoken ? ["--voice"] : []), ...callers.map((caller) => `--persona ${caller}`), ...against, ...(repeats > 1 ? [`--repeats ${String(repeats)}`] : []), ...conditions.map(flagOf), "--report"].join(" ");
 }
 
 /** An earlier report read from its file; refused when it is no report of this shape. */
 function readBaseline(path: string): Benchmark {
   if (!existsSync(path)) throw new UsageError(`no file at ${path}: --baseline takes the report.json of an earlier benchmark`);
   const read = JSON.parse(readFileSync(path, "utf8")) as Partial<Benchmark> | null;
-  if (read === null || read.version !== VERSION || !Array.isArray(read.setups)) throw new UsageError(`${path} is not a report.json this version reads (version ${String(VERSION)})`);
+  // A report of several conditions is read by its baseline's line, which is what its setups' own numbers are.
+  if (read === null || !READ_AS_A_BASELINE.includes(read.version ?? 0) || !Array.isArray(read.setups)) throw new UsageError(`${path} is not a report.json this version reads (version ${READ_AS_A_BASELINE.join(" or ")})`);
   return read as Benchmark;
 }
 
@@ -177,7 +189,16 @@ function writeFolder(folder: string, report: Benchmark): void {
  */
 export async function benchmark(ctx: Context, input: BenchmarkInput): Promise<Benchmarked> {
   const gw = ctx.gateway();
-  const ids = [...new Set(input.comparisons)];
+  // One condition is no condition: there is nothing to read it against.
+  const conditions = input.conditions.length > 1 ? input.conditions : [];
+  const ids = [...new Set(input.conditions.length > 0 ? input.conditions.flatMap((condition) => condition.comparisons) : input.comparisons)];
+  const under = new Map<string, string>();
+  for (const condition of conditions) for (const id of condition.comparisons) {
+    if (under.has(id)) throw new UsageError(`${id} is named under ${under.get(id) ?? ""} and under ${condition.name}: a comparison was played on one line`);
+    under.set(id, condition.name);
+  }
+  const unknown = input.gateUnder.find((name) => !conditions.some((condition) => condition.name === name));
+  if (unknown !== undefined) throw new UsageError(conditions.length === 0 ? `--gate-under ${unknown} names a condition, and this benchmark has none: name them with --condition` : `--gate-under ${unknown}: the conditions are ${conditions.map((condition) => condition.name).join(", ")}`);
   const tables = await Promise.all(ids.map((id) => api.getComparison(gw, id)));
   const agent = tables[0]?.agent ?? "";
   const other = tables.find((table) => table.agent !== agent);
@@ -186,8 +207,11 @@ export async function benchmark(ctx: Context, input: BenchmarkInput): Promise<Be
   const folder = input.out === null ? null : resolve(input.out);
   if (folder !== null) mkdirSync(join(folder, "calls"), { recursive: true });
 
-  const rows = new Map<string, api.ComparisonRow & { comparison: string }>();
-  for (const table of tables) for (const row of table.rows) if (!rows.has(row.call)) rows.set(row.call, { ...row, comparison: table.comparison });
+  const rows = new Map<string, api.ComparisonRow & { comparison: string; condition?: string }>();
+  for (const table of tables) {
+    const condition = under.get(table.comparison);
+    for (const row of table.rows) if (!rows.has(row.call)) rows.set(row.call, { ...row, comparison: table.comparison, ...(condition === undefined ? {} : { condition }) });
+  }
   const ended = [...rows.values()].filter((row) => row.ended_at !== null || row.why !== null);
   const all = await inTurns(ended, READ_AT_ONCE, (row) => callOf(ctx, row, folder));
   numberRounds(all);
@@ -197,11 +221,23 @@ export async function benchmark(ctx: Context, input: BenchmarkInput): Promise<Be
   const callers = [...new Set(tables.flatMap((table) => (table.personas.length > 0 ? table.personas : [table.persona])))];
   const values = new Map<string, api.AgentValues>();
   for (const row of ended) if (!values.has(nameOf(row.against))) values.set(nameOf(row.against), row.against);
-  const setups = [...values].map(([name, one]) => setupOf(one, all.filter((call) => call.setup === name), callers, bars));
+  // With conditions a setup's own numbers are the baseline's line, and each condition's are beside them.
+  const setups = [...values].map(([name, one]): Setup => {
+    const its = all.filter((call) => call.setup === name);
+    if (conditions.length === 0) return setupOf(one, its, callers, bars);
+    const each = underEach(one, its, conditions, callers, bars);
+    return { ...each.baseline, under: each.under };
+  });
   setups.sort((one, other) => Number(one.thin) - Number(other.thin) || (other.completed.share ?? -1) - (one.completed.share ?? -1) || (one.reply.p50 ?? Infinity) - (other.reply.p50 ?? Infinity));
   if (earlier !== null) for (const setup of setups) {
     const was = earlier.setups.find((one) => one.name === setup.name) as Earlier | undefined;
     if (was !== undefined) setup.baseline = movedSince(setup, was);
+  }
+  const verdict = verdictOf(setups, bars);
+  if (conditions.length > 0 && verdict.passed !== null) {
+    const held = heldUnderEvery(setups, conditions);
+    verdict.held_under_every = held.names;
+    verdict.says = `${verdict.says}; ${held.says}`;
   }
 
   const written = await listPersonas(ctx, agent).catch(() => []);
@@ -212,16 +248,20 @@ export async function benchmark(ctx: Context, input: BenchmarkInput): Promise<Be
     agent,
     gateway: { url: gw.url, env: gw.env, version: await getVersion(gw) },
     comparisons: ids,
+    conditions: conditions.map((condition) => {
+      const its = all.filter((call) => call.condition === condition.name);
+      return { name: condition.name, line: condition.line, says: sayLine(condition.line), comparisons: condition.comparisons, calls: its.length, counted: its.filter((call) => call.not_counted === null).length };
+    }),
     spoken,
-    command: commandOf(agent, spoken, callers, setups),
+    command: commandOf(agent, spoken, callers, setups, conditions),
     bars,
-    verdict: verdictOf(setups, bars),
+    verdict,
     callers: callers.map((name) => {
       const one = written.find((persona) => persona.name === name);
       return { name, about: one?.about ?? "", goal: one?.goal ?? "", expects: one?.expects ?? [], behavior: one?.behavior ?? null };
     }),
     setups,
-    refused: tables.flatMap((table) => (table.refused ?? []).map((one) => ({ caller: one.persona, setup: nameOf(one.against), why: one.why }))),
+    refused: tables.flatMap((table) => (table.refused ?? []).map((one) => ({ caller: one.persona, setup: nameOf(one.against), why: one.why, ...(under.has(table.comparison) ? { condition: under.get(table.comparison) as string } : {}) }))),
     on_the_line: rows.size - ended.length,
     baseline: earlier === null ? null : { made_at: earlier.made_at, comparisons: earlier.comparisons },
     calls: all,
@@ -233,11 +273,14 @@ export async function benchmark(ctx: Context, input: BenchmarkInput): Promise<Be
 // A gate is asked for by name: a report made to be read fails nobody's build. Asked for, a benchmark
 // nobody judged is refused as a usage error, since "nobody looked" must never read as a pass.
 /** With `--gate`: refuse a benchmark in which no setup clears both bars, or one that fell against its baseline. */
-export function requireCleared(made: Benchmarked, input: Pick<BenchmarkInput, "gate">): void {
-  if (!input.gate) return;
+export function requireCleared(made: Benchmarked, input: Pick<BenchmarkInput, "gate" | "gateUnder">): void {
+  if (!input.gate && input.gateUnder.length === 0) return;
   const verdict = made.report.verdict;
   if (verdict.passed === null) throw new UsageError(verdict.says);
   if (!verdict.passed) throw new PinecallError(`the benchmark failed: ${verdict.says}`);
   const fell = made.report.setups.filter((setup) => setup.baseline?.regressed === true).map((setup) => setup.name);
   if (fell.length > 0) throw new PinecallError(`the benchmark fell against its baseline: ${fell.join("; ")} completed fewer calls than its earlier rounds moved among themselves`);
+  // Held under a condition is the same setup clearing both bars there and on the baseline's line: two setups, each good on one, are no agent to ship.
+  const holds = (setup: Setup): boolean => clearsBoth(setup) && input.gateUnder.every((name) => (setup.under ?? []).some((its) => its.condition === name && clearsBoth(its)));
+  if (input.gateUnder.length > 0 && !made.report.setups.some(holds)) throw new PinecallError(`the benchmark failed under ${input.gateUnder.join(", ")}: no setup clears both bars there and on the baseline's line`);
 }
