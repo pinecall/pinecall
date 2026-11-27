@@ -4,9 +4,9 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## 0.11.54 — Messenger and Instagram are channels an agent answers; a WhatsApp template from every surface, its words opening the conversation (2026-11-27)
 - **`pinecall carriers add messenger --page-id <id>`**: a Facebook Page, its Page token and its Meta app's secret read on stdin;
-  `carriers show` names the Instagram account linked to it and what to type in the Meta app. `numbers import` and `drop`
+  `carriers show` names the Instagram account linked to it, and Pinecall subscribes the Meta app's webhook itself. `numbers import` and `drop`
   take `--channel messenger` (the Page's id) and `--channel instagram` (its Instagram account's id), with `--account <the
   Page's id>`; so does the MCP's `numbers` tool.
 - **`pinecall template --text`: the template's words open the contact's conversation.** `--text <words>` is what the
@@ -19,8 +19,6 @@ The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   the body's next `{{n}}`. In the sandbox nothing is sent: the answer says what would have gone, marked simulated, and
   the agent needs no WhatsApp number there; `--prod` sends it, and Meta charges the number's account. The MCP server has
   the same as the tool `template`.
-
-## Unreleased
 
 - **The benchmark's page is lighter to read.** A white page in black ink, hairline tables and plain headings (Results, How the calls went, Calls that failed, Listen to any call) in place of the night ground and its capitals. Nothing it shows changed.
 

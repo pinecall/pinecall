@@ -4,7 +4,7 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
-## [Unreleased]
+## [0.11.54] — Messenger and Instagram are channels an agent answers; a WhatsApp template from every surface, its words opening the conversation (2026-11-27)
 - **Two channels: `messenger` and `instagram`.** A call's `channel` may be a Facebook Page's Messenger or the Instagram account
   linked to it; both are written (`medium` text), and each has the framework's own rules (`channelRules.messenger`,
   `channelRules.instagram`), which an agent may replace with its own.

@@ -4,6 +4,10 @@
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## 0.11.54 — Messenger and Instagram are channels an agent answers; a WhatsApp template from every surface, its words opening the conversation (2026-11-27)
+
+- Released with the runtime: nothing of this package changed.
+
 ## 0.11.53 — a benchmark of your agent from one command: spoken calls placed by a callers service, a report that plays every call, and a gate for CI (2026-11-26)
 
 - Released with the runtime: nothing of this package changed.

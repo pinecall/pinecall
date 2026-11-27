@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.54 — Messenger and Instagram are channels an agent answers; a WhatsApp template from every surface, its words opening the conversation (2026-11-27)
 - **A website's chat is written, even in a room.** A row's `spoken` (and the list's `medium` filter, and the inbox's pills)
   meant a room opened; every web visit opens one, so a chat read as a web call. `spoken` is now a phone call or a web visit
   whose caller joined to talk, and `call_facts.in_room` keeps what it meant, for the reaper. Migration 000039 folds both

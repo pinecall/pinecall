@@ -4,7 +4,7 @@ All notable changes to `@pinecall/room`. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
-## Unreleased
+## 0.11.54 — Messenger and Instagram are channels an agent answers; a WhatsApp template from every surface, its words opening the conversation (2026-11-27)
 - A call's `channel` may be `messenger` or `instagram`.
 
 - **One visitor, every conversation.** `mint` answers `visitor_token`, the visitor a browser is for a year, and takes it
