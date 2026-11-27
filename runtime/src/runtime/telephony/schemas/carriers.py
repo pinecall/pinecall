@@ -100,6 +100,9 @@ class FacebookPage(Schema):
     # The secret of the org's own Meta app, which signs the Page's deliveries; left out to keep the one
     # brought before.
     app_secret: str = ""
+    # The Instagram professional account linked to the Page, which a dashboard's token cannot read: Meta's
+    # own word wins where the token may read the Page.
+    instagram_id: Annotated[str | None, Field(min_length=5, max_length=32, pattern=r"^\d+$")] = None
     label: str = ""
 
 

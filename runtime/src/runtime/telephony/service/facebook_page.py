@@ -45,8 +45,8 @@ class FacebookPage(Carrier):
     # The secret of the org's own Meta app, which signs the Page's deliveries and its Instagram's.
     app_secret: str
     label: str = ""
-    # The Instagram professional account linked to the Page, as Meta said it when the Page was brought;
-    # None when none is linked. Its deliveries name this id, not the Page's.
+    # The Instagram professional account linked to the Page: as Meta says it when the token may read the
+    # Page, else as the org brought it; None when none is linked. Its deliveries name this id, not the Page's.
     instagram_id: str | None = None
 
     @property
@@ -83,13 +83,15 @@ class FacebookPage(Carrier):
         return {"account": account, "outbound": None}
 
     # A token is renewed far more often than an app changes: bringing the Page again with a new token
-    # and no secret keeps the secret it had.
+    # alone keeps the secret it had, and the Instagram account its messages are known by.
     @override
     def keep_from(self, was: object) -> Self:
-        """The Page as brought, with the app's secret it had when it brings none."""
-        if self.app_secret or not isinstance(was, FacebookPage):
+        """The Page as brought, with the app's secret and the Instagram account it had where it brings none."""
+        if not isinstance(was, FacebookPage):
             return self
-        return dataclasses.replace(self, app_secret=was.app_secret)
+        return dataclasses.replace(
+            self, app_secret=self.app_secret or was.app_secret, instagram_id=self.instagram_id or was.instagram_id
+        )
 
     # A Page's deliveries are signed by the org's own app, and checked against its secret: a Page with
     # none would be a webhook nobody can vouch for.
@@ -100,24 +102,36 @@ class FacebookPage(Carrier):
             raise ValidationError(
                 f"Page {self.page_id} needs the secret of your Meta app (App settings ▸ Basic): it signs every message"
             )
-        await self._page(http)
+        try:
+            await meta.open_conversations(http, self.access_token, self.page_id)
+        except UpstreamError as refused:
+            raise ValidationError(
+                f"Meta does not open Facebook Page {self.page_id} with this token: {refused}"
+            ) from refused
 
     def describe(self) -> dict[str, str | int]:
         """What the Page answers besides itself, as the carriers list shows it: its linked Instagram account."""
         return {} if self.instagram_id is None else {"instagram_id": self.instagram_id}
 
-    # Asked once, when the Page is brought: which Instagram account is linked to it, and the Page
-    # subscribed to the org's app for its messages, so the org types nothing more at Meta than the webhook.
+    # Done once, when the Page is brought: the Page subscribed to the org's app for its messages, so the
+    # org types nothing more at Meta than the webhook. A token that may read the Page (`pages_read_engagement`)
+    # names it and its linked Instagram account; the dashboard's, which may not, keeps what the org brought.
     @override
     async def confirm(self, http: httpx.AsyncClient) -> Self:
-        """Confirm the Page with Meta: named, its linked Instagram account filled in, and subscribed to the app."""
+        """Confirm the Page with Meta: opened, subscribed, and named with its Instagram account where Meta says."""
         await self.verify(http)
-        page = await self._page(http)
         try:
             await meta.subscribe_page(http, self.access_token, self.page_id)
         except UpstreamError as refused:
             raise ValidationError(f"Meta does not subscribe Page {self.page_id} to its app: {refused}") from refused
-        return dataclasses.replace(self, instagram_id=page.instagram_id, label=self.label or page.name)
+        try:
+            page = await meta.page_of(http, self.access_token, self.page_id)
+        except UpstreamError:
+            logger.info("Page %s: the token reads nothing of the Page, so it is kept as it was brought", self.page_id)
+            return self
+        return dataclasses.replace(
+            self, instagram_id=page.instagram_id or self.instagram_id, label=self.label or page.name
+        )
 
     @override
     def calling_networks(self) -> tuple[str, ...] | None:
@@ -139,24 +153,14 @@ class FacebookPage(Carrier):
         """Refused: it places no call."""
         raise Conflict(self.list_missing_to_dial()[0])
 
-    # What may be routed: the Page itself, and its Instagram account when one is linked. A token Meta
-    # refuses leaves the account listed with nothing to route, said in the log.
+    # What may be routed: the Page itself, and its Instagram account when one is linked, as they were kept.
     @override
     async def list_owned(self, http: httpx.AsyncClient) -> list[Owned]:
-        """The Page and its Instagram account, as Meta names them; none while Meta does not say."""
-        try:
-            page = await meta.page_of(http, self.access_token, self.page_id)
-        except UpstreamError:
-            logger.warning("Meta did not say which Page %s is", self.page_id, exc_info=True)
-            return []
-        owned = [Owned(number=page.page_id, name=page.name or page.page_id)]
-        if page.instagram_id is not None:
-            owned.append(
-                Owned(
-                    number=page.instagram_id,
-                    name=f"@{page.instagram_name}" if page.instagram_name else page.instagram_id,
-                )
-            )
+        """The Page and its Instagram account, by the name the Page was given."""
+        name = self.label or self.page_id
+        owned = [Owned(number=self.page_id, name=name)]
+        if self.instagram_id is not None:
+            owned.append(Owned(number=self.instagram_id, name=f"{name} · Instagram"))
         return owned
 
     # A Page answers Messenger at its own id, and Instagram at its linked account's.
@@ -165,7 +169,7 @@ class FacebookPage(Carrier):
         """The id is the Page's on Messenger, its Instagram account's on Instagram; nothing else is routed to it."""
         if channel is Channel.messenger and number == self.page_id:
             return
-        if channel is Channel.instagram and number == (await self._page(http)).instagram_id:
+        if channel is Channel.instagram and number == self.instagram_id:
             return
         raise ValidationError(
             f"{number} is not what Page {self.page_id} answers on {channel}: Messenger at the Page's id, "
@@ -193,11 +197,3 @@ class FacebookPage(Carrier):
     async def provision_outbound(self, http: httpx.AsyncClient, names: SipNames, env: Env) -> tuple[Outbound, Self]:
         """Refused: it places no call."""
         raise Conflict(self.list_missing_to_dial()[0])
-
-    async def _page(self, http: httpx.AsyncClient) -> meta.MetaPage:
-        try:
-            return await meta.page_of(http, self.access_token, self.page_id)
-        except UpstreamError as refused:
-            raise ValidationError(
-                f"Meta does not open Facebook Page {self.page_id} with this token: {refused}"
-            ) from refused

@@ -9,16 +9,18 @@ conversation the contact did not start.
 
 ## The Page — `PUT /v1/carrier`
 
-`{kind: "messenger", page_id, access_token, app_secret, label?}` (`numbers`). `page_id` is the account's
-id; `access_token` a Page access token of the org's Meta app (Messenger ▸ Messenger API Settings ▸
-Generate access tokens); `app_secret` the app's secret (App settings ▸ Basic), which signs every body
-Meta delivers for the Page and its Instagram account. As the Page is kept the gateway asks Meta for it
-with the token (a refusal is `400` in Meta's words), reads which Instagram professional account is
-linked to it, names the account after the Page when `label` is left out, and subscribes the Page to
-the app for `messages`, `messaging_postbacks`, `message_deliveries` and `message_reads`. Bringing the
-Page again with no `app_secret` keeps the one it had, and reads its Instagram account again: a Page
-linked to Instagram after it was brought is brought once more. `GET /v1/carrier` and `/v1/carriers`
-answer a Page's `settings.instagram_id`.
+`{kind: "messenger", page_id, access_token, app_secret, instagram_id?, label?}` (`numbers`). `page_id`
+is the account's id; `access_token` a Page access token of the org's Meta app (Messenger ▸ Messenger API
+Settings ▸ Generate access tokens); `app_secret` the app's secret (App settings ▸ Basic), which signs
+every body Meta delivers for the Page and its Instagram account; `instagram_id` the Instagram
+professional account linked to the Page. As the Page is kept the gateway checks the token opens the
+Page's conversations (a refusal is `400` in Meta's words) and subscribes the Page to the app for
+`messages`, `messaging_postbacks`, `message_deliveries` and `message_reads`. The token the dashboard
+generates carries `pages_messaging` alone, which reads nothing of the Page: the Instagram account is the
+one the org says, and the account is named by its `label`. A token that may read the Page
+(`pages_read_engagement`) has Meta name both, and Meta's word wins. Bringing the Page again with a new
+token alone keeps its secret and its Instagram account. `GET /v1/carrier` and `/v1/carriers` answer a
+Page's `settings.instagram_id`.
 
 The webhook is the one WhatsApp's is: `GET /v1/whatsapp/subscription` says the callback URL and the
 verify token, typed in the app's Messenger webhooks and Instagram's.
@@ -60,8 +62,9 @@ log in Meta's words, and nothing is retried with a message tag.
 ## What Meta asks of the org
 
 The Page and the Instagram account belong to the org's own Meta app, as its WhatsApp number does. The
-app needs `pages_messaging` and `pages_manage_metadata`, and `instagram_basic` and
-`instagram_manage_messages` for Instagram; the Instagram account must be professional, linked to the
+app needs `pages_messaging` and `pages_manage_metadata`, `instagram_basic` and
+`instagram_manage_messages` for Instagram, and `pages_read_engagement` for Meta to name the Page and its
+Instagram account by itself; the Instagram account must be professional, linked to the
 Page, with "Allow access to messages" on. While the app is in development, Meta delivers only the
 messages of people with a role on it; answering the public takes Advanced Access, after Meta's App
 Review and the business's verification.

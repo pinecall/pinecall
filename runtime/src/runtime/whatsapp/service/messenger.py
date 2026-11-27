@@ -64,6 +64,15 @@ async def page_of(http: httpx.AsyncClient, token: str, page_id: str) -> MetaPage
     )
 
 
+# A Page token Meta's dashboard generates carries `pages_messaging` alone: it opens the Page's
+# conversations and subscribes it, and reads nothing else of the Page. Opening its conversations is how
+# such a token is known to be the Page's.
+async def open_conversations(http: httpx.AsyncClient, token: str, page_id: str) -> None:
+    """Refuse, in Meta's words, a token that does not open the Page's conversations."""
+    params = {"platform": "messenger", "limit": "1"}
+    await ask_graph(http, "GET", f"{page_id}/conversations", token, params=params, said_as="Messenger")
+
+
 # What the Page sends its app: the messages written to it, the buttons tapped, and where a reply stands
 # (developers.facebook.com/documentation/business-messaging/messenger-platform/webhooks).
 SUBSCRIBED = "messages,messaging_postbacks,message_deliveries,message_reads"

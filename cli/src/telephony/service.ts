@@ -70,7 +70,12 @@ export const AddCarrierInput = z.discriminatedUnion("kind", [
     label: z.string().optional(),
   }),
   z.object({ kind: z.literal("whatsapp"), phoneNumberId: z.string().min(1), label: z.string().optional() }),
-  z.object({ kind: z.literal("messenger"), pageId: z.string().regex(/^\d{5,32}$/, "a Page's id is digits alone"), label: z.string().optional() }),
+  z.object({
+    kind: z.literal("messenger"),
+    pageId: z.string().regex(/^\d{5,32}$/, "a Page's id is digits alone"),
+    instagramId: z.string().regex(/^\d{5,32}$/, "an Instagram account's id is digits alone").optional(),
+    label: z.string().optional(),
+  }),
   z.object({
     kind: z.literal("email"),
     address: z.string().regex(AN_EMAIL, "an address: help@acme.com"),
@@ -296,7 +301,8 @@ function carrierBodyOf(input: AddCarrierInput, secrets: Record<string, string>):
   if (input.kind === "email") return emailBodyOf(input, secrets, label);
   if (input.kind === "messenger") {
     const appSecret = (secrets["app_secret"] ?? "").trim();
-    return { kind: "messenger", page_id: input.pageId, access_token: secrets["access_token"]!.trim(), ...(appSecret === "" ? {} : { app_secret: appSecret }), ...label };
+    const instagram = input.instagramId === undefined ? {} : { instagram_id: input.instagramId };
+    return { kind: "messenger", page_id: input.pageId, access_token: secrets["access_token"]!.trim(), ...(appSecret === "" ? {} : { app_secret: appSecret }), ...instagram, ...label };
   }
   if (input.kind === "whatsapp") {
     const appSecret = (secrets["app_secret"] ?? "").trim();

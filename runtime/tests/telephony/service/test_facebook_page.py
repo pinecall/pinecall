@@ -22,8 +22,8 @@ def a_page(*, app_secret: str = "the app's secret", instagram_id: str | None = N
     )
 
 
-def meta(*, refuses: bool = False, linked: bool = True) -> tuple[httpx.AsyncClient, list[str]]:
-    """Meta's Graph for the Page: its name and Instagram on GET, the app's subscription on POST; what it was asked."""
+def meta(*, refuses: bool = False, linked: bool = True, reads: bool = True) -> tuple[httpx.AsyncClient, list[str]]:
+    """Meta's Graph for the Page: its conversations, its subscription, its name and Instagram where the token reads."""
     asked: list[str] = []
 
     def answer(request: httpx.Request) -> httpx.Response:
@@ -32,6 +32,12 @@ def meta(*, refuses: bool = False, linked: bool = True) -> tuple[httpx.AsyncClie
             return httpx.Response(400, json={"error": {"message": "Invalid OAuth access token."}})
         if request.method == "POST":
             return httpx.Response(200, json={"success": True})
+        if request.url.path.endswith("/conversations"):
+            return httpx.Response(200, json={"data": []})
+        if not reads:
+            return httpx.Response(
+                400, json={"error": {"message": "This endpoint requires the 'pages_read_engagement' permission"}}
+            )
         linked_to = {"instagram_business_account": {"id": INSTAGRAM, "username": "pinecall.prueba"}} if linked else {}
         return httpx.Response(200, content=json.dumps({"id": PAGE, "name": "Pinecall Prueba", **linked_to}))
 
@@ -46,8 +52,9 @@ def test_a_page_is_kept_and_read_back_as_it_was_with_its_instagram_account() -> 
     assert kept.describe() == {"instagram_id": INSTAGRAM}
 
 
-def test_a_page_brought_again_with_no_secret_keeps_the_one_it_had() -> None:
-    assert a_page(app_secret="").keep_from(a_page()).app_secret == "the app's secret"
+def test_a_page_brought_again_with_a_token_alone_keeps_its_secret_and_its_instagram_account() -> None:
+    kept = a_page(app_secret="").keep_from(a_page(instagram_id=INSTAGRAM))
+    assert (kept.app_secret, kept.instagram_id) == ("the app's secret", INSTAGRAM)
     assert a_page(app_secret="a new one").keep_from(a_page()).app_secret == "a new one"
 
 
@@ -64,6 +71,16 @@ async def test_a_page_confirmed_is_named_its_instagram_account_found_and_subscri
     async with http:
         confirmed = await a_page().confirm(http)
     assert (confirmed.instagram_id, confirmed.label) == (INSTAGRAM, "Pinecall Prueba")
+    assert f"GET /v21.0/{PAGE}/conversations" in asked
+    assert f"POST /v21.0/{PAGE}/subscribed_apps" in asked
+
+
+async def test_a_dashboards_token_which_reads_nothing_of_the_page_keeps_the_page_as_it_was_brought() -> None:
+    """Meta's dashboard gives a token with pages_messaging alone: it opens the conversations, and names nothing."""
+    http, asked = meta(reads=False)
+    async with http:
+        confirmed = await a_page(instagram_id=INSTAGRAM).confirm(http)
+    assert (confirmed.instagram_id, confirmed.label) == (INSTAGRAM, "")
     assert f"POST /v21.0/{PAGE}/subscribed_apps" in asked
 
 
@@ -75,18 +92,28 @@ async def test_a_token_meta_does_not_open_the_page_with_is_refused_in_metas_word
 
 
 async def test_a_page_answers_messenger_at_its_id_and_instagram_at_its_linked_accounts() -> None:
-    http, _ = meta()
+    http, asked = meta()
+    linked = a_page(instagram_id=INSTAGRAM)
     async with http:
-        await a_page().check_number(http, Channel.messenger, PAGE)
-        await a_page().check_number(http, Channel.instagram, INSTAGRAM)
+        await linked.check_number(http, Channel.messenger, PAGE)
+        await linked.check_number(http, Channel.instagram, INSTAGRAM)
         with pytest.raises(ValidationError, match="Messenger at the Page's id"):
-            await a_page().check_number(http, Channel.instagram, PAGE)
+            await linked.check_number(http, Channel.instagram, PAGE)
         with pytest.raises(ValidationError):
-            await a_page().check_number(http, Channel.whatsapp, PAGE)
+            await a_page().check_number(http, Channel.instagram, INSTAGRAM)
+        with pytest.raises(ValidationError):
+            await linked.check_number(http, Channel.whatsapp, PAGE)
+    assert asked == [], "what a Page answers at is what was kept: Meta is not asked"
 
 
 async def test_what_a_page_owns_is_itself_and_its_instagram_account() -> None:
     http, _ = meta()
+    named = FacebookPage(
+        org=ORG, page_id=PAGE, access_token="t", app_secret="s", label="Pinecall Prueba", instagram_id=INSTAGRAM
+    )
     async with http:
-        owned = await a_page().list_owned(http)
-    assert [(one.number, one.name) for one in owned] == [(PAGE, "Pinecall Prueba"), (INSTAGRAM, "@pinecall.prueba")]
+        owned = await named.list_owned(http)
+    assert [(one.number, one.name) for one in owned] == [
+        (PAGE, "Pinecall Prueba"),
+        (INSTAGRAM, "Pinecall Prueba · Instagram"),
+    ]

@@ -45,7 +45,7 @@ one stands. \`drop\` forgets an account and leaves its numbers routed until each
 
 Examples
   $ pinecall carriers add twilio --account-sid AC0123… --user SK4567… --label Clínica
-  $ pinecall carriers add messenger --page-id 1472943555898656
+  $ pinecall carriers add messenger --page-id 1472943555898656 --instagram-id 17841400000000001
 `;
 
 const LINE = `
@@ -236,8 +236,9 @@ export function register(program: Command, ctx: Context): void {
     .command("messenger")
     .description("a Facebook Page, for its Messenger and its Instagram account: its id, then a Page token and your Meta app's secret on stdin")
     .requiredOption("--page-id <id>")
+    .option("--instagram-id <id>", "the Instagram account linked to the Page, when the token cannot read it from the Page")
     .option("--label <name>")
-    .action(async (flags) => addCarrier({ kind: "messenger", pageId: flags.pageId, label: flags.label }));
+    .action(async (flags) => addCarrier({ kind: "messenger", pageId: flags.pageId, instagramId: flags.instagramId, label: flags.label }));
   add
     .command("email")
     .description("a mailbox: IMAP to read it, SMTP to answer from it; its password on stdin, then a relay's")

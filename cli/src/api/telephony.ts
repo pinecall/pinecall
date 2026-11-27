@@ -103,7 +103,7 @@ export type CarrierBody =
       label?: string;
     }
   | { kind: "whatsapp"; phone_number_id: string; access_token: string; app_secret?: string; label?: string }
-  | { kind: "messenger"; page_id: string; access_token: string; app_secret?: string; label?: string }
+  | { kind: "messenger"; page_id: string; access_token: string; app_secret?: string; instagram_id?: string; label?: string }
   | {
       kind: "email";
       address: string;

@@ -29,7 +29,7 @@ one stands. `drop` forgets an account and leaves its numbers routed until each i
 
 Examples
   $ pinecall carriers add twilio --account-sid AC0123… --user SK4567… --label Clínica
-  $ pinecall carriers add messenger --page-id 1472943555898656
+  $ pinecall carriers add messenger --page-id 1472943555898656 --instagram-id 17841400000000001
 
 
 $ pinecall carriers list --help
@@ -117,8 +117,10 @@ Page token and your Meta app's secret on stdin
 
 Options:
   --page-id <id>
+  --instagram-id <id>  the Instagram account linked to the Page, when the token
+                       cannot read it from the Page
   --label <name>
-  -h, --help      display help for command
+  -h, --help           display help for command
 
 $ pinecall carriers add email --help
 Usage: pinecall carriers add email [options]
