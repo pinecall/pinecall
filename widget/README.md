@@ -32,9 +32,10 @@ A fuller one, with everything a site can turn on:
 ## The panel
 
 The button opens the panel and a chat in it at once; the agent's greeting comes first (`greeting`
-stands in for it until the agent's own first words take its place). While the agent thinks, three
-dots wait where its answer will be; its words are then typed out at a reading pace, and what it
-shows on screen comes after them, so the answer is read first.
+stands in for it until the agent's own first words take its place; a conversation carried on from an
+earlier visit is not greeted again, and one kept before its greeting reached the page opens on it).
+While the agent thinks, three dots wait where its answer will be; its words are then typed out at a
+reading pace, and what it shows on screen comes after them, so the answer is read first.
 
 The header holds three things: the call, a menu, and **×**.
 
@@ -81,7 +82,7 @@ token. Use one tag per agent; several can share a page.
 | `tagline` | optional | the line under the name, after the company |
 | `lang` | optional | the language of the widget's own words: `en` (default) or `es`. The agent answers in whatever language the visitor speaks either way. Dictation is asked for in this language |
 | `text-<key>` | optional | any one of the widget's words, in place of the language's ([below](#the-words)): `text-add-to-cart="Book it"` |
-| `greeting` | optional | the agent's first line, shown the moment the panel opens and replaced by the agent's own first words; plain text |
+| `greeting` | optional | the agent's first line, shown the moment the panel opens and replaced by the agent's own first words; plain text, matched against the agent's without the asterisks of its **bold** |
 | `label` | optional | the button's text, beside its icon. Without it the button is a round icon, and the label (`Talk to <name>`) is its accessible name |
 | `icon` | optional | `none` leaves the button without its icon (and so shows its label) |
 | `button` | optional | `none` draws no button at all: open the panel with `toggle()` from anything of yours |

@@ -545,6 +545,9 @@ class PinecallWidget extends HTMLElement {
   async conversation(scope) {
     const earlier = this.current ?? this.kept.current();
     if (earlier && this.lines.empty) this.lines.drawKept(earlier.lines);
+    // A conversation carried on is not greeted again; one kept before its greeting reached this page
+    // (the browser joined the room after the agent said it) shows the greeting as its first line.
+    if (earlier && this.greeting && this.lines.empty) this.lines.drawKept([{ who: "agent", text: this.greeting }]);
     if (!earlier && this.greeting && this.lines.empty) this.lines.hello(this.greeting);
     this.status(this.words.connecting);
     this.opening = this.open(scope, earlier);

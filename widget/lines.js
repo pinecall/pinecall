@@ -14,6 +14,11 @@ const VOICE_SHOWS_AFTER_MS = 1200;
 // An answer with no words at all: after this long the dots go, and whatever it showed is shown.
 const WORDLESS_AFTER_MS = 15000;
 
+/** A line as it reads, without the asterisks of its Markdown emphasis. */
+function plain(text) {
+  return text.replace(/\*/g, "");
+}
+
 export class Lines {
   constructor(widget) {
     this.widget = widget;
@@ -97,14 +102,16 @@ export class Lines {
         this.instant.add(id);
       } else if (widget.greeting && this.list.querySelector("li.agent:not(.typing)")) quiet = true;
     }
+    // Compared as read: the agent's greeting may put a word in **bold** that the page's plain text does not.
+    const greeting = plain(widget.greeting);
     let text = "";
     for await (const chunk of reader) {
       text += chunk;
-      if (quiet && widget.greeting.startsWith(text)) continue;
+      if (quiet && greeting.startsWith(plain(text))) continue;
       quiet = false;
       this.draw(id, who, text, false);
     }
-    if (quiet && text === widget.greeting) return;
+    if (quiet && plain(text) === greeting) return;
     this.draw(id, who, text, reader.info.attributes?.[TRANSCRIPTION_FINAL] === "true");
   }
 

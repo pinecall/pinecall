@@ -1,6 +1,10 @@
 # Changelog
 
 ## Unreleased
+- **The widget greets once.** An agent's greeting with a word in **bold** was not recognised against the page's plain
+  `greeting`, so each call that opened on a conversation already on screen drew it again. And a conversation kept
+  before its greeting reached the page (the browser joined the room after the agent said it) opened empty on every
+  later visit: it now opens on the greeting. `widget/README.md`.
 - **Messenger and Instagram.** An org brings a Facebook Page as an account (`PUT /v1/carrier` with `kind: "messenger"`: its id,
   a Page token, its Meta app's secret); the gateway finds the Instagram account linked to it and subscribes the Page to the
   app. The Page's id routes to an agent on the channel `messenger` and the Instagram account's on `instagram`; Meta's
