@@ -16,9 +16,11 @@ from runtime.telephony.models import NetworkState, Route
 from runtime.telephony.repository import RouteRepository
 from runtime.telephony.service import accounts, carrier, hand_over, networks, sfu, simulated_rings
 from runtime.telephony.service.carrier import Carrier, SipNames
+from runtime.telephony.service.facebook_page import FacebookPage
 from runtime.telephony.service.fence import Fenced
 from runtime.telephony.service.networks import Standing
 from runtime.telephony.service.sfu import EnvRule
+from runtime.whatsapp import service as whatsapp
 
 logger = logging.getLogger(__name__)
 
@@ -162,7 +164,7 @@ async def readmit_number(servers: Servers, route: Route, fencing: Fencing, fleet
 # Bringing an account the org already holds replaces its secret; its party is asked first. A peer's
 # networks are asked of the operator, and until he approves one the peer has no trunk.
 async def bring_carrier(
-    session: AsyncSession, vault: Vault, http: httpx.AsyncClient, servers: Servers, brought: Carrier
+    session: AsyncSession, vault: Vault, http: httpx.AsyncClient, servers: Servers, brought: Carrier, base_url: str
 ) -> accounts.CarrierListed:
     """Keep an account of the org, verified; the networks it calls from asked for, and its trunks following."""
     calling = brought.calling_networks()
@@ -171,6 +173,8 @@ async def bring_carrier(
     # What is kept from the account the org had (a secret brought again empty) is verified with the rest.
     whole = await accounts.complete_carrier(session, vault, brought)
     whole = await whole.confirm(http)
+    if isinstance(whole, FacebookPage):
+        await whole.subscribe_webhook(http, whatsapp.subscription_of(vault, whole.org, base_url))
     kept = await accounts.put_carrier(session, vault, whole)
     if calling is not None:
         await networks.ask(session, kept.org, kept.id, calling)

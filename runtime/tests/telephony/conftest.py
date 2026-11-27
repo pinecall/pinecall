@@ -78,7 +78,9 @@ class Line:
     async def brought(self) -> None:
         """The org brought its Twilio account, as the endpoint keeps it: verified, sealed, its trunks following."""
         async with self.sessions.begin() as session:
-            await rebuild.bring_carrier(session, self.vault, self.http, self.livekits, self.account())
+            await rebuild.bring_carrier(
+                session, self.vault, self.http, self.livekits, self.account(), "https://box.example"
+            )
 
 
 @pytest.fixture

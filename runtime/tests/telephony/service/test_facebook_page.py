@@ -9,6 +9,7 @@ from runtime.enums import Channel
 from runtime.exceptions import ValidationError
 from runtime.telephony.service.accounts import read_carrier
 from runtime.telephony.service.facebook_page import FacebookPage
+from runtime.whatsapp.service.webhook import Subscription
 
 ORG = "org_a"
 PAGE = "1472943555898656"
@@ -117,3 +118,24 @@ async def test_what_a_page_owns_is_itself_and_its_instagram_account() -> None:
         (PAGE, "Pinecall Prueba"),
         (INSTAGRAM, "Pinecall Prueba · Instagram"),
     ]
+
+
+async def test_bringing_a_page_gives_its_apps_webhook_the_message_fields_and_its_instagrams() -> None:
+    """Verifying the callback in Meta's dashboard chooses no field, and then Meta delivers nothing."""
+    asked: list[tuple[str, dict[str, str]]] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        asked.append((f"{request.method} {request.url.path}", dict(request.url.params)))
+        if request.url.path.endswith("/app"):
+            return httpx.Response(200, json={"id": "1392113999481103"})
+        return httpx.Response(200, json={"success": True})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http:
+        webhook = Subscription(callback_url="https://box.example/v1/whatsapp/webhook", verify_token="org_a.mark")
+        await a_page(instagram_id=INSTAGRAM).subscribe_webhook(http, webhook)
+    subscribed = [params for path, params in asked if path == "POST /v21.0/1392113999481103/subscriptions"]
+    assert [(one["object"], one["callback_url"], one["verify_token"]) for one in subscribed] == [
+        ("page", "https://box.example/v1/whatsapp/webhook", "org_a.mark"),
+        ("instagram", "https://box.example/v1/whatsapp/webhook", "org_a.mark"),
+    ]
+    assert "messages" in subscribed[0]["fields"].split(",") and "messages" in subscribed[1]["fields"].split(",")

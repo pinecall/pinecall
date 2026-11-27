@@ -27,3 +27,12 @@ def test_an_email_route_answers_at_an_address_and_a_phone_one_at_a_number() -> N
         Route(org="org_1", agent="front-desk", channel=Channel.email, number="+14155550134")
     with pytest.raises(ValidationError, match=r"E\.164"):
         Route(org="org_1", agent="front-desk", channel=Channel.sms, number="help@acme.example")
+
+
+def test_a_messenger_or_instagram_route_answers_at_metas_id_of_its_account() -> None:
+    """A Page's id on Messenger, its Instagram account's on Instagram: digits alone, never a number or an address."""
+    Route(org="org_1", agent="front-desk", channel=Channel.messenger, number="1472943555898656")
+    Route(org="org_1", agent="front-desk", channel=Channel.instagram, number="17841400000000001")
+    for wrong in ("+14155550134", "help@acme.example", None):
+        with pytest.raises(ValidationError, match="Meta's id"):
+            Route(org="org_1", agent="front-desk", channel=Channel.messenger, number=wrong)

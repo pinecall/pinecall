@@ -2242,9 +2242,10 @@ seals each secret under the platform's vault key and answers the account by its 
   Messenger ▸ Instagram settings show it): the token Meta's dashboard generates carries `pages_messaging`
   alone and reads nothing of the Page, so the account is said here; a token that may read the Page
   (`pages_read_engagement`) names the Page and its account by itself. Bringing the Page again with a new
-  token alone keeps its secret and its Instagram account. `add` and `show` print the Instagram account's
-  id and the webhook to type in the app's Messenger and Instagram settings, the same callback URL and
-  verify token WhatsApp's are. Its Messenger and its Instagram are then given to an agent:
+  token alone keeps its secret and its Instagram account. Pinecall gives the app its webhook too, the
+  same callback URL and verify token WhatsApp's are, with the message fields chosen (verifying the
+  callback in Meta's dashboard alone chooses none, and then Meta delivers nothing). Its Messenger and its
+  Instagram are then given to an agent:
 
   ```console
   $ pinecall carriers add messenger --page-id 1472943555898656 --instagram-id 17841400000000001 --label "Pinecall Prueba"

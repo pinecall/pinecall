@@ -112,12 +112,12 @@ export function carrier(row: CarrierShown): string[] {
   return [carrierLine(row), ...metaWebhook(row)];
 }
 
-/** What the org types in its own Meta app: WhatsApp ▸ Configuration ▸ Webhook, or Messenger's API settings for a Page. */
+/** What the org types in its own Meta app for WhatsApp; a Page's webhook Pinecall sets itself. */
 export function metaWebhook(row: CarrierShown): string[] {
   if (row.subscription === undefined) return [];
-  const where = row.kind === "messenger" ? "Messenger ▸ Messenger API Settings ▸ Configure webhooks (and Instagram's, for its account)" : "WhatsApp ▸ Configuration ▸ Webhook";
+  if (row.kind === "messenger") return [`  your Meta app's webhook is set by Pinecall: ${row.subscription.callback_url}, its messages subscribed`];
   return [
-    `  in your Meta app, ${where}:`,
+    "  in your Meta app, WhatsApp ▸ Configuration ▸ Webhook:",
     `    Callback URL   ${row.subscription.callback_url}`,
     `    Verify token   ${row.subscription.verify_token}`,
     `    then subscribe to the webhook field \`${row.subscription.field}\``,

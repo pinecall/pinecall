@@ -10,7 +10,7 @@ from uuid import uuid4
 
 from runtime.enums import Channel, Direction, Env
 from runtime.exceptions import ValidationError
-from runtime.kit.text import AN_EMAIL, Json, is_e164
+from runtime.kit.text import A_META_ID, AN_EMAIL, Json, is_e164
 
 # Prefix of call ids minted here (`call_` + 32 hex); phone calls are named by the media plane.
 A_CALL = "call_"
@@ -79,6 +79,9 @@ class Route:
         if self.channel.is_by_email:
             if self.number is None or not AN_EMAIL.match(self.number):
                 raise ValidationError(f"an email route answers at an address, not {self.number!r}")
+        elif self.channel.is_by_meta_id:
+            if self.number is None or not A_META_ID.match(self.number):
+                raise ValidationError(f"a {self.channel} route answers at Meta's id of an account, not {self.number!r}")
         elif self.channel.has_a_number:
             if self.number is None or not is_e164(self.number):
                 raise ValidationError(f"a {self.channel} route answers at a number in E.164 form, not {self.number!r}")

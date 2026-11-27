@@ -133,6 +133,21 @@ class FacebookPage(Carrier):
             self, instagram_id=page.instagram_id or self.instagram_id, label=self.label or page.name
         )
 
+    # The app's webhook is given its fields here, not in Meta's dashboard: verifying the callback there
+    # chooses none, and then Meta delivers nothing. Its Instagram's too, where the Page has one.
+    async def subscribe_webhook(self, http: httpx.AsyncClient, webhook: meta.Subscription) -> None:
+        """Subscribe the Page's app to its message fields at this box's callback, and its Instagram's."""
+        try:
+            app = await meta.app_of(http, self.access_token)
+            for channel in (Channel.messenger, Channel.instagram) if self.instagram_id else (Channel.messenger,):
+                await meta.subscribe_app(
+                    http, app, self.app_secret, channel, webhook.callback_url, webhook.verify_token
+                )
+        except UpstreamError as refused:
+            raise ValidationError(
+                f"Meta does not subscribe the app of Page {self.page_id} to its messages: {refused}"
+            ) from refused
+
     @override
     def calling_networks(self) -> tuple[str, ...] | None:
         """None: a message is signed by Meta, and comes over no trunk."""

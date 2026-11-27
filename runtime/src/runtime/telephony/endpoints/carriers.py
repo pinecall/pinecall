@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from runtime.handles import TheHttp, TheServers, TheVault
+from runtime.handles import TheHttp, TheServers, TheSettings, TheVault
 from runtime.postgres import Session
 from runtime.telephony.auth import AccountAsked, DryRun, NumbersKey, TheSipNames
 from runtime.telephony.schemas import carriers as schemas
@@ -39,11 +39,17 @@ async def list_carrier_catalog(
 # Bringing an account the org already holds replaces its secret; its party is asked first.
 @router.put("/v1/carrier")
 async def put_carrier(
-    body: schemas.Account, actor: NumbersKey, vault: TheVault, http: TheHttp, servers: TheServers, session: Session
+    body: schemas.Account,
+    actor: NumbersKey,
+    vault: TheVault,
+    http: TheHttp,
+    servers: TheServers,
+    settings: TheSettings,
+    session: Session,
 ) -> schemas.CarrierRow:
     """Keep an account of the org: a Twilio account, a SIP peer, a WhatsApp number or Page at Meta, a mailbox."""
     brought = accounts.read_carrier(actor.org, body.model_dump())
-    return schemas.CarrierRow.of(await rebuild.bring_carrier(session, vault, http, servers, brought))
+    return schemas.CarrierRow.of(await rebuild.bring_carrier(session, vault, http, servers, brought, settings.base_url))
 
 
 @router.delete("/v1/carrier", status_code=204)

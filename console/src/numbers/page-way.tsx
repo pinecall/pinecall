@@ -21,7 +21,7 @@ export function PageWebhook(): ReactNode {
   return (
     <>
       <p className="num-hint">
-        In your Meta app, open Messenger ▸ Messenger API Settings ▸ Configure webhooks, and Instagram&apos;s webhooks too for its account: set both to these two values and subscribe to <code>messages</code>. The Page itself is subscribed to the app when it is connected here.
+        Pinecall sets your Meta app&apos;s webhook to these two values when the Page is connected, with its message fields chosen, for Messenger and for the Instagram account: there is nothing to type at Meta.
       </p>
       <dl className="num-setup">
         <dt>Callback URL</dt>

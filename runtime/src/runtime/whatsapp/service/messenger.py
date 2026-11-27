@@ -73,6 +73,45 @@ async def open_conversations(http: httpx.AsyncClient, token: str, page_id: str) 
     await ask_graph(http, "GET", f"{page_id}/conversations", token, params=params, said_as="Messenger")
 
 
+# What the app's webhook carries for a Page and for its Instagram account: subscribing the Page to the
+# app is not enough, and a webhook whose fields nobody chose delivers nothing (tried 2026-11-27).
+APP_FIELDS = {
+    Channel.messenger: "messages,messaging_postbacks,message_deliveries,message_reads",
+    Channel.instagram: "messages,messaging_postbacks,messaging_seen",
+}
+WEBHOOK_OBJECTS = {Channel.messenger: "page", Channel.instagram: "instagram"}
+
+
+class _App(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="ignore")
+    id: str
+
+
+async def app_of(http: httpx.AsyncClient, token: str) -> str:
+    """The id of the Meta app a Page token is of."""
+    answer = await ask_graph(http, "GET", "app", token, said_as="Messenger")
+    try:
+        return _App.model_validate_json(answer.content).id
+    except PydanticValidationError:
+        raise UpstreamError("Messenger: Meta named no app for this token", vendor=VENDOR) from None
+
+
+# The app's own token is its id and its secret; Meta asks the callback's handshake there and then.
+async def subscribe_app(
+    http: httpx.AsyncClient, app_id: str, app_secret: str, channel: Channel, callback_url: str, verify_token: str
+) -> None:
+    """Subscribe the app's webhook to a Page's (or its Instagram's) message fields at this callback."""
+    params = {
+        "object": WEBHOOK_OBJECTS[channel],
+        "callback_url": callback_url,
+        "verify_token": verify_token,
+        "fields": APP_FIELDS[channel],
+    }
+    await ask_graph(
+        http, "POST", f"{app_id}/subscriptions", f"{app_id}|{app_secret}", params=params, said_as="Messenger"
+    )
+
+
 # What the Page sends its app: the messages written to it, the buttons tapped, and where a reply stands
 # (developers.facebook.com/documentation/business-messaging/messenger-platform/webhooks).
 SUBSCRIBED = "messages,messaging_postbacks,message_deliveries,message_reads"

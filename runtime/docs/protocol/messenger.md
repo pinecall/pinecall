@@ -22,8 +22,13 @@ one the org says, and the account is named by its `label`. A token that may read
 token alone keeps its secret and its Instagram account. `GET /v1/carrier` and `/v1/carriers` answer a
 Page's `settings.instagram_id`.
 
-The webhook is the one WhatsApp's is: `GET /v1/whatsapp/subscription` says the callback URL and the
-verify token, typed in the app's Messenger webhooks and Instagram's.
+The webhook is the one WhatsApp's is (`GET /v1/whatsapp/subscription` says its callback URL and verify
+token), and the gateway gives it to the app itself as the Page is kept: with the app's own token (its
+id, read off the Page token, and its secret) it subscribes the app's `page` object to `messages`,
+`messaging_postbacks`, `message_deliveries` and `message_reads` at that callback, and its `instagram`
+object to `messages`, `messaging_postbacks` and `messaging_seen` when the Page has an Instagram
+account. Verifying the callback in Meta's dashboard alone chooses no field, and Meta then delivers
+nothing.
 
 ## The Page and its Instagram account — `POST /v1/numbers`
 
