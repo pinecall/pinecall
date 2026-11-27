@@ -1,6 +1,9 @@
 # Changelog
 
 ## Unreleased
+- **A second template to a contact who never answered is a template.** The door wrote the words as a plain message on the
+  conversation going, which an earlier template had opened: Meta refused it ("Re-engagement message"). Now a contact
+  who did not write within 24 hours is sent the template, and the agent is told its words on that conversation.
 - **A judge reads the conversations a call carried on.** A call that continues earlier ones with the same contact is
   judged with their turns before it (the last 6000 characters of up to ten calls), marked as not judged: until now an
   agent that took up what it said there was judged to have made it up, or never to have said it was a virtual assistant.

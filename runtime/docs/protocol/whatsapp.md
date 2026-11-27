@@ -125,9 +125,12 @@ outbound WhatsApp call of the contact's (`call` in the answer), whose `call.star
 `metadata` as a text's does. What the contact answers lands on that call, with those words before
 it, so a "sí" is read as the answer it is; the console's thread shows the message; and a
 conversation that went quiet is carried on by the contact's next one, as any is. The template goes
-to Meta first, so its refusal opens nothing, and the turn itself is sent by nobody. A contact whose
-conversation still has idle time left wrote inside the 24 hours: the words are said on it as one
-more message, no template is sent, and `message_id` is `null`. Somebody must be holding the agent
+to Meta first, so its refusal opens nothing, and the turn itself is sent by nobody. A contact with a
+conversation still going who wrote inside the last 24 hours is written the words on it as one more
+message, no template is sent, and `message_id` is `null`. One who did not write (the conversation is
+the agent's own, opened by an earlier template they never answered) is sent the template, since Meta
+refuses any other message then ("Re-engagement message"), and the agent is told its words on that
+conversation (`supervisor.whispered`), which their answer lands on; `call` names it. Somebody must be holding the agent
 (`409` otherwise). With no `text` the template is said on no conversation, `call` is `null`, and
 what the contact answers opens a call as any message does. Until 2026-11-26 that was the only way,
 and an agent knew what it had asked a contact only by what its app kept.

@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from runtime.actor import Scope
+from runtime.calls import service as calls
 from runtime.calls.context import new_call_id
 from runtime.compliance import service as compliance
 from runtime.enums import Channel, Env
@@ -20,7 +21,7 @@ from runtime.live.service.whatsapp import FirstMessage, Threads
 from runtime.telephony import service as telephony
 from runtime.telephony.models import Route
 from runtime.whatsapp import service as whatsapp
-from runtime.wire.commands import SayVerb
+from runtime.wire.commands import SayVerb, WhisperVerb
 from runtime.wire.parts import Supervisor
 
 logger = logging.getLogger(__name__)
@@ -73,7 +74,9 @@ class Templated:
 # what it had asked only by what its app kept, and the console showed a conversation with no first
 # message. The template goes first, for Meta's refusal to open nothing; then the conversation, whose
 # first turn is those words and is sent by nobody (`FirstSaid`). A contact whose conversation has
-# idle time left wrote within Meta's 24 hours: the words are one more message of it, no template sent.
+# idle time left and who wrote within Meta's 24 hours is written the words as one more message of it, no
+# template sent; one who did not (the conversation is the agent's own, from an earlier template) is sent
+# the template, and the agent told of its words on that conversation.
 # Once the template went, nothing is refused: a conversation that could not open is said in the log,
 # and the answer names none, so the caller does not send the contact the same template twice.
 async def send_template(
@@ -104,6 +107,8 @@ async def send_template(
         raise Conflict(f"{NoApp(slug)}: what they answer would reach no app")
     contact = _contact_of(route, asked.to)
     going = await threads.find_going(registration.scope, slug, contact)
+    if going is not None and not await _wrote_lately(session, live, going):
+        return await _template_beside(session, live, route, asked, going, by, simulated=simulated)
     message_id = None if simulated or going is not None else await _send(session, live, route, asked)
     first = FirstMessage(going or new_call_id(), asked.metadata, said=asked.text if going is None else None)
     try:
@@ -118,6 +123,46 @@ async def send_template(
         logger.warning("whatsapp: a template to %s went and its conversation did not open: %s", asked.to, refused)
         call = None
     return Templated(to=asked.to, shown=route.number, simulated=simulated, message_id=message_id, call=call)
+
+
+# Meta lets a business write freely only within 24 hours of the contact's last message; past them, a
+# template alone reaches the contact ("Re-engagement message" refuses anything else).
+META_WINDOW_S = 24 * 3600
+
+# What the agent is told when its words went as a template beside the conversation it is on.
+TEMPLATED_BESIDE = (
+    'You also wrote to this person on WhatsApp, in a template they already read: "{text}". It is not in this '
+    "conversation's turns, but they read it: what they answer may be about it."
+)
+
+
+async def _wrote_lately(session: AsyncSession, live: LiveParts, going: str) -> bool:
+    """Whether the contact wrote within Meta's 24 hours, in the conversation going or one it carries on."""
+    since = live.store.clock() - META_WINDOW_S
+    turns = await calls.list_carried(session, live.vault, going)
+    return any(entry.type == "turn.user" and entry.ts >= since for entry in turns)
+
+
+# Until 2026-11-27 a contact with a conversation going was written its words as a plain message: the
+# conversation was the agent's own, opened by an earlier template the contact never answered, and Meta
+# refused the second ("Re-engagement message"). The words go as the template, and the agent is told of
+# them on the conversation it is on, which the contact's answer lands on.
+async def _template_beside(
+    session: AsyncSession,
+    live: LiveParts,
+    route: Route,
+    asked: Templating,
+    going: str,
+    by: Supervisor,
+    *,
+    simulated: bool,
+) -> Templated:
+    message_id = None if simulated else await _send(session, live, route, asked)
+    try:
+        await send_verb(live, Supervising(going, by), WhisperVerb(text=TEMPLATED_BESIDE.format(text=asked.text)))
+    except PinecallError as refused:
+        logger.warning("whatsapp: a template to %s went and its conversation was not told: %s", asked.to, refused)
+    return Templated(to=asked.to, shown=route.number, simulated=simulated, message_id=message_id, call=going)
 
 
 async def _send(session: AsyncSession, live: LiveParts, route: Route, asked: Templating) -> str:

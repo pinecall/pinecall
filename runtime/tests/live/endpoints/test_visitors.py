@@ -371,5 +371,11 @@ async def test_a_template_with_its_words_opens_the_contacts_conversation_and_the
             assert started["metadata"]["listing"] == 2821756
             assert [entry["data"]["text"] for entry in entries if entry["type"] == "turn.agent"] == [words]
             again = await gateway.http.post(door, json={**asked, "text": "Una cosa más."}, headers=tenant.person)
-            assert again.json()["call"] == said["call"], "a conversation with idle time left takes the next words too"
+            assert again.json()["call"] == said["call"], "the contact's answer lands on the conversation going"
+            # The contact never wrote: Meta takes a template alone, so the words go as one, and the agent is
+            # told of them on the conversation (on 2026-11-27 a second lead's message was refused there).
+            entries = await entries_until(gateway, tenant, said["call"], "supervisor.whispered")
+            told = [entry["data"]["text"] for entry in entries if entry["type"] == "supervisor.whispered"]
+            assert len(told) == 1 and "Una cosa más." in told[0]
+            assert [entry["data"]["text"] for entry in entries if entry["type"] == "turn.agent"] == [words]
     assert asked_of_meta == [], "the sandbox asks Meta for no template, and the first words are sent by nobody"
