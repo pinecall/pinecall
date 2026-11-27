@@ -63,12 +63,12 @@ export function PageForm({ mover, onBring }: { mover: Mover; onBring: (page: str
   };
   return (
     <form className="num-form" onSubmit={bring}>
-      <p className="num-hint">Connect the Page once. Its token is checked with Meta, kept encrypted, and never shown again. Give the id of the Instagram account linked to the Page to answer it too (Meta&apos;s dashboard shows it under Instagram settings); a token that may read the Page says it by itself.</p>
+      <p className="num-hint">Connect the Page once. Its token is checked with Meta, kept encrypted, and never shown again. Give the id of the Instagram account linked to the Page to answer it too, with a token that carries <code>instagram_manage_messages</code>: the one Meta&apos;s Messenger settings generate answers Messenger alone. <a href="https://docs.pinecall.io/integrations/messenger-and-instagram/" target="_blank" rel="noreferrer">Step by step</a>.</p>
       <Field label="Page ID">
         <input className="cfg-input" aria-label="Page ID" placeholder="From your Meta app's Messenger API settings" required inputMode="numeric" pattern="\d{5,32}" spellCheck={false} autoComplete="off" value={pageId} onChange={(event) => setPageId(event.target.value)} />
       </Field>
       <Field label="Page access token">
-        <input className="cfg-input" type="password" aria-label="Page access token" placeholder="Generated for the Page in the same settings" required autoComplete="new-password" spellCheck={false} value={token} onChange={(event) => setToken(event.target.value)} />
+        <input className="cfg-input" type="password" aria-label="Page access token" placeholder="With instagram_manage_messages to answer Instagram too" required autoComplete="new-password" spellCheck={false} value={token} onChange={(event) => setToken(event.target.value)} />
       </Field>
       <Field label="App secret">
         <input className="cfg-input" type="password" aria-label="App secret" placeholder="Your Meta app's, from App settings ▸ Basic" autoComplete="new-password" spellCheck={false} value={appSecret} onChange={(event) => setAppSecret(event.target.value)} />

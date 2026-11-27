@@ -2234,7 +2234,9 @@ seals each secret under the platform's vault key and answers the account by its 
 
   The Meta side, step by step, is [WhatsApp](https://docs.pinecall.io/integrations/whatsapp/).
 - **A Facebook Page.** `--page-id` is the Page's id at Meta. Two secrets are read: a Page access token
-  of your Meta app (Messenger ▸ Messenger API Settings ▸ Generate access tokens), then the app's secret,
+  of your Meta app (the dashboard's, Messenger ▸ Messenger API Settings, answers Messenger alone; one
+  that answers Instagram too is made in the Graph API Explorer, step by step in
+  [Messenger and Instagram](https://docs.pinecall.io/integrations/messenger-and-instagram/)), then the app's secret,
   which signs every message Meta delivers for the Page and its Instagram account; an empty second line
   keeps the one given before. The token must open the Page's conversations (a refusal is `Meta does not
   open Facebook Page <id> with this token: …` and exit 2), and the Page is subscribed to the app for its

@@ -10,13 +10,15 @@ conversation the contact did not start.
 ## The Page — `PUT /v1/carrier`
 
 `{kind: "messenger", page_id, access_token, app_secret, instagram_id?, label?}` (`numbers`). `page_id`
-is the account's id; `access_token` a Page access token of the org's Meta app (Messenger ▸ Messenger API
-Settings ▸ Generate access tokens); `app_secret` the app's secret (App settings ▸ Basic), which signs
+is the account's id; `access_token` a Page access token of the org's Meta app: the dashboard's
+(Messenger ▸ Messenger API Settings ▸ Generate access tokens) carries `pages_messaging` alone and
+answers Messenger, and Instagram takes one with `instagram_basic` and `instagram_manage_messages`, made in
+the Graph API Explorer (docs.pinecall.io/integrations/messenger-and-instagram/, step 4); `app_secret` the app's secret (App settings ▸ Basic), which signs
 every body Meta delivers for the Page and its Instagram account; `instagram_id` the Instagram
 professional account linked to the Page. As the Page is kept the gateway checks the token opens the
 Page's conversations (a refusal is `400` in Meta's words) and subscribes the Page to the app for
-`messages`, `messaging_postbacks`, `message_deliveries` and `message_reads`. The token the dashboard
-generates carries `pages_messaging` alone, which reads nothing of the Page: the Instagram account is the
+`messages`, `messaging_postbacks`, `message_deliveries` and `message_reads`. The dashboard's token reads
+nothing of the Page: the Instagram account is the
 one the org says, and the account is named by its `label`. A token that may read the Page
 (`pages_read_engagement`) has Meta name both, and Meta's word wins. Bringing the Page again with a new
 token alone keeps its secret and its Instagram account. `GET /v1/carrier` and `/v1/carriers` answer a
