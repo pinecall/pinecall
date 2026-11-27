@@ -8,6 +8,7 @@ import { type SessionLine } from "@pinecall/core/wire/rest";
 import { useCallMenu } from "./call-menu";
 import { ReadsOn } from "./older";
 import { browserOf, countryName, flagOf } from "./visitor";
+import { countryOfNumber } from "./countries";
 import { useOrg } from "../lib/org";
 import { Face } from "./face";
 import { AgentPick, StatusChips, TypePick } from "./filters";
@@ -58,7 +59,9 @@ function ThreadRow({ thread, to, on, now, held, onErased }: { thread: Thread; to
   // An email thread is listed by its subject, as a mailbox lists it; any other by how it went.
   const subject = useSubject(line.call, line.channel === "email");
   const where = [line.agent, kindSaid(line), browserOf(line.visitor?.user_agent), copyOf(line, whose?.subject ?? null)].filter((one) => one !== undefined && one !== null).join(" · ");
-  const flag = flagOf(line.visitor?.country);
+  // A web visitor's country is where the gateway saw them; a number's, its calling code's.
+  const country = line.visitor?.country ?? countryOfNumber(thread.contact);
+  const flag = flagOf(country);
   return (
     <Link ref={held} to={to} className={on ? "app-row app-row-on calls-row" : "app-row calls-row"} aria-current={on ? "true" : undefined} onContextMenu={(event) => menu(event, line, name)}>
       <Face name={name} letters={lettersOf(thread)} on={asking ? "asking" : live ? "live" : null} />
@@ -66,7 +69,7 @@ function ThreadRow({ thread, to, on, now, held, onErased }: { thread: Thread; to
         <span className="calls-row-top">
           <span className="dash-clip">
             {flag !== null && (
-              <span className="calls-flag" title={countryName(line.visitor?.country) ?? undefined} aria-label={countryName(line.visitor?.country) ?? undefined}>
+              <span className="calls-flag" title={countryName(country) ?? undefined} aria-label={countryName(country) ?? undefined}>
                 {flag}
               </span>
             )}
