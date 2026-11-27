@@ -15,6 +15,7 @@ const PUBLIC = [
     "CallWorld",
     "DeclarationRefused",
     "Example",
+    "ExtractRefused",
     "Flow",
     "Fragment",
     "GetEmail",

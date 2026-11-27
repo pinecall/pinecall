@@ -1,11 +1,9 @@
 /** A flow: a function that outlives a call. It runs in this process; the gateway keeps its journal, its clock and what wakes it. */
 
-import { z } from "zod";
-
 import { cancelRun, endRun, readRun, runsOf, startRun, writeStep, type AppDoor, type JournalStep, type KeptRun } from "../client/app-work.js";
 
 import type { Agent } from "../agent/agent.js";
-import { DeclarationRefused } from "../agent/tools.js";
+import { DeclarationRefused, jsonSchemaOf } from "../agent/tools.js";
 
 type Ctor = new () => Agent;
 type Data = Record<string, unknown>;
@@ -57,6 +55,11 @@ export interface TemplateOptions {
   text?: string;
   /** What that conversation's call.started carries, as a text's does. */
   metadata?: Data;
+}
+
+/** A schema the answer is read by: a zod object, or anything that parses. */
+export interface Parses<T> {
+  parse(data: unknown): T;
 }
 
 /** What a model is asked to read with: the agent whose account it runs on, what to look for, and the model. */
@@ -123,7 +126,7 @@ export interface Step {
    * The schema is a zod object (the answer is parsed by it) or a JSON Schema of an object. Nothing is listed among
    * the calls; the request counts as one written turn. Throws ExtractRefused when nothing could read it.
    */
-  extract<T extends Data>(text: string, schema: z.ZodType<T> | Data, options: ExtractOptions): Promise<T>;
+  extract<T extends Data>(text: string, schema: Parses<T> | Data, options: ExtractOptions): Promise<T>;
   /** Wait for an event of the app whose data has what `match` names, for `within` at most; null when it gave up. */
   waitFor(event: string, options?: { match?: Data; within?: string }): Promise<Data | null>;
   /** Run something once: what it returned is kept, and read back instead of run again. */
@@ -275,11 +278,11 @@ export async function advance(door: AppDoor, of: Flow, run: KeptRun, slugOf: (ag
       return { ...said, ...(typeof messageId === "string" ? { messageId } : {}) } as unknown as Templated;
     },
     // Over as it is answered: the model is asked once, and what it read is the journal's from then on.
-    extract: async <T extends Data>(text: string, schema: z.ZodType<T> | Data, options: ExtractOptions): Promise<T> => {
+    extract: async <T extends Data>(text: string, schema: Parses<T> | Data, options: ExtractOptions): Promise<T> => {
       const slug = slugOf(options.agent);
       if (slug === undefined) throw new DeclarationRefused(`${of.name}: ${options.agent.name} is no agent this process serves`);
-      const parser = schema instanceof z.ZodType ? schema : undefined;
-      const shape = parser === undefined ? (schema as Data) : (z.toJSONSchema(parser) as Data);
+      const parser = typeof (schema as Partial<Parses<T>>).parse === "function" ? (schema as Parses<T>) : undefined;
+      const shape = jsonSchemaOf(schema);
       const told = Object.fromEntries(Object.entries({ instructions: options.instructions, model: options.model }).filter(([, value]) => value !== undefined));
       const answered = ((await waited("extract", { agent: slug, text, schema: shape, ...told })) ?? {}) as Data;
       if (answered["data"] === null || typeof answered["data"] !== "object") throw new ExtractRefused(String(answered["refused"] ?? "unanswered"), String(answered["message"] ?? "the model read nothing"));

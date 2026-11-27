@@ -46,6 +46,7 @@ THE_DOOR = [
     "voice",
     "words",
     "Called",
+    "ExtractRefused",
     "Flow",
     "FlowChanged",
     "GetEmail",

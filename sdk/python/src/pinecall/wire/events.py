@@ -227,7 +227,7 @@ class ModelSpent(WireModel):
     # The agent's log is both worlds': the request is counted in the one it was asked in.
     env: Env
     turns: int
-    usage: list[LLMModelUsage] = Field(default_factory=list)
+    usage: list[LLMModelUsage] = Field(default_factory=list[LLMModelUsage])
     cost: Cost
     own_key: bool = False
 

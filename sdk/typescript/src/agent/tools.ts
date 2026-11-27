@@ -103,6 +103,11 @@ function schemaOf(type: string | undefined): Record<string, unknown> {
   return { type: "object", additionalProperties: true };
 }
 
+/** The JSON Schema a model answers by: a zod schema's, or the JSON Schema given as it is. */
+export function jsonSchemaOf(schema: unknown): Record<string, unknown> {
+  return schema instanceof z.ZodType ? (z.toJSONSchema(schema) as Record<string, unknown>) : (schema as Record<string, unknown>);
+}
+
 /** JSON Schema for a tool's parameters, from an explicit zod object or from the signature. */
 export function parametersOf(params: ParamDoc[], explicit?: z.ZodObject): Record<string, unknown> {
   if (explicit) return z.toJSONSchema(explicit) as Record<string, unknown>;
