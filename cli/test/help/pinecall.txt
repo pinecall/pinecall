@@ -85,8 +85,8 @@ Commands:
   remember [options] [paths...]        the goldens memory.remember is held to:
                                        what a call teaches, and what it never
                                        keeps
-  numbers                              list | available | import | buy | drop
-                                       the numbers the org answers at
+  numbers                              list | available | import | buy | address
+                                       | drop the numbers the org answers at
   carriers                             list | show | add | drop the org's
                                        carrier accounts: Twilio, a SIP peer,
                                        WhatsApp, a Facebook Page, a mailbox
