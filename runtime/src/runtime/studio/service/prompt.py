@@ -65,6 +65,16 @@ ON_EMAIL = (
     " No subject line: it is set for you."
 )
 
+ON_MESSENGER = (
+    "You are on Facebook Messenger. Short plain messages: no Markdown, no headings, no tables; a"
+    " link written out whole."
+)
+
+ON_INSTAGRAM = (
+    "You are in Instagram's direct messages. Short plain messages, one idea each: no Markdown, no"
+    " headings, no tables; a link written out whole, and few of them."
+)
+
 
 def rules_for(languages: Sequence[str], medium: str | None) -> str:
     """The framework's rules, the last one naming the languages of a spoken call whose agent says them."""
@@ -85,6 +95,10 @@ def channel_rules_for(channel: str | None, medium: str | None, own: ChannelRules
         return (own and own.sms) or ON_SMS
     if channel == "email":
         return (own and own.email) or ON_EMAIL
+    if channel == "messenger":
+        return (own and own.messenger) or ON_MESSENGER
+    if channel == "instagram":
+        return (own and own.instagram) or ON_INSTAGRAM
     if channel == "web" and medium == "text":
         return (own and own.chat) or ON_A_WEBSITE
     return (own and own.voice) or SPOKEN
@@ -93,7 +107,15 @@ def channel_rules_for(channel: str | None, medium: str | None, own: ChannelRules
 # What the console shows under each channel before an agent writes its own.
 def list_channel_rules() -> dict[str, str]:
     """The framework's own rules, by the name a definition writes its own under."""
-    return {"voice": SPOKEN, "chat": ON_A_WEBSITE, "whatsapp": ON_WHATSAPP, "sms": ON_SMS, "email": ON_EMAIL}
+    return {
+        "voice": SPOKEN,
+        "chat": ON_A_WEBSITE,
+        "whatsapp": ON_WHATSAPP,
+        "sms": ON_SMS,
+        "email": ON_EMAIL,
+        "messenger": ON_MESSENGER,
+        "instagram": ON_INSTAGRAM,
+    }
 
 
 def protocols_for(definition: Definition) -> str:

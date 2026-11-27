@@ -41,7 +41,7 @@ async def list_carrier_catalog(
 async def put_carrier(
     body: schemas.Account, actor: NumbersKey, vault: TheVault, http: TheHttp, servers: TheServers, session: Session
 ) -> schemas.CarrierRow:
-    """Keep an account of the org: a Twilio account, a SIP peer, a WhatsApp number at Meta, a mailbox."""
+    """Keep an account of the org: a Twilio account, a SIP peer, a WhatsApp number or Page at Meta, a mailbox."""
     brought = accounts.read_carrier(actor.org, body.model_dump())
     return schemas.CarrierRow.of(await rebuild.bring_carrier(session, vault, http, servers, brought))
 

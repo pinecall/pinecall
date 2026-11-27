@@ -15,6 +15,10 @@ A_SLUG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 AN_E164 = re.compile(r"^\+[1-9]\d{1,14}$")
 # Whitespace in an address would allow header injection (RFC 5322 §2.2).
 AN_EMAIL = re.compile(r"^[^\s@<>,;]+@[^\s@<>,;]+\.[^\s@<>,;]+$")
+# Meta's id of an account (a Facebook Page, an Instagram account), and of a contact on one: digits.
+A_META_ID = re.compile(r"^\d{5,32}$")
+# A contact Meta names by an id of one account, as a caller is said: `messenger:<PSID>`, `instagram:<IGSID>`.
+A_META_CALLER = re.compile(r"^(messenger|instagram):\d{5,32}$")
 A_FUNCTION_NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
 # A word is letters and digits, with an apostrophe or a hyphen inside it kept: "d'acord", "uh-huh".
 A_WORD = re.compile(r"[^\W_]+(?:['’-][^\W_]+)*")
@@ -81,9 +85,24 @@ def parse_email(address: str) -> str:
     return data
 
 
-def parse_address(written: str) -> str:
-    """A route's address: an email address when it holds an @, a phone number in E.164 otherwise."""
-    return parse_email(written) if "@" in written else parse_e164(written)
+def parse_meta_id(written: str) -> str:
+    """Meta's id of a Page or an Instagram account: digits alone, trimmed."""
+    data = written.strip()
+    if not A_META_ID.match(data):
+        raise ValidationError(f"a Page or an Instagram account is named by Meta's id, digits alone, not {data!r}")
+    return data
+
+
+# Meta's id of an account is digits alone, as a number typed without its + would be: it is taken as one
+# only where the channel asked is one whose routes answer at such ids.
+def parse_address(written: str, *, by_meta_id: bool = False) -> str:
+    """A route's address or a contact: an email, Meta's id of a contact (or an account, asked so), else a number."""
+    data = written.strip()
+    if A_META_CALLER.match(data) or (by_meta_id and A_META_ID.match(data)):
+        return data
+    if by_meta_id:
+        return parse_meta_id(data)
+    return parse_email(data) if "@" in data else parse_e164(data)
 
 
 # A signed token is three parts between dots.

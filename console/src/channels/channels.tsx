@@ -1,4 +1,4 @@
-/** An agent's Channels tab: its phone, WhatsApp and SMS numbers and its mailboxes, each with how it is reached, the way to add another, and the email template. */
+/** An agent's Channels tab: its phone, WhatsApp and SMS numbers, its mailboxes and its Facebook Pages, each with how it is reached, the way to add another, and the email template. */
 
 import { useCallback, useState, type ReactNode } from "react";
 import { Link } from "react-router";
@@ -13,12 +13,12 @@ import { useNumbers } from "../numbers/numbers";
 import { TestLine } from "../numbers/test-line";
 import { EmailTemplate } from "./email-template";
 import { MailboxCard } from "./mailbox";
-import { arrivingOn, comesThrough, RINGS, ringsSaid, shown } from "../numbers/words";
+import { addressSaid, arrivingOn, comesThrough, ON_A_PAGE, RINGS, ringsSaid } from "../numbers/words";
 import "../dashboard/dashboard.css";
 import "../configure/configure.css";
 import "../numbers/numbers.css";
 
-type Channel = "phone" | "whatsapp" | "sms" | "email";
+type Channel = "phone" | "whatsapp" | "sms" | "email" | "messenger";
 
 function Section({ tone, icon, title, about, action, onAdd, children }: { tone: string; icon: IconName; title: string; about: string; action: string; onAdd: () => void; children: ReactNode }): ReactNode {
   return (
@@ -41,6 +41,14 @@ function Section({ tone, icon, title, about, action, onAdd, children }: { tone: 
   );
 }
 
+// Where a route opens on its own page: a mailbox on Mailboxes, a Page on Messenger & Instagram, any other on Numbers.
+function pathOf(one: NumberRow): string {
+  const at = encodeURIComponent(one.route.number ?? "");
+  if (one.route.channel === "email") return `/mailboxes/${at}`;
+  if (ON_A_PAGE.has(one.route.channel)) return `/social/${at}/${one.route.channel}`;
+  return `/numbers/${at}${one.route.channel === "phone" ? "" : `/${one.route.channel}`}`;
+}
+
 export function ChannelsTab({ agent }: { agent: string }): ReactNode {
   const { agents } = useOrg();
   const { rows, carriers, catalog, refused, reread } = useNumbers();
@@ -50,14 +58,15 @@ export function ChannelsTab({ agent }: { agent: string }): ReactNode {
   const read = rows !== null;
 
   const row = (one: NumberRow): ReactNode => (
-    <Link key={`${one.route.number}:${one.route.channel}`} to={one.route.channel === "email" ? `/mailboxes/${encodeURIComponent(one.route.number ?? "")}` : `/numbers/${encodeURIComponent(one.route.number ?? "")}${one.route.channel === "phone" ? "" : `/${one.route.channel}`}`} className="num-row">
-      <span className="num-row-number">{shown(one.route.number)}</span>
+    <Link key={`${one.route.number}:${one.route.channel}`} to={pathOf(one)} className="num-row">
+      <span className="num-row-number">{addressSaid(one, carriers)}</span>
       <span className="num-row-through dash-clip">{comesThrough(one, carriers, catalog)}</span>
       <span className="num-row-when">{one.last_call_at == null ? `No ${arrivingOn(one.route.channel)} yet` : `Last ${arrivingOn(one.route.channel)} ${ago(one.last_call_at)}`}</span>
       <span className={`num-rings num-rings-${RINGS[one.rings].mood}`}>{ringsSaid(one.rings, one.route.channel)}</span>
     </Link>
   );
   const of = (channel: Channel): NumberRow[] => mine.filter((one) => one.route.channel === channel);
+  const onPages = mine.filter((one) => ON_A_PAGE.has(one.route.channel));
 
   return (
     <div className="num-channels">
@@ -87,6 +96,10 @@ export function ChannelsTab({ agent }: { agent: string }): ReactNode {
         ))}
         {read && of("email").length === 0 && <p className="dash-quiet num-none">No mailbox yet. Connect one and every email written to it is answered.</p>}
         {read && of("email").length > 0 && <EmailTemplate />}
+      </Section>
+      <Section tone="blue" icon="chat" title="Messenger & Instagram" about={`The Facebook Pages, and the Instagram accounts linked to them, whose messages ${agent} answers.`} action="Connect a Page" onAdd={() => setAdding("messenger")}>
+        {onPages.map(row)}
+        {read && onPages.length === 0 && <p className="dash-quiet num-none">No Facebook Page yet. Connect one and its Messenger and its Instagram are answered.</p>}
       </Section>
       {adding !== null && <AddNumberPanel key={adding} agents={[agent]} agent={agent} channel={adding} onAdded={reread} onClose={stopAdding} />}
     </div>

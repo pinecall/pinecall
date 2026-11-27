@@ -18,10 +18,10 @@ const InsightsSchema = z.looseObject({
   passed: z.number(),
   escalated: z.number(),
   mean_length_s: z.number().nullable(),
-  channels: z.object({ phone: z.number(), web: z.number(), whatsapp: z.number(), sms: z.number().default(0) }),
+  channels: z.object({ phone: z.number(), web: z.number(), whatsapp: z.number(), sms: z.number().default(0), messenger: z.number().default(0), instagram: z.number().default(0) }),
   budget: z.object({ limit_usd: z.number().nullable(), spent_usd_month: z.number() }),
   endings: z.array(z.object({ reason: z.string(), count: z.number() })),
-  series: z.array(z.object({ day: z.string(), phone: z.number(), web: z.number(), whatsapp: z.number(), sms: z.number().default(0), spend_usd: z.number(), judged: z.number(), passed: z.number() })),
+  series: z.array(z.object({ day: z.string(), phone: z.number(), web: z.number(), whatsapp: z.number(), sms: z.number().default(0), messenger: z.number().default(0), instagram: z.number().default(0), spend_usd: z.number(), judged: z.number(), passed: z.number() })),
   agents: z.array(z.object({ slug: z.string(), calls: z.number(), score: z.number().nullable(), spend: z.object({ minutes: z.number(), llm_usd: z.number(), stt_usd: z.number(), tts_usd: z.number(), phone_usd: z.number(), platform_usd: z.number(), per_minute_usd: z.number().nullable() }).loose() })),
 });
 
@@ -63,5 +63,5 @@ export function useInsights(days: WindowDays, { day, agent, world }: { day?: str
 }
 
 export function callsOf(day: InsightsDay): number {
-  return day.phone + day.web + day.whatsapp + day.sms;
+  return day.phone + day.web + day.whatsapp + day.sms + day.messenger + day.instagram;
 }

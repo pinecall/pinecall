@@ -9,6 +9,7 @@ import { SidePanel } from "../ui/side-panel";
 import { readCarriers, readCatalog, readOwned, type Carrier, type Catalog, type Owned } from "./door";
 import { Path, useMove } from "./parts";
 import { EmailWay } from "./email-way";
+import { PageWay } from "./page-way";
 import { BuyWay, GuidedWay, PbxWay, SmsWay, TwilioWay, WhatsAppWay, type WayProps } from "./ways";
 import { shown, waysOffered, type Way } from "./words";
 
@@ -28,11 +29,13 @@ function Form({ way, ...props }: WayProps & { way: Way }): ReactNode {
       return <SmsWay {...props} />;
     case "email":
       return <EmailWay {...props} />;
+    case "messenger":
+      return <PageWay {...props} />;
   }
 }
 
 /** `agent` opens it for one agent, which every way then rings; `channel` keeps it to the phone's ways or to WhatsApp. */
-export function AddNumberPanel({ agents, agent, channel = null, onAdded, onClose }: { agents: readonly string[]; agent?: string | undefined; channel?: "phone" | "whatsapp" | "sms" | "email" | null; onAdded: (number: string) => void; onClose: () => void }): ReactNode {
+export function AddNumberPanel({ agents, agent, channel = null, onAdded, onClose }: { agents: readonly string[]; agent?: string | undefined; channel?: "phone" | "whatsapp" | "sms" | "email" | "messenger" | "instagram" | null; onAdded: (number: string) => void; onClose: () => void }): ReactNode {
   const credentials = useCredentials();
   const mover = useMove();
   const [catalog, setCatalog] = useState<Catalog | null>(null);
@@ -57,7 +60,7 @@ export function AddNumberPanel({ agents, agent, channel = null, onAdded, onClose
   // One way alone is no choice: its form is the panel.
   const only = ways.length === 1 ? ways[0] : undefined;
   const open = way ?? only ?? null;
-  const title = added !== null ? shown(added.number) : open !== null ? open.name : channel === "whatsapp" ? "Connect WhatsApp" : channel === "sms" ? "Answer SMS" : channel === "email" ? "Connect a mailbox" : "Add a number";
+  const title = added !== null ? shown(added.number) : open !== null ? open.name : channel === "whatsapp" ? "Connect WhatsApp" : channel === "sms" ? "Answer SMS" : channel === "email" ? "Connect a mailbox" : channel === "messenger" || channel === "instagram" ? "Connect a Facebook Page" : "Add a number";
 
   return (
     <SidePanel

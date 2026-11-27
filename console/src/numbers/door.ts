@@ -8,7 +8,7 @@ const named = encodeURIComponent;
 
 const RouteSchema = z.looseObject({
   agent: z.string(),
-  channel: z.enum(["phone", "web", "whatsapp", "sms", "email"]),
+  channel: z.enum(["phone", "web", "whatsapp", "sms", "email", "messenger", "instagram"]),
   number: z.string().nullable(),
   env: z.enum(["production", "sandbox"]),
   /** Bought on the platform's own account. */
@@ -49,11 +49,11 @@ const CatalogSchema = z.looseObject({
 export type Catalog = z.infer<typeof CatalogSchema>;
 
 const CarrierSchema = z.looseObject({
-  kind: z.enum(["twilio", "sip", "whatsapp", "email"]),
+  kind: z.enum(["twilio", "sip", "whatsapp", "email", "messenger"]),
   account: z.string(),
   label: z.string().default(""),
   networks: z.array(z.looseObject({ network: z.string(), state: z.enum(["waiting", "approved", "refused"]) })).default([]),
-  /** A mailbox's hosts, ports, logins and name, never its passwords. */
+  /** A mailbox's hosts, ports, logins and name, never its passwords; a Page's linked Instagram account (`instagram_id`). */
   settings: z.record(z.string(), z.union([z.string(), z.number()])).default({}),
 });
 export type Carrier = z.infer<typeof CarrierSchema>;
@@ -71,6 +71,7 @@ export type WantedCarrier =
   | { kind: "twilio"; account_sid: string; user: string; secret: string; label?: string }
   | { kind: "sip"; username: string; password: string; addresses: string[]; outbound_host?: string; label?: string }
   | { kind: "whatsapp"; phone_number_id: string; access_token: string; app_secret?: string; label?: string }
+  | { kind: "messenger"; page_id: string; access_token: string; app_secret?: string; label?: string }
   | {
       kind: "email";
       address: string;
@@ -86,14 +87,14 @@ export type WantedCarrier =
       sender_name?: string;
     };
 
-/** What the org types in its own Meta app, WhatsApp ▸ Configuration ▸ Webhook, so its numbers' messages come here. */
+/** What the org types in its own Meta app (WhatsApp's webhook, or Messenger's and Instagram's for a Page) so its messages come here. */
 const SubscriptionSchema = z.looseObject({ callback_url: z.string(), verify_token: z.string(), field: z.string() });
 export type Subscription = z.infer<typeof SubscriptionSchema>;
 
 export interface WantedNumber {
   number: string;
   agent: string;
-  channel: "phone" | "whatsapp" | "sms" | "email";
+  channel: "phone" | "whatsapp" | "sms" | "email" | "messenger" | "instagram";
   /** The account the number lives in. */
   account?: string;
   /** The org points the number here itself: nothing outside is touched. */

@@ -24,6 +24,7 @@ export const MENU: readonly Group[] = [
       { path: "/knowledge", name: "Knowledge", icon: "knowledge" },
       { path: "/numbers", name: "Numbers", icon: "numbers" },
       { path: "/mailboxes", name: "Mailboxes", icon: "inbox" },
+      { path: "/social", name: "Messenger & Instagram", icon: "chat" },
     ],
   },
   {

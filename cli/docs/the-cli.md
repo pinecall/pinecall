@@ -2069,9 +2069,9 @@ no prompt drawn, and the desk leaves when the lines run out.
 ```
 pinecall numbers list
 pinecall numbers available [--account <id>]
-pinecall numbers import <+34… or address> --agent <slug> [--account <id>] [--channel phone|whatsapp|sms|email] [--move] [--dry-run]
+pinecall numbers import <+34…, address or Meta id> --agent <slug> [--account <id>] [--channel phone|whatsapp|sms|email|messenger|instagram] [--move] [--dry-run]
 pinecall numbers buy --country <XX> [--area <digits>] --agent <slug> [--channel phone|whatsapp|sms] [--dry-run]
-pinecall numbers drop <+34… or address> [--channel phone|whatsapp|sms|email]
+pinecall numbers drop <+34…, address or Meta id> [--channel phone|whatsapp|sms|email|messenger|instagram]
 ```
 
 **Adding a number to the org from a terminal is `numbers import`**: the number is one an account of
@@ -2176,6 +2176,7 @@ pinecall carriers add twilio --account-sid <AC…> --user <SK…> [--label <name
 pinecall carriers add sip --username <user> --address <ip or network>… [--outbound-host <host>]
                       [--outbound-transport auto|udp|tcp|tls] [--outbound-username <user>] [--label <name>]
 pinecall carriers add whatsapp --phone-number-id <id> [--label <name>]
+pinecall carriers add messenger --page-id <id> [--label <name>]
 pinecall carriers add email --address <address> --imap-host <host> --smtp-host <host> [--imap-port <port>]
                       [--smtp-port <port>] [--username <login>] [--smtp-username <login>] [--name <name>]
 pinecall carriers drop [<account>]
@@ -2183,7 +2184,7 @@ pinecall carriers drop [<account>]
 
 A carrier account is **where the org's numbers live**, and the org holds as many as it has: a
 Twilio account, a SIP peer (its own PBX, or a carrier with no API here), a WhatsApp number at
-Meta. An account is the org's, one for both environments; a number it owns is routed to an agent with
+Meta, a Facebook Page (its Messenger, and the Instagram account linked to it), a mailbox. An account is the org's, one for both environments; a number it owns is routed to an agent with
 [`numbers import`](#numbers), in the environment it should answer in. So bringing a Twilio number to an
 agent is two verbs:
 
@@ -2232,6 +2233,28 @@ seals each secret under the platform's vault key and answers the account by its 
   ```
 
   The Meta side, step by step, is [WhatsApp](https://docs.pinecall.io/integrations/whatsapp/).
+- **A Facebook Page.** `--page-id` is the Page's id at Meta. Two secrets are read: a Page access token
+  of your Meta app (Messenger ▸ Messenger API Settings ▸ Generate access tokens), then the app's secret,
+  which signs every message Meta delivers for the Page and its Instagram account; an empty second line
+  keeps the one given before. Meta is asked for the Page with the token before anything is kept (a
+  refusal is `Meta does not open Facebook Page <id> with this token: …` and exit 2); the Instagram
+  professional account linked to the Page is read then, and the Page is subscribed to the app for its
+  messages. `add` and `show` print the Instagram account's id and the webhook to type in the app's
+  Messenger and Instagram settings, the same callback URL and verify token WhatsApp's are. Its Messenger
+  and its Instagram are then given to an agent:
+
+  ```console
+  $ pinecall carriers add messenger --page-id 1472943555898656
+  Facebook Page access token:
+  Meta app secret (empty keeps the one given before):
+  kept: 1472943555898656 · messenger · Pinecall Prueba · Instagram 17841400000000001
+  $ pinecall numbers import 1472943555898656 --agent front-desk --channel messenger --account 1472943555898656
+  $ pinecall numbers import 17841400000000001 --agent front-desk --channel instagram --account 1472943555898656
+  ```
+
+  The agent only answers on these channels: Meta lets a Page reply within 24 hours of a contact's last
+  message, and nothing writes first. The Meta side is [Messenger and
+  Instagram](https://docs.pinecall.io/integrations/messenger-and-instagram/).
 - **A mailbox.** `--address` is the mailbox, which the account is named by. The mailbox's password
   is read first; with `--smtp-username`, a relay's password on a second line (Amazon SES's SMTP
   credentials, say), an empty one keeping the one given before. IMAP is 993 over TLS and logs in as
@@ -2242,7 +2265,7 @@ seals each secret under the platform's vault key and answers the account by its 
   then on, set in the org's layout ([`email`](#email)).
 
 `add` with an account the org already holds **replaces its secret**: that is how a key is rotated.
-An account's id is its own: Twilio's account SID, the peer's username, Meta's phone number id.
+An account's id is its own: Twilio's account SID, the peer's username, Meta's phone number id, the Page's id.
 `list` is every account, oldest first, one line each with its id and how many numbers it routes in
 the environment asked — and, when there are several, the reminder that `numbers import` names one
 with `--account`; `show` is one, the org's only account or the one named; `drop` forgets one, and with several the id is required. **Its numbers

@@ -63,6 +63,8 @@ select
     count(*) filter (where {WINDOWED} and f.channel = 'web') as web,
     count(*) filter (where {WINDOWED} and f.channel = 'whatsapp') as whatsapp,
     count(*) filter (where {WINDOWED} and f.channel = 'sms') as sms,
+    count(*) filter (where {WINDOWED} and f.channel = 'messenger') as messenger,
+    count(*) filter (where {WINDOWED} and f.channel = 'instagram') as instagram,
     count(*) as total,
     count(*) filter (
         where not head.sealed and head.seq > 0 and coalesce(f.channel, '') not in ({THREADS})
@@ -94,6 +96,8 @@ WINDOW_BY_DAY = _count(
        count(*) filter (where f.channel = 'web') as web,
        count(*) filter (where f.channel = 'whatsapp') as whatsapp,
        count(*) filter (where f.channel = 'sms') as sms,
+       count(*) filter (where f.channel = 'messenger') as messenger,
+       count(*) filter (where f.channel = 'instagram') as instagram,
        coalesce(sum(f.cost_usd), 0) as spent,
        count(*) filter (where f.judged > 0) as judged,
        count(*) filter (where f.judged > 0 and f.passed is not false) as passed""",
@@ -142,6 +146,8 @@ class WindowCounts:
     web: int
     whatsapp: int
     sms: int
+    messenger: int
+    instagram: int
     # Every call of the scope, whenever it started, and those of them still open.
     total: int
     live: int
@@ -180,6 +186,8 @@ class WindowDay:
     web: int = 0
     whatsapp: int = 0
     sms: int = 0
+    messenger: int = 0
+    instagram: int = 0
     spend_usd: float = 0.0
     judged: int = 0
     passed: int = 0
@@ -229,6 +237,8 @@ class SeriesRepository:
             web=int(row.web),
             whatsapp=int(row.whatsapp),
             sms=int(row.sms),
+            messenger=int(row.messenger),
+            instagram=int(row.instagram),
             total=int(row.total),
             live=int(row.live),
         )
@@ -268,6 +278,8 @@ class SeriesRepository:
                 web=int(row.web),
                 whatsapp=int(row.whatsapp),
                 sms=int(row.sms),
+                messenger=int(row.messenger),
+                instagram=int(row.instagram),
                 spend_usd=float(row.spent),
                 judged=int(row.judged),
                 passed=int(row.passed),

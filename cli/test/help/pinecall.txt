@@ -89,7 +89,7 @@ Commands:
                                        the numbers the org answers at
   carriers                             list | show | add | drop the org's
                                        carrier accounts: Twilio, a SIP peer,
-                                       WhatsApp, a mailbox
+                                       WhatsApp, a Facebook Page, a mailbox
   line                                 which phone is yours, and whose terminal
                                        anybody else's call rings in
   dial [options] <agent> <number>      have an agent call a number, with what

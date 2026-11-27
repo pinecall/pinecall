@@ -19,6 +19,8 @@ export const TYPES = [
   { value: "whatsapp", label: "WhatsApp" },
   { value: "sms", label: "SMS" },
   { value: "email", label: "Email" },
+  { value: "messenger", label: "Messenger" },
+  { value: "instagram", label: "Instagram" },
 ] as const;
 
 export type CallType = (typeof TYPES)[number]["value"];

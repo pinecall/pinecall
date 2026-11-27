@@ -27,15 +27,16 @@ from runtime.telephony.service.catalog import BOX_CARRIER, Admission
 from runtime.telephony.service.hand_over import AgentsHeld
 from runtime.telephony.service.number_path import StepState
 
-# `bought` on the box's account; `twilio`, `sip`, `whatsapp` the org's account it was imported
+# `bought` on the box's account; `twilio`, `sip`, `whatsapp`, `messenger` the org's account it was imported
 # from; `imported` from an account since forgotten; `hooked` pointed at the box by the org itself;
 # `typed` a row the box's operator wrote.
-type CameIn = Literal["bought", "twilio", "sip", "whatsapp", "imported", "hooked", "typed"]
+type CameIn = Literal["bought", "twilio", "sip", "whatsapp", "messenger", "imported", "hooked", "typed"]
 
 IMPORTED_FROM: dict[CarrierKind, CameIn] = {
     CarrierKind.twilio: "twilio",
     CarrierKind.sip: "sip",
     CarrierKind.whatsapp: "whatsapp",
+    CarrierKind.messenger: "messenger",
 }
 NOT_IN_THE_ENV = "the org answers at no {number} in the {env}"
 NOT_IN_EITHER_ENV = "the org answers no {number} in either env"

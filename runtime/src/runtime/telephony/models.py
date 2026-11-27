@@ -29,6 +29,8 @@ class CarrierKind(StrEnum):
     sip = "sip"
     whatsapp = "whatsapp"
     email = "email"
+    # A Facebook Page at Meta: its Messenger, and the Instagram account linked to it.
+    messenger = "messenger"
 
 
 class NetworkState(StrEnum):

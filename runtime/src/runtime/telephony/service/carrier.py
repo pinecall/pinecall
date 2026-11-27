@@ -144,6 +144,11 @@ class Carrier(Protocol):
         """Refuse an account its party does not open with what was given."""
         ...
 
+    async def confirmed(self, http: httpx.AsyncClient) -> Self:
+        """The account as its vendor confirms it: verified, with what the vendor says of it filled in."""
+        await self.verify(http)
+        return self
+
     def calling_networks(self) -> tuple[str, ...] | None:
         """The networks the account says it calls from, for the operator to approve; None when it names none."""
         ...

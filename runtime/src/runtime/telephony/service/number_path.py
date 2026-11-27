@@ -87,7 +87,14 @@ def _worst(states: Iterable[StepState]) -> StepState:
     return found
 
 
-_ARRIVING = {Channel.phone: "Calls", Channel.whatsapp: "Messages", Channel.sms: "Texts", Channel.email: "Emails"}
+_ARRIVING = {
+    Channel.phone: "Calls",
+    Channel.whatsapp: "Messages",
+    Channel.sms: "Texts",
+    Channel.email: "Emails",
+    Channel.messenger: "Messages",
+    Channel.instagram: "Messages",
+}
 
 
 # A number the box pointed here through an API is taken as pointed until a look says otherwise.
@@ -133,7 +140,7 @@ async def _ask_carrier_step(http: httpx.AsyncClient, names: SipNames, route: Rou
 # Until 2026-11 a network the operator refused was said to wait for him: what is not approved is
 # told apart now, and a refusal says so.
 def _fence_step(route: Route, fencing: Fencing) -> PathStep:
-    if route.channel is Channel.whatsapp:
+    if route.channel in (Channel.whatsapp, Channel.messenger, Channel.instagram):
         return PathStep("fence", "ok", "Signed by Meta, checked on every message")
     if route.channel is Channel.sms:
         return PathStep("fence", "ok", "Posted by Twilio to an address only this number's account knows")

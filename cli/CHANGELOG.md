@@ -5,6 +5,10 @@ that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pin
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
+- **`pinecall carriers add messenger --page-id <id>`**: a Facebook Page, its Page token and its Meta app's secret read on stdin;
+  `carriers show` names the Instagram account linked to it and what to type in the Meta app. `numbers import` and `drop`
+  take `--channel messenger` (the Page's id) and `--channel instagram` (its Instagram account's id), with `--account <the
+  Page's id>`; so does the MCP's `numbers` tool.
 - **`pinecall template --text`: the template's words open the contact's conversation.** `--text <words>` is what the
   template says once filled: the first turn of the contact's conversation, so what they answer reaches the agent with
   those words before it; `--metadata <json>` is what that conversation's `call.started` carries, and the answer names

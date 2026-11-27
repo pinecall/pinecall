@@ -43,14 +43,14 @@ ChannelAsked = Annotated[Channel | None, Query()]
 
 async def load_number(number: str, actor: NumbersKey, session: Session, channel: ChannelAsked = None) -> Route:
     """The org's number a path names, in the key's env; 404 otherwise, 409 for one on two channels and none named."""
-    return await numbers.get_number(session, actor.org, parse_address(number), actor.env, channel)
+    return await numbers.get_number(session, actor.org, _address_of(number, channel), actor.env, channel)
 
 
 async def load_number_in_either_env(
     number: str, actor: NumbersKey, session: Session, channel: ChannelAsked = None
 ) -> Route:
     """The org's number a path names, whichever env it answers in; 404 otherwise, 409 as above."""
-    return await numbers.get_number(session, actor.org, parse_address(number), channel=channel)
+    return await numbers.get_number(session, actor.org, _address_of(number, channel), channel=channel)
 
 
 TheNumber = Annotated[Route, Depends(load_number)]
@@ -111,3 +111,8 @@ async def read_sms_receipt(mark: str, request: Request, vault: TheVault) -> what
 
 TheSms = Annotated[whatsapp.Inbound, Depends(read_sms)]
 TheSmsReceipt = Annotated[whatsapp.Receipt, Depends(read_sms_receipt)]
+
+
+# A Page or an Instagram account is named by Meta's id, digits alone: read as one where the channel asked is theirs.
+def _address_of(number: str, channel: Channel | None) -> str:
+    return parse_address(number, by_meta_id=channel is not None and channel.is_by_meta_id)

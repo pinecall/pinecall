@@ -151,6 +151,8 @@ const CHANNELS: readonly { name: Channel; label: string; about: string }[] = [
   { name: "whatsapp", label: "WhatsApp", about: "Messages on a WhatsApp number." },
   { name: "sms", label: "SMS", about: "Text messages on a phone number." },
   { name: "email", label: "Email", about: "Emails to a mailbox of yours." },
+  { name: "messenger", label: "Messenger", about: "Messages to a Facebook Page of yours." },
+  { name: "instagram", label: "Instagram", about: "Direct messages to the Instagram account linked to that Page." },
 ];
 const LONGEST_RULES = 2000;
 

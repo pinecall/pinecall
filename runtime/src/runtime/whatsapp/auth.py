@@ -34,7 +34,7 @@ async def read_signed_delivery(
     header = request.headers.get(webhook.SIGNATURE_HEADER)
     own: list[webhook.OwnApp] = []
     if box is None or not webhook.is_signed(box.app_secret, body, header):
-        named = webhook.numbers_named_in(body)
+        named = webhook.numbers_named_in(body) | webhook.accounts_named_in(body)
         async with sessions.begin() as session:
             own = await telephony.list_own_meta_apps(session, vault, named) if named else []
     return webhook.read_signed(box, own, body, header)

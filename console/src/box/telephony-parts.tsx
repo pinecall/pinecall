@@ -80,6 +80,7 @@ const CAME_IN: Record<string, string> = {
   twilio: "Imported from the org's Twilio",
   sip: "Comes from the org's own PBX",
   whatsapp: "The org's WhatsApp",
+  messenger: "The org's Facebook Page",
   imported: "Imported from an account since removed",
   hooked: "Pointed here by the org, from its own carrier",
   typed: "Added by hand by an operator",

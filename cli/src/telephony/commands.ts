@@ -32,8 +32,10 @@ Examples
 
 const CARRIERS = `
 An account is where the org's numbers live: a Twilio account, a SIP peer (its own PBX or a
-carrier with no API here), a WhatsApp number at Meta. It is the org's, one for both envs, and
-\`pinecall numbers import\` then routes a number it owns to an agent.
+carrier with no API here), a WhatsApp number at Meta, a Facebook Page (its Messenger, and the
+Instagram account linked to it), a mailbox. It is the org's, one for both envs, and
+\`pinecall numbers import\` then routes a number it owns to an agent: a Page by its id on
+--channel messenger, its Instagram account by that account's id on --channel instagram.
 
 Every secret is read on stdin and never from the command line: typed with nothing echoed on a
 terminal, or piped one per line — a SIP peer's password, then its outbound password when
@@ -43,6 +45,7 @@ one stands. \`drop\` forgets an account and leaves its numbers routed until each
 
 Examples
   $ pinecall carriers add twilio --account-sid AC0123… --user SK4567… --label Clínica
+  $ pinecall carriers add messenger --page-id 1472943555898656
 `;
 
 const LINE = `
@@ -146,10 +149,10 @@ export function register(program: Command, ctx: Context): void {
   numbers
     .command("import")
     .description("a number the org's carrier account owns, pointed at an agent")
-    .argument("<number>", "+E.164")
+    .argument("<number>", "+E.164; an address for email; Meta's id of a Page or an Instagram account")
     .requiredOption("--agent <slug>")
     .option("--account <id>", "the account that owns it, when the org has several")
-    .option("--channel <channel>", "phone | whatsapp | sms | email")
+    .option("--channel <channel>", "phone | whatsapp | sms | email | messenger | instagram")
     .option("--move", "take the number off the trunk it is on now, when it answers in another environment or for another agent")
     .option("--dry-run", "print the steps and write nothing")
     .action(async (number, flags) =>
@@ -174,7 +177,7 @@ export function register(program: Command, ctx: Context): void {
     .command("drop")
     .description("forget the route; the carrier account keeps the number")
     .argument("<number>")
-    .option("--channel <channel>", "phone | whatsapp | sms | email: the one to let go, for a number on several")
+    .option("--channel <channel>", "phone | whatsapp | sms | email | messenger | instagram: the one to let go, for a number on several")
     .action(async (number, flags) => {
       try {
         ctx.io.result(await service.dropNumber(ctx, number, service.DropChannel.parse(flags.channel)), render.dropped);
@@ -185,7 +188,7 @@ export function register(program: Command, ctx: Context): void {
       }
     });
 
-  const carriers = program.command("carriers").description("list | show | add | drop the org's carrier accounts: Twilio, a SIP peer, WhatsApp, a mailbox").addHelpText("after", CARRIERS);
+  const carriers = program.command("carriers").description("list | show | add | drop the org's carrier accounts: Twilio, a SIP peer, WhatsApp, a Facebook Page, a mailbox").addHelpText("after", CARRIERS);
   carriers
     .command("list", { isDefault: true })
     .description("every carrier account of the org, oldest first")
@@ -229,6 +232,12 @@ export function register(program: Command, ctx: Context): void {
     .requiredOption("--phone-number-id <id>")
     .option("--label <name>")
     .action(async (flags) => addCarrier({ kind: "whatsapp", phoneNumberId: flags.phoneNumberId, label: flags.label }));
+  add
+    .command("messenger")
+    .description("a Facebook Page, for its Messenger and its Instagram account: its id, then a Page token and your Meta app's secret on stdin")
+    .requiredOption("--page-id <id>")
+    .option("--label <name>")
+    .action(async (flags) => addCarrier({ kind: "messenger", pageId: flags.pageId, label: flags.label }));
   add
     .command("email")
     .description("a mailbox: IMAP to read it, SMTP to answer from it; its password on stdin, then a relay's")

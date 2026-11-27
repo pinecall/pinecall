@@ -115,6 +115,9 @@ class ChannelRules(WireModel):
     whatsapp: str | None = Field(default=None, min_length=1, max_length=LONGEST_CHANNEL_RULES)
     sms: str | None = Field(default=None, min_length=1, max_length=LONGEST_CHANNEL_RULES)
     email: str | None = Field(default=None, min_length=1, max_length=LONGEST_CHANNEL_RULES)
+    # A Facebook Page's Messenger, and the Instagram account linked to it.
+    messenger: str | None = Field(default=None, min_length=1, max_length=LONGEST_CHANNEL_RULES)
+    instagram: str | None = Field(default=None, min_length=1, max_length=LONGEST_CHANNEL_RULES)
 
 
 class Definition(WireModel):

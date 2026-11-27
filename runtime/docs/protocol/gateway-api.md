@@ -135,6 +135,7 @@ only the process in the agent's directory can do: [dev-verbs.md](dev-verbs.md).
 | WhatsApp | [whatsapp.md](whatsapp.md) |
 | SMS | a route to the agent on the channel `sms`: [numbers.md](numbers.md), "SMS" |
 | Email | a mailbox of the org's, its address routed on the channel `email`: [email.md](email.md) |
+| Messenger · Instagram | a Facebook Page of the org's and its linked Instagram account, routed on `messenger` and `instagram`: [messenger.md](messenger.md) |
 | `POST /v1/agents/{slug}/dial` | a call the agent places, past the org's dial guards: [numbers.md](numbers.md) |
 | `POST /v1/agents/{slug}/text` | an SMS or an email the agent sends first, past the same guards: [numbers.md](numbers.md), "SMS", and [email.md](email.md), "The agent writes first" |
 | `POST /v1/agents/{slug}/template` | a WhatsApp template the agent sends first, which the sandbox answers and never sends: [whatsapp.md](whatsapp.md), "The agent writes first" |

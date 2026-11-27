@@ -14,7 +14,7 @@ import { Path, Plan, useMove } from "./parts";
 import { SendTemplate } from "./template";
 import { EmailTemplate } from "../channels/email-template";
 import { MailboxCard } from "../channels/mailbox";
-import { anArriving, arrivingMany, arrivingOn, CHANNEL_NAMES, comesThrough, RINGS, ringsSaid, shown } from "./words";
+import { addressSaid, anArriving, arrivingMany, arrivingOn, CHANNEL_NAMES, comesThrough, ON_A_PAGE, RINGS, ringsSaid } from "./words";
 
 const OTHER = WORLD === "production" ? "sandbox" : "production";
 
@@ -43,6 +43,7 @@ export function NumberView({ row, carriers, catalog, agents, onChanged, onGone }
   const [plan, setPlan] = useState<Wired | null>(null);
   const rings = RINGS[row.rings];
   const byEmail = row.route.channel === "email";
+  const onAPage = ON_A_PAGE.has(row.route.channel);
   const many = arrivingMany(row.route.channel);
   const mailbox = byEmail ? carriers.find((one) => one.kind === "email" && one.account === (row.account ?? number)) : undefined;
   // A number is sent to another agent the way it was added; only one imported from an account says enough here to do it again.
@@ -59,7 +60,7 @@ export function NumberView({ row, carriers, catalog, agents, onChanged, onGone }
     <div className="num-open">
       <section className="dash-card num-card">
         <div className="num-card-top">
-          <span className="num-big">{shown(row.route.number)}</span>
+          <span className="num-big">{addressSaid(row, carriers)}</span>
           <span className={`num-rings num-rings-${rings.mood}`}>{ringsSaid(row.rings, row.route.channel)}</span>
         </div>
         <dl className="num-facts">
@@ -117,7 +118,7 @@ export function NumberView({ row, carriers, catalog, agents, onChanged, onGone }
             <div className="num-change">
               <span className="num-change-words">
                 <span className="num-change-title">Let it go</span>
-                <span className="dash-quiet">{byEmail ? "It stops being read and answered. The mailbox keeps its emails, and its server keeps running." : "It stops reaching Pinecall. The account that owns it keeps it."}</span>
+                <span className="dash-quiet">{byEmail ? "It stops being read and answered. The mailbox keeps its emails, and its server keeps running." : onAPage ? "Its messages stop reaching the agent. The Page stays connected, and its other channel keeps answering." : "It stops reaching Pinecall. The account that owns it keeps it."}</span>
               </span>
               <ConfirmButton label="Let it go" asks="Stop answering it?" danger onConfirm={() => void mover.move(() => releaseNumber(credentials, number, row.route.channel)).then(onGone, () => undefined)} />
             </div>

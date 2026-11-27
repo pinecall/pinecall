@@ -178,7 +178,22 @@ async def _ask(
     params: dict[str, str] | None = None,
     json: dict[str, Any] | None = None,
 ) -> httpx.Response:
-    return await _fetch(http, f"{GRAPH}/{path}", token, method=method, params=params, json=json)
+    return await ask_graph(http, method, path, token, params=params, json=json)
+
+
+# Messenger and Instagram are asked of the same Graph, with the same no: said as the channel asked.
+async def ask_graph(
+    http: httpx.AsyncClient,
+    method: str,
+    path: str,
+    token: str,
+    *,
+    params: dict[str, str] | None = None,
+    json: dict[str, Any] | None = None,
+    said_as: str = "WhatsApp",
+) -> httpx.Response:
+    """Ask Meta's Graph at this path with the token; its refusal raised in Meta's words, said as the channel."""
+    return await _fetch(http, f"{GRAPH}/{path}", token, method=method, params=params, json=json, said_as=said_as)
 
 
 # The one place Meta is asked, and its no translated: a refusal in Meta's own words, with the status
@@ -191,6 +206,7 @@ async def _fetch(
     method: str = "GET",
     params: dict[str, str] | None = None,
     json: dict[str, Any] | None = None,
+    said_as: str = "WhatsApp",
 ) -> httpx.Response:
     try:
         answer = await http.request(
@@ -198,11 +214,11 @@ async def _fetch(
         )
     except httpx.HTTPError as silent:
         raise UpstreamError(
-            f"WhatsApp: Meta did not answer ({type(silent).__name__})", vendor=VENDOR, retryable=True
+            f"{said_as}: Meta did not answer ({type(silent).__name__})", vendor=VENDOR, retryable=True
         ) from silent
     if answer.is_error:
         raise UpstreamError(
-            f"WhatsApp: {_refusal_of(answer)}",
+            f"{said_as}: {_refusal_of(answer)}",
             vendor=VENDOR,
             answered=answer.status_code,
             retryable=answer.is_server_error,

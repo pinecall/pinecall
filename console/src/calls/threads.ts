@@ -43,6 +43,8 @@ function handleOf(line: SessionLine): string {
   const address = addressOf(line);
   if (address === null) return line.channel === "web" ? "web visitor" : "—";
   if (address.startsWith("+")) return prettyNumber(address);
+  // Meta names a Messenger or Instagram contact by an id of the Page's alone: said by where they wrote.
+  if (line.channel === "messenger" || line.channel === "instagram") return line.channel === "messenger" ? "Messenger contact" : "Instagram contact";
   return line.channel === "web" ? "web visitor" : address;
 }
 
@@ -103,6 +105,9 @@ export function titleOf(thread: Thread): string {
   if (thread.handle === A_GOLDEN_RUN) return goldenOf(thread.contact);
   if (thread.handle === A_SIMULATED_CALL) return simulationOf(thread.contact);
   if (thread.contact.startsWith("+")) return prettyNumber(thread.contact);
+  // A Messenger or Instagram contact Meta gave no name for: where they wrote, and the end of Meta's id of them.
+  const meta = /^(messenger|instagram):(\d+)$/.exec(thread.contact);
+  if (meta !== null) return `${meta[1] === "messenger" ? "Messenger" : "Instagram"} contact · ${meta[2]!.slice(-4)}`;
   return visitorOf(thread.contact) ?? thread.contact;
 }
 
@@ -114,7 +119,7 @@ export function lettersOf(thread: Thread): string | undefined {
 }
 
 /** The channels a contact writes on message by message. */
-const WRITTEN = new Set(["whatsapp", "sms", "email"]);
+const WRITTEN = new Set(["whatsapp", "sms", "email", "messenger", "instagram"]);
 
 /** Whether a conversation is one a contact writes on a number: a WhatsApp or an SMS thread. */
 export function isWritten(line: { channel: string | null }): boolean {

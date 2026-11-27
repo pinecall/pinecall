@@ -135,7 +135,7 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `POST` | `/v1/calls/{call}/verbs` | supervise and calls · fleet, or a supervise seat's token | One supervise verb on a live call; the call's log says what it did. |
 | `DELETE` | `/v1/carrier` | numbers | Forget an account; its numbers stay routed until each is let go. |
 | `GET` | `/v1/carrier` | numbers | The org's account, named, never its secret; the only one unless one is asked for. |
-| `PUT` | `/v1/carrier` | numbers | Keep an account of the org: a Twilio account, a SIP peer, a WhatsApp number at Meta, a mailbox. |
+| `PUT` | `/v1/carrier` | numbers | Keep an account of the org: a Twilio account, a SIP peer, a WhatsApp number or Page at Meta, a mailbox. |
 | `GET` | `/v1/carrier/outbound` | numbers | Whether the org can place a call, one sentence per thing missing, and its guards. |
 | `POST` | `/v1/carrier/outbound` | numbers | Make an account dialable: Twilio's termination and a credential; a peer needs nothing. |
 | `GET` | `/v1/carriers` | numbers | Every account of the org, oldest first. |

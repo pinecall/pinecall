@@ -1,5 +1,6 @@
 """Meta's webhook over HTTP: an org's own app subscribes with the word it was given, and its signed bodies are taken."""
 
+import json
 import os
 import secrets
 
@@ -7,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from runtime.kit.crypto import Vault
 from runtime.telephony.service import accounts
+from runtime.telephony.service.facebook_page import FacebookPage
 from runtime.telephony.service.whatsapp_number import WhatsappNumber
 from tests.conftest import Gateway, Tenant, needs_the_services
 from tests.fakes.meta import a_body, a_text, signed
@@ -50,5 +52,35 @@ async def test_a_body_an_orgs_own_app_signed_is_taken_and_a_strangers_is_refused
     for signature in (signed(body, "a stranger's secret"), signed(body)):
         refused = await gateway.http.post(
             "/v1/whatsapp/webhook", content=body, headers={**headers, "x-hub-signature-256": signature}
+        )
+        assert refused.status_code == 403, refused.text
+
+
+@needs_the_services
+async def test_a_pages_and_its_instagrams_bodies_its_own_app_signed_are_taken_and_a_strangers_is_refused(
+    gateway: Gateway, tenant: Tenant, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    """A Page brought with its app's secret vouches for its own bodies and for its linked Instagram account's."""
+    page, instagram = f"10{secrets.randbelow(10**12)}", f"178{secrets.randbelow(10**12)}"
+    vault = Vault(os.environ["PINECALL_VAULT_KEY"])
+    async with sessions.begin() as session:
+        brought = FacebookPage(
+            org=tenant.org, page_id=page, access_token="a page token", app_secret=THEIRS, instagram_id=instagram
+        )
+        await accounts.put_carrier(session, vault, brought)
+    headers = {"content-type": "application/json"}
+    for kind, account in (("page", page), ("instagram", instagram)):
+        event = {
+            "sender": {"id": "7001"},
+            "recipient": {"id": account},
+            "message": {"mid": f"m.{kind}", "text": "hola"},
+        }
+        body = json.dumps({"object": kind, "entry": [{"id": account, "messaging": [event]}]}).encode()
+        taken = await gateway.http.post(
+            "/v1/whatsapp/webhook", content=body, headers={**headers, "x-hub-signature-256": signed(body, THEIRS)}
+        )
+        assert (taken.status_code, taken.json()) == (200, {"received": 1}), kind
+        refused = await gateway.http.post(
+            "/v1/whatsapp/webhook", content=body, headers={**headers, "x-hub-signature-256": signed(body, "not theirs")}
         )
         assert refused.status_code == 403, refused.text

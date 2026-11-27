@@ -6,6 +6,9 @@ All notable changes to `@pinecall/agents`, the package a tenant writes an agent 
 maintainer's call, so everything sits under Unreleased until one is cut.
 
 ## Unreleased
+- **Two channels: `messenger` and `instagram`.** A call's `channel` may be a Facebook Page's Messenger or the Instagram account
+  linked to it; both are written (`medium` text), and each has the framework's own rules (`channelRules.messenger`,
+  `channelRules.instagram`), which an agent may replace with its own.
 - **`step.template` takes `text` and `metadata`.** `text`, what the template says once filled, opens the contact's
   conversation as its first turn, so their answer reaches the agent with those words before it; the answer carries
   `call`, that conversation.

@@ -1,4 +1,4 @@
-"""How a written conversation reaches its contact: WhatsApp through Meta, an SMS through Twilio, an email by SMTP."""
+"""How a written conversation reaches its contact: WhatsApp, Messenger and Instagram through Meta, SMS, email."""
 
 import logging
 from dataclasses import dataclass
@@ -93,6 +93,35 @@ class ByWhatsapp:
             return await self.ears.hear(await whatsapp.read_media(self.http, self.token, message.media_id))
         except (PinecallError, httpx.HTTPError):
             logger.warning("whatsapp: a voice note to %s was not heard", message.number, exc_info=True)
+            return None
+
+
+@dataclass(frozen=True, slots=True)
+class ByMessenger:
+    """Meta's Graph, on the Page's token: its Messenger, or the Instagram account linked to it."""
+
+    http: httpx.AsyncClient
+    token: str
+    ears: Ears
+
+    async def send(self, to: whatsapp.Inbound, text: str) -> None:
+        """Send the text from the Page to the contact, on the channel they wrote on, as several when it is long."""
+        await whatsapp.send_on_messenger(self.http, self.token, to.phone_number_id, to.channel, to.wa_id, text)
+
+    async def mark_read(self, message: whatsapp.Inbound, *, typing: bool) -> None:
+        """Seen, and "typing…" when a reply is being written."""
+        await whatsapp.mark_seen(
+            self.http, self.token, message.phone_number_id, message.channel, message.wa_id, typing=typing
+        )
+
+    async def hear_note(self, message: whatsapp.Inbound) -> str | None:
+        """What a voice note says; None for one that could not be fetched or heard, or that says nothing."""
+        if message.media_id is None:
+            return None
+        try:
+            return await self.ears.hear(await whatsapp.read_attachment(self.http, message.media_id))
+        except (PinecallError, httpx.HTTPError):
+            logger.warning("%s: a voice note to %s was not heard", message.channel, message.number, exc_info=True)
             return None
 
 
@@ -197,6 +226,11 @@ async def way_to(
             None
             if account is None
             else BySms(live.http, account, status_to, Ears(live, Scope(route.org, route.env), route.agent))
+        )
+    if inbound.channel.is_by_meta_id:
+        page = await telephony.page_token_for(session_, live.vault, route.org, inbound.phone_number_id)
+        return (
+            None if page is None else ByMessenger(live.http, page, Ears(live, Scope(route.org, route.env), route.agent))
         )
     token = await telephony.meta_token_for(session_, live.vault, route.org, inbound.phone_number_id)
     return None if token is None else ByWhatsapp(live.http, token, Ears(live, Scope(route.org, route.env), route.agent))

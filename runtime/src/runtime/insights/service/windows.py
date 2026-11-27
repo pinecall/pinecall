@@ -39,6 +39,8 @@ class Channels:
     web: int
     whatsapp: int
     sms: int = 0
+    messenger: int = 0
+    instagram: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -194,7 +196,9 @@ async def window_of(session: AsyncSession, days: Days) -> Window:
         resolved_rate=counted.unescalated / counted.finished if counted.finished else None,
         median_e2e_s=median_e2e_s,
         spend_usd=counted.spend_usd,
-        channels=Channels(counted.phone, counted.web, counted.whatsapp, counted.sms),
+        channels=Channels(
+            counted.phone, counted.web, counted.whatsapp, counted.sms, counted.messenger, counted.instagram
+        ),
         judged=counted.judged,
         passed=counted.passed,
         escalated=counted.escalated,

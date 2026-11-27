@@ -20,7 +20,7 @@ class NumbersAccount(Row):
 # `bought` on the box's account; `twilio`, `sip`, `whatsapp` the org's account it was imported
 # from; `imported` from an account since forgotten; `hooked` pointed at the box by the org itself;
 # `typed` a row the box's operator wrote.
-type NumberCameIn = Literal["bought", "twilio", "sip", "whatsapp", "imported", "hooked", "typed"]
+type NumberCameIn = Literal["bought", "twilio", "sip", "whatsapp", "messenger", "imported", "hooked", "typed"]
 
 
 class BoxNumber(Row):

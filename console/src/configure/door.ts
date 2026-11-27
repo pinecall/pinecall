@@ -87,7 +87,7 @@ const TriedSchema = z.object({ status: z.number().int().nullable(), body: z.unkn
 export type Tried = z.infer<typeof TriedSchema>;
 
 // An agent's own words for a channel; one it leaves out is told Pinecall's.
-const ChannelRulesSchema = z.object({ voice: z.string().nullish(), chat: z.string().nullish(), whatsapp: z.string().nullish(), sms: z.string().nullish(), email: z.string().nullish() });
+const ChannelRulesSchema = z.object({ voice: z.string().nullish(), chat: z.string().nullish(), whatsapp: z.string().nullish(), sms: z.string().nullish(), email: z.string().nullish(), messenger: z.string().nullish(), instagram: z.string().nullish() });
 export type ChannelRules = z.infer<typeof ChannelRulesSchema>;
 
 // The definition goes back whole on a save, so what this page does not draw is kept as it was read.

@@ -1,6 +1,13 @@
 # Changelog
 
 ## Unreleased
+- **Messenger and Instagram.** An org brings a Facebook Page as an account (`PUT /v1/carrier` with `kind: "messenger"`: its id,
+  a Page token, its Meta app's secret); the gateway finds the Instagram account linked to it and subscribes the Page to the
+  app. The Page's id routes to an agent on the channel `messenger` and the Instagram account's on `instagram`; Meta's
+  bodies (`object: page` and `object: instagram`) are taken on the WhatsApp webhook, signed by the org's app, and each
+  contact (`messenger:<PSID>`, `instagram:<IGSID>`, named by Meta once) has a written conversation, answered from the Page
+  with seen and typing, voice notes heard. Migration 000038. Studio agents and the insights count both channels.
+  `docs/protocol/messenger.md`.
 - **A second template to a contact who never answered is a template.** The door wrote the words as a plain message on the
   conversation going, which an earlier template had opened: Meta refused it ("Re-engagement message"). Now a contact
   who did not write within 24 hours is sent the template, and the agent is told its words on that conversation.

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "rules"
 require_relative "call_world/room"
 require_relative "call_world/answers"
 
@@ -29,7 +30,7 @@ module Pinecall
       @direction = direction
       @caller = caller
       @metadata = metadata || {}
-      @medium = (medium || (%w[whatsapp sms email].include?(channel.to_s) ? "text" : "voice")).to_s
+      @medium = (medium || (Rules::WRITTEN.include?(channel.to_s) ? "text" : "voice")).to_s
       @today = today
       @claimed = claimed
       @searching = searching

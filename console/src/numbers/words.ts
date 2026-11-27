@@ -11,9 +11,9 @@ export const RINGS: Record<Rings, { mood: "good" | "warn" | "bad"; said: string 
 };
 
 // What reaches a number on each channel, said in the page's own word: a call, a message, an email.
-const ARRIVING: Record<string, string> = { whatsapp: "message", sms: "text", email: "email" };
+const ARRIVING: Record<string, string> = { whatsapp: "message", sms: "text", email: "email", messenger: "message", instagram: "message" };
 
-const MANY: Record<string, string> = { whatsapp: "Messages", sms: "Texts", email: "Emails" };
+const MANY: Record<string, string> = { whatsapp: "Messages", sms: "Texts", email: "Emails", messenger: "Messages", instagram: "Messages" };
 
 /** What arrives on the channel, several of them: Calls, Messages, Texts, Emails. */
 export function arrivingMany(channel: string | null): string {
@@ -47,9 +47,20 @@ export function e164(typed: string): string {
 }
 
 /** A channel as a person reads it. */
-export const CHANNEL_NAMES: Record<NumberRow["route"]["channel"], string> = { phone: "Phone", web: "Web", whatsapp: "WhatsApp", sms: "SMS", email: "Email" };
+export const CHANNEL_NAMES: Record<NumberRow["route"]["channel"], string> = { phone: "Phone", web: "Web", whatsapp: "WhatsApp", sms: "SMS", email: "Email", messenger: "Messenger", instagram: "Instagram" };
 
-const KINDS: Record<Carrier["kind"], string> = { twilio: "Twilio", sip: "Your PBX", whatsapp: "WhatsApp", email: "Mailbox" };
+const KINDS: Record<Carrier["kind"], string> = { twilio: "Twilio", sip: "Your PBX", whatsapp: "WhatsApp", email: "Mailbox", messenger: "Facebook Page" };
+
+/** The channels a Facebook Page answers on: its Messenger, and the Instagram account linked to it. */
+export const ON_A_PAGE: ReadonlySet<string> = new Set(["messenger", "instagram"]);
+
+/** What a route answers at, as a person reads it: a number, a mailbox, or the Page (and its Instagram) by the name the Page was given. */
+export function addressSaid(row: NumberRow, carriers: readonly Carrier[]): string {
+  if (!ON_A_PAGE.has(row.route.channel)) return shown(row.route.number);
+  const page = carriers.find((one) => one.kind === "messenger" && one.account === row.account);
+  const name = page === undefined || page.label === "" ? `Page ${row.account ?? ""}` : page.label;
+  return row.route.channel === "instagram" ? `${name} · Instagram` : `${name} · Messenger`;
+}
 
 /** A carrier account in a line: what it is, and the name it was given. */
 export function accountName(carrier: Carrier): string {
@@ -68,7 +79,7 @@ export function comesThrough(row: NumberRow, carriers: readonly Carrier[], catal
 
 /** A way to add a number: what it is called, what it takes, and its form. */
 export interface Way {
-  id: "buy" | "twilio" | "guided" | "pbx" | "whatsapp" | "sms" | "email";
+  id: "buy" | "twilio" | "guided" | "pbx" | "whatsapp" | "sms" | "email" | "messenger";
   name: string;
   says: string;
   icon: IconName;
@@ -77,7 +88,7 @@ export interface Way {
 }
 
 /** The ways this deployment offers for a channel, quickest first: buying where it sells, each carrier it admits, an own PBX, WhatsApp. */
-export function waysOffered(catalog: Catalog, channel: "phone" | "whatsapp" | "sms" | "email" | null): Way[] {
+export function waysOffered(catalog: Catalog, channel: "phone" | "whatsapp" | "sms" | "email" | "messenger" | "instagram" | null): Way[] {
   const phone: Way[] = [
     ...(catalog.sells ? [{ id: "buy" as const, name: "Buy a number", says: "Pick a country and it rings in seconds, on Pinecall's account.", icon: "coins" as const }] : []),
     ...catalog.carriers.map((carrier): Way => (carrier.how === "automatic" ? { id: "twilio", name: `Bring one from ${carrier.name}`, says: "Connect your account once. We list its numbers and point the one you pick here.", icon: "numbers" } : { id: "guided", name: `Point one from ${carrier.name}`, says: `Paste one address in ${carrier.name}'s portal. Its calls are already trusted here.`, icon: "route", via: carrier.kind })),
@@ -89,6 +100,8 @@ export function waysOffered(catalog: Catalog, channel: "phone" | "whatsapp" | "s
   if (channel === "whatsapp") return [whatsapp];
   if (channel === "sms") return [sms];
   if (channel === "email") return [email];
+  // A Page is no number either: it is connected on Messenger & Instagram, or in an agent's Channels.
+  if (channel === "messenger" || channel === "instagram") return [{ id: "messenger", name: "Messenger & Instagram", says: "A Facebook Page of yours, and the Instagram account linked to it. Messages to either reach the agent, and it replies from them.", icon: "chat" }];
   // A mailbox is no number: it is connected on Mailboxes, or in an agent's Channels.
   return channel === "phone" ? phone : [...phone, whatsapp, sms];
 }

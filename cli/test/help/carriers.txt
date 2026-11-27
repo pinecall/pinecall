@@ -2,7 +2,7 @@ $ pinecall carriers --help
 Usage: pinecall carriers [options] [command]
 
 list | show | add | drop the org's carrier accounts: Twilio, a SIP peer,
-WhatsApp, a mailbox
+WhatsApp, a Facebook Page, a mailbox
 
 Options:
   -h, --help      display help for command
@@ -16,8 +16,10 @@ Commands:
   help [command]  display help for command
 
 An account is where the org's numbers live: a Twilio account, a SIP peer (its own PBX or a
-carrier with no API here), a WhatsApp number at Meta. It is the org's, one for both envs, and
-`pinecall numbers import` then routes a number it owns to an agent.
+carrier with no API here), a WhatsApp number at Meta, a Facebook Page (its Messenger, and the
+Instagram account linked to it), a mailbox. It is the org's, one for both envs, and
+`pinecall numbers import` then routes a number it owns to an agent: a Page by its id on
+--channel messenger, its Instagram account by that account's id on --channel instagram.
 
 Every secret is read on stdin and never from the command line: typed with nothing echoed on a
 terminal, or piped one per line — a SIP peer's password, then its outbound password when
@@ -27,6 +29,7 @@ one stands. `drop` forgets an account and leaves its numbers routed until each i
 
 Examples
   $ pinecall carriers add twilio --account-sid AC0123… --user SK4567… --label Clínica
+  $ pinecall carriers add messenger --page-id 1472943555898656
 
 
 $ pinecall carriers list --help
@@ -54,18 +57,21 @@ Usage: pinecall carriers add [options] [command]
 keep an account: its fields from the flags, its secrets from stdin
 
 Options:
-  -h, --help          display help for command
+  -h, --help           display help for command
 
 Commands:
-  twilio [options]    a Twilio account: its SID, an API key and its secret on
-                      stdin
-  sip [options]       a SIP peer: who calls from where, and how calls go out;
-                      the password on stdin
-  whatsapp [options]  a WhatsApp Business number: its id, then Meta's token and
-                      your Meta app's secret on stdin
-  email [options]     a mailbox: IMAP to read it, SMTP to answer from it; its
-                      password on stdin, then a relay's
-  help [command]      display help for command
+  twilio [options]     a Twilio account: its SID, an API key and its secret on
+                       stdin
+  sip [options]        a SIP peer: who calls from where, and how calls go out;
+                       the password on stdin
+  whatsapp [options]   a WhatsApp Business number: its id, then Meta's token and
+                       your Meta app's secret on stdin
+  messenger [options]  a Facebook Page, for its Messenger and its Instagram
+                       account: its id, then a Page token and your Meta app's
+                       secret on stdin
+  email [options]      a mailbox: IMAP to read it, SMTP to answer from it; its
+                       password on stdin, then a relay's
+  help [command]       display help for command
 
 $ pinecall carriers add twilio --help
 Usage: pinecall carriers add twilio [options]
@@ -102,6 +108,17 @@ Options:
   --phone-number-id <id>
   --label <name>
   -h, --help              display help for command
+
+$ pinecall carriers add messenger --help
+Usage: pinecall carriers add messenger [options]
+
+a Facebook Page, for its Messenger and its Instagram account: its id, then a
+Page token and your Meta app's secret on stdin
+
+Options:
+  --page-id <id>
+  --label <name>
+  -h, --help      display help for command
 
 $ pinecall carriers add email --help
 Usage: pinecall carriers add email [options]

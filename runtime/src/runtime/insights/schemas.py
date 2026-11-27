@@ -24,6 +24,8 @@ class InsightsChannels(Row):
     web: int
     whatsapp: int
     sms: int = 0
+    messenger: int = 0
+    instagram: int = 0
 
 
 class InsightsSpend(Row):
@@ -81,6 +83,8 @@ class InsightsDay(Row):
     web: int
     whatsapp: int
     sms: int = 0
+    messenger: int = 0
+    instagram: int = 0
     spend_usd: float
     judged: int
     passed: int

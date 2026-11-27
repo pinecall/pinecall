@@ -78,7 +78,7 @@ function Figure({ name, value, note }: { name: string; value: string; note: stri
 export function Overview({ counted, moved, days, live, picker }: { counted: Insights | null; moved: string; days: number; live: number; picker: ReactNode }): ReactNode {
   const [metric, setMetric] = useState<Metric>("calls");
   const series = counted?.series ?? [];
-  const calls: Point[] = series.map((day) => ({ label: dayLabel(day.day), value: callsOf(day), detail: `${day.phone} phone, ${day.web} web, ${day.whatsapp} WhatsApp${day.sms > 0 ? `, ${day.sms} SMS` : ""}` }));
+  const calls: Point[] = series.map((day) => ({ label: dayLabel(day.day), value: callsOf(day), detail: `${day.phone} phone, ${day.web} web, ${day.whatsapp} WhatsApp${day.sms > 0 ? `, ${day.sms} SMS` : ""}${day.messenger > 0 ? `, ${day.messenger} Messenger` : ""}${day.instagram > 0 ? `, ${day.instagram} Instagram` : ""}` }));
   const held: Point[] = series.map((day) => ({ label: dayLabel(day.day), value: day.judged === 0 ? null : day.passed / day.judged, detail: `${day.passed} of ${day.judged} calls` }));
   const spent: Point[] = series.map((day) => ({ label: dayLabel(day.day), value: day.spend_usd }));
 
@@ -108,6 +108,8 @@ export function Overview({ counted, moved, days, live, picker }: { counted: Insi
               { name: "Web", count: channels?.web ?? 0, tone: "blue" },
               { name: "WhatsApp", count: channels?.whatsapp ?? 0, tone: "good" },
               ...((channels?.sms ?? 0) > 0 ? [{ name: "SMS", count: channels?.sms ?? 0, tone: "pink" as const }] : []),
+              ...((channels?.messenger ?? 0) > 0 ? [{ name: "Messenger", count: channels?.messenger ?? 0, tone: "blue" as const }] : []),
+              ...((channels?.instagram ?? 0) > 0 ? [{ name: "Instagram", count: channels?.instagram ?? 0, tone: "pink" as const }] : []),
             ]}
           />
           <Headline

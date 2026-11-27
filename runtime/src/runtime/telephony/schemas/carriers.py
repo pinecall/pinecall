@@ -91,8 +91,22 @@ class EmailAccount(Schema):
     label: str = ""
 
 
+class FacebookPage(Schema):
+    """A Facebook Page at Meta: its id, a Page token, and the secret of the org's own Meta app."""
+
+    kind: Literal["messenger"] = "messenger"
+    page_id: Annotated[str, Field(min_length=5, max_length=32, pattern=r"^\d+$")]
+    access_token: Annotated[str, Field(min_length=1)]
+    # The secret of the org's own Meta app, which signs the Page's deliveries; left out to keep the one
+    # brought before.
+    app_secret: str = ""
+    label: str = ""
+
+
 # A new kind of account is a line here, a module of its own, and a line of the registry.
-type Account = Annotated[TwilioAccount | SipPeer | WhatsappAccount | EmailAccount, Field(discriminator="kind")]
+type Account = Annotated[
+    TwilioAccount | SipPeer | WhatsappAccount | EmailAccount | FacebookPage, Field(discriminator="kind")
+]
 
 
 class NetworkRow(Row):
@@ -110,7 +124,8 @@ class CarrierRow(Row):
     label: str = ""
     # A SIP peer's networks, each waiting, approved or refused; none for an account with an API.
     networks: list[NetworkRow] = Field(default_factory=list[NetworkRow])
-    # A mailbox's hosts, ports, logins and name, never its passwords; empty for any other kind.
+    # A mailbox's hosts, ports, logins and name, never its passwords; a Page's linked Instagram account;
+    # empty for any other kind.
     settings: dict[str, str | int] = Field(default_factory=dict[str, str | int])
 
 

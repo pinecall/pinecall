@@ -10,6 +10,7 @@ from pinecall._answers import Answer, Attended, Transferred, Waiting
 from pinecall._asking import Asked
 from pinecall._calls import interruptible
 from pinecall._room import History, Participant, Room, Seat, Turn
+from pinecall._rules import WRITTEN
 from pinecall.client import Found
 from pinecall.errors import PinecallError
 from pinecall.tasks import Task
@@ -110,9 +111,7 @@ class CallWorld:
         """Who is on the line as far as the platform knows: `name`, `phone`, `email`; or None."""
         self.metadata = line.metadata
         """What the call was opened with and sealed, as a token's `metadata`; empty when none."""
-        self.medium: Medium = line.medium or (
-            "text" if line.channel in ("whatsapp", "sms", "email") else "voice"
-        )
+        self.medium: Medium = line.medium or ("text" if line.channel in WRITTEN else "voice")
         self.today = line.today
         """The day the call opened, `YYYY-MM-DD`."""
         self.claimed = line.claimed

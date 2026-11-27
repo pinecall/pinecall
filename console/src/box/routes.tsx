@@ -6,7 +6,7 @@ import { Link } from "react-router";
 import { useCredentials } from "@pinecall/core/credentials";
 import { ConfirmButton } from "../apps/confirm";
 import { useMove } from "../numbers/parts";
-import { shown } from "../numbers/words";
+import { CHANNEL_NAMES, shown } from "../numbers/words";
 import { Icon } from "../shell/icons";
 import { Select } from "../ui/select";
 import { readOrgs } from "./door";
@@ -113,7 +113,7 @@ function Board(): ReactNode {
                 <span className="tst-row-name">
                   <span className="dash-clip">{shown(row.number)}</span>
                   <span className="tst-tag">{row.env}</span>
-                  {row.channel !== "phone" && <span className="tst-tag">{row.channel === "whatsapp" ? "WhatsApp" : row.channel === "sms" ? "SMS" : row.channel === "email" ? "Email" : row.channel}</span>}
+                  {row.channel !== "phone" && <span className="tst-tag">{CHANNEL_NAMES[row.channel as keyof typeof CHANNEL_NAMES] ?? row.channel}</span>}
                 </span>
                 <span className="tst-row-under">
                   <OrgLink slug={row.org} name={nameOf(row.org)} />, answered by {row.agent}. {cameIn(row)}

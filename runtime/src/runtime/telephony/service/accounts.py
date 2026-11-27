@@ -24,6 +24,7 @@ from runtime.telephony.repository import CarrierRepository, RouteRepository
 from runtime.telephony.service import networks, twilio
 from runtime.telephony.service.carrier import Carrier
 from runtime.telephony.service.email_account import EmailAccount
+from runtime.telephony.service.facebook_page import FacebookPage
 from runtime.telephony.service.sip_peer import SipPeer
 from runtime.telephony.service.twilio import TwilioAccount
 from runtime.telephony.service.twilio_carrier import TwilioCarrier, dump_account, read_account
@@ -42,6 +43,7 @@ CARRIERS: dict[CarrierKind, type[Carrier]] = {
     CarrierKind.sip: SipPeer,
     CarrierKind.whatsapp: WhatsappNumber,
     CarrierKind.email: EmailAccount,
+    CarrierKind.messenger: FacebookPage,
 }
 
 
@@ -114,7 +116,7 @@ async def get_carrier(session: AsyncSession, vault: Vault, org: str, account: st
 async def describe_carrier(session: AsyncSession, carrier: Carrier) -> CarrierListed:
     """The account as the org's list shows it, with the networks it asked for."""
     asked = await networks.list_of_source(session, carrier.org, carrier.id)
-    settings = carrier.describe() if isinstance(carrier, EmailAccount) else {}
+    settings = carrier.describe() if isinstance(carrier, EmailAccount | FacebookPage) else {}
     return CarrierListed(
         kind=carrier.kind.value, account=carrier.id, label=carrier.label, networks=asked, settings=settings
     )
@@ -200,19 +202,40 @@ async def meta_token_for(session: AsyncSession, vault: Vault, org: str, phone_nu
         return None
 
 
+async def page_token_for(session: AsyncSession, vault: Vault, org: str, page_id: str) -> str | None:
+    """The org's Page token for the Page, or None when the org brought no such Page."""
+    for carrier in await list_carriers(session, vault, org):
+        if isinstance(carrier, FacebookPage) and carrier.page_id == page_id:
+            return carrier.access_token
+    return None
+
+
 # Meta's webhook asks before any org is known: a body names the numbers written to, and the orgs
 # that brought one of them with an app's secret are the ones whose app may have signed it.
 async def list_own_meta_apps(
     session: AsyncSession, vault: Vault, phone_number_ids: Collection[str]
 ) -> list[whatsapp.OwnApp]:
-    """Every org's own Meta app that signs for one of these WhatsApp numbers."""
-    rows = await CarrierRepository(session).list_of_kind_named(CarrierKind.whatsapp, phone_number_ids)
-    opened = (carrier_of(vault, row) for row in rows)
-    return [
+    """Every org's own Meta app that signs for one of these ids: a WhatsApp number's, a Page's, or its Instagram's."""
+    repository = CarrierRepository(session)
+    numbers = (
+        carrier_of(vault, row) for row in await repository.list_of_kind_named(CarrierKind.whatsapp, phone_number_ids)
+    )
+    found = [
         whatsapp.OwnApp(org=carrier.org, phone_number_id=carrier.phone_number_id, app_secret=carrier.app_secret)
-        for carrier in opened
+        for carrier in numbers
         if isinstance(carrier, WhatsappNumber) and carrier.app_secret
     ]
+    # An Instagram account is no account's id of its own: it is found on the Page it is linked to.
+    pages = (carrier_of(vault, row) for row in await repository.list_of_kind(CarrierKind.messenger))
+    for page in pages:
+        if not isinstance(page, FacebookPage):
+            continue
+        named = [one for one in (page.page_id, page.instagram_id) if one is not None and one in phone_number_ids]
+        found += [
+            whatsapp.OwnApp(org=page.org, phone_number_id=one, app_secret=page.app_secret, answers_from=page.page_id)
+            for one in named
+        ]
+    return found
 
 
 # ── the account the box buys numbers on ──

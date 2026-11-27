@@ -2,6 +2,7 @@
 
 import asyncio
 import dataclasses
+import json
 import secrets
 import time
 from types import SimpleNamespace
@@ -17,7 +18,7 @@ from runtime.kit import sms as texts
 from runtime.live.parts import LiveParts
 from runtime.live.peers import THREADS, ThreadKey
 from runtime.live.service import whatsapp, written
-from runtime.live.service.replies import BySms, ByWhatsapp, Ears, FirstSaid
+from runtime.live.service.replies import ByMessenger, BySms, ByWhatsapp, Ears, FirstSaid
 from runtime.live.service.whatsapp import OpenThread
 from runtime.providers import service as providers
 from runtime.providers.service import transcription
@@ -272,3 +273,35 @@ def test_a_whatsapp_threads_name_is_as_it_was_and_an_sms_threads_says_its_channe
     by_sms = ThreadKey("org_1", Env.sandbox, "+15550100000", "59899000001", Channel.sms)
     assert str(on_whatsapp) == "org_1|sandbox|+15550100000|59899000001"
     assert str(by_sms) == "org_1|sandbox|+15550100000|59899000001|sms"
+
+
+@needs_the_database
+@pytest.mark.parametrize(("kind", "account"), [("page", "1472943555898656"), ("instagram", "17841400000000001")])
+async def test_a_message_on_messenger_or_instagram_is_seen_read_and_answered_from_the_page(
+    side: Side, asked: list[str], kind: str, account: str
+) -> None:
+    """Seen, "typing…" while the model writes, the words read, and the reply sent from the Page to Meta's id of them."""
+    page = "1472943555898656"
+    event = {"sender": {"id": "7001"}, "recipient": {"id": account}, "message": {"mid": "m_1", "text": "hola"}}
+    body = json.dumps({"object": kind, "entry": [{"id": account, "messaging": [event]}]}).encode()
+    (message,) = webhook.messaging_in(body, {account: page}).messages
+    seen: list[tuple[str, object]] = []
+
+    def meta(request: httpx.Request) -> httpx.Response:
+        sent = json.loads(request.content)
+        seen.append((request.url.path, sent.get("sender_action") or sent["message"]["text"]))
+        return httpx.Response(200, json={"recipient_id": "7001", "message_id": "m_2"})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(meta)) as http:
+        by_messenger = ByMessenger(http, "a page token", Ears(side.parts, SCOPE))
+        running = cast("Session", SimpleNamespace(line=SimpleNamespace(agent_may_speak=True)))
+        thread = OpenThread(session=running, inbound=message, reaches=by_messenger)
+        assert await whatsapp.take_up(side.parts, thread, message) is None
+        await by_messenger.send(message, "¡Hola! ¿En qué te ayudo?")
+    assert asked == ["hola"]
+    assert seen == [
+        (f"/v21.0/{page}/messages", "mark_seen"),
+        (f"/v21.0/{page}/messages", "typing_on"),
+        (f"/v21.0/{page}/messages", "¡Hola! ¿En qué te ayudo?"),
+    ]
+    assert message.caller == f"{'messenger' if kind == 'page' else 'instagram'}:7001"

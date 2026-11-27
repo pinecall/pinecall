@@ -332,6 +332,7 @@ class Threads:
         self, registration: Registration, route: RouteRow, inbound: whatsapp.Inbound, first: FirstMessage | None = None
     ) -> OpenThread | None:
         live = self._live
+        inbound = await self._named(route, inbound)
         async with live.sessions.begin() as session_:
             reaches = await way_to(session_, live, route, inbound, opens=first is not None)
             if reaches is None:
@@ -387,6 +388,23 @@ class Threads:
         if route is not None:
             await self._read(route, inbound, handed=True)
 
+    # Meta names a Messenger or Instagram contact by an id alone: their name is asked of the Page once,
+    # when their conversation opens, with no connection held while Meta answers. A name Meta does not
+    # give (an Instagram account that hides it, a token that lacks the permission) leaves them unnamed.
+    async def _named(self, route: RouteRow, inbound: whatsapp.Inbound) -> whatsapp.Inbound:
+        if inbound.name is not None or not inbound.channel.is_by_meta_id:
+            return inbound
+        async with self._live.sessions.begin() as session_:
+            token = await telephony.page_token_for(session_, self._live.vault, route.org, inbound.phone_number_id)
+        if token is None:
+            return inbound
+        try:
+            name = await whatsapp.name_of(self._live.http, token, inbound.channel, inbound.wa_id)
+        except PinecallError:
+            logger.info("%s: Meta gave no name for a contact of %s", inbound.channel.value, inbound.number)
+            return inbound
+        return dataclasses.replace(inbound, name=name)
+
     # A conversation this process never saw is taken up from its log while it has idle time left.
     def _context(
         self, registration: Registration, route: RouteRow, inbound: whatsapp.Inbound, earlier: str | None
@@ -404,9 +422,7 @@ class Threads:
             caller=inbound.caller,
             route=answering,
             today=today_in(self._live.settings.timezone),
-            contact=Contact(email=inbound.caller, name=inbound.name)
-            if by_email
-            else Contact(phone=inbound.caller, name=inbound.name),
+            contact=_contact_of(inbound),
             metadata=thread,
             holder=registration.scope.holder or None,
             continues=earlier,
@@ -483,3 +499,13 @@ async def _find_route(session_: AsyncSession, inbound: whatsapp.Inbound) -> Rout
             inbound.channel.value,
         )
     return route
+
+
+# Who wrote, as the call names them: their email address, Meta's id of them on the account written
+# to, or their phone number.
+def _contact_of(inbound: whatsapp.Inbound) -> Contact:
+    if inbound.channel.is_by_email:
+        return Contact(email=inbound.caller, name=inbound.name)
+    if inbound.channel.is_by_meta_id:
+        return Contact(external_id=inbound.caller, name=inbound.name)
+    return Contact(phone=inbound.caller, name=inbound.name)

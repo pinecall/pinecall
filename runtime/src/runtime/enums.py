@@ -24,6 +24,10 @@ class Channel(StrEnum):
     whatsapp = "whatsapp"
     sms = "sms"
     email = "email"
+    # A Facebook Page's Messenger, and the Instagram account linked to that Page: both Meta's Messenger
+    # Platform, each answered at the account's own id (the Page's, the Instagram account's).
+    messenger = "messenger"
+    instagram = "instagram"
 
     @property
     def has_a_number(self) -> bool:
@@ -33,7 +37,12 @@ class Channel(StrEnum):
     @property
     def is_a_thread(self) -> bool:
         """Whether a contact writes to an address on it, message by message, and is answered there."""
-        return self in (Channel.whatsapp, Channel.sms, Channel.email)
+        return self in (Channel.whatsapp, Channel.sms, Channel.email, Channel.messenger, Channel.instagram)
+
+    @property
+    def is_by_meta_id(self) -> bool:
+        """Whether its contact is an id Meta gives them on one account (a PSID, an IGSID), never a phone number."""
+        return self in (Channel.messenger, Channel.instagram)
 
     # A conversation written message by message stays open for hours between two of them, with nobody
     # on it: it is open (its status says so), never live. Until 2026-11-19 every call nobody had sealed

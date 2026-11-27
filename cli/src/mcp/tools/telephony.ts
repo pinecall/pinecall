@@ -44,7 +44,7 @@ export const numbers = tool({
     action: z.enum(["list", "available", "import", "buy"]).describe("list the org's numbers; available is what its carrier accounts own; import points one of them at an agent; buy gets a new one on the deployment's account — import and buy are a dry run unless dry_run is false"),
     number: z.string().optional().describe("`import`: the number, in +E.164; for `email`, the mailbox's address"),
     agent: z.string().optional().describe("`import`, `buy`: the agent that answers it"),
-    channel: z.enum(["phone", "whatsapp", "sms", "email"]).optional().describe("`import`, `buy`: phone unless said. One number answers on several: import it once a channel. `sms` is a number of a Twilio account, whose messages Twilio then posts to Pinecall; `email` is a mailbox account's address, whose inbox Pinecall reads"),
+    channel: z.enum(["phone", "whatsapp", "sms", "email", "messenger", "instagram"]).optional().describe("`import`, `buy`: phone unless said. One number answers on several: import it once a channel. `sms` is a number of a Twilio account, whose messages Twilio then posts to Pinecall; `email` is a mailbox account's address, whose inbox Pinecall reads"),
     account: z.string().optional().describe("`available`, `import`: the carrier account the number lives in, when the org has several (`carriers list` names them)"),
     move: z.boolean().optional().describe("`import`: take the number off the trunk it is on now (another environment's, or another agent's), as a 409 naming that trunk asks"),
     country: z.string().optional().describe("`buy`: the country, two letters (ES, US)"),

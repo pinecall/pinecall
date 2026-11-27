@@ -3,7 +3,7 @@
 import pytest
 
 from runtime.exceptions import ValidationError
-from runtime.kit.text import cut_in_parts, estimate_tokens, parse_slug, slug_of
+from runtime.kit.text import cut_in_parts, estimate_tokens, parse_address, parse_slug, slug_of
 
 
 @pytest.mark.parametrize(
@@ -47,3 +47,30 @@ def test_a_text_longer_than_a_channel_takes_is_cut_where_the_writing_breathes() 
     assert "".join(cut_in_parts("x" * 9000, 4096)) == "x" * 9000
     assert cut_in_parts("hola", 4096) == ["hola"]
     assert cut_in_parts("uno dos tres", 8) == ["uno dos", "tres"]
+
+
+@pytest.mark.parametrize(
+    ("written", "kept"),
+    [
+        ("+59829001199", "+59829001199"),
+        ("help@acme.com", "help@acme.com"),
+        ("messenger:7001234567", "messenger:7001234567"),
+        ("instagram:7001234567", "instagram:7001234567"),
+    ],
+)
+def test_a_route_or_a_contact_is_a_number_an_email_or_metas_id_of_a_contact(written: str, kept: str) -> None:
+    assert parse_address(written) == kept
+
+
+def test_metas_id_of_a_page_is_an_address_only_where_the_channel_asked_answers_at_such_ids() -> None:
+    assert parse_address(" 1472943555898656 ", by_meta_id=True) == "1472943555898656"
+    with pytest.raises(ValidationError, match=r"E\.164"):
+        parse_address("1472943555898656")
+    with pytest.raises(ValidationError, match="digits alone"):
+        parse_address("+59829001199", by_meta_id=True)
+
+
+@pytest.mark.parametrize("written", ["facebook:7001234567", "messenger:abc", "1234", "59829001199"])
+def test_neither_a_number_nor_metas_id_is_refused(written: str) -> None:
+    with pytest.raises(ValidationError):
+        parse_address(written)

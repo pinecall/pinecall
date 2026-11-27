@@ -9,12 +9,15 @@ from runtime.whatsapp.service.graph import (
     send_template,
     send_text,
 )
+from runtime.whatsapp.service.messenger import MetaPage, mark_seen, name_of, page_of, read_attachment, subscribe_page
+from runtime.whatsapp.service.messenger import send_text as send_on_messenger
 from runtime.whatsapp.service.seen import forget_seen_before, read_once
 from runtime.whatsapp.service.webhook import Inbound, OwnApp, Receipt, Threads, box_meta_app
 
 __all__ = [
     "Inbound",
     "Media",
+    "MetaPage",
     "OwnApp",
     "Receipt",
     "Template",
@@ -22,9 +25,15 @@ __all__ = [
     "box_meta_app",
     "forget_seen_before",
     "mark_read",
+    "mark_seen",
+    "name_of",
     "number_of",
+    "page_of",
+    "read_attachment",
     "read_media",
     "read_once",
+    "send_on_messenger",
     "send_template",
     "send_text",
+    "subscribe_page",
 ]

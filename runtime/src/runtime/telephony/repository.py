@@ -75,6 +75,10 @@ class CarrierRepository(Repository[Carrier]):
         )
         return await self.all(self.statement().where(Carrier.kind == CarrierKind.email, routed).order_by(Carrier.org))
 
+    async def list_of_kind(self, kind: CarrierKind) -> Sequence[Carrier]:
+        """Every org's accounts of the kind. Read box-wide by the caller."""
+        return await self.all(self.statement().where(Carrier.kind == kind).order_by(Carrier.org))
+
     async def list_of_kind_named(self, kind: CarrierKind, accounts: Collection[str]) -> Sequence[Carrier]:
         """Every org's accounts of the kind under these ids. Read box-wide by the caller."""
         return await self.all(

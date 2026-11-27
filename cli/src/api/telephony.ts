@@ -84,9 +84,11 @@ export interface Carrier {
   account: string;
   label: string;
   networks: Network[];
+  /** A mailbox's hosts and logins, a Page's linked Instagram account (`instagram_id`); empty for any other kind. */
+  settings?: Record<string, string | number>;
 }
 
-/** `PUT /v1/carrier`: one of the three kinds, its secret inside; the gateway seals it and never reads it back. */
+/** `PUT /v1/carrier`: one of the five kinds, its secret inside; the gateway seals it and never reads it back. */
 export type CarrierBody =
   | { kind: "twilio"; account_sid: string; user: string; secret: string; label?: string }
   | {
@@ -101,6 +103,7 @@ export type CarrierBody =
       label?: string;
     }
   | { kind: "whatsapp"; phone_number_id: string; access_token: string; app_secret?: string; label?: string }
+  | { kind: "messenger"; page_id: string; access_token: string; app_secret?: string; label?: string }
   | {
       kind: "email";
       address: string;
@@ -159,7 +162,7 @@ export function buyNumber(gw: GatewayClient, body: NumberPurchase, dryRun: boole
 
 /** A number that answers on two channels is let go on the one named. */
 /** The channels a number answers on. */
-export type RouteChannel = "phone" | "whatsapp" | "sms" | "email";
+export type RouteChannel = "phone" | "whatsapp" | "sms" | "email" | "messenger" | "instagram";
 
 export async function deleteNumber(gw: GatewayClient, number: string, channel?: RouteChannel): Promise<void> {
   await gw.delete(`/v1/numbers/${seg(number)}`, { channel });

@@ -23,23 +23,29 @@ export const ImportNumberInput = z
     number: z.string().min(1),
     agent: z.string().min(1),
     account: z.string().min(1).optional(),
-    channel: z.enum(["phone", "whatsapp", "sms", "email"]).optional(),
+    channel: z.enum(["phone", "whatsapp", "sms", "email", "messenger", "instagram"]).optional(),
     move: z.boolean().default(false),
     dryRun: z.boolean().default(false),
   })
   .superRefine((input, said) => {
     const byEmail = input.channel === "email";
+    const byMetaId = input.channel === "messenger" || input.channel === "instagram";
     if (byEmail && !AN_EMAIL.test(input.number)) said.addIssue({ code: "custom", path: ["number"], message: "an address answers email: help@acme.com" });
-    if (!byEmail && !E164.test(input.number)) said.addIssue({ code: "custom", path: ["number"], message: "a number is +E.164: +34910000000 (an address takes --channel email)" });
+    if (byMetaId && !A_META_ID.test(input.number)) said.addIssue({ code: "custom", path: ["number"], message: "a Page or an Instagram account is Meta's id, digits alone: 1472943555898656" });
+    if (byMetaId && input.account === undefined) said.addIssue({ code: "custom", path: ["account"], message: "--account names the Facebook Page it answers through: its id" });
+    if (!byEmail && !byMetaId && !E164.test(input.number)) said.addIssue({ code: "custom", path: ["number"], message: "a number is +E.164: +34910000000 (an address takes --channel email)" });
   });
+
+/** Meta's id of a Page or an Instagram account: digits alone. */
+const A_META_ID = /^\d{5,32}$/;
 export type ImportNumberInput = z.infer<typeof ImportNumberInput>;
 
 /** What the gateway's 409 says of a number that answers on two channels, and what to add. */
 export const ON_SEVERAL_CHANNELS = "name the one meant";
-export const NAME_THE_CHANNEL = "  name the channel to let go: --channel phone, whatsapp, sms or email (the others stay)";
+export const NAME_THE_CHANNEL = "  name the channel to let go: --channel phone, whatsapp, sms, email, messenger or instagram (the others stay)";
 
 /** The channel `numbers drop` lets go; left out, the number's only route. */
-export const DropChannel = z.enum(["phone", "whatsapp", "sms", "email"]).optional();
+export const DropChannel = z.enum(["phone", "whatsapp", "sms", "email", "messenger", "instagram"]).optional();
 
 /** What `numbers buy` takes: a country (and area code) on the deployment's own account, pointed at an agent. */
 export const BuyNumberInput = z.object({
@@ -51,7 +57,7 @@ export const BuyNumberInput = z.object({
 });
 export type BuyNumberInput = z.infer<typeof BuyNumberInput>;
 
-/** What `carriers add` takes: one of the four kinds, its fields; the secrets come apart, off stdin. */
+/** What `carriers add` takes: one of the five kinds, its fields; the secrets come apart, off stdin. */
 export const AddCarrierInput = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("twilio"), accountSid: z.string().min(1), user: z.string().min(1), label: z.string().optional() }),
   z.object({
@@ -64,6 +70,7 @@ export const AddCarrierInput = z.discriminatedUnion("kind", [
     label: z.string().optional(),
   }),
   z.object({ kind: z.literal("whatsapp"), phoneNumberId: z.string().min(1), label: z.string().optional() }),
+  z.object({ kind: z.literal("messenger"), pageId: z.string().regex(/^\d{5,32}$/, "a Page's id is digits alone"), label: z.string().optional() }),
   z.object({
     kind: z.literal("email"),
     address: z.string().regex(AN_EMAIL, "an address: help@acme.com"),
@@ -111,6 +118,7 @@ export const META_APP_SECRET = "Meta app secret (empty keeps the one given befor
 export function secretsOf(input: AddCarrierInput): [string, string, "optional"?][] {
   if (input.kind === "twilio") return [["Twilio secret (the API key's, or the auth token)", "secret"]];
   if (input.kind === "whatsapp") return [["WhatsApp access token", "access_token"], [META_APP_SECRET, "app_secret", "optional"]];
+  if (input.kind === "messenger") return [["Facebook Page access token", "access_token"], [META_APP_SECRET, "app_secret", "optional"]];
   if (input.kind === "email") return [["mailbox password (IMAP)", "password"], ...(input.smtpUsername === undefined ? [] : [[SMTP_PASSWORD, "smtp_password", "optional"] as [string, string, "optional"]])];
   const secrets: [string, string][] = [["SIP password", "password"]];
   if (input.outboundUsername !== undefined) secrets.push(["outbound password", "outbound_password"]);
@@ -177,9 +185,9 @@ export async function addCarrier(ctx: Context, input: AddCarrierInput, secrets: 
   return withSubscription(ctx, await api.putCarrier(ctx.gateway(), carrierBodyOf(input, secrets)));
 }
 
-// A WhatsApp number answers once its Meta app delivers to Pinecall: the two values that takes are said with the account.
+// A WhatsApp number or a Page answers once its Meta app delivers to Pinecall: the two values that takes are said with the account.
 async function withSubscription(ctx: Context, carrier: api.Carrier): Promise<CarrierShown> {
-  if (carrier.kind !== "whatsapp") return carrier;
+  if (carrier.kind !== "whatsapp" && carrier.kind !== "messenger") return carrier;
   return { ...carrier, subscription: await api.getWhatsappSubscription(ctx.gateway()) };
 }
 
@@ -286,6 +294,10 @@ function carrierBodyOf(input: AddCarrierInput, secrets: Record<string, string>):
   const label = input.label === undefined ? {} : { label: input.label };
   if (input.kind === "twilio") return { kind: "twilio", account_sid: input.accountSid, user: input.user, secret: secrets["secret"]!.trim(), ...label };
   if (input.kind === "email") return emailBodyOf(input, secrets, label);
+  if (input.kind === "messenger") {
+    const appSecret = (secrets["app_secret"] ?? "").trim();
+    return { kind: "messenger", page_id: input.pageId, access_token: secrets["access_token"]!.trim(), ...(appSecret === "" ? {} : { app_secret: appSecret }), ...label };
+  }
   if (input.kind === "whatsapp") {
     const appSecret = (secrets["app_secret"] ?? "").trim();
     return { kind: "whatsapp", phone_number_id: input.phoneNumberId, access_token: secrets["access_token"]!.trim(), ...(appSecret === "" ? {} : { app_secret: appSecret }), ...label };

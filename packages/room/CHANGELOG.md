@@ -5,6 +5,7 @@ All notable changes to `@pinecall/room`. The format is
 maintainer's call.
 
 ## Unreleased
+- A call's `channel` may be `messenger` or `instagram`.
 
 - **One visitor, every conversation.** `mint` answers `visitor_token`, the visitor a browser is for a year, and takes it
   back as `visitor`: every conversation that browser opens is filed under one contact. `browser` (read with the new
