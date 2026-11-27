@@ -42,6 +42,6 @@ async def adopt(live: LiveParts) -> None:
 
 
 @loop("inboxes", every_s=READ_EVERY_S)
-async def read_inboxes(live: LiveParts, threads: Threads) -> None:
+async def read_inboxes(live: LiveParts, threads: Threads, send_mail: inboxes.SendMail) -> None:
     """One pass: the mailboxes this gateway reads, read, and each new email heard on its thread."""
-    await inboxes.read_inboxes(live, threads)
+    await inboxes.read_inboxes(live, threads, send_mail)

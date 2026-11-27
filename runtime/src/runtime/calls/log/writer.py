@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 MOST_IN_A_GROUP = 500
 
 # The only metered types. Usage is a projection of the log, never stored beside it.
-METERED_TYPES = ("call.summary", "call.score", "evals.spent")
+METERED_TYPES = ("call.summary", "call.score", "evals.spent", "model.spent")
 
 # The types read across every log by position: the usage feed, the callbacks, the codes, and
 # WhatsApp's queue. A position is given at insert, not at commit, so a transaction that writes one

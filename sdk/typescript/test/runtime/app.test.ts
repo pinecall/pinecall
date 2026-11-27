@@ -17,6 +17,14 @@ class Judged extends Agent {}
 @agent({ greeting: "Hello." })
 class Greets extends Agent {}
 
+describe("an agent with no line", () => {
+  it("is held by the app for its flows, once, and a class that is no agent is refused", () => {
+    const app = voiceApp("brightside").line("+1 415 555 0134", FrontDesk).agent(Billing).agent(Billing);
+    expect(app.agents()).toEqual([FrontDesk, Billing]);
+    expect(() => app.agent(class NotAnAgent {} as never)).toThrow(DeclarationRefused);
+  });
+});
+
 describe("a line", () => {
   it("is a number and the agent that answers it, the number kept as the gateway writes it", () => {
     const app = voiceApp("brightside").line("+1 (415) 555-0134", FrontDesk);

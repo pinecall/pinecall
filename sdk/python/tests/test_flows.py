@@ -1,10 +1,19 @@
 """A flow: its function run against the journal the gateway keeps, one stretch at a time."""
 
 import pytest
+from pydantic import BaseModel
 
 from pinecall import Agent, Called, DeclarationRefused, Step, Templated, Texted, _config, flow
 from pinecall._app_work import AppDoor
-from pinecall.flows import FlowChanged, StepUnwritten, advance, cancelled, seconds_of, started
+from pinecall.flows import (
+    ExtractRefused,
+    FlowChanged,
+    StepUnwritten,
+    advance,
+    cancelled,
+    seconds_of,
+    started,
+)
 from pinecall.wire._names import JsonObject
 from tests.fakes.kept import KeptApp
 
@@ -258,3 +267,35 @@ async def test_an_event_cancels_the_waiting_runs_it_names(door: AppDoor, kept: K
         "cancelled",
         "sleeping",
     )
+
+
+class Notice(BaseModel):
+    """A portal's notice, as a model reads it."""
+
+    phone: str
+    name: str
+
+
+async def test_an_extract_step_reads_words_into_a_model_on_the_agents_account_and_raises_a_refusal(
+    door: AppDoor, kept: KeptApp
+) -> None:
+    read: list[object] = []
+
+    @flow("notice")
+    async def notice(mail: JsonObject, step: Step) -> None:
+        text = str(mail["text"])
+        read.append(await step.extract(text, Notice, agent=Reminder, instructions="Who asked."))
+        kept.extracted = {"data": None, "refused": "Forbidden", "message": "google is not lent"}
+        shape: JsonObject = {"type": "object", "properties": {"phone": {"type": "string"}}}
+        await step.extract(text, shape, agent=Reminder, model="google/gemini-3.5-flash-lite")
+
+    run = await started(door, notice, "mail-7", {"text": "Hay una nueva consulta de Soledad."})
+    advanced = await advance(door, notice, run, slug_of)
+    assert (advanced.status, advanced.error) == ("failed", "ExtractRefused: google is not lent")
+    assert read == [Notice(phone="+541131258777", name="Soledad")]
+    first, second = (step["asked"] for step in kept.runs[run.id]["steps"])  # type: ignore[union-attr]
+    assert first["agent"] == "brightside-reminder"  # type: ignore[index]
+    assert first["instructions"] == "Who asked."  # type: ignore[index]
+    assert first["schema"]["type"] == "object"  # type: ignore[index]
+    assert second["model"] == "google/gemini-3.5-flash-lite"  # type: ignore[index]
+    assert ExtractRefused("Forbidden", "x").refused == "Forbidden"

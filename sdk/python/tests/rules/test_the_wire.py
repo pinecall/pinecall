@@ -91,6 +91,7 @@ IGNORED: dict[str, str] = {
             "confirm.declined",
             "credits.exhausted",
             "evals.spent",
+            "model.spent",
             "docs.sources",
             "fleet.full",
             "release.changed",

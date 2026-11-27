@@ -6,7 +6,8 @@ from pydantic import AliasChoices, Field
 
 from runtime.enums import Env
 from runtime.wire.base import WireModel
-from runtime.wire.parts import ScoreVerdict
+from runtime.wire.metrics import LLMModelUsage
+from runtime.wire.parts import Cost, ScoreVerdict
 
 type SpentOn = Literal["try", "generate", "propose"]
 
@@ -52,6 +53,22 @@ class CallScore(WireModel):
         default=None, validation_alias=AliasChoices("judge_cost_usd", "judge_cost_eur")
     )
     judged_by: JudgedBy | None = None
+
+
+class ModelSpent(WireModel):
+    """A flow asked a model outside a call: one extraction's request, metered as one written turn."""
+
+    kind: Literal["extract"] = "extract"
+    app: str
+    flow: str
+    run: str
+    env: Env
+    # Read by the totals' fold as a summary is: one turn is one message, its LLM rows its tokens. Never
+    # defaulted, so the entry always says it: a dump leaves defaults out, and the fold would read none.
+    turns: int
+    usage: list[LLMModelUsage] = Field(default_factory=list[LLMModelUsage])
+    cost: Cost
+    own_key: bool = False
 
 
 class EvalsSpent(WireModel):

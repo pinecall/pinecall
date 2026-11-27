@@ -154,10 +154,11 @@ export function register(program: Command, ctx: Context): void {
     .option("--account <id>", "the account that owns it, when the org has several")
     .option("--channel <channel>", "phone | whatsapp | sms | email | messenger | instagram")
     .option("--move", "take the number off the trunk it is on now, when it answers in another environment or for another agent")
+    .option("--app <name>", "an address alone: its emails go to this app's flows as mail.received, and open no conversation")
     .option("--dry-run", "print the steps and write nothing")
     .action(async (number, flags) =>
       withAccountHint(async () => {
-        const input = service.ImportNumberInput.parse({ number, agent: flags.agent, account: flags.account, channel: flags.channel, move: flags.move === true, dryRun: flags.dryRun === true });
+        const input = service.ImportNumberInput.parse({ number, agent: flags.agent, account: flags.account, channel: flags.channel, move: flags.move === true, app: flags.app, dryRun: flags.dryRun === true });
         ctx.io.result(await service.importNumber(ctx, input), render.imported);
       }),
     );

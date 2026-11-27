@@ -124,6 +124,10 @@ run. The handlers run in the process that serves the agents: what must outlive i
 
 ### A flow: what outlives a call
 
+An agent only a flow uses (one it calls, texts or reads with, and that answers no line) is held with
+`app.agent(Reader)`: it is served by the app like a line's agent, and `step.extract(text, Schema, agent=Reader)`
+runs on its account.
+
 ```python
 from pinecall import flow
 
@@ -157,6 +161,7 @@ outlives a deploy, a crash and a night with nothing running.
 | `await step.call(to, Agent, state=, metadata=, greeting=, instruction=, from_=)` | the agent calls the number, and the step answers how the call ended: `Called(answered, reason, call)`, or at once `Called(answered=False, refused=, message=)` when the org's guards refused it |
 | `await step.text(to, Agent, words, from_=, subject=, metadata=, instruction=)` | the agent sends the contact one SMS first, or, to an address, the first email of a thread under `subject` (its `words` left out, the agent writes it on `instruction`), and the step answers at once: `Texted(sent, call, from_)`, or `Texted(sent=False, refused, message)` |
 | `await step.template(to, Agent, name, language=, variables=, from_=, text=, metadata=)` | the agent sends the contact one WhatsApp template, approved at Meta in `language`, its body filled by `variables` in order; `text`, what it says once filled, opens the contact's conversation as its first turn, with `metadata`; the step answers at once: `Templated(sent, simulated, message_id, from_, call)`, or `refused` and `message`. In the sandbox it is answered `simulated` and never sent |
+| `await step.extract(text, Schema, agent=, instructions=, model=)` | a model reads `text` into the pydantic model `Schema` (or a JSON Schema of an object, answered as a dict): no call is opened and nothing is listed among the calls; the request is one written turn, on `agent`'s org's keys or the ones the platform lends. Raises `ExtractRefused` (`refused`) when no key runs the model, the messages ran out, or it would not answer by the schema |
 | `await step.wait_for(event, match=, within=)` | waits for an event sent to the app whose data has what `match` names; its data, or `None` once `within` passed |
 | `await step.run(effect)` | runs your own code once and keeps what it returned |
 | `await step.emit(name, data)` | sends an event to the app |

@@ -87,6 +87,25 @@ class FlowsTest < Minitest::Test
     assert_equal [false, "Forbidden"], [sent.last.sent, sent.last.refused]
   end
 
+  def test_an_extract_step_reads_words_on_the_agents_account_and_raises_a_refusal
+    read = []
+    shape = { type: "object", properties: { phone: { type: "string" }, name: { type: "string" } } }
+    notice = Pinecall.flow("notice") do |mail, step|
+      read << step.extract(mail[:text], shape, agent: Reminder, instructions: "Who asked.")
+      @kept.extracted = { data: nil, refused: "Forbidden", message: "google is not lent" }
+      step.extract(mail[:text], shape, agent: Reminder, model: "google/gemini-3.5-flash-lite")
+    end
+
+    advanced = notice.advance(@door, notice.started(@door, "mail-7", { text: "Hay una nueva consulta de Soledad." }), SLUG_OF)
+    assert_equal "failed", advanced.status
+    assert_includes advanced.error, "google is not lent"
+    assert_equal [{ phone: "+541131258777", name: "Soledad" }], read
+    first, second = @kept.runs["run_1"][:steps].map { |step| step[:asked] }
+    assert_equal ["brightside-reminder", "Who asked."], [first[:agent], first[:instructions]]
+    assert_equal "google/gemini-3.5-flash-lite", second[:model]
+    assert_equal "Forbidden", Pinecall::Flow::ExtractRefused.new("Forbidden", "x").refused
+  end
+
   def test_a_template_step_sends_as_the_agents_slug_and_reads_the_sandboxs_answer_and_metas_id
     sent = []
     remind = Pinecall.flow("remind-visit") do |visit, step|

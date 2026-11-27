@@ -32,6 +32,7 @@ Every event the gateway writes, one line each, with the page that holds its data
 | `credits.exhausted` | agent | no | [events-control.md](events-control.md) | The gateway refused a call, a simulation, a written turn or a register because one of the org's quotas ran out. |
 | `custom` | call | no | [events-app.md](events-app.md) | A line the app wrote into the log with call.log. |
 | `evals.spent` | agent | no | [events-control.md](events-control.md) | The harness asked a model outside a call's score: a judge tried, personas, a diagnosis. |
+| `model.spent` | agent | no | [events-control.md](events-control.md) | A flow asked a model outside a call: an extract step, metered as one written turn. |
 | `monitor.fired` | agent | no | [events-control.md](events-control.md) | A number the org watches crossed its line over its window: said once a day per monitor. |
 | `release.changed` | feed | yes | [events-control.md](events-control.md) | A hosted app's release changed where it stands: uploaded, live, failed or replaced. |
 | `run.changed` | feed | yes | [events-control.md](events-control.md) | A run of goldens and cases opened a call, judged one, or finished. |

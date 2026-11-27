@@ -237,6 +237,17 @@ async def test_a_phone_number_is_not_imported_as_a_whatsapp_route(line: Line) ->
         assert list(await RouteRepository(session).list_of_org(line.org, Env.production)) == []
 
 
+async def test_an_app_reads_the_emails_of_an_address_and_nothing_of_a_phone_number(line: Line) -> None:
+    """`app` sends an address's emails to an app's flows; a call or a text has no such reader."""
+    number = a_number()
+    await line.brought()
+    line.twilio.owns(number)
+    with pytest.raises(ValidationError, match="`app` is for the channel email alone"):
+        await imported(line, NumberImport(line.scope(), "recepcion", number, app="front-desk-app"))
+    async with line.sessions() as session:
+        assert list(await RouteRepository(session).list_of_org(line.org, Env.production)) == []
+
+
 # ── buying on the box's account ──
 
 

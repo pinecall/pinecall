@@ -42,6 +42,7 @@ module Pinecall
       @lines = []
       @rules = []
       @paged = nil
+      @held = []
       @silence = nil
       @hearing = Hash.new { |all, key| all[key] = [] }
       @starting = Hash.new { |all, key| all[key] = [] }
@@ -70,6 +71,14 @@ module Pinecall
       raise DeclarationRefused, "#{dialled}: a lambda answers with one of the line's team, and this line names none" if !chooses.nil? && team.empty?
 
       @lines << Line.new(number: dialled, answers: bound, team: team.dup.freeze, greeting:, chooses:)
+      self
+    end
+
+    # An agent the app holds with no line of its own: one its flows call, text or read with.
+    def agent(cls)
+      raise DeclarationRefused, "an agent is a class that extends Pinecall::Agent" unless agent?(cls)
+
+      @held << cls unless @held.include?(cls)
       self
     end
 
@@ -147,7 +156,7 @@ module Pinecall
     end
 
     # Every agent class the app names, once each.
-    def agents = [*@lines.flat_map { |line| [line.answers, *line.team] }, *@paged&.answers].uniq
+    def agents = [*@lines.flat_map { |line| [line.answers, *line.team] }, *@paged&.answers, *@held].uniq
 
     # The lambda that picks who serves each call of the line `klass` is bound to.
     def choosing(klass) = @lines.find { |line| line.answers == klass && !line.chooses.nil? }&.chooses

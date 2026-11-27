@@ -95,7 +95,7 @@ class Route(Model):
     )
     __kept__ = Kept(
         agent="agent",
-        exported=("number", "agent", "channel", "managed", "account", "networks", "origin", "via", "added_at"),
+        exported=("number", "agent", "channel", "managed", "account", "networks", "origin", "via", "app", "added_at"),
         erased_by="telephony.service.numbers.release_numbers_of",
     )
 
@@ -114,6 +114,9 @@ class Route(Model):
     origin: Mapped[RouteOrigin] = mapped_column(StringEnum(RouteOrigin), nullable=False, default=RouteOrigin.typed)
     # The catalog carrier a number with no account comes through.
     via: Mapped[str | None] = mapped_column(Text)
+    # An address whose emails go to this app as the event `mail.received`, for its flows, and open no
+    # conversation; NULL: the agent answers them.
+    app: Mapped[str | None] = mapped_column(Text)
     last_call_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
     approved_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), default=utc_now)
     approved_by: Mapped[str | None] = mapped_column(Text)

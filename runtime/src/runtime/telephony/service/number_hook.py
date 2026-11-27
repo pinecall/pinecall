@@ -45,6 +45,8 @@ class NumberImport:
     via: str | None = None
     # Take the number off another trunk of its account first.
     move: bool = False
+    # An address whose emails this app's flows read (`mail.received`); none: the agent answers them.
+    app: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -250,6 +252,7 @@ async def survey_import(
         origin=came,
         via=wanted.via,
         approved_at=approved_at,
+        app=wanted.app,
     )
     at_carrier: Sequence[Step] = ()
     if account is not None and wanted.channel is Channel.phone:

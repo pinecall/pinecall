@@ -47,6 +47,7 @@ export const numbers = tool({
     channel: z.enum(["phone", "whatsapp", "sms", "email", "messenger", "instagram"]).optional().describe("`import`, `buy`: phone unless said. One number answers on several: import it once a channel. `sms` is a number of a Twilio account, whose messages Twilio then posts to Pinecall; `email` is a mailbox account's address, whose inbox Pinecall reads"),
     account: z.string().optional().describe("`available`, `import`: the carrier account the number lives in, when the org has several (`carriers list` names them)"),
     move: z.boolean().optional().describe("`import`: take the number off the trunk it is on now (another environment's, or another agent's), as a 409 naming that trunk asks"),
+    app: z.string().optional().describe("`import` of an address (`email`): the app whose flows read its emails, as the event mail.received, instead of its agent answering them"),
     country: z.string().optional().describe("`buy`: the country, two letters (ES, US)"),
     area_code: z.string().optional().describe("`buy`: an area code, digits only"),
     dry_run: z.boolean().optional().describe("`import`, `buy`: true (the default) answers the steps and writes nothing; false does them"),
@@ -62,7 +63,7 @@ export const numbers = tool({
       return await service.buyNumber(ctx, service.BuyNumberInput.parse({ country: args.country, agent: args.agent, areaCode: args.area_code, channel: args.channel, dryRun }));
     }
     if (args.number === undefined || args.agent === undefined) throw new ToolRefused("import takes the number and the agent that answers it");
-    return await service.importNumber(ctx, service.ImportNumberInput.parse({ number: args.number, agent: args.agent, account: args.account, channel: args.channel, move: args.move === true, dryRun }));
+    return await service.importNumber(ctx, service.ImportNumberInput.parse({ number: args.number, agent: args.agent, account: args.account, channel: args.channel, move: args.move === true, app: args.app, dryRun }));
   },
 });
 

@@ -3,6 +3,7 @@
 from runtime.live.holders import Registration
 from runtime.live.service.apps import AppSockets
 from runtime.live.service.dialing import PlacedCall, Placement, place_call
+from runtime.live.service.extracting import Extracting, extract
 from runtime.live.service.metrics import LiveMetrics
 from runtime.live.service.openings import delete_tokens
 from runtime.live.service.serving import ServingApps
@@ -16,6 +17,7 @@ from runtime.live.sockets import SocketId
 __all__ = [
     "A_VISITOR_LASTS_S",
     "AppSockets",
+    "Extracting",
     "LiveMetrics",
     "Mint",
     "PlacedCall",
@@ -34,6 +36,7 @@ __all__ = [
     "Visitor",
     "WrittenSetup",
     "delete_tokens",
+    "extract",
     "issue_code",
     "mint_room_token",
     "place_call",

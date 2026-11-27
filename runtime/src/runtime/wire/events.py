@@ -59,7 +59,7 @@ from runtime.wire.room import (
     TrackPublished,
     TrackUnpublished,
 )
-from runtime.wire.scores import CallScore, EvalsSpent
+from runtime.wire.scores import CallScore, EvalsSpent, ModelSpent
 from runtime.wire.state import State
 
 # Events a store may drop and a slow reader may miss.
@@ -97,6 +97,7 @@ GATEWAY_WRITES: frozenset[str] = frozenset(
         "call.summary",
         "call.score",
         "evals.spent",
+        "model.spent",
         "memory.ops",
         "docs.sources",
         "log.gap",
@@ -681,6 +682,7 @@ EVENTS: dict[str, type[WireModel]] = {
     "confirm.request": ConfirmRequest,
     "credits.exhausted": CreditsExhausted,
     "evals.spent": EvalsSpent,
+    "model.spent": ModelSpent,
     "custom": Custom,
     "dev.request": DevRequest,
     "docs.sources": DocsSources,

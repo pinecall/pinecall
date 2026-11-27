@@ -19,7 +19,18 @@ from runtime.kit.text import Json, JsonObject
 from runtime.kit.time import now
 from runtime.live import service as live
 from runtime.scoping import box_wide
-from runtime.wire.flows import CallStep, EmitStep, RunStep, SleepStep, StepSent, TemplateStep, TextStep, WaitStep
+from runtime.telephony import service as telephony
+from runtime.wire.flows import (
+    CallStep,
+    EmitStep,
+    ExtractStep,
+    RunStep,
+    SleepStep,
+    StepSent,
+    TemplateStep,
+    TextStep,
+    WaitStep,
+)
 from runtime.wire.parts import Supervisor
 
 # A process that took work and died gives it back after this long; one that lives asks again sooner.
@@ -82,16 +93,18 @@ class Holders(Protocol):
 type Dial = Callable[[AsyncSession, live.Placement], Awaitable[live.PlacedCall]]
 type SendText = Callable[[AsyncSession, live.Texting], Awaitable[live.Texted]]
 type SendTemplate = Callable[[AsyncSession, Scope, str, live.Templating, Supervisor], Awaitable[live.Templated]]
+type Extract = Callable[[AsyncSession, Scope, live.Extracting], Awaitable[JsonObject]]
 
 
 @dataclass(frozen=True, slots=True)
 class LiveSide:
-    """What a step reaches of the live side: who holds an agent, the dial, the text, the template."""
+    """What a step reaches of the live side: who holds an agent, the dial, the text, the template, the model."""
 
     holders: Holders
     dial: Dial
     text: SendText
     template: SendTemplate
+    extract: Extract
 
 
 # ── a run's moves ──
@@ -199,6 +212,16 @@ async def send_event(session: AsyncSession, app: App, name: str, data: JsonObjec
         if _matches(run.waits_match or {}, data):
             await wake(steps, run, data)
     return event
+
+
+# An email to an address an app reads (`routes.app`), handed in by the live side's inbox reader: an event of
+# the app's as any other, kept until its process hears it, which starts the runs `app.on` names for it.
+async def receive_mail(
+    sessions: async_sessionmaker[AsyncSession], reader: telephony.MailReader, name: str, data: JsonObject
+) -> None:
+    """Keep an email for the app whose flows read its address, as its event."""
+    async with sessions.begin() as session:
+        await send_event(session, App(Scope(reader.org, reader.env), reader.app), name, data)
 
 
 async def hear_event(session: AsyncSession, app: App, event_id: int) -> None:
@@ -315,6 +338,8 @@ async def write_step(
             row.result = {"value": await _text(session, side, app, asked, asked_by)}
         case TemplateStep() as asked:
             row.result = {"value": await _template(session, side, app, asked, asked_by)}
+        case ExtractStep() as asked:
+            row.result = {"value": await _extract(session, side, app, found, asked)}
     if found.status == RunStatus.ready:
         found.leased_until, found.moved_at = now() + LEASED_FOR, now()
     await steps.add(row)
@@ -400,6 +425,17 @@ async def _template(session: AsyncSession, side: LiveSide, app: App, asked: Temp
         return {"sent": False, "refused": type(refused).__name__, "message": refused.message}
     said = {"sent": True, "simulated": sent.simulated, "message_id": sent.message_id, "from": sent.shown}
     return {**said, "call": sent.call}
+
+
+# A model reads the words into the schema's object, outside any call: no conversation is opened and
+# nothing is listed among the calls. What refused it (a key nobody lends, the org's messages used up, a
+# model that would not answer by the schema) is the step's answer as a refused text is, and the request
+# the model was asked is metered on the agent's log whether it answered or not.
+async def _extract(session: AsyncSession, side: LiveSide, app: App, run: FlowRun, asked: ExtractStep) -> JsonObject:
+    try:
+        return {"data": await side.extract(session, app.scope, live.Extracting.of(app.name, run.flow, run.id, asked))}
+    except PinecallError as refused:
+        return {"data": None, "refused": type(refused).__name__, "message": refused.message}
 
 
 async def _park(session: AsyncSession, run: FlowRun, on: Clock | Event) -> None:

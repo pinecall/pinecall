@@ -170,6 +170,23 @@ async def test_a_template_in_the_sandbox_is_answered_as_simulated_and_one_with_n
 
 
 @needs_the_services
+async def test_an_extract_nothing_can_run_is_the_steps_answer_and_one_with_no_object_schema_is_refused(
+    gateway: Gateway, tenant: Tenant
+) -> None:
+    """A model nobody keyed for the tenant refuses the step, which the flow reads; no call is opened for it."""
+    run = await _started(gateway, tenant)
+    schema = {"type": "object", "properties": {"phone": {"type": "string"}}}
+    asked = {"agent": "reminder", "text": "Hay una consulta de Soledad.", "schema": schema, "model": "nobody/none"}
+    read_it = await _post(gateway, tenant, f"/runs/{run}/steps", {"seq": 1, "kind": "extract", "asked": asked})
+    assert read_it["status"] == "ready", "an extraction is over as it is answered"
+    read = (await gateway.http.get(f"{APP}/runs/{run}", headers=tenant.person)).json()
+    assert read["steps"][0]["result"]["data"] is None and read["steps"][0]["result"]["refused"]
+    flat = {"seq": 2, "kind": "extract", "asked": {**asked, "schema": {"type": "string"}}}
+    unread = await gateway.http.post(f"{APP}/runs/{run}/steps", json=flat, headers=tenant.person)
+    assert unread.status_code == 400 and "an extract step asks {agent, text, schema" in unread.text
+
+
+@needs_the_services
 async def test_a_cancelled_run_stays_cancelled_and_is_listed_by_its_status(gateway: Gateway, tenant: Tenant) -> None:
     run = await _started(gateway, tenant)
     assert (await _post(gateway, tenant, f"/runs/{run}/cancel"))["status"] == "cancelled"

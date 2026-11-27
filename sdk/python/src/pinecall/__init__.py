@@ -40,6 +40,7 @@ from pinecall.errors import ToolFailed as ToolFailed
 from pinecall.errors import UnauthoredWrite as UnauthoredWrite
 from pinecall.errors import WireError as WireError
 from pinecall.flows import Called as Called
+from pinecall.flows import ExtractRefused as ExtractRefused
 from pinecall.flows import Flow as Flow
 from pinecall.flows import FlowChanged as FlowChanged
 from pinecall.flows import Step as Step

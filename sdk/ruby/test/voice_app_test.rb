@@ -17,6 +17,12 @@ class VoiceAppTest < Minitest::Test
     greeting "Hola."
   end
 
+  def test_an_agent_with_no_line_is_held_for_the_apps_flows_once
+    app = Pinecall.voice_app("brightside").line("+14155550134", FrontDesk).agent(Billing).agent(Billing)
+    assert_equal [FrontDesk, Billing], app.agents
+    assert_raises(Pinecall::DeclarationRefused) { app.agent(String) }
+  end
+
   def test_an_app_is_named_like_its_folder_and_keeps_its_clock_in_a_zone
     assert_equal "America/Los_Angeles", Pinecall.voice_app("brightside", timezone: "America/Los_Angeles").timezone
     assert_raises(Pinecall::DeclarationRefused) { Pinecall.voice_app("Brightside") }

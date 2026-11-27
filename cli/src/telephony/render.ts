@@ -16,13 +16,18 @@ export function numbers(rows: NumberRow[]): string[] {
   const several = new Set(rows.flatMap((one) => (one.route.managed || one.account == null ? [] : [one.account]))).size > 1;
   return table(
     ["number", "channel", "agent", "env", several ? "account" : "how"],
-    rows.map((one) => [one.route.number ?? "—", one.route.channel, one.route.agent, one.route.env, one.route.managed ? "bought here" : several ? (one.account ?? "—") : "imported"]),
+    rows.map((one) => [one.route.number ?? "—", one.route.channel, answeredBy(one), one.route.env, one.route.managed ? "bought here" : several ? (one.account ?? "—") : "imported"]),
   );
+}
+
+/** Who answers a number: its agent, or for an address an app reads, that app's flows. */
+function answeredBy(one: NumberRow): string {
+  return one.app === undefined || one.app === null ? one.route.agent : `app ${one.app} (flows)`;
 }
 
 /** A number row: number, channel, agent, env, and whether it was bought here or whose account it is. */
 export function numberLine(one: NumberRow): string {
-  const said = [one.route.number ?? "—", one.route.channel, `→ ${one.route.agent}`, one.route.env];
+  const said = [one.route.number ?? "—", one.route.channel, `→ ${answeredBy(one)}`, one.route.env];
   if (one.route.managed) said.push("bought here");
   else if (one.account !== undefined && one.account !== null) said.push(one.account);
   return said.join(" · ");

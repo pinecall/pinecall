@@ -84,6 +84,8 @@ class VoiceApp:
     lines: list[Line] = field(default_factory=list[Line])
     rules: list[str] = field(default_factory=list[str])
     paged: Page | None = None
+    # Agents the app holds with no line of their own: the ones its flows call, text or read with.
+    held: list[type] = field(default_factory=list[type])
     _silence: dict[str, object] | None = None
     _hearing: dict[str, list[Hearing]] = field(default_factory=dict[str, list[Hearing]])
     _starting: dict[str, list[Flow]] = field(default_factory=dict[str, list[Flow]])
@@ -128,6 +130,14 @@ class VoiceApp:
                 " both lines open with the same greeting, or with none"
             )
         self.lines.append(Line(dialled, bound, mates, greeting, chooses))
+        return self
+
+    def agent(self, cls: type) -> "VoiceApp":
+        """An agent the app holds with no line: one its flows call, text or read with."""
+        if not _is_an_agent(cls):
+            raise DeclarationRefused(NOT_AN_AGENT)
+        if cls not in self.held:
+            self.held.append(cls)
         return self
 
     def rule(self, rule: str) -> "VoiceApp":
@@ -232,7 +242,7 @@ class VoiceApp:
         named = [one for line in self.lines for one in (line.answers, *line.team)]
         if self.paged is not None:
             named.append(self.paged.answers)
-        return list(dict.fromkeys(named))
+        return list(dict.fromkeys([*named, *self.held]))
 
     def choosing(self, cls: type) -> Answering | None:
         """The function that picks who serves each call of the line `cls` is bound to."""

@@ -133,6 +133,22 @@ The harness asked a model outside a call's score: a judge tried on finished call
 | `judge_cost_usd` | `number` | no | What those requests cost at the platform's list prices; absent when nothing was priced. |
 | `own_key` | `boolean` | no | The judge model ran on a key of the org's own: its evals are never billed. |
 
+### `model.spent`
+
+A flow asked a model outside a call: an `extract` step read words into the object a JSON Schema says ([flows.md](../protocol/flows.md)). No call is opened and nothing is listed among the calls; the request is metered as one written turn of a chat is — its `turns` as messages, its LLM rows as tokens, its cost as the month's spend — whether the model answered by the schema or not. Written into the agent's own log, which is the org's.
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `kind` | `"extract"` | yes | What the model was asked for. |
+| `app` | `string` | yes | The app whose flow asked. |
+| `flow` | `string` | yes | The flow. |
+| `run` | `string` | yes | The run whose step it was. |
+| `env` | `Env` | yes | The environment it was asked in, where it counts: the agent's log is both environments'. |
+| `turns` | `integer` | yes | The written turns it counts as, one. |
+| `usage` | `LLMModelUsage[]` | no | What the model's requests used. |
+| `cost` | `Cost` | yes | What they cost at the platform's rates. |
+| `own_key` | `boolean` | no | The model ran on a key of the org's own. |
+
 ### `dev.request`
 
 The gateway asks the app process holding the agent to do something only that process can — read a file of the agent's directory, mount its class, run its goldens — on a console's behalf. Sent down the one socket the gateway chose, never stored: a request is a fact about two processes talking, not about the environment. The app answers with dev.answer naming the same id.

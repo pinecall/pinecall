@@ -10,7 +10,7 @@ from runtime.auth import Authenticator
 from runtime.enums import KeyScope
 from runtime.flows.repository import App
 from runtime.flows.service import Dial, Holders, LiveSide
-from runtime.kit.text import parse_slug
+from runtime.kit.text import JsonObject, parse_slug
 from runtime.live import service as live
 from runtime.live.auth import AppKey, TheLive, TheWhatsappThreads
 from runtime.wire.parts import Supervisor
@@ -70,7 +70,10 @@ def live_side_of(parts: TheLive, threads: TheWhatsappThreads) -> LiveSide:
     ) -> live.Templated:
         return await live.send_template(session, parts, threads, scope, agent, asked, by)
 
-    return LiveSide(holders_of(parts), dial_of(parts), text, template)
+    async def extract(session: AsyncSession, scope: Scope, asked: live.Extracting) -> JsonObject:
+        return await live.extract(session, parts, scope, asked)
+
+    return LiveSide(holders_of(parts), dial_of(parts), text, template, extract)
 
 
 TheLiveSide = Annotated[LiveSide, Depends(live_side_of)]

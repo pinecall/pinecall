@@ -25,6 +25,7 @@ export const ImportNumberInput = z
     account: z.string().min(1).optional(),
     channel: z.enum(["phone", "whatsapp", "sms", "email", "messenger", "instagram"]).optional(),
     move: z.boolean().default(false),
+    app: z.string().regex(/^[a-z0-9][a-z0-9-]{0,62}$/, "an app's name: lowercase letters, digits and dashes").optional(),
     dryRun: z.boolean().default(false),
   })
   .superRefine((input, said) => {
@@ -32,6 +33,7 @@ export const ImportNumberInput = z
     const byMetaId = input.channel === "messenger" || input.channel === "instagram";
     if (byEmail && !AN_EMAIL.test(input.number)) said.addIssue({ code: "custom", path: ["number"], message: "an address answers email: help@acme.com" });
     if (byMetaId && !A_META_ID.test(input.number)) said.addIssue({ code: "custom", path: ["number"], message: "a Page or an Instagram account is Meta's id, digits alone: 1472943555898656" });
+    if (input.app !== undefined && !byEmail) said.addIssue({ code: "custom", path: ["app"], message: "--app reads the emails of an address: it takes --channel email" });
     if (byMetaId && input.account === undefined) said.addIssue({ code: "custom", path: ["account"], message: "--account names the Facebook Page it answers through: its id" });
     if (!byEmail && !byMetaId && !E164.test(input.number)) said.addIssue({ code: "custom", path: ["number"], message: "a number is +E.164: +34910000000 (an address takes --channel email)" });
   });
@@ -144,6 +146,7 @@ export async function importNumber(ctx: Context, input: ImportNumberInput): Prom
   if (input.account !== undefined) body.account = input.account;
   if (input.channel !== undefined) body.channel = input.channel;
   if (input.move) body.move = true;
+  if (input.app !== undefined) body.app = input.app;
   return api.importNumber(ctx.gateway(), body, input.dryRun);
 }
 

@@ -29,6 +29,16 @@ module Pinecall
     # The function asked for another step than its journal holds there: its code changed.
     class Changed < Error; end
 
+    # A model read nothing into the schema: no key ran it, no messages were left, or it would not answer.
+    class ExtractRefused < Error
+      attr_reader :refused
+
+      def initialize(refused, message)
+        super(message)
+        @refused = refused
+      end
+    end
+
     # Thrown to leave the function where it waits: not an error.
     class Parked < StandardError; end
 
@@ -149,6 +159,18 @@ module Pinecall
         said = waited("template", asked) || {}
         Templated.new(sent: said[:sent] == true, simulated: said[:simulated] == true, message_id: said[:message_id],
                       from: said[:from], call: said[:call], refused: said[:refused], message: said[:message])
+      end
+
+      # Have a model read words into an object, outside any call, on the agent's account: `schema` is a JSON
+      # Schema of an object. Nothing is listed among the calls; the request counts as one written turn.
+      def extract(text, schema, agent:, instructions: nil, model: nil)
+        slug = @slug_of.call(agent)
+        raise DeclarationRefused, "#{@flow.name}: #{agent} is no agent this process serves" if slug.nil?
+
+        said = waited("extract", { agent: slug, text:, schema:, instructions:, model: }.compact) || {}
+        raise ExtractRefused.new(said[:refused] || "unanswered", said[:message] || "nothing read") unless said[:data].is_a?(Hash)
+
+        said[:data]
       end
 
       # Wait for an event of the app whose data has what `match` names; nil when it gave up.

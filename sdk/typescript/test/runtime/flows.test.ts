@@ -4,7 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Agent } from "../../src/agent/agent.js";
 import { DeclarationRefused } from "../../src/agent/tools.js";
-import { advance, cancelled, flow, secondsOf, started, StepUnwritten, type Called, type Templated, type Texted } from "../../src/runtime/flows.js";
+import { z } from "zod";
+
+import { advance, cancelled, ExtractRefused, flow, secondsOf, started, StepUnwritten, type Called, type Templated, type Texted } from "../../src/runtime/flows.js";
 
 import { KeptApp } from "./kept/gateway.js";
 
@@ -141,6 +143,26 @@ describe("a run", () => {
       ["template", { agent: "brightside-reminder", to: "+14155550142", template: "visit_reminder", language: "en_US", from: "+14155550134", text: "Hi Ana, your cleaning is tomorrow.", metadata: { visit: "v-812" } }],
     ]);
     expect(sent).toEqual([{ sent: true, simulated: true }, { sent: true, simulated: false, messageId: "wamid.1", from: "+14155550134", call: "call_7" }]);
+  });
+
+  it("has a model read words into a zod object on the agent's account, and throws what refused it", async () => {
+    const Notice = z.object({ phone: z.string(), name: z.string() });
+    const read: unknown[] = [];
+    const notice = flow("notice", async (mail, step) => {
+      read.push(await step.extract(String(mail["text"]), Notice, { agent: Reminder, instructions: "The person who asked." }));
+      kept.extracted = { data: null, refused: "Forbidden", message: "google is not lent to the org" };
+      await step.extract(String(mail["text"]), { type: "object", properties: { phone: { type: "string" } } }, { agent: Reminder, model: "google/gemini-3.5-flash-lite" });
+    });
+
+    const run = await started(kept.door, notice, "mail-7", { text: "Hay una nueva consulta de Soledad." });
+    const advanced = await advance(kept.door, notice, run, slugOf);
+    expect(advanced).toEqual({ status: "failed", error: "ExtractRefused: google is not lent to the org" });
+    expect(read).toEqual([{ phone: "+541131258777", name: "Soledad" }]);
+    const [first, second] = kept.runs.get(run.id)!.steps.map((step) => step.asked as Record<string, unknown>);
+    expect(first).toMatchObject({ agent: "brightside-reminder", text: "Hay una nueva consulta de Soledad.", instructions: "The person who asked." });
+    expect((first!["schema"] as Record<string, unknown>)["type"]).toBe("object");
+    expect(second).toMatchObject({ model: "google/gemini-3.5-flash-lite", schema: { type: "object", properties: { phone: { type: "string" } } } });
+    expect(new ExtractRefused("Forbidden", "x").refused).toBe("Forbidden");
   });
 
   it("waits for an event, and reads null when it gave up", async () => {

@@ -22,6 +22,10 @@ from tests.live.conftest import Side
 from tests.telephony.service.test_email_message import an_email
 
 
+async def _no_app(reader: telephony.MailReader, name: str, data: dict[str, object]) -> None:
+    raise AssertionError(f"an address its agent answers hands nothing to an app, and {name} was handed")
+
+
 @pytest.fixture
 async def mailbox(side: Side, sessions: async_sessionmaker[AsyncSession], tenant: Tenant) -> EmailAccount:
     """A mailbox of the tenant's whose address answers email for agent front-desk in the sandbox."""
@@ -60,12 +64,12 @@ async def test_a_routed_mailbox_is_read_by_one_gateway_and_each_new_email_reache
     monkeypatch.setattr(side.threads, "receive", receive)
     async with sessions() as session:
         assert mailbox.id in [found.id for found in await telephony.list_routed_mailboxes(session, side.parts.vault)]
-    await inboxes.read_inbox(side.parts, side.threads, mailbox)
+    await inboxes.read_inbox(side.parts, side.threads, mailbox, _no_app)
     assert (asked, [message.caller for message in heard]) == ([Cursor()], ["ana@example.org"])
     async with sessions() as session:
         leased = await telephony.lease_inbox(session, mailbox, by="another-gateway", for_s=60)
     assert leased is None, "this gateway's lease runs"
-    await inboxes.read_inbox(side.parts, side.threads, mailbox)
+    await inboxes.read_inbox(side.parts, side.threads, mailbox, _no_app)
     assert asked[-1] == Cursor(7, 6), "the next pass starts where the last stopped"
 
 
@@ -79,7 +83,7 @@ async def test_a_mailbox_the_server_refuses_keeps_its_cursor_and_says_why(
         raise UpstreamError("mail.acme.example:993 refused the login: AUTHENTICATIONFAILED")
 
     monkeypatch.setattr(telephony, "read_new", read_new)
-    await inboxes.read_inbox(side.parts, side.threads, mailbox)
+    await inboxes.read_inbox(side.parts, side.threads, mailbox, _no_app)
     async with sessions() as session:
         row = await EmailInboxRepository(session).one(
             EmailInboxRepository(session)
@@ -87,6 +91,47 @@ async def test_a_mailbox_the_server_refuses_keeps_its_cursor_and_says_why(
             .where(EmailInboxRepository.model.org == mailbox.org, EmailInboxRepository.model.account == mailbox.id)
         )
     assert (row.last_uid, row.last_error) == (None, "mail.acme.example:993 refused the login: AUTHENTICATIONFAILED")
+
+
+@needs_the_database
+async def test_an_address_an_app_reads_hands_every_email_to_it_whole_and_opens_no_conversation(
+    side: Side, sessions: async_sessionmaker[AsyncSession], mailbox: EmailAccount, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A portal's notice is written by a machine: the app's flows read it, and only the mailbox's own is dropped."""
+    handed: list[tuple[telephony.MailReader, str, dict[str, object]]] = []
+
+    async def read_new(server: ImapServer, cursor: Cursor) -> Page:
+        notice = an_email("Hay una nueva consulta de Soledad.", To=mailbox.address, Precedence="bulk")
+        own = an_email(To=mailbox.address, From=mailbox.address)
+        return Page(((5, notice), (6, own)), Cursor(7, 6))
+
+    async def send_mail(reader: telephony.MailReader, name: str, data: dict[str, object]) -> None:
+        handed.append((reader, name, data))
+
+    async def receive(inbound: Inbound) -> bool:
+        raise AssertionError("an address an app reads opens no conversation")
+
+    route = RouteToWrite(
+        org=mailbox.org,
+        number=mailbox.address,
+        agent="front-desk",
+        channel=Channel.email,
+        env=Env.sandbox,
+        account=mailbox.address,
+        app="front-desk-app",
+    )
+    async with sessions.begin() as session:
+        await RouteRepository(session).put(route)
+    monkeypatch.setattr(telephony, "read_new", read_new)
+    monkeypatch.setattr(side.threads, "receive", receive)
+    await inboxes.read_inbox(side.parts, side.threads, mailbox, send_mail)
+    [(reader, name, data)] = handed
+    assert (reader.app, reader.env, name) == ("front-desk-app", Env.sandbox, "mail.received")
+    assert (data["from"], data["subject"], data["text"]) == (
+        "ana@example.org",
+        "Horarios",
+        "Hay una nueva consulta de Soledad.",
+    )
 
 
 def test_one_contacts_emails_on_two_subjects_are_two_threads() -> None:

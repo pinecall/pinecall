@@ -1,6 +1,15 @@
 # Changelog
 
 ## Unreleased
+- **A flow asks a model to read words into an object: the step `extract`.** `{agent, text, schema, instructions?,
+  model?}` asks a model, on the org's own key or one the platform lends, to answer by the JSON Schema of an object; the
+  step ends with `{data}`, or `{data: null, refused, message}`. No call is opened and nothing is listed among the
+  calls: an email a machine wrote is read by a model, not by an agent's conversation. Each request is `model.spent` on
+  the agent's log, counted as one written turn (a message, its tokens, its cost) by the totals and the usage feed
+  (migration 000040).
+- **An address may be read by an app's flows.** `POST /v1/numbers` with `channel: "email"` takes `app`: each email to
+  the address is that app's event `mail.received` (`{to, from, from_name, subject, text, message_id, date}`, read
+  whole, a machine's too), and opens no conversation; `GET /v1/numbers` names it (migration 000041).
 - **A Page with an Instagram account and a token that cannot answer it is refused.** `PUT /v1/carrier`
   with `kind: "messenger"` asks Meta what the token may do (`debug_token`, with the app's own token), and a
   Page with an `instagram_id` whose token lacks `instagram_basic` or `instagram_manage_messages` is `400`,

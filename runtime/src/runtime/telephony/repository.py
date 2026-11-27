@@ -8,6 +8,7 @@ from sqlalchemy import Select, delete, exists, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 
 from runtime.enums import Channel, Env, RouteOrigin
+from runtime.exceptions import ValidationError
 from runtime.kit.repository import Repository
 from runtime.telephony.models import Carrier, CarrierKind, CarrierNetwork, EmailInbox, EmailLayout, NetworkState, Route
 
@@ -40,6 +41,12 @@ class RouteToWrite:
     via: str | None = None
     # None: written to wait, and no call to it opens until the operator approves it.
     approved_at: datetime | None = None
+    # An address read by an app's flows (`mail.received`) instead of answered by its agent.
+    app: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.app is not None and not self.channel.is_by_email:
+            raise ValidationError("an app reads the emails of an address: `app` is for the channel email alone")
 
 
 class CarrierRepository(Repository[Carrier]):
@@ -197,6 +204,7 @@ class RouteRepository(Repository[Route]):
             "origin": written.origin,
             "via": written.via,
             "approved_at": written.approved_at,
+            "app": written.app,
         }
         mine = (Route.org == written.org, Route.number == written.number, Route.channel == written.channel)
         row = await self.one_or_none(self.statement().where(*mine))

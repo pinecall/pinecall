@@ -4,6 +4,11 @@ Every change a person using this gem would notice. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version numbers and tags are the
 maintainer's call.
 
+## [Unreleased]
+- **`app.agent(Agent)`: an agent the app holds with no line**, for its flows: one they call, text or read with.
+- **`step.extract(text, schema, agent:, instructions:, model:)`: a model reads words into an object.** No call is
+  opened; `Flow::ExtractRefused` says what refused it.
+
 ## [0.11.54] — Messenger and Instagram are channels an agent answers; a WhatsApp template from every surface, its words opening the conversation (2026-11-27)
 - **Two channels: `messenger` and `instagram`.** A call's `channel` may be a Facebook Page's Messenger or the Instagram account
   linked to it; both are written (`medium` text), and each has the framework's own rules (`channelRules.messenger`,

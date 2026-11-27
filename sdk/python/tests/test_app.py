@@ -155,3 +155,10 @@ def test_a_flow_handed_to_on_is_started_by_the_entry_and_two_of_one_name_are_ref
 def test_a_silence_is_seconds_and_words() -> None:
     with pytest.raises(DeclarationRefused, match="silence is"):
         voice_app("brightside").silence(after="soon", say="¿Hola?")
+
+
+def test_an_agent_with_no_line_is_held_for_the_apps_flows_once() -> None:
+    app = voice_app("brightside").line("+14155550134", FrontDesk).agent(Billing).agent(Billing)
+    assert app.agents() == [FrontDesk, Billing]
+    with pytest.raises(DeclarationRefused):
+        app.agent(str)

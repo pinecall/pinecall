@@ -14,6 +14,10 @@ kept until the app's process hears it, and it wakes every run of the app waiting
 that name whose `match` it carries (below). `data` is an object of 16384 bytes of JSON at most: an
 id and a few facts, never a document.
 
+The gateway sends one event itself: **`mail.received`**, for each email to an address an app reads
+([email.md](email.md), "An address an app reads"): `{to, from, from_name, subject, text, message_id,
+date}`. An app that starts a flow on it (`app.on("mail.received", flow)`) starts one run an email.
+
 `POST /v1/apps/{app}/events/{id}/heard` (`app`) says the process handled it; `204`, and `404` for
 an event that is not owed to that app.
 
@@ -64,6 +68,7 @@ since the function changed under its run. Only a `ready` run takes a new step.
 | `call` | `{agent, to, from?, state?, metadata?, greeting?, instruction?}` | places the call as `POST /v1/agents/{agent}/dial` does, after the same guards ([numbers.md](numbers.md)); the run is `calling` until the call ends |
 
 | `text` | `{agent, to, text?, from?, subject?, metadata?, instruction?}` | sends the contact one SMS, or an address the first email of a thread, as `POST /v1/agents/{agent}/text` does, after the same guards ([numbers.md](numbers.md), "SMS"; [email.md](email.md), "The agent writes first"); over as it is written |
+| `extract` | `{agent, text, schema, instructions?, model?}` | asks a model to read `text` (12000 characters at most) into the object `schema` says (a JSON Schema of `type: object` with its `properties`), told `instructions` beside it, on `model` (`vendor/model`; unsaid, the platform's own for a written turn) and on the org's own key for its vendor or one the platform lends (`lends`); no call is opened. The request is metered on the agent's log as `model.spent`: one written turn, held to the org's `messages`, its tokens and its cost counted; over as it is answered |
 | `template` | `{agent, to, template, language, variables?, from?, text?, metadata?}` | sends the contact one WhatsApp template as `POST /v1/agents/{agent}/template` does ([whatsapp.md](whatsapp.md), "The agent writes first"): with `text`, its words open the contact's conversation; in the sandbox it is answered and never sent; over as it is answered |
 
 Each step reads back as `{seq, kind, asked, over, result}`. A `sleep` ends with `null`, a `wait`
@@ -74,7 +79,9 @@ written at once with the run still `ready`, so the function reads which guard an
 ends with `{sent: true, call, from}`, the conversation it was said on, or `{sent: false, refused,
 message}` the same way: a guard, a contact who stopped the messages, nobody holding the agent. A
 `template` ends with `{sent: true, simulated, message_id, from, call}` (`simulated: true` and no `message_id` in the
-sandbox, where Meta is not asked; `call` is the conversation its `text` opened), or `{sent: false, refused, message}`. The
+sandbox, where Meta is not asked; `call` is the conversation its `text` opened), or `{sent: false, refused, message}`. An
+`extract` ends with `{data}`, the object the model gave, or `{data: null, refused, message}`: a model no key may run, the
+org's messages used up, or a model that would not answer by the schema. The
 call's metadata carries `flow_run`, the run that placed it. Cancelling a run does not end a call it
 placed.
 

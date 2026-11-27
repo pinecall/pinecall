@@ -29,6 +29,8 @@ export interface NumberRow {
   last_call_at: number | null;
   via: string | null;
   account: string | null;
+  /** An address read by this app's flows (`mail.received`); absent or null, its agent answers it. */
+  app?: string | null;
 }
 
 /** One number an account owns, and whether this env imported it. */
@@ -62,6 +64,8 @@ export interface NumberImport {
   channel?: string;
   /** Take the number off the Twilio trunk it is on now; without it, a number elsewhere is a 409. */
   move?: boolean;
+  /** An address alone: the app whose flows read its emails (`mail.received`); none, its agent answers them. */
+  app?: string;
 }
 
 /** `POST /v1/numbers/buy`: a number bought on the deployment's own account, pointed at an agent. */

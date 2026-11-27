@@ -441,6 +441,10 @@ while it is down is not heard later. What has to outlive the process is a flow.
 
 ### A flow: what outlives a call
 
+An agent only a flow uses (one it calls, texts or reads with, and that answers no line) is held with
+`app.agent(Reader)`: it is served by the app like a line's agent, and `step.extract(text, Schema, { agent: Reader })`
+runs on its account.
+
 ```ts
 import { flow } from "@pinecall/agents";
 
@@ -473,6 +477,7 @@ gateway hands it the runs that are ready.
 | `step.call(to, Agent, { state, metadata, greeting, instruction, from })` | the agent calls the number, as `pinecall dial` does, and the step answers how the call ended: `{ answered, reason, call }`. A dial the org's guards refused answers at once with `{ answered: false, refused, message }` |
 | `step.text(to, Agent, words, { from, subject, metadata, instruction })` | the agent sends the contact one SMS first, as `pinecall text` does, or, to an address, the first email of a thread under `subject` (`step.text(to, Agent, { subject, instruction })` leaves its words to the agent), and the step answers at once: `{ sent, call, from }`, or `{ sent: false, refused, message }` |
 | `step.template(to, Agent, name, { language, variables, from, text, metadata })` | the agent sends the contact one WhatsApp template, as `pinecall template` does: approved at Meta in `language`, its body filled by `variables` in order; `text`, what it says once filled, opens the contact's conversation as its first turn, with `metadata`; answers `{ sent, simulated, messageId, from, call }`, or `{ sent: false, refused, message }`. In the sandbox it is answered `simulated` and never sent |
+| `step.extract(text, Schema, { agent, instructions, model })` | a model reads `text` into the zod object `Schema` (or a JSON Schema of an object) and the step answers with it, parsed: no call is opened and nothing is listed among the calls; the request is one written turn, on `agent`'s org's keys or the ones the platform lends. Throws `ExtractRefused` (`refused`, `message`) when no key runs the model, the messages ran out, or it would not answer by the schema |
 | `step.waitFor(event, { match, within })` | the run waits for an event sent to the app whose data has what `match` names; it answers the event's data, or `null` once `within` passed |
 | `step.run(() => …)` | runs your own code once and keeps what it returned |
 | `step.emit(name, data)` | sends an event to the app |

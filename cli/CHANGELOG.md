@@ -4,6 +4,10 @@ All notable changes to `pinecall`, the CLI. Up to 0.9 it shipped inside the fram
 that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pinecall/blob/main/sdk/typescript/CHANGELOG.md).
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+- **`pinecall numbers import <address> --channel email --app <name>`**: the address's emails go to the app's flows
+  as `mail.received` and open no conversation; `numbers list` says `app <name> (flows)` for it.
+
 ## 0.11.54 — Messenger and Instagram are channels an agent answers; a WhatsApp template from every surface, its words opening the conversation (2026-11-27)
 - **`pinecall carriers add messenger --page-id <id>`**: a Facebook Page, its Page token and its Meta app's secret read on stdin;
   `carriers show` names the Instagram account linked to it, and Pinecall subscribes the Meta app's webhook itself. `numbers import` and `drop`

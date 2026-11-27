@@ -3,6 +3,7 @@
 import { z } from "zod";
 import {
   ChannelSchema,
+  CostSchema,
   DevVerbSchema,
   DocSourceSchema,
   EnvSchema,
@@ -13,7 +14,7 @@ import {
   TransferModeSchema,
   UserStateSchema,
 } from "./defs.js";
-import { UserTurnMetricsSchema } from "./metrics.js";
+import { LLMModelUsageSchema, UserTurnMetricsSchema } from "./metrics.js";
 import { StateSchema } from "./state.js";
 
 /**
@@ -133,6 +134,22 @@ export const EvalsSpentSchema = z.strictObject({
   evals: z.int(),
   judge_calls: z.int(),
   judge_cost_usd: z.number().nullish(),
+  own_key: z.boolean().nullish(),
+});
+
+/**
+ * A flow asked a model outside a call — an extract step read words into an object — metered as one
+ * written turn: its tokens and its cost counted in the world it names. Written into the agent's own log.
+ */
+export const ModelSpentSchema = z.strictObject({
+  kind: z.literal("extract"),
+  app: z.string(),
+  flow: z.string(),
+  run: z.string(),
+  env: EnvSchema,
+  turns: z.int(),
+  usage: z.array(LLMModelUsageSchema),
+  cost: CostSchema,
   own_key: z.boolean().nullish(),
 });
 

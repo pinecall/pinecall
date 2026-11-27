@@ -51,6 +51,7 @@ The org's numbers and the agent each reaches; the numbers its carrier accounts o
 | `channel` | `phone` · `whatsapp` · `sms` · `email` · `messenger` · `instagram` |  | `import`, `buy`: phone unless said. One number answers on several: import it once a channel. `sms` is a number of a Twilio account, whose messages Twilio then posts to Pinecall; `email` is a mailbox account's address, whose inbox Pinecall reads |
 | `account` | text |  | `available`, `import`: the carrier account the number lives in, when the org has several (`carriers list` names them) |
 | `move` | true or false |  | `import`: take the number off the trunk it is on now (another environment's, or another agent's), as a 409 naming that trunk asks |
+| `app` | text |  | `import` of an address (`email`): the app whose flows read its emails, as the event mail.received, instead of its agent answering them |
 | `country` | text |  | `buy`: the country, two letters (ES, US) |
 | `area_code` | text |  | `buy`: an area code, digits only |
 | `dry_run` | true or false |  | `import`, `buy`: true (the default) answers the steps and writes nothing; false does them |

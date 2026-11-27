@@ -1,10 +1,11 @@
-"""An email as the agent reads it: who wrote, on which thread, and their words alone, the quoted past cut off."""
+"""An email as the agent reads it (its words alone, the quoted past cut off), and as an app's flow reads it, whole."""
 
 import logging
 import re
+from dataclasses import dataclass
 from email import message_from_bytes, policy
 from email.message import EmailMessage
-from email.utils import getaddresses, parseaddr
+from email.utils import getaddresses, parseaddr, parsedate_to_datetime
 from html.parser import HTMLParser
 from typing import override
 
@@ -58,6 +59,50 @@ def read_email(raw: bytes, address: str, fallback_id: str) -> whatsapp.Inbound |
 
 # A reply that is written by no person (RFC 3834), a bulk or list email, or one of the mailbox's own
 # (a copy, a loop) is read and never answered: two robots answering each other never stop.
+@dataclass(frozen=True, slots=True)
+class Mail:
+    """An email as the event `mail.received` carries it to an app: who wrote, to whom, the subject, the words."""
+
+    to: str
+    sender: str
+    sender_name: str | None
+    subject: str | None
+    text: str
+    message_id: str
+    # ISO 8601, as its Date header says it; None when it says none that reads.
+    date: str | None
+
+
+# An address an app's flows read (`routes.app`) takes every email, a machine's above all: a portal's lead
+# or an order is written by no person, so nothing is filtered but the mailbox's own (a loop) and one that
+# says nothing. The words are read whole, quotes and all: a forwarded notice is what is below the header.
+def read_mail(raw: bytes, address: str, fallback_id: str, longest: int) -> Mail | None:
+    """The email whole for an app's flow, cut at `longest` characters; None for the mailbox's own or an empty one."""
+    message = message_from_bytes(raw, policy=policy.default)
+    name, sender = parseaddr(str(message.get("From", "")))
+    sender = sender.strip().lower()
+    text = _text_of(message).strip()
+    if sender == address or not text:
+        logger.info("email: a message to %s is not handed to its app: %s", address, "its own" if text else "empty")
+        return None
+    return Mail(
+        to=address,
+        sender=sender,
+        sender_name=name.strip() or None,
+        subject=str(message.get("Subject", "")).strip() or None,
+        text=text[:longest],
+        message_id=(_ids_in(str(message.get("Message-ID", ""))) or [fallback_id])[0],
+        date=_date_of(str(message.get("Date", ""))),
+    )
+
+
+def _date_of(header: str) -> str | None:
+    try:
+        return parsedate_to_datetime(header).isoformat() if header.strip() else None
+    except (TypeError, ValueError):
+        return None
+
+
 def _why_unanswered(message: EmailMessage, sender: str, address: str) -> str | None:
     if not sender:
         return "it names no sender"

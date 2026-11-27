@@ -71,6 +71,11 @@ class Listed:
         """The org's account the number lives in; None for one with none."""
         return self.route.account
 
+    @property
+    def app(self) -> str | None:
+        """The app whose flows read an address's emails; None when its agent answers them."""
+        return self.route.app
+
 
 @dataclass(frozen=True, slots=True)
 class OwnedNumber:

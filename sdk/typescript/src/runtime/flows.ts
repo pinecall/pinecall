@@ -1,5 +1,7 @@
 /** A flow: a function that outlives a call. It runs in this process; the gateway keeps its journal, its clock and what wakes it. */
 
+import { z } from "zod";
+
 import { cancelRun, endRun, readRun, runsOf, startRun, writeStep, type AppDoor, type JournalStep, type KeptRun } from "../client/app-work.js";
 
 import type { Agent } from "../agent/agent.js";
@@ -57,6 +59,27 @@ export interface TemplateOptions {
   metadata?: Data;
 }
 
+/** What a model is asked to read with: the agent whose account it runs on, what to look for, and the model. */
+export interface ExtractOptions {
+  /** The agent whose org's keys and log the model runs on: its request is metered there as one written turn. */
+  agent: Ctor;
+  /** What to look for, beside the schema: `"The person who asked, never the agency."` */
+  instructions?: string;
+  /** `vendor/model`; unsaid, the platform's own for a written turn. */
+  model?: string;
+}
+
+/** Thrown when a model could not read the words into the schema: no key runs it, the org's messages ran out, or it would not answer by the schema. */
+export class ExtractRefused extends Error {
+  override readonly name = "ExtractRefused";
+  constructor(
+    readonly refused: string,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
 /** What a call a flow places opens with. */
 export interface Opening {
   state?: Data;
@@ -95,6 +118,12 @@ export interface Step {
   text(to: string, agent: Ctor, options: TextOptions & { subject: string }): Promise<Texted>;
   /** Have an agent send a contact one WhatsApp template, the one message that opens a conversation there: `step.template(visit.phone, Reminder, "visit_reminder", { language: "en_US", variables: ["Ana", "9:30"] })`. In the sandbox it is answered `simulated` and never sent. */
   template(to: string, agent: Ctor, template: string, options: TemplateOptions): Promise<Templated>;
+  /**
+   * Have a model read words into an object, outside any call: `step.extract(mail.text, Notice, { agent: Reader })`.
+   * The schema is a zod object (the answer is parsed by it) or a JSON Schema of an object. Nothing is listed among
+   * the calls; the request counts as one written turn. Throws ExtractRefused when nothing could read it.
+   */
+  extract<T extends Data>(text: string, schema: z.ZodType<T> | Data, options: ExtractOptions): Promise<T>;
   /** Wait for an event of the app whose data has what `match` names, for `within` at most; null when it gave up. */
   waitFor(event: string, options?: { match?: Data; within?: string }): Promise<Data | null>;
   /** Run something once: what it returned is kept, and read back instead of run again. */
@@ -207,7 +236,7 @@ export async function advance(door: AppDoor, of: Flow, run: KeptRun, slugOf: (ag
     return before;
   };
   // A step that waits: written, and the function left there unless the gateway answered it at once.
-  const waited = async (kind: "sleep" | "wait" | "call" | "text" | "template", asked: Data): Promise<unknown> => {
+  const waited = async (kind: "sleep" | "wait" | "call" | "text" | "template" | "extract", asked: Data): Promise<unknown> => {
     const before = written(kind);
     if (before?.over === true) return before.result;
     if (before !== undefined) throw new Parked();
@@ -244,6 +273,17 @@ export async function advance(door: AppDoor, of: Flow, run: KeptRun, slugOf: (ag
       // What the sandbox has none of (an id, a number) comes as null: left out, as a field not there.
       const said = Object.fromEntries(Object.entries(answered).filter(([, value]) => value !== null));
       return { ...said, ...(typeof messageId === "string" ? { messageId } : {}) } as unknown as Templated;
+    },
+    // Over as it is answered: the model is asked once, and what it read is the journal's from then on.
+    extract: async <T extends Data>(text: string, schema: z.ZodType<T> | Data, options: ExtractOptions): Promise<T> => {
+      const slug = slugOf(options.agent);
+      if (slug === undefined) throw new DeclarationRefused(`${of.name}: ${options.agent.name} is no agent this process serves`);
+      const parser = schema instanceof z.ZodType ? schema : undefined;
+      const shape = parser === undefined ? (schema as Data) : (z.toJSONSchema(parser) as Data);
+      const told = Object.fromEntries(Object.entries({ instructions: options.instructions, model: options.model }).filter(([, value]) => value !== undefined));
+      const answered = ((await waited("extract", { agent: slug, text, schema: shape, ...told })) ?? {}) as Data;
+      if (answered["data"] === null || typeof answered["data"] !== "object") throw new ExtractRefused(String(answered["refused"] ?? "unanswered"), String(answered["message"] ?? "the model read nothing"));
+      return (parser === undefined ? answered["data"] : parser.parse(answered["data"])) as T;
     },
     waitFor: async (event, options = {}) => {
       const until = options.within === undefined ? {} : { until: new Date(Date.now() + secondsOf(options.within) * 1000).toISOString() };

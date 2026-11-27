@@ -228,6 +228,17 @@ module Pinecall
           judge_cost_usd: { kind: :float, null: true },
           own_key: { kind: :bool }
         }.freeze,
+        "ModelSpent" => {
+          kind: { kind: :enum, values: %w[extract], required: true },
+          app: { kind: :str, required: true },
+          flow: { kind: :str, required: true },
+          run: { kind: :str, required: true },
+          env: { kind: :ref, ref: "Env", required: true },
+          turns: { kind: :int, required: true },
+          usage: { kind: :list, items: { kind: :ref, ref: "LLMModelUsage" } },
+          cost: { kind: :ref, ref: "Cost", required: true },
+          own_key: { kind: :bool }
+        }.freeze,
         "Custom" => {
           name: { kind: :str, required: true },
           data: { kind: :json, required: true }

@@ -67,12 +67,13 @@ from pinecall.wire.metrics import (
     EOUMetrics,
     InterruptionMetrics,
     LLMMetrics,
+    LLMModelUsage,
     RealtimeModelMetrics,
     STTMetrics,
     TTSMetrics,
     VADMetrics,
 )
-from pinecall.wire.parts import Contact, DevVerb, Projection, Route, ToolResult
+from pinecall.wire.parts import Contact, Cost, DevVerb, Projection, Route, ToolResult
 from pinecall.wire.room import (
     ParticipantJoined,
     ParticipantLeft,
@@ -216,6 +217,21 @@ class EvalsSpent(WireModel):
     own_key: bool = False
 
 
+class ModelSpent(WireModel):
+    """A flow asked a model outside a call: one extraction, metered as one written turn."""
+
+    kind: Literal["extract"] = "extract"
+    app: str
+    flow: str
+    run: str
+    # The agent's log is both worlds': the request is counted in the one it was asked in.
+    env: Env
+    turns: int
+    usage: list[LLMModelUsage] = Field(default_factory=list)
+    cost: Cost
+    own_key: bool = False
+
+
 class SpendUnusual(WireModel):
     """The org's calls cost more today than its own days usually do: said once a day."""
 
@@ -331,6 +347,7 @@ EVENTS: dict[str, type[WireModel]] = {
     "confirm.request": ConfirmRequest,
     "credits.exhausted": CreditsExhausted,
     "evals.spent": EvalsSpent,
+    "model.spent": ModelSpent,
     "custom": Custom,
     "dev.request": DevRequest,
     "docs.sources": DocsSources,

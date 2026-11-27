@@ -71,6 +71,8 @@ Options:
   --channel <channel>  phone | whatsapp | sms | email | messenger | instagram
   --move               take the number off the trunk it is on now, when it
                        answers in another environment or for another agent
+  --app <name>         an address alone: its emails go to this app's flows as
+                       mail.received, and open no conversation
   --dry-run            print the steps and write nothing
   -h, --help           display help for command
 

@@ -37,7 +37,7 @@ select usage_counted(coalesce(jsonb_agg(jsonb_build_object(
     'org', head.org, 'env', usage_world(entry.type, entry.data, head.env), 'ts', entry.ts,
     'type', entry.type, 'data', entry.data, 'opened_by', head.opened_by)), '[]'), 1)
 from call_log entry join call_log_head head on head.log = entry.log
-where entry.type in ('call.summary', 'call.score', 'evals.spent') and head.org is not null
+where entry.type in ('call.summary', 'call.score', 'evals.spent', 'model.spent') and head.org is not null
 """)
 
 

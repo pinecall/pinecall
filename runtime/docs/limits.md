@@ -38,7 +38,9 @@ in both environments.
   (`the org has spent 10.5 of its 10 USD budget this month`). A call already running is never cut
   for it, and written turns are not held to it.
 - **A written turn** is held to `messages` and `llm_tokens` on every turn, with what the open
-  conversation has spent so far added to the org's totals.
+  conversation has spent so far added to the org's totals. A flow's `extract` step is one more: it
+  is held to `messages` before the model is asked, and counts one message, its tokens and its cost
+  ([protocol/flows.md](protocol/flows.md)).
 - **Agents, numbers, facts, seats and chunks** are refused at their limit; a push that would pass
   `knowledge_chunks` is refused whole.
 - **Hosted apps** (`hosted_apps`) are counted when an app's first release is uploaded

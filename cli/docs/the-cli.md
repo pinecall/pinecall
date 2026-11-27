@@ -2069,7 +2069,7 @@ no prompt drawn, and the desk leaves when the lines run out.
 ```
 pinecall numbers list
 pinecall numbers available [--account <id>]
-pinecall numbers import <+34…, address or Meta id> --agent <slug> [--account <id>] [--channel phone|whatsapp|sms|email|messenger|instagram] [--move] [--dry-run]
+pinecall numbers import <+34…, address or Meta id> --agent <slug> [--account <id>] [--channel phone|whatsapp|sms|email|messenger|instagram] [--move] [--app <name>] [--dry-run]
 pinecall numbers buy --country <XX> [--area <digits>] --agent <slug> [--channel phone|whatsapp|sms] [--dry-run]
 pinecall numbers drop <+34…, address or Meta id> [--channel phone|whatsapp|sms|email|messenger|instagram]
 ```
@@ -2090,6 +2090,16 @@ $ pinecall numbers import +34910000000 --agent clinica-norte --move   # off the 
 
 ```console
 $ pinecall numbers import +34910000001 --agent clinica-norte --account AC9876…
+```
+
+**An address may be read by an app's flows instead of answered by its agent**: `--app <name>`, with
+`--channel email`, sends each email to that app as the event `mail.received`, and opens no conversation
+(a portal's notices, an order; `docs.pinecall.io/concepts/app-flows/`, "An email starts a flow"). The list
+says `app <name> (flows)` where it would name the agent; importing the address again without `--app`
+gives it back to the agent.
+
+```console
+$ pinecall numbers import avisos@acme.example --agent front-desk --channel email --app front-desk
 ```
 
 **One number answers on several channels**, each its own route with its own agent: the phone, WhatsApp

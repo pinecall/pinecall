@@ -11,7 +11,7 @@ from runtime.exceptions import ValidationError
 from runtime.kit.time import A_MINUTE_S
 from runtime.wire.events import CallSummary, event_of
 from runtime.wire.metrics import LLMModelUsage, TTSModelUsage
-from runtime.wire.scores import CallScore, EvalsSpent
+from runtime.wire.scores import CallScore, EvalsSpent, ModelSpent
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +99,8 @@ def usage_row(metered: Positioned) -> UsageRow:
             return replace(
                 row, used=Usage(judge_calls=data.judge_calls, evals=evals, cost_usd=data.judge_cost_usd or 0.0)
             )
+        case ModelSpent():
+            return replace(row, used=_usage_of_a_model(data))
         case _:
             return row
 
@@ -117,6 +119,17 @@ def total_by_org(rows: Iterable[UsageRow]) -> dict[str, Usage]:
     for row in rows:
         totals[row.org] = totals.get(row.org, Usage()) + row.used
     return totals
+
+
+# A flow's model, asked outside a call: each request is one written turn, as the totals' fold counts it
+# (migrations/versions/20261127_000040), its LLM rows its tokens and its cost the month's spend.
+def _usage_of_a_model(spent: ModelSpent) -> Usage:
+    return Usage(
+        messages=spent.turns,
+        input_tokens=sum(row.input_tokens or 0 for row in spent.usage),
+        output_tokens=sum(row.output_tokens or 0 for row in spent.usage),
+        cost_usd=spent.cost.usd,
+    )
 
 
 # Tokens are counted from the LLM rows and characters from the TTS rows; every other row's

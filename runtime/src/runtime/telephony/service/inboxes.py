@@ -5,13 +5,23 @@ from datetime import timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from runtime.enums import Channel, Env
 from runtime.kit.crypto import Vault
 from runtime.kit.time import now
 from runtime.scoping import box_wide
-from runtime.telephony.repository import CarrierRepository, EmailInboxRepository
+from runtime.telephony.repository import CarrierRepository, EmailInboxRepository, RouteRepository
 from runtime.telephony.service.accounts import carrier_of
 from runtime.telephony.service.email_account import EmailAccount
 from runtime.telephony.service.email_box import Cursor
+
+
+@dataclass(frozen=True, slots=True)
+class MailReader:
+    """The app whose flows read an address's emails, in the env the address answers in."""
+
+    org: str
+    env: Env
+    app: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,3 +61,13 @@ async def move_inbox(session: AsyncSession, account: EmailAccount, cursor: Curso
             at=now(),
             error=error,
         )
+
+
+# A number is held once a channel across the box, so the address names one route at most.
+async def find_mail_reader(session: AsyncSession, account: EmailAccount) -> MailReader | None:
+    """The app whose flows read the mailbox's emails, when its address names one; None: its agent answers them."""
+    with box_wide():
+        route = await RouteRepository(session).find_at(Channel.email, account.id)
+    if route is None or route.app is None or route.org != account.org:
+        return None
+    return MailReader(org=route.org, env=route.env, app=route.app)

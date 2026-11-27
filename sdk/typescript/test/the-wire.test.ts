@@ -102,6 +102,7 @@ const IGNORED: Record<string, string> = {
   "confirm.declined": THE_GATEWAYS,
   "credits.exhausted": THE_GATEWAYS,
   "evals.spent": THE_GATEWAYS,
+  "model.spent": THE_GATEWAYS,
   "custom": "an app's own entry, read back by whoever wrote it",
   "docs.sources": THE_GATEWAYS,
   "dtmf.received": "a tone the caller keyed; an app that reads a menu takes it with call.on",

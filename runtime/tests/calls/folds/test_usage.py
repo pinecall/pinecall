@@ -141,6 +141,31 @@ def test_a_score_nobody_judged_costs_nothing_although_its_cost_is_null() -> None
     assert usage_row(metered(9, "dental", "call.score", nobody)).used.cost_usd == 0.0
 
 
+def test_a_flows_model_counts_one_message_its_tokens_and_its_cost_and_nothing_else() -> None:
+    """An extract step asks a model outside a call: one written turn, as a chat's, and the month's spend."""
+    spent: JsonObject = {
+        "kind": "extract",
+        "app": "front-desk",
+        "flow": "notice",
+        "run": "run_8f4a2c",
+        "env": "sandbox",
+        "turns": 1,
+        "usage": [
+            {
+                "type": "llm_usage",
+                "provider": "google",
+                "model": "gemini-3.5-flash-lite",
+                "input_tokens": 3080,
+                "output_tokens": 60,
+            }
+        ],
+        "cost": {"usd": 0.0011, "rows": [], "unpriced": []},
+    }
+    used = usage_row(metered(9, "dental", "model.spent", spent)).used
+    assert (used.messages, used.input_tokens, used.output_tokens, used.cost_usd) == (1, 3080, 60, 0.0011)
+    assert (used.calls, used.minutes, used.evals, used.simulations) == (0, 0.0, 0, 0)
+
+
 def test_a_log_nobody_claimed_is_filed_as_unowned_rather_than_dropped() -> None:
     assert usage_row(metered(1, None, "call.summary", a_summary([]))).org == UNOWNED
 
@@ -168,8 +193,8 @@ def test_totals_add_up_per_org_and_count_a_call_once_for_its_summary() -> None:
     assert (totals["dental"].evals, totals["taller"].evals) == (2, 0)
 
 
-def test_the_metered_types_are_the_summary_the_score_and_a_try_and_nothing_else() -> None:
-    assert METERED_TYPES == ("call.summary", "call.score", "evals.spent")
+def test_the_metered_types_are_the_summary_the_score_a_try_and_a_flows_model_and_nothing_else() -> None:
+    assert METERED_TYPES == ("call.summary", "call.score", "evals.spent", "model.spent")
 
 
 def test_a_summary_whose_call_ran_on_the_boxs_key_counts_its_minutes_as_lent_and_one_on_its_own_keys_none() -> None:

@@ -16,6 +16,7 @@ export class KeptApp {
   /** What a text step is answered: it is over as it is written. */
   texted: unknown = { sent: true, call: "call_text", from: "+14155550134" };
   templated: unknown = { sent: true, simulated: true, message_id: null, from: null };
+  extracted: unknown = { data: { phone: "+541131258777", name: "Soledad" } };
   /** What a call told to take another agent's stages is answered. */
   staged = 202;
   /** When set, every write of a step fails with it. */
@@ -85,6 +86,7 @@ export class KeptApp {
       else if (kind === "call" && this.refuses !== undefined) Object.assign(step, { over: true, result: this.refuses });
       else if (kind === "text") Object.assign(step, { over: true, result: this.texted });
       else if (kind === "template") Object.assign(step, { over: true, result: this.templated });
+      else if (kind === "extract") Object.assign(step, { over: true, result: this.extracted });
       else run.status = WAITS[kind]!;
       if (kind === "emit") this.send(String(step.asked["name"]), step.asked["data"] as Record<string, unknown>);
       run.steps.push(step);

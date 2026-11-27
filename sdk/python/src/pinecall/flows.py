@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Literal, TypeVar, cast
 
 import httpx
+from pydantic import BaseModel
 
 from pinecall import _app_work, _config
 from pinecall._app_work import AppDoor, KeptRun, StepKind
@@ -26,8 +27,20 @@ Body = Callable[[JsonObject, "Step"], Awaitable[object]]
 """The body of a flow: `async def`, of what started it and its steps."""
 
 
+ModelT = TypeVar("ModelT", bound=BaseModel)
+
+
 class StepUnwritten(PinecallError):
     """A step could not be written: the run stays as it was, and the gateway hands it out again."""
+
+
+class ExtractRefused(PinecallError):
+    """A model read nothing into the schema: no key ran it, no messages were left, or no answer."""
+
+    def __init__(self, refused: str, message: str) -> None:
+        """What refused it, and why."""
+        super().__init__(message)
+        self.refused = refused
 
 
 class FlowChanged(PinecallError):
@@ -290,6 +303,42 @@ class Step:
             from_=cast("str | None", said.get("from")),
             **cast("dict[str, str | None]", known),
         )
+
+    async def extract(
+        self,
+        text: str,
+        schema: type[ModelT] | JsonObject,
+        *,
+        agent: type | str,
+        instructions: str | None = None,
+        model: str | None = None,
+    ) -> ModelT | JsonObject:
+        """Have a model read words into an object, outside any call, on the agent's account.
+
+        `schema` is a pydantic model (the answer is read into it) or a JSON Schema of an object.
+        Nothing is listed among the calls; the request counts as one written turn. ExtractRefused
+        when nothing read it: no key ran the model, no messages were left, or it answered not.
+        """
+        cls = _config.agent_named(agent) if isinstance(agent, str) else agent
+        slug = None if cls is None else self._slug_of(cls)
+        if slug is None:
+            named = agent if isinstance(agent, str) else agent.__name__
+            raise DeclarationRefused(f"{self._of.name}: {named} is no agent this process serves")
+        shape = (
+            schema if isinstance(schema, dict) else cast("JsonObject", schema.model_json_schema())
+        )
+        asked: JsonObject = {"agent": slug, "text": text, "schema": shape}
+        if instructions is not None:
+            asked["instructions"] = instructions
+        if model is not None:
+            asked["model"] = model
+        said = cast("JsonObject", await self._waited("extract", asked) or {})
+        data = said.get("data")
+        if not isinstance(data, dict):
+            raise ExtractRefused(
+                str(said.get("refused") or "unanswered"), str(said.get("message") or "nothing read")
+            )
+        return cast("JsonObject", data) if isinstance(schema, dict) else schema.model_validate(data)
 
     async def wait_for(
         self, event: str, *, match: JsonObject | None = None, within: str | None = None

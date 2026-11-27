@@ -31,6 +31,18 @@ that emails reach the box; `DELETE /v1/numbers/{address}?channel=email` lets it 
 read no more. A number and an address are told apart by the `@`: every door that names a number
 takes an address the same way.
 
+## An address an app reads
+
+`{…, app: "<the app's name>"}` on `POST /v1/numbers` (the channel `email` alone) routes the address
+to an app instead of to its agent's conversations: each email is the app's event `mail.received`
+([flows.md](flows.md)) and opens no call. It is `{to, from, from_name, subject, text, message_id, date}`:
+the email's words read whole (quotes and all, the HTML part as text when there is no plain one; 12000
+characters at most), its `Message-ID`, and its `Date` as ISO 8601 (null when it says none that reads).
+Nothing is filtered but the mailbox's own emails and an empty one: a portal's notice or an order is
+written by a machine, and the app's flow is what reads it (an `extract` step asks a model what it says,
+and a `template` or a `text` writes to the person it names). `GET /v1/numbers` names the app of each
+address that has one (`app`); bringing the address again with no `app` gives it back to its agent.
+
 ## How the inbox is read
 
 Every gateway passes over the routed mailboxes every 20 s, and each mailbox is read by one gateway at

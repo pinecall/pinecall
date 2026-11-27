@@ -11,6 +11,7 @@ from runtime.calls import service as calls
 from runtime.calls.log.store import Store
 from runtime.calls.models import Opener
 from runtime.enums import Env
+from runtime.kit.text import JsonObject
 from runtime.kit.time import month_of
 from tests.calls.factories import a_summary
 from tests.conftest import Tenant, Ticking, needs_the_database
@@ -75,3 +76,31 @@ async def test_a_rebuild_counts_a_written_call_as_the_triggers_did(
     async with sessions() as session:
         rebuilt = await usage.get_usage(session, tenant.org, Env.sandbox, this_month)
     assert (rebuilt.calls, rebuilt.minutes, rebuilt.messages) == (2, 2.0, 8)
+
+
+@needs_the_database
+async def test_a_flows_model_spends_one_message_its_tokens_and_its_cost_on_the_agents_log(
+    sessions: async_sessionmaker[AsyncSession], store: Store, tenant: Tenant, agent: str, this_month: date
+) -> None:
+    """An extract step's request is written on the agent's own log, whose head names no env: its data says it."""
+    async with sessions.begin() as session:
+        await calls.claim_agent_log(session, agent, tenant.org)
+    usage_rows = [
+        {"type": "llm_usage", "provider": "google", "model": "flash-lite", "input_tokens": 3080, "output_tokens": 60}
+    ]
+    spent: JsonObject = {
+        "kind": "extract",
+        "app": "front-desk-app",
+        "flow": "notice",
+        "run": "run_8f4a2c",
+        "env": "sandbox",
+        "turns": 1,
+        "usage": usage_rows,
+        "cost": {"usd": 0.0011, "rows": [], "unpriced": []},
+    }
+    await store.write("entry", None, agent, "model.spent", spent)
+    await store.writer.drain()
+    async with sessions() as session:
+        used = await usage.get_usage(session, tenant.org, Env.sandbox, this_month)
+    assert (used.calls, used.minutes, used.messages, used.llm_tokens) == (0, 0.0, 1, 3140)
+    assert used.cost_usd == pytest.approx(0.0011)

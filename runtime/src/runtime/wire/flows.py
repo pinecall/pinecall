@@ -24,6 +24,14 @@ A_TEMPLATE_ASKS = (
     "a template step asks {agent, to, template, language, variables?}: the agent that writes, the number in "
     "+E.164, the template approved at Meta and its language's code, and what fills its body in order"
 )
+A_EXTRACT_ASKS = (
+    "an extract step asks {agent, text, schema, instructions?, model?}: the agent whose account the model runs on, the "
+    "words to read, the JSON Schema of the object to give back (type object, with properties), what to look for, and "
+    "a model as vendor/model"
+)
+# What one extraction reads at most: a forwarded notice or an email, never a book. The journal holds the
+# step whole, so the words are bounded below what a step may carry.
+LONGEST_TEXT = 12000
 
 
 def fit(given: JsonObject) -> JsonObject:
@@ -113,6 +121,24 @@ class TemplateStep(_Asked):
     metadata: Data = Field(default_factory=dict[str, Json])
 
 
+def _an_object_schema(given: JsonObject) -> JsonObject:
+    if given.get("type") != "object" or not isinstance(given.get("properties"), dict) or not given["properties"]:
+        raise ValueError("the schema is a JSON Schema of an object: type object, with its properties")
+    return given
+
+
+class ExtractStep(_Asked):
+    """`extract` asks `{agent, text, schema, instructions?, model?}`: a model reads the words into an object."""
+
+    agent: str
+    text: str = Field(min_length=1, max_length=LONGEST_TEXT)
+    # `schema` itself is a name pydantic's models keep for their own.
+    shape: Annotated[JsonObject, AfterValidator(_an_object_schema)] = Field(alias="schema")
+    instructions: Words = None
+    # vendor/model, as an agent names its model; none is the platform's own for a written turn.
+    model: Words = None
+
+
 class EmitStep(_Asked):
     """`emit` asks `{name, data?}`: an event sent to the run's own app."""
 
@@ -126,7 +152,7 @@ class RunStep(WireModel):
     result: Json = None
 
 
-type Step = SleepStep | WaitStep | CallStep | RunStep | EmitStep | TextStep | TemplateStep
+type Step = SleepStep | WaitStep | CallStep | RunStep | EmitStep | TextStep | TemplateStep | ExtractStep
 
 
 # What it asks is read after the journal was looked at (`flows.service.write_step`), never as the body
@@ -157,5 +183,7 @@ class StepSent(WireModel):
                 return TextStep.parse(self.asked, A_TEXT_ASKS)
             case StepKind.template:
                 return TemplateStep.parse(self.asked, A_TEMPLATE_ASKS)
+            case StepKind.extract:
+                return ExtractStep.parse(self.asked, A_EXTRACT_ASKS)
             case StepKind.run:
                 return RunStep(result=self.result)

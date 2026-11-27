@@ -105,6 +105,7 @@ export class VoiceApp {
   readonly #lines: Line[] = [];
   #silence: AgentOptions["idle"] | undefined;
   #page: Page | undefined;
+  readonly #held: Ctor[] = [];
   readonly #rules: string[] = [];
   readonly #hearing = new Map<string, Hearing[]>();
   readonly #starting = new Map<string, Flow[]>();
@@ -202,6 +203,16 @@ export class VoiceApp {
     }
   }
 
+  /**
+   * An agent the app holds with no line of its own: one its flows call, text or read with
+   * (`step.call(number, Reminder)`, `step.extract(text, Notice, { agent: Reader })`). `app.agent(Reader)`
+   */
+  agent(ctor: Ctor): this {
+    if (typeof ctor !== "function" || !isAnAgent(ctor)) throw new DeclarationRefused(NOT_AN_AGENT);
+    if (!this.#held.includes(ctor)) this.#held.push(ctor);
+    return this;
+  }
+
   /** The app's rules, in the order they were written. */
   get rules(): readonly string[] {
     return this.#rules;
@@ -245,7 +256,7 @@ export class VoiceApp {
 
   /** Every agent class the app names, once each. */
   agents(): Ctor[] {
-    return [...new Set([...this.#lines.flatMap((line) => [line.answers, ...line.team]), ...(this.#page === undefined ? [] : [this.#page.answers])])];
+    return [...new Set([...this.#lines.flatMap((line) => [line.answers, ...line.team]), ...(this.#page === undefined ? [] : [this.#page.answers]), ...this.#held])];
   }
 
   /** The function that picks who serves each call of the line `ctor` is bound to; undefined when the line names its agent. */

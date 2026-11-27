@@ -98,6 +98,7 @@ class ConformanceTest < Minitest::Test
     "confirm.declined" => THE_GATEWAYS,
     "credits.exhausted" => THE_GATEWAYS,
     "evals.spent" => THE_GATEWAYS,
+    "model.spent" => THE_GATEWAYS,
     "spend.unusual" => THE_GATEWAYS,
     "vendor.failed" => THE_GATEWAYS,
     "turn.detection" => THE_GATEWAYS,

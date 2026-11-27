@@ -34,6 +34,8 @@ class NumberRow(Row):
     via: str | None = None
     # The org's account the number lives in (GET /v1/carriers names it); null for one with none.
     account: str | None = None
+    # An address read by this app's flows (`mail.received`); null: its agent answers it.
+    app: str | None = None
 
 
 class PathStep(Row):
@@ -66,6 +68,9 @@ class ImportNumberRequest(Schema):
     # A hooked number's carrier from the box's catalog (GET /v1/carriers/catalog).
     via: str | None = None
     move: bool = False
+    # An address read by this app's flows: its emails are the app's event `mail.received`, and open no
+    # conversation. The app's name, as its process names itself (`voiceApp("…")`).
+    app: str | None = Field(default=None, pattern=r"^[a-z0-9][a-z0-9-]{0,62}$")
 
 
 class BuyNumberRequest(Schema):

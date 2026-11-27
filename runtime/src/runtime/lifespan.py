@@ -30,6 +30,7 @@ from runtime.evals.service.simulations import ChatSimulations
 from runtime.fleet import service as fleet
 from runtime.fleet.service.offers import Offering
 from runtime.fleet.service.roster import Roster
+from runtime.flows import service as flows
 from runtime.flows import tasks as flows_tasks
 from runtime.handles import THE_INTERNET, Handles, Outside
 from runtime.hosting import service as hosting
@@ -154,7 +155,7 @@ async def lifespan(app: FastAPI, outside: Outside = THE_INTERNET) -> AsyncGenera
         threads = await builders.build_threads(live, stack)
         loops.start(live_tasks.reap.bind(live))
         loops.start(live_tasks.adopt.bind(live))
-        loops.start(live_tasks.read_inboxes.bind(live, threads))
+        loops.start(live_tasks.read_inboxes.bind(live, threads, partial(flows.receive_mail, sessions)))
         live.calls.tell_when_gone(stranded.GONE_AFTER_S, partial(stranded.hand_on_cut, live, app.state.closing))
         loops.start(alerts_tasks.sweep_newborns.bind(sessions, alerting, list_ended_calls))
         sip_names = builders.read_sip_names(handles.settings)

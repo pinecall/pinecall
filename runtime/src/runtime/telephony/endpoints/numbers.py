@@ -72,6 +72,7 @@ async def import_number(
         networks=tuple(body.networks),
         via=body.via,
         move=body.move,
+        app=body.app,
     )
     hook = number_hook.plan_import if dry_run else number_hook.import_number
     return schemas.ImportNumberResponse.of(await hook(session, vault, http, servers, names, wanted))

@@ -89,3 +89,16 @@ def test_an_email_with_html_alone_is_read_as_its_words_and_one_with_no_id_takes_
     read = email_message.read_email(message.as_bytes(), MAILBOX, FALLBACK)
     assert read is not None
     assert (read.text, read.message_id, read.subject) == ("Hola\n\n¿Abren?", FALLBACK, None)
+
+
+def test_an_email_an_app_reads_is_read_whole_with_its_date_and_the_mailboxs_own_is_not() -> None:
+    """A forwarded notice keeps what is under its header, and a machine's email is read as a person's."""
+    forwarded = "---------- Forwarded message ---------\nDe: Tokko <notifier@tokkobroker.com>\nHay una nueva consulta."
+    raw = an_email(forwarded, Date="Thu, 27 Nov 2026 17:45:39 -0300", Precedence="bulk")
+    mail = email_message.read_mail(raw, MAILBOX, FALLBACK, 12000)
+    assert mail is not None
+    assert (mail.sender, mail.sender_name, mail.subject) == ("ana@example.org", "Ana Pérez", "Horarios")
+    assert mail.text == forwarded and mail.date == "2026-11-27T17:45:39-03:00"
+    assert email_message.read_mail(an_email(From=MAILBOX), MAILBOX, FALLBACK, 12000) is None
+    cut = email_message.read_mail(an_email("x" * 50), MAILBOX, FALLBACK, 10)
+    assert cut is not None and cut.text == "x" * 10
