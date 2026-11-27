@@ -81,7 +81,7 @@ async def send_text(http: httpx.AsyncClient, token: str, page_id: str, channel: 
     """Send the text to the contact from the Page, on Messenger or on its Instagram; Meta's refusal in its words."""
     for part in cut_in_parts(text, LONGEST_TEXT[channel]):
         body = {"recipient": {"id": to}, "messaging_type": "RESPONSE", "message": {"text": part}}
-        await ask_graph(http, "POST", f"{page_id}/messages", token, json=body, said_as=_said(channel))
+        await ask_graph(http, "POST", f"{page_id}/messages", token, json=body, said_as=_name_of_channel(channel))
 
 
 # Meta shows the contact their message was seen, then that a reply is being written
@@ -92,7 +92,7 @@ async def mark_seen(
     """Tell the contact their message was seen, and that a reply is being written when one is."""
     for action in ("mark_seen", "typing_on") if typing else ("mark_seen",):
         body = {"recipient": {"id": to}, "sender_action": action}
-        await ask_graph(http, "POST", f"{page_id}/messages", token, json=body, said_as=_said(channel))
+        await ask_graph(http, "POST", f"{page_id}/messages", token, json=body, said_as=_name_of_channel(channel))
 
 
 # What a Page may read of who writes to it: their name on Messenger, their name or username on Instagram
@@ -100,7 +100,7 @@ async def mark_seen(
 async def name_of(http: httpx.AsyncClient, token: str, channel: Channel, contact: str) -> str | None:
     """The name the contact goes by at Meta, or None when Meta says none."""
     fields = "name,username" if channel is Channel.instagram else "first_name,last_name"
-    answer = await ask_graph(http, "GET", contact, token, params={"fields": fields}, said_as=_said(channel))
+    answer = await ask_graph(http, "GET", contact, token, params={"fields": fields}, said_as=_name_of_channel(channel))
     try:
         person = _Person.model_validate_json(answer.content)
     except PydanticValidationError:
@@ -125,5 +125,5 @@ async def read_attachment(http: httpx.AsyncClient, url: str) -> Media:
     return Media(data=answer.content, mime_type=answer.headers.get("content-type", ""))
 
 
-def _said(channel: Channel) -> str:
+def _name_of_channel(channel: Channel) -> str:
     return "Instagram" if channel is Channel.instagram else "Messenger"
