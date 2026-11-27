@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from pinecall import _app_work, _config
 from pinecall._app_work import AppDoor, KeptRun, StepKind
+from pinecall._step_answers import Called, ExtractRefused, Templated, Texted
 from pinecall.errors import DeclarationRefused, PinecallError
 from pinecall.wire._names import JsonObject
 
@@ -34,59 +35,12 @@ class StepUnwritten(PinecallError):
     """A step could not be written: the run stays as it was, and the gateway hands it out again."""
 
 
-class ExtractRefused(PinecallError):
-    """A model read nothing into the schema: no key ran it, no messages were left, or no answer."""
-
-    def __init__(self, refused: str, message: str) -> None:
-        """What refused it, and why."""
-        super().__init__(message)
-        self.refused = refused
-
-
 class FlowChanged(PinecallError):
     """The function asked for another step than its journal holds there: its code changed."""
 
 
 class _Parked(Exception):
     pass
-
-
-@dataclass(frozen=True)
-class Called:
-    """What a call a flow placed came to; `refused` names why nothing rang."""
-
-    answered: bool
-    reason: str | None = None
-    call: str | None = None
-    refused: str | None = None
-    message: str | None = None
-
-
-@dataclass(frozen=True)
-class Texted:
-    """What a text a flow sent came to; `refused` names why nothing was sent."""
-
-    sent: bool
-    call: str | None = None
-    from_: str | None = None
-    refused: str | None = None
-    message: str | None = None
-
-
-@dataclass(frozen=True)
-class Templated:
-    """What a WhatsApp template a flow sent came to.
-
-    `simulated`: the sandbox, where it is answered and never sent. `refused` names why none was.
-    """
-
-    sent: bool
-    simulated: bool = False
-    message_id: str | None = None
-    from_: str | None = None
-    call: str | None = None
-    refused: str | None = None
-    message: str | None = None
 
 
 @dataclass

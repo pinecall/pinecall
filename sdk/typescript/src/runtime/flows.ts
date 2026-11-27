@@ -3,7 +3,8 @@
 import { cancelRun, endRun, readRun, runsOf, startRun, writeStep, type AppDoor, type JournalStep, type KeptRun } from "../client/app-work.js";
 
 import type { Agent } from "../agent/agent.js";
-import { DeclarationRefused, jsonSchemaOf } from "../agent/tools.js";
+import { jsonSchemaOf } from "../agent/schemas.js";
+import { DeclarationRefused } from "../agent/tools.js";
 
 type Ctor = new () => Agent;
 type Data = Record<string, unknown>;
