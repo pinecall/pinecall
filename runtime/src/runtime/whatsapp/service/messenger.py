@@ -96,6 +96,27 @@ async def app_of(http: httpx.AsyncClient, token: str) -> str:
         raise UpstreamError("Messenger: Meta named no app for this token", vendor=VENDOR) from None
 
 
+class _Scopes(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="ignore")
+    scopes: list[str] = []
+
+
+class _Debugged(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="ignore")
+    data: _Scopes = _Scopes()
+
+
+async def scopes_of(http: httpx.AsyncClient, app_id: str, app_secret: str, token: str) -> frozenset[str]:
+    """The permissions a Page token carries, asked of Meta with the app's own token."""
+    answer = await ask_graph(
+        http, "GET", "debug_token", f"{app_id}|{app_secret}", params={"input_token": token}, said_as="Messenger"
+    )
+    try:
+        return frozenset(_Debugged.model_validate_json(answer.content).data.scopes)
+    except PydanticValidationError:
+        raise UpstreamError("Messenger: Meta said nothing of this token's permissions", vendor=VENDOR) from None
+
+
 # The app's own token is its id and its secret; Meta asks the callback's handshake there and then.
 async def subscribe_app(
     http: httpx.AsyncClient, app_id: str, app_secret: str, channel: Channel, callback_url: str, verify_token: str

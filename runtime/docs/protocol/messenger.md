@@ -17,8 +17,10 @@ the Graph API Explorer (docs.pinecall.io/integrations/messenger-and-instagram/, 
 every body Meta delivers for the Page and its Instagram account; `instagram_id` the Instagram
 professional account linked to the Page. As the Page is kept the gateway checks the token opens the
 Page's conversations (a refusal is `400` in Meta's words) and subscribes the Page to the app for
-`messages`, `messaging_postbacks`, `message_deliveries` and `message_reads`. The dashboard's token reads
-nothing of the Page: the Instagram account is the
+`messages`, `messaging_postbacks`, `message_deliveries` and `message_reads`. A Page brought with an
+Instagram account and a token without `instagram_basic` and `instagram_manage_messages` (Meta's
+`debug_token`, asked with the app's own token) is `400`, naming what it lacks: its Instagram replies
+would all be refused. The dashboard's token reads nothing of the Page: the Instagram account is the
 one the org says, and the account is named by its `label`. A token that may read the Page
 (`pages_read_engagement`) has Meta name both, and Meta's word wins. Bringing the Page again with a new
 token alone keeps its secret and its Instagram account. `GET /v1/carrier` and `/v1/carriers` answer a

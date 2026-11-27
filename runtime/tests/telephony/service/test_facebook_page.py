@@ -23,7 +23,12 @@ def a_page(*, app_secret: str = "the app's secret", instagram_id: str | None = N
     )
 
 
-def meta(*, refuses: bool = False, linked: bool = True, reads: bool = True) -> tuple[httpx.AsyncClient, list[str]]:
+FOR_BOTH = ["pages_messaging", "pages_read_engagement", "instagram_basic", "instagram_manage_messages"]
+
+
+def meta(
+    *, refuses: bool = False, linked: bool = True, reads: bool = True, scopes: list[str] | None = None
+) -> tuple[httpx.AsyncClient, list[str]]:
     """Meta's Graph for the Page: its conversations, its subscription, its name and Instagram where the token reads."""
     asked: list[str] = []
 
@@ -33,6 +38,10 @@ def meta(*, refuses: bool = False, linked: bool = True, reads: bool = True) -> t
             return httpx.Response(400, json={"error": {"message": "Invalid OAuth access token."}})
         if request.method == "POST":
             return httpx.Response(200, json={"success": True})
+        if request.url.path.endswith("/app"):
+            return httpx.Response(200, json={"id": "1392113999481103"})
+        if request.url.path.endswith("/debug_token"):
+            return httpx.Response(200, json={"data": {"scopes": FOR_BOTH if scopes is None else scopes}})
         if request.url.path.endswith("/conversations"):
             return httpx.Response(200, json={"data": []})
         if not reads:
@@ -78,11 +87,27 @@ async def test_a_page_confirmed_is_named_its_instagram_account_found_and_subscri
 
 async def test_a_dashboards_token_which_reads_nothing_of_the_page_keeps_the_page_as_it_was_brought() -> None:
     """Meta's dashboard gives a token with pages_messaging alone: it opens the conversations, and names nothing."""
+    http, asked = meta(reads=False, scopes=["pages_messaging"])
+    async with http:
+        confirmed = await a_page().confirm(http)
+    assert (confirmed.instagram_id, confirmed.label) == (None, "")
+    assert f"POST /v21.0/{PAGE}/subscribed_apps" in asked
+
+
+async def test_a_page_with_an_instagram_account_and_a_token_that_cannot_answer_it_is_refused() -> None:
+    """The dashboard's token answers Messenger alone: every Instagram reply would be refused at Meta, unsaid."""
+    http, _ = meta(reads=False, scopes=["pages_messaging"])
+    async with http:
+        with pytest.raises(ValidationError, match="lacks instagram_basic, instagram_manage_messages"):
+            await a_page(instagram_id=INSTAGRAM).confirm(http)
+
+
+async def test_a_page_with_an_instagram_account_and_a_token_for_both_is_kept() -> None:
     http, asked = meta(reads=False)
     async with http:
         confirmed = await a_page(instagram_id=INSTAGRAM).confirm(http)
-    assert (confirmed.instagram_id, confirmed.label) == (INSTAGRAM, "")
-    assert f"POST /v21.0/{PAGE}/subscribed_apps" in asked
+    assert confirmed.instagram_id == INSTAGRAM
+    assert "GET /v21.0/debug_token" in asked
 
 
 async def test_a_token_meta_does_not_open_the_page_with_is_refused_in_metas_words() -> None:

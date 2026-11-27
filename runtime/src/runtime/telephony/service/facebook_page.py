@@ -29,6 +29,9 @@ logger = logging.getLogger(__name__)
 
 KIND = "messenger"
 
+# What a Page token needs to read and answer the Instagram account linked to the Page.
+INSTAGRAM_SCOPES = frozenset({"instagram_basic", "instagram_manage_messages"})
+
 
 @dataclass(frozen=True, slots=True)
 class FacebookPage(Carrier):
@@ -128,10 +131,32 @@ class FacebookPage(Carrier):
             page = await meta.page_of(http, self.access_token, self.page_id)
         except UpstreamError:
             logger.info("Page %s: the token reads nothing of the Page, so it is kept as it was brought", self.page_id)
-            return self
-        return dataclasses.replace(
-            self, instagram_id=page.instagram_id or self.instagram_id, label=self.label or page.name
-        )
+            whole = self
+        else:
+            whole = dataclasses.replace(
+                self, instagram_id=page.instagram_id or self.instagram_id, label=self.label or page.name
+            )
+        if whole.instagram_id:
+            await whole.check_instagram(http)
+        return whole
+
+    # The token Meta's Messenger settings generate carries pages_messaging alone: it answers Messenger, and
+    # every Instagram reply would be refused at Meta, with nobody told (tried 2026-11-27).
+    async def check_instagram(self, http: httpx.AsyncClient) -> None:
+        """Refuse a Page with an Instagram account whose token cannot answer it."""
+        try:
+            app = await meta.app_of(http, self.access_token)
+            scopes = await meta.scopes_of(http, app, self.app_secret, self.access_token)
+        except UpstreamError as refused:
+            raise ValidationError(f"Meta does not say what Page {self.page_id}'s token may do: {refused}") from refused
+        missing = sorted(INSTAGRAM_SCOPES - scopes)
+        if missing:
+            raise ValidationError(
+                f"Page {self.page_id}'s token cannot answer Instagram account {self.instagram_id}: it lacks"
+                f" {', '.join(missing)}. The token Meta's Messenger settings generate answers Messenger alone;"
+                " one for both is made in the Graph API Explorer"
+                " (docs.pinecall.io/integrations/messenger-and-instagram/, step 4)"
+            )
 
     # The app's webhook is given its fields here, not in Meta's dashboard: verifying the callback there
     # chooses none, and then Meta delivers nothing. Its Instagram's too, where the Page has one.

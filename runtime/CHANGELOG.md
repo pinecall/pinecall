@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+- **A Page with an Instagram account and a token that cannot answer it is refused.** `PUT /v1/carrier`
+  with `kind: "messenger"` asks Meta what the token may do (`debug_token`, with the app's own token), and a
+  Page with an `instagram_id` whose token lacks `instagram_basic` or `instagram_manage_messages` is `400`,
+  naming what it lacks. The token Meta's Messenger settings generate answers Messenger alone: every Instagram
+  reply would have been refused at Meta, with nobody told.
+
 ## 0.11.54 — Messenger and Instagram are channels an agent answers; a WhatsApp template from every surface, its words opening the conversation (2026-11-27)
 - **A website's chat is written, even in a room.** A row's `spoken` (and the list's `medium` filter, and the inbox's pills)
   meant a room opened; every web visit opens one, so a chat read as a web call. `spoken` is now a phone call or a web visit

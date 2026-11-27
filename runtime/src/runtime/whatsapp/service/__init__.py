@@ -16,6 +16,7 @@ from runtime.whatsapp.service.messenger import (
     open_conversations,
     page_of,
     read_attachment,
+    scopes_of,
     subscribe_app,
     subscribe_page,
 )
@@ -51,6 +52,7 @@ __all__ = [
     "read_attachment",
     "read_media",
     "read_once",
+    "scopes_of",
     "send_on_messenger",
     "send_template",
     "send_text",
