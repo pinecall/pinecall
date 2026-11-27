@@ -1,5 +1,6 @@
 """How a written conversation reaches its contact: WhatsApp, Messenger and Instagram through Meta, SMS, email."""
 
+import dataclasses
 import logging
 from dataclasses import dataclass
 from typing import Protocol
@@ -234,3 +235,22 @@ async def way_to(
         )
     token = await telephony.meta_token_for(session_, live.vault, route.org, inbound.phone_number_id)
     return None if token is None else ByWhatsapp(live.http, token, Ears(live, Scope(route.org, route.env), route.agent))
+
+
+# Meta names a Messenger or Instagram contact by an id alone: their name is asked of the Page once, when
+# their conversation opens, with no connection held while Meta answers. A name Meta does not give (an
+# Instagram account that hides it, a token that lacks the permission) leaves them unnamed.
+async def name_contact(live: LiveParts, route: RouteRow, inbound: whatsapp.Inbound) -> whatsapp.Inbound:
+    """The message with its contact's name, asked of the Page; as it was when Meta names them already or says none."""
+    if inbound.name is not None or not inbound.channel.is_by_meta_id:
+        return inbound
+    async with live.sessions.begin() as session_:
+        token = await telephony.page_token_for(session_, live.vault, route.org, inbound.phone_number_id)
+    if token is None:
+        return inbound
+    try:
+        name = await whatsapp.name_of(live.http, token, inbound.channel, inbound.wa_id)
+    except PinecallError:
+        logger.info("%s: Meta gave no name for a contact of %s", inbound.channel.value, inbound.number)
+        return inbound
+    return dataclasses.replace(inbound, name=name)

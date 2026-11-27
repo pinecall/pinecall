@@ -76,10 +76,14 @@ def test_an_agent_that_writes_its_own_rules_for_a_channel_is_told_those_and_the_
     assert prompt.ON_SMS in prompt.identity(agent, {"call": {"channel": "sms", "medium": "text"}})
     assert prompt.SPOKEN in prompt.identity(agent, {"call": {"channel": "phone", "medium": "voice"}})
     assert prompt.ON_EMAIL in prompt.identity(agent, {"call": {"channel": "email", "medium": "text"}})
+    assert prompt.ON_MESSENGER in prompt.identity(agent, {"call": {"channel": "messenger", "medium": "text"}})
+    assert prompt.ON_INSTAGRAM in prompt.identity(agent, {"call": {"channel": "instagram", "medium": "text"}})
     assert prompt.list_channel_rules() == {
         "voice": prompt.SPOKEN,
         "chat": prompt.ON_A_WEBSITE,
         "whatsapp": prompt.ON_WHATSAPP,
         "sms": prompt.ON_SMS,
         "email": prompt.ON_EMAIL,
+        "messenger": prompt.ON_MESSENGER,
+        "instagram": prompt.ON_INSTAGRAM,
     }

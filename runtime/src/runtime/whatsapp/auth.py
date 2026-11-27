@@ -9,7 +9,7 @@ from runtime.handles import TheSessions, TheSettings, TheVault
 from runtime.kit.http import read_capped_body
 from runtime.telephony import service as telephony
 from runtime.telephony.auth import NumbersKey
-from runtime.whatsapp.service import webhook
+from runtime.whatsapp.service import messaging, webhook
 
 
 # Read in a transaction of its own, over before a message is read: each claim of a message is a
@@ -32,12 +32,14 @@ async def read_signed_delivery(
     """What a body the box's app signed carries, or an org's own; 403 for a body neither did."""
     body = await read_capped_body(request, webhook.LONGEST_WEBHOOK, "a webhook's body")
     header = request.headers.get(webhook.SIGNATURE_HEADER)
+    # A Page's body (Messenger, Instagram) is signed by an org's own app alone: the box answers no Page.
+    page = messaging.is_a_page_body(body)
     own: list[webhook.OwnApp] = []
-    if box is None or not webhook.is_signed(box.app_secret, body, header):
-        named = webhook.numbers_named_in(body) | webhook.accounts_named_in(body)
+    if page or box is None or not webhook.is_signed(box.app_secret, body, header):
+        named = messaging.accounts_named_in(body) if page else webhook.numbers_named_in(body)
         async with sessions.begin() as session:
             own = await telephony.list_own_meta_apps(session, vault, named) if named else []
-    return webhook.read_signed(box, own, body, header)
+    return messaging.read_signed(own, body, header) if page else webhook.read_signed(box, own, body, header)
 
 
 SignedDelivery = Annotated[webhook.Delivery, Depends(read_signed_delivery)]

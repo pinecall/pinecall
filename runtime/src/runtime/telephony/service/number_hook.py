@@ -14,7 +14,7 @@ from runtime.enums import Channel, RouteOrigin
 from runtime.exceptions import Conflict, ValidationError
 from runtime.fleet import service as fleet
 from runtime.kit.crypto import Vault
-from runtime.kit.text import parse_e164, parse_email, parse_meta_id
+from runtime.kit.text import parse_address
 from runtime.kit.time import now
 from runtime.livekit import Servers
 from runtime.scoping import box_wide
@@ -191,16 +191,12 @@ async def survey_import(
     origin: RouteOrigin | None = None,
 ) -> Survey:
     """Everything importing a number needs, read before anything is written."""
-    number = _address_of(wanted)
-    if not wanted.channel.has_a_number:
-        raise ValidationError(
-            f"a number is imported to answer phone, whatsapp, sms, email, messenger or instagram, not {wanted.channel}"
-        )
-    if wanted.channel.is_by_meta_id and (wanted.hooked or wanted.account is None):
-        raise ValidationError(
-            f"{wanted.channel} is routed through the Facebook Page it is, or the Page its Instagram account is "
-            "linked to: bring the Page (`pinecall carriers add messenger`) and import with --account <the Page's id>"
-        )
+    channel = wanted.channel
+    number = parse_address(wanted.number, by_email=channel.is_by_email, by_meta_id=channel.is_by_meta_id)
+    if not channel.has_a_number:
+        raise ValidationError(f"a number is imported to answer a channel of its own, not {channel}")
+    if channel.is_by_meta_id and (wanted.hooked or wanted.account is None):
+        raise ValidationError(f"{channel} answers through its Facebook Page: import it with --account <the Page's id>")
     if wanted.channel is Channel.sms and wanted.hooked:
         raise ValidationError(
             "an SMS number is pointed here by this box, through the Twilio account it lives in: import it, "
@@ -498,13 +494,3 @@ async def _hook(survey: Survey, steps: Sequence[Step]) -> Plan:
         if not step.stands:
             await step.write()
     return plan
-
-
-# What a route answers at, as its channel names it: an email address, Meta's id of a Page or an
-# Instagram account, or a phone number.
-def _address_of(wanted: NumberImport) -> str:
-    if wanted.channel.is_by_email:
-        return parse_email(wanted.number)
-    if wanted.channel.is_by_meta_id:
-        return parse_meta_id(wanted.number)
-    return parse_e164(wanted.number)

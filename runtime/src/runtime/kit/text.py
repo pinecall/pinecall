@@ -95,9 +95,11 @@ def parse_meta_id(written: str) -> str:
 
 # Meta's id of an account is digits alone, as a number typed without its + would be: it is taken as one
 # only where the channel asked is one whose routes answer at such ids.
-def parse_address(written: str, *, by_meta_id: bool = False) -> str:
+def parse_address(written: str, *, by_email: bool = False, by_meta_id: bool = False) -> str:
     """A route's address or a contact: an email, Meta's id of a contact (or an account, asked so), else a number."""
     data = written.strip()
+    if by_email:
+        return parse_email(data)
     if A_META_CALLER.match(data) or (by_meta_id and A_META_ID.match(data)):
         return data
     if by_meta_id:

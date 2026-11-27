@@ -46,9 +46,9 @@ The org's numbers and the agent each reaches; the numbers its carrier accounts o
 | parameter | takes | | what it is |
 |---|---|---|---|
 | `action` | `list` · `available` · `import` · `buy` | required | list the org's numbers; available is what its carrier accounts own; import points one of them at an agent; buy gets a new one on the deployment's account — import and buy are a dry run unless dry_run is false |
-| `number` | text |  | `import`: the number, in +E.164; for `email`, the mailbox's address |
+| `number` | text |  | `import`: the number, in +E.164; for `email`, the mailbox's address; for `messenger` and `instagram`, Meta's id of the Page or of the Instagram account linked to it, with `account` the Page's id |
 | `agent` | text |  | `import`, `buy`: the agent that answers it |
-| `channel` | `phone` · `whatsapp` · `sms` · `email` |  | `import`, `buy`: phone unless said. One number answers on several: import it once a channel. `sms` is a number of a Twilio account, whose messages Twilio then posts to Pinecall; `email` is a mailbox account's address, whose inbox Pinecall reads |
+| `channel` | `phone` · `whatsapp` · `sms` · `email` · `messenger` · `instagram` |  | `import`, `buy`: phone unless said. One number answers on several: import it once a channel. `sms` is a number of a Twilio account, whose messages Twilio then posts to Pinecall; `email` is a mailbox account's address, whose inbox Pinecall reads |
 | `account` | text |  | `available`, `import`: the carrier account the number lives in, when the org has several (`carriers list` names them) |
 | `move` | true or false |  | `import`: take the number off the trunk it is on now (another environment's, or another agent's), as a 409 naming that trunk asks |
 | `country` | text |  | `buy`: the country, two letters (ES, US) |

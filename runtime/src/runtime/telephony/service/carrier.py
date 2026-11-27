@@ -144,8 +144,8 @@ class Carrier(Protocol):
         """Refuse an account its party does not open with what was given."""
         ...
 
-    async def confirmed(self, http: httpx.AsyncClient) -> Self:
-        """The account as its vendor confirms it: verified, with what the vendor says of it filled in."""
+    async def confirm(self, http: httpx.AsyncClient) -> Self:
+        """Confirm the account with its vendor: verified, and what the vendor says of it filled in."""
         await self.verify(http)
         return self
 

@@ -26,7 +26,7 @@ from runtime.telephony.repository import RouteRepository, RouteToWrite
 from runtime.telephony.service import accounts, sms
 from runtime.telephony.service.twilio import TwilioAccount
 from runtime.telephony.service.whatsapp_number import WhatsappNumber
-from runtime.whatsapp.service import webhook
+from runtime.whatsapp.service import messaging, webhook
 from runtime.whatsapp.service.webhook import Inbound, Receipt
 from runtime.wire.events import MessageStatus
 from tests.conftest import Tenant, needs_the_database, until
@@ -284,7 +284,7 @@ async def test_a_message_on_messenger_or_instagram_is_seen_read_and_answered_fro
     page = "1472943555898656"
     event = {"sender": {"id": "7001"}, "recipient": {"id": account}, "message": {"mid": "m_1", "text": "hola"}}
     body = json.dumps({"object": kind, "entry": [{"id": account, "messaging": [event]}]}).encode()
-    (message,) = webhook.messaging_in(body, {account: page}).messages
+    (message,) = messaging.messaging_in(body, {account: page}).messages
     seen: list[tuple[str, object]] = []
 
     def meta(request: httpx.Request) -> httpx.Response:

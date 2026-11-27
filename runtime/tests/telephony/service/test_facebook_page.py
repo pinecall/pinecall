@@ -62,7 +62,7 @@ async def test_a_page_with_no_app_secret_is_refused_before_meta_is_asked() -> No
 async def test_a_page_confirmed_is_named_its_instagram_account_found_and_subscribed_to_its_app() -> None:
     http, asked = meta()
     async with http:
-        confirmed = await a_page().confirmed(http)
+        confirmed = await a_page().confirm(http)
     assert (confirmed.instagram_id, confirmed.label) == (INSTAGRAM, "Pinecall Prueba")
     assert f"POST /v21.0/{PAGE}/subscribed_apps" in asked
 
@@ -71,7 +71,7 @@ async def test_a_token_meta_does_not_open_the_page_with_is_refused_in_metas_word
     http, _ = meta(refuses=True)
     async with http:
         with pytest.raises(ValidationError, match="Invalid OAuth access token"):
-            await a_page().confirmed(http)
+            await a_page().confirm(http)
 
 
 async def test_a_page_answers_messenger_at_its_id_and_instagram_at_its_linked_accounts() -> None:

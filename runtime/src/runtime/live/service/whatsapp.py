@@ -24,7 +24,7 @@ from runtime.live.peers import THREADS, ThreadKey
 from runtime.live.service import resuming, written
 from runtime.live.service.handed import hand, hand_receipt, message_of, receipt_of
 from runtime.live.service.opt_outs import Stop, refuses_messages, take_off, take_word
-from runtime.live.service.replies import FirstSaid, Reaches, way_to
+from runtime.live.service.replies import FirstSaid, Reaches, name_contact, way_to
 from runtime.live.service.resuming import OVER, find_earlier
 from runtime.live.service.waiting import Waiting, keep_waiting, list_waiting, mark_taken
 from runtime.scoping import box_task
@@ -332,7 +332,7 @@ class Threads:
         self, registration: Registration, route: RouteRow, inbound: whatsapp.Inbound, first: FirstMessage | None = None
     ) -> OpenThread | None:
         live = self._live
-        inbound = await self._named(route, inbound)
+        inbound = await name_contact(live, route, inbound)
         async with live.sessions.begin() as session_:
             reaches = await way_to(session_, live, route, inbound, opens=first is not None)
             if reaches is None:
@@ -387,23 +387,6 @@ class Threads:
             route = await _find_route(session_, inbound)
         if route is not None:
             await self._read(route, inbound, handed=True)
-
-    # Meta names a Messenger or Instagram contact by an id alone: their name is asked of the Page once,
-    # when their conversation opens, with no connection held while Meta answers. A name Meta does not
-    # give (an Instagram account that hides it, a token that lacks the permission) leaves them unnamed.
-    async def _named(self, route: RouteRow, inbound: whatsapp.Inbound) -> whatsapp.Inbound:
-        if inbound.name is not None or not inbound.channel.is_by_meta_id:
-            return inbound
-        async with self._live.sessions.begin() as session_:
-            token = await telephony.page_token_for(session_, self._live.vault, route.org, inbound.phone_number_id)
-        if token is None:
-            return inbound
-        try:
-            name = await whatsapp.name_of(self._live.http, token, inbound.channel, inbound.wa_id)
-        except PinecallError:
-            logger.info("%s: Meta gave no name for a contact of %s", inbound.channel.value, inbound.number)
-            return inbound
-        return dataclasses.replace(inbound, name=name)
 
     # A conversation this process never saw is taken up from its log while it has idle time left.
     def _context(

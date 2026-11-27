@@ -109,8 +109,8 @@ class FacebookPage(Carrier):
     # Asked once, when the Page is brought: which Instagram account is linked to it, and the Page
     # subscribed to the org's app for its messages, so the org types nothing more at Meta than the webhook.
     @override
-    async def confirmed(self, http: httpx.AsyncClient) -> Self:
-        """The Page as Meta names it, its linked Instagram account filled in, and subscribed to the app."""
+    async def confirm(self, http: httpx.AsyncClient) -> Self:
+        """Confirm the Page with Meta: named, its linked Instagram account filled in, and subscribed to the app."""
         await self.verify(http)
         page = await self._page(http)
         try:

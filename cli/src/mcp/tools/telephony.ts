@@ -42,7 +42,7 @@ export const numbers = tool({
   description: "The org's numbers and the agent each reaches; the numbers its carrier accounts own; importing one, or buying one on the deployment's account, shown as steps before anything is written.",
   schema: {
     action: z.enum(["list", "available", "import", "buy"]).describe("list the org's numbers; available is what its carrier accounts own; import points one of them at an agent; buy gets a new one on the deployment's account — import and buy are a dry run unless dry_run is false"),
-    number: z.string().optional().describe("`import`: the number, in +E.164; for `email`, the mailbox's address"),
+    number: z.string().optional().describe("`import`: the number, in +E.164; for `email`, the mailbox's address; for `messenger` and `instagram`, Meta's id of the Page or of the Instagram account linked to it, with `account` the Page's id"),
     agent: z.string().optional().describe("`import`, `buy`: the agent that answers it"),
     channel: z.enum(["phone", "whatsapp", "sms", "email", "messenger", "instagram"]).optional().describe("`import`, `buy`: phone unless said. One number answers on several: import it once a channel. `sms` is a number of a Twilio account, whose messages Twilio then posts to Pinecall; `email` is a mailbox account's address, whose inbox Pinecall reads"),
     account: z.string().optional().describe("`available`, `import`: the carrier account the number lives in, when the org has several (`carriers list` names them)"),
