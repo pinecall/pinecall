@@ -10,13 +10,14 @@ from runtime.telephony.auth import (
     DryRun,
     NumbersKey,
     TheAgentsHeld,
+    TheMailHost,
     TheNumber,
     TheNumberInEitherEnv,
     TheSipNames,
     check_agent,
 )
 from runtime.telephony.schemas import numbers as schemas
-from runtime.telephony.service import number_hook, numbers
+from runtime.telephony.service import addresses, number_hook, numbers
 from runtime.telephony.service.number_hook import NumberImport, NumberPurchase
 
 router = APIRouter()
@@ -98,12 +99,42 @@ async def buy_number(
     return schemas.ImportNumberResponse.of(await hook(session, vault, http, servers, names, wanted))
 
 
+@router.get("/v1/numbers/address")
+async def get_address_domain(_: NumbersKey, host: TheMailHost) -> schemas.AddressDomain:
+    """The domain the platform gives its orgs' agents addresses of, or none."""
+    return schemas.AddressDomain(domain=None if host is None else host.domain)
+
+
+@router.post("/v1/numbers/address")
+async def give_address(
+    body: schemas.AddressRequest,
+    actor: NumbersKey,
+    vault: TheVault,
+    http: TheHttp,
+    servers: TheServers,
+    names: TheSipNames,
+    host: TheMailHost,
+    session: Session,
+) -> schemas.ImportNumberResponse:
+    """An address of the platform's domain made for the agent, its mailbox kept for the org, and routed."""
+    check_agent(actor, body.agent)
+    wanted = addresses.AddressWanted(Scope(actor.org, actor.env), body.local, body.agent, body.app, body.label)
+    plan = await addresses.give_address(session, vault, http, servers, names, host, wanted)
+    return schemas.ImportNumberResponse.of(plan)
+
+
 @router.delete("/v1/numbers/{number}", status_code=204)
 async def release_number(
-    route: TheNumber, vault: TheVault, http: TheHttp, servers: TheServers, names: TheSipNames, session: Session
+    route: TheNumber,
+    vault: TheVault,
+    http: TheHttp,
+    servers: TheServers,
+    names: TheSipNames,
+    host: TheMailHost,
+    session: Session,
 ) -> None:
-    """Let the number go: its route and its admission; the account keeps it."""
-    await numbers.let_go(session, vault, http, servers, names, route)
+    """Let the number go: its route and its admission; the account keeps it, but an address the platform made."""
+    await numbers.let_go(session, vault, http, servers, names, route, host)
 
 
 @router.put("/v1/numbers/{number}/env")

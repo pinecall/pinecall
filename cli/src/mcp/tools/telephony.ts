@@ -41,13 +41,15 @@ export const numbers = tool({
   destroys: true,
   description: "The org's numbers and the agent each reaches; the numbers its carrier accounts own; importing one, or buying one on the deployment's account, shown as steps before anything is written.",
   schema: {
-    action: z.enum(["list", "available", "import", "buy"]).describe("list the org's numbers; available is what its carrier accounts own; import points one of them at an agent; buy gets a new one on the deployment's account — import and buy are a dry run unless dry_run is false"),
+    action: z.enum(["list", "available", "import", "buy", "address"]).describe("list the org's numbers; available is what its carrier accounts own; import points one of them at an agent; address gives an agent an address of the deployment's own domain; buy gets a new one on the deployment's account — import and buy are a dry run unless dry_run is false"),
     number: z.string().optional().describe("`import`: the number, in +E.164; for `email`, the mailbox's address; for `messenger` and `instagram`, Meta's id of the Page or of the Instagram account linked to it, with `account` the Page's id"),
     agent: z.string().optional().describe("`import`, `buy`: the agent that answers it"),
     channel: z.enum(["phone", "whatsapp", "sms", "email", "messenger", "instagram"]).optional().describe("`import`, `buy`: phone unless said. One number answers on several: import it once a channel. `sms` is a number of a Twilio account, whose messages Twilio then posts to Pinecall; `email` is a mailbox account's address, whose inbox Pinecall reads"),
     account: z.string().optional().describe("`available`, `import`: the carrier account the number lives in, when the org has several (`carriers list` names them)"),
     move: z.boolean().optional().describe("`import`: take the number off the trunk it is on now (another environment's, or another agent's), as a 409 naming that trunk asks"),
-    app: z.string().optional().describe("`import` of an address (`email`): the app whose flows read its emails, as the event mail.received, instead of its agent answering them"),
+    app: z.string().optional().describe("`import` of an address (`email`), `address`: the app whose flows read its emails, as the event mail.received, instead of its agent answering them"),
+    local: z.string().optional().describe("`address`: the word the address is asked by, lowercase letters, digits and dashes: `avisos` is avisos.<org>@<the deployment's domain>"),
+    label: z.string().optional().describe("`address`: the name a contact reads beside the address"),
     country: z.string().optional().describe("`buy`: the country, two letters (ES, US)"),
     area_code: z.string().optional().describe("`buy`: an area code, digits only"),
     dry_run: z.boolean().optional().describe("`import`, `buy`: true (the default) answers the steps and writes nothing; false does them"),
@@ -61,6 +63,10 @@ export const numbers = tool({
     if (args.action === "buy") {
       if (args.country === undefined || args.agent === undefined) throw new ToolRefused("buy takes a country, two letters, and the agent that answers the number");
       return await service.buyNumber(ctx, service.BuyNumberInput.parse({ country: args.country, agent: args.agent, areaCode: args.area_code, channel: args.channel, dryRun }));
+    }
+    if (args.action === "address") {
+      if (args.local === undefined || args.agent === undefined) throw new ToolRefused("address takes the word it is asked by and the agent that answers it");
+      return await service.giveAddress(ctx, service.AddressInput.parse({ local: args.local, agent: args.agent, app: args.app, label: args.label }));
     }
     if (args.number === undefined || args.agent === undefined) throw new ToolRefused("import takes the number and the agent that answers it");
     return await service.importNumber(ctx, service.ImportNumberInput.parse({ number: args.number, agent: args.agent, account: args.account, channel: args.channel, move: args.move === true, app: args.app, dryRun }));

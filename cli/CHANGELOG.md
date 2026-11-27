@@ -5,6 +5,8 @@ that history is [`@pinecall/agents`'s CHANGELOG](https://github.com/pinecall/pin
 The format is [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
+- **`pinecall numbers address <word> --agent <slug> [--app] [--label]`**: an address of the deployment's own domain for an
+  agent, its mailbox made on the mail host and routed; the MCP's `numbers` takes `address` too.
 - **`pinecall numbers import <address> --channel email --app <name>`**: the address's emails go to the app's flows
   as `mail.received` and open no conversation; `numbers list` says `app <name> (flows)` for it.
 

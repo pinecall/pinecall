@@ -1,6 +1,10 @@
 # Changelog
 
 ## Unreleased
+- **An agent gets an address of the platform's own domain, as a number is bought.** `POST /v1/numbers/address`
+  `{local, agent, app?, label?}` makes `<local>.<org>@<domain>` on the platform's mail host, keeps its mailbox for
+  the org and routes it (to an app's flows with `app`); `GET` says the domain, and letting it go removes the
+  mailbox. The host is the operator's: `PINECALL_MAIL_HOST_URL`, `_KEY`, `PINECALL_MAIL_DOMAIN`, `_SERVER`.
 - **A flow asks a model to read words into an object: the step `extract`.** `{agent, text, schema, instructions?,
   model?}` asks a model, on the org's own key or one the platform lends, to answer by the JSON Schema of an object; the
   step ends with `{data}`, or `{data: null, refused, message}`. No call is opened and nothing is listed among the

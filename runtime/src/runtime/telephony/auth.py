@@ -12,12 +12,13 @@ from runtime.actor import Actor
 from runtime.auth import Authenticator, TheOperator
 from runtime.enums import Channel, KeyScope
 from runtime.exceptions import NotFound
-from runtime.handles import TheVault
+from runtime.handles import TheSettings, TheVault
 from runtime.kit.http import read_capped_body
 from runtime.kit.text import parse_address
 from runtime.postgres import Session, TheBoxSession
 from runtime.telephony.models import Route
 from runtime.telephony.service import numbers, sms
+from runtime.telephony.service.addresses import MailHost
 from runtime.telephony.service.carrier import SipNames
 from runtime.telephony.service.hand_over import AgentsHeld
 from runtime.whatsapp import service as whatsapp
@@ -116,3 +117,15 @@ TheSmsReceipt = Annotated[whatsapp.Receipt, Depends(read_sms_receipt)]
 # A Page or an Instagram account is named by Meta's id, digits alone: read as one where the channel asked is theirs.
 def _address_of(number: str, channel: Channel | None) -> str:
     return parse_address(number, by_meta_id=channel is not None and channel.is_by_meta_id)
+
+
+# The platform's mail host, where an org's agent is given an address of its domain: set whole or not at all.
+def mail_host_of(settings: TheSettings) -> MailHost | None:
+    """The platform's mail host, when its operator set all four of it; None when it gives no address."""
+    key = None if settings.mail_host_key is None else settings.mail_host_key.get_secret_value()
+    if settings.mail_host_url is None or key is None or settings.mail_domain is None or settings.mail_server is None:
+        return None
+    return MailHost(settings.mail_host_url, key, settings.mail_domain, settings.mail_server)
+
+
+TheMailHost = Annotated[MailHost | None, Depends(mail_host_of)]

@@ -31,6 +31,18 @@ that emails reach the box; `DELETE /v1/numbers/{address}?channel=email` lets it 
 read no more. A number and an address are told apart by the `@`: every door that names a number
 takes an address the same way.
 
+## An address of the platform's — `POST /v1/numbers/address`
+
+A platform whose operator set a mail host (`PINECALL_MAIL_HOST_URL` and the three beside it, [the
+environment](../the-environment.md)) gives its orgs' agents addresses of its own domain, as a number is
+bought on its carrier account: `GET /v1/numbers/address` answers `{domain}` (null where it gives none),
+and `{local, agent, app?, label?}` on `POST` makes `<local>.<org's slug>@<domain>` on the host, keeps its
+mailbox as an email account of the org's (IMAP and SMTP on the host's server, the address its login),
+and routes it to the agent, or to an app's flows with `app` (below), in the key's environment. `local` is
+a word of lowercase letters, digits and dashes; one the host has already is `409`. The route is the
+platform's (`managed`), and letting it go (`DELETE /v1/numbers/{address}`) removes the mailbox, its mail
+and the account with it. A platform with no host answers `503`.
+
 ## An address an app reads
 
 `{…, app: "<the app's name>"}` on `POST /v1/numbers` (the channel `email` alone) routes the address

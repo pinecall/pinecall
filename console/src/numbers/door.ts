@@ -160,6 +160,16 @@ export async function addNumber(credentials: Credentials, wanted: WantedNumber, 
   return WiredSchema.parse(await post(credentials, `/v1/numbers${dryRun ? "?dry_run=true" : ""}`, wanted));
 }
 
+/** The domain the platform gives its agents addresses of; null when it gives none. */
+export async function readAddressDomain(credentials: Credentials): Promise<string | null> {
+  return z.object({ domain: z.string().nullable() }).parse(await read(credentials, "/v1/numbers/address")).domain;
+}
+
+/** An address of the platform's domain made for an agent: `<local>.<org>@<domain>`, its mailbox kept and routed. */
+export async function giveAddress(credentials: Credentials, wanted: { local: string; agent: string; app?: string; label?: string }): Promise<Wired> {
+  return WiredSchema.parse(await post(credentials, "/v1/numbers/address", wanted));
+}
+
 /** Buy a number on the platform's account; `dryRun` finds one and buys nothing. */
 export async function buyNumber(credentials: Credentials, wanted: WantedPurchase, dryRun: boolean): Promise<Wired> {
   return WiredSchema.parse(await post(credentials, `/v1/numbers/buy${dryRun ? "?dry_run=true" : ""}`, wanted));

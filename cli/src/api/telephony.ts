@@ -164,6 +164,25 @@ export function buyNumber(gw: GatewayClient, body: NumberPurchase, dryRun: boole
   return gw.post<NumberPlan>("/v1/numbers/buy", body, dryRunQuery(dryRun));
 }
 
+/** `POST /v1/numbers/address`: an address of the platform's own domain, asked by a word, for an agent. */
+export interface AddressWanted {
+  local: string;
+  agent: string;
+  /** The app whose flows read its emails (`mail.received`); none, its agent answers them. */
+  app?: string;
+  /** The name a contact reads beside the address. */
+  label?: string;
+}
+
+export function giveAddress(gw: GatewayClient, body: AddressWanted): Promise<NumberPlan> {
+  return gw.post<NumberPlan>("/v1/numbers/address", body);
+}
+
+/** `GET /v1/numbers/address`: the domain the platform gives addresses of; null when it gives none. */
+export function getAddressDomain(gw: GatewayClient): Promise<{ domain: string | null }> {
+  return gw.get<{ domain: string | null }>("/v1/numbers/address");
+}
+
 /** A number that answers on two channels is let go on the one named. */
 /** The channels a number answers on. */
 export type RouteChannel = "phone" | "whatsapp" | "sms" | "email" | "messenger" | "instagram";

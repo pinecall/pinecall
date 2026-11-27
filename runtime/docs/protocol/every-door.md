@@ -262,6 +262,8 @@ took) and FastAPI's own schema and its readers (`/openapi.json`, `/v1/docs`, `/v
 | `POST` | `/v1/numbers` | numbers | Hook a number at its account, admit it on the SFU in the key's environment, route it. |
 | `GET` | `/v1/numbers/available` | numbers | What the org's Twilio accounts own, and which of it this environment imported. |
 | `POST` | `/v1/numbers/buy` | numbers | Buy a number on the platform's account and hook it, counted against the environment's stock. |
+| `GET` | `/v1/numbers/address` | numbers | The domain the platform gives its orgs' agents addresses of; null when it gives none. |
+| `POST` | `/v1/numbers/address` | numbers | An address of the platform's domain made for an agent (`local`, `agent`, `app?`, `label?`), its mailbox kept and routed. |
 | `DELETE` | `/v1/numbers/{number}` | numbers | Let the number go on a channel (`?channel=` when it answers on two): its route and its admission; the account keeps it. |
 | `GET` | `/v1/numbers/{number}/path` | numbers | What a call to the number goes through now: its carrier, the fence, the environment, the agent. |
 | `PUT` | `/v1/numbers/{number}/env` | numbers | Move the number into the other environment: its row and the two rules. |

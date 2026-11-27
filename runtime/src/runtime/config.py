@@ -88,6 +88,13 @@ class Settings(BaseSettings):
     min_password: int = Field(8, alias="PINECALL_MIN_PASSWORD", ge=0)
     smtp_url: SecretStr | None = Field(None, alias="PINECALL_SMTP_URL")
     mail_from: str | None = Field(None, alias="PINECALL_MAIL_FROM")
+    # The platform's mail host, where an org's agent is given an address of the platform's domain: its
+    # admin API (BMail's contract: a domain's mailboxes made and removed), its key, the domain, and the
+    # server each mailbox is read and sent through. Unset, no address is given out.
+    mail_host_url: str | None = Field(None, alias="PINECALL_MAIL_HOST_URL")
+    mail_host_key: SecretStr | None = Field(None, alias="PINECALL_MAIL_HOST_KEY")
+    mail_domain: str | None = Field(None, alias="PINECALL_MAIL_DOMAIN")
+    mail_server: str | None = Field(None, alias="PINECALL_MAIL_SERVER")
 
     # ── the worker ──
     worker_key: SecretStr | None = Field(None, alias="PINECALL_WORKER_KEY")

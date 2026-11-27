@@ -2102,6 +2102,17 @@ gives it back to the agent.
 $ pinecall numbers import avisos@acme.example --agent front-desk --channel email --app front-desk
 ```
 
+**An agent gets an address of the deployment's own domain with `numbers address`**, as `buy` gets it a
+number: `pinecall numbers address <word> --agent <slug> [--app <name>] [--label <name>]` makes
+`<word>.<org>@<domain>` on the deployment's mail host, keeps its mailbox for the org and routes it; with
+`--app` its emails go to that app's flows. `numbers drop <address>` lets it go and removes the mailbox. A
+deployment whose operator set no mail host answers that it gives out no addresses.
+
+```console
+$ pinecall numbers address avisos --agent front-desk --app front-desk
+  route: avisos.acme@agents.pinecall.io to front-desk in the sandbox: done
+```
+
 **One number answers on several channels**, each its own route with its own agent: the phone, WhatsApp
 and SMS. `--channel` says which is being added, and what the number answers on the others stays as it
 is. SMS is a number of a Twilio account: importing it has Twilio post the number's messages to

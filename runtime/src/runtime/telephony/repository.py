@@ -212,6 +212,12 @@ class RouteRepository(Repository[Route]):
             return await self.add(Route(org=written.org, number=written.number, channel=written.channel, **values))
         return await self.update(row, **values)
 
+    async def mark_managed(self, org: str, number: str, channel: Channel) -> None:
+        """Say the org's number on the channel is the box's: an address made on its mail host, a number bought."""
+        await self.session.execute(
+            update(Route).where(Route.org == org, Route.number == number, Route.channel == channel).values(managed=True)
+        )
+
     async def note_call(self, org: str, number: str, channel: Channel, *, at: datetime, unless_since: datetime) -> None:
         """Note that a call or a message to the org's number reached the box, unless one was noted since the other."""
         await self.session.execute(

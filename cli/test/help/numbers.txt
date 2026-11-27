@@ -1,7 +1,7 @@
 $ pinecall numbers --help
 Usage: pinecall numbers [options] [command]
 
-list | available | import | buy | drop the numbers the org answers at
+list | available | import | buy | address | drop the numbers the org answers at
 
 Options:
   -h, --help                 display help for command
@@ -15,6 +15,9 @@ Commands:
                              an agent
   buy [options]              a number bought on the deployment's own account,
                              pointed at an agent
+  address [options] <word>   an address of the deployment's own domain for an
+                             agent: <word>.<org>@<domain>, its mailbox made and
+                             routed
   drop [options] <number>    forget the route; the carrier account keeps the
                              number
   help [command]             display help for command
@@ -33,10 +36,15 @@ takes the number off the SFU trunk; the carrier account keeps it.
 area code) on its own account and points it at the agent. A bought number counts against the
 org's `numbers` limit in that env (`pinecall limits`); an imported one never does.
 
+`address` gives an agent an address of the deployment's own domain, as `buy` gives it a number:
+`<word>.<org>@<domain>`, its mailbox made on the deployment's mail host and routed; with `--app` its
+emails go to that app's flows. `drop` lets it go, and its mailbox with it.
+
 Examples
   $ pinecall numbers import +34910000000 --agent clinica-norte
   $ pinecall numbers buy --country ES --area 91 --agent clinica-norte --dry-run --prod
   $ pinecall numbers available --prod
+  $ pinecall numbers address avisos --agent front-desk --app front-desk
 
 
 $ pinecall numbers list --help
@@ -88,6 +96,22 @@ Options:
   --channel <channel>  phone | whatsapp | sms | email
   --dry-run            name the number and buy nothing
   -h, --help           display help for command
+
+$ pinecall numbers address --help
+Usage: pinecall numbers address [options] <word>
+
+an address of the deployment's own domain for an agent: <word>.<org>@<domain>,
+its mailbox made and routed
+
+Arguments:
+  word            lowercase letters, digits and dashes: avisos
+
+Options:
+  --agent <slug>
+  --app <name>    its emails go to this app's flows as mail.received, and open
+                  no conversation
+  --label <name>  the name a contact reads beside the address
+  -h, --help      display help for command
 
 $ pinecall numbers drop --help
 Usage: pinecall numbers drop [options] <number>

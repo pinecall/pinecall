@@ -150,6 +150,23 @@ export async function importNumber(ctx: Context, input: ImportNumberInput): Prom
   return api.importNumber(ctx.gateway(), body, input.dryRun);
 }
 
+/** What `numbers address` takes: a word, the agent, the app whose flows read it, the name beside it. */
+export const AddressInput = z.object({
+  local: z.string().regex(/^[a-z0-9][a-z0-9-]{0,30}$/, "a word of lowercase letters, digits and dashes: avisos"),
+  agent: z.string().min(1),
+  app: z.string().regex(/^[a-z0-9][a-z0-9-]{0,62}$/, "an app's name: lowercase letters, digits and dashes").optional(),
+  label: z.string().min(1).max(120).optional(),
+});
+export type AddressInput = z.infer<typeof AddressInput>;
+
+/** An address of the deployment's own domain made for an agent: `<word>.<org>@<domain>`, its mailbox kept and routed. */
+export async function giveAddress(ctx: Context, input: AddressInput): Promise<api.NumberPlan> {
+  const body: api.AddressWanted = { local: input.local, agent: input.agent };
+  if (input.app !== undefined) body.app = input.app;
+  if (input.label !== undefined) body.label = input.label;
+  return api.giveAddress(ctx.gateway(), body);
+}
+
 /** A number bought on the deployment's own account and pointed at an agent; it counts against the org's `numbers` limit. */
 export async function buyNumber(ctx: Context, input: BuyNumberInput): Promise<NumberBought> {
   const body: api.NumberPurchase = { country: input.country, agent: input.agent };

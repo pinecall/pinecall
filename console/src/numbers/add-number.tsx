@@ -6,9 +6,9 @@ import { saidBy } from "@pinecall/core/api";
 import { useCredentials } from "@pinecall/core/credentials";
 import { Icon } from "../shell/icons";
 import { SidePanel } from "../ui/side-panel";
-import { readCarriers, readCatalog, readOwned, type Carrier, type Catalog, type Owned } from "./door";
+import { readAddressDomain, readCarriers, readCatalog, readOwned, type Carrier, type Catalog, type Owned } from "./door";
 import { Path, useMove } from "./parts";
-import { EmailWay } from "./email-way";
+import { AddressWay, EmailWay } from "./email-way";
 import { PageWay } from "./page-way";
 import { BuyWay, GuidedWay, PbxWay, SmsWay, TwilioWay, WhatsAppWay, type WayProps } from "./ways";
 import { shown, waysOffered, type Way } from "./words";
@@ -31,6 +31,8 @@ function Form({ way, ...props }: WayProps & { way: Way }): ReactNode {
       return <EmailWay {...props} />;
     case "messenger":
       return <PageWay {...props} />;
+    case "address":
+      return <AddressWay {...props} />;
   }
 }
 
@@ -39,6 +41,7 @@ export function AddNumberPanel({ agents, agent, channel = null, onAdded, onClose
   const credentials = useCredentials();
   const mover = useMove();
   const [catalog, setCatalog] = useState<Catalog | null>(null);
+  const [addressDomain, setAddressDomain] = useState<string | null>(null);
   const [carriers, setCarriers] = useState<Carrier[]>([]);
   const [owned, setOwned] = useState<Owned[]>([]);
   const [refused, setRefused] = useState<string | null>(null);
@@ -53,10 +56,12 @@ export function AddNumberPanel({ agents, agent, channel = null, onAdded, onClose
 
   useEffect(() => {
     readCatalog(credentials).then(setCatalog, (failed: unknown) => setRefused(saidBy(failed)));
+    // A platform that gives no addresses, or a key that may not ask, offers the mailbox alone.
+    readAddressDomain(credentials).then(setAddressDomain, () => setAddressDomain(null));
     readAccounts().catch((failed: unknown) => setRefused(saidBy(failed)));
   }, [credentials, readAccounts]);
 
-  const ways = catalog === null ? [] : waysOffered(catalog, channel);
+  const ways = catalog === null ? [] : waysOffered(catalog, channel, addressDomain);
   // One way alone is no choice: its form is the panel.
   const only = ways.length === 1 ? ways[0] : undefined;
   const open = way ?? only ?? null;

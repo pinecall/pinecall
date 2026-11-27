@@ -83,6 +83,24 @@ class BuyNumberRequest(Schema):
     channel: Channel = Channel.phone
 
 
+class AddressRequest(Schema):
+    """POST /v1/numbers/address: an address of the platform's own domain, asked by a word, for an agent."""
+
+    # The word before the org's own slug: `avisos` is `avisos.<org>@<the platform's domain>`.
+    local: str = Field(pattern=r"^[a-z0-9][a-z0-9-]{0,30}$")
+    agent: str
+    # The app whose flows read its emails (`mail.received`) instead of its agent answering them.
+    app: str | None = Field(default=None, pattern=r"^[a-z0-9][a-z0-9-]{0,62}$")
+    # The name a contact reads beside the address.
+    label: str | None = Field(default=None, max_length=120)
+
+
+class AddressDomain(Row):
+    """GET /v1/numbers/address: the domain the platform gives addresses of; null when it gives none."""
+
+    domain: str | None
+
+
 class ImportNumberResponse(Row):
     """POST /v1/numbers and /v1/numbers/buy: the route, one sentence a step, whether it ran."""
 

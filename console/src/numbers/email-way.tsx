@@ -4,7 +4,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 
 import { useCredentials } from "@pinecall/core/credentials";
 import { Field } from "../ui/setting";
-import { addNumber, bringCarrier, type Carrier } from "./door";
+import { addNumber, bringCarrier, giveAddress, type Carrier } from "./door";
 import { AgentField, type Mover } from "./parts";
 import { Submit, type WayProps } from "./ways";
 import "../calls/email.css";
@@ -104,4 +104,36 @@ export function EmailWay({ agents, agent: fixed, mover, onAccount, onAdded }: Wa
     onAdded(mailbox, <p className="num-hint">Emails written to it from now on are answered within a minute, set in the org&apos;s template.</p>);
   };
   return <MailboxForm mover={mover} onSaved={connected} agentField={<AgentField agents={agents} fixed={fixed !== undefined} value={agent} onChange={setAgent} />} />;
+}
+
+/** Add a number ▸ Get an address: one of the platform's own domain, made for the agent; its emails answered, or read by an app's flows. */
+export function AddressWay({ agents, agent: fixed, mover, onAccount, onAdded }: WayProps): ReactNode {
+  const credentials = useCredentials();
+  const [agent, setAgent] = useState(fixed ?? agents[0] ?? "");
+  const [local, setLocal] = useState("");
+  const [app, setApp] = useState("");
+  const [label, setLabel] = useState("");
+  const give = (event: FormEvent): void => {
+    event.preventDefault();
+    const wanted = { local: local.trim(), agent, ...(app.trim() === "" ? {} : { app: app.trim() }), ...(label.trim() === "" ? {} : { label: label.trim() }) };
+    void mover
+      .move(() => giveAddress(credentials, wanted))
+      .then(async (wired) => {
+        await onAccount();
+        const address = wired.route.number ?? local;
+        const after = wanted.app === undefined ? "Emails written to it are answered within a minute, set in the org's template." : `Each email written to it reaches ${wanted.app}'s flows as mail.received; none opens a conversation.`;
+        onAdded(address, <p className="num-hint">{after}</p>);
+      }, () => undefined);
+  };
+  return (
+    <form className="num-form" onSubmit={give}>
+      <Input label="Address" value={local} onChange={setLocal} hint="A word: avisos, ventas, soporte. Your org's name follows it." required />
+      <AgentField agents={agents} fixed={fixed !== undefined} value={agent} onChange={setAgent} />
+      <Input label="Read by an app's flows" value={app} onChange={setApp} hint="Optional: the app's name, when a flow reads each email instead of the agent answering it" />
+      <Input label="Name" value={label} onChange={setLabel} hint="Optional: the name a contact reads beside the address" />
+      <Submit busy={mover.busy} doing="Making it…" disabled={local.trim() === "" || agent === ""}>
+        Get the address
+      </Submit>
+    </form>
+  );
 }

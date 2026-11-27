@@ -24,10 +24,15 @@ takes the number off the SFU trunk; the carrier account keeps it.
 area code) on its own account and points it at the agent. A bought number counts against the
 org's \`numbers\` limit in that env (\`pinecall limits\`); an imported one never does.
 
+\`address\` gives an agent an address of the deployment's own domain, as \`buy\` gives it a number:
+\`<word>.<org>@<domain>\`, its mailbox made on the deployment's mail host and routed; with \`--app\` its
+emails go to that app's flows. \`drop\` lets it go, and its mailbox with it.
+
 Examples
   $ pinecall numbers import +34910000000 --agent clinica-norte
   $ pinecall numbers buy --country ES --area 91 --agent clinica-norte --dry-run --prod
   $ pinecall numbers available --prod
+  $ pinecall numbers address avisos --agent front-desk --app front-desk
 `;
 
 const CARRIERS = `
@@ -136,7 +141,7 @@ is your app's.
 `;
 
 export function register(program: Command, ctx: Context): void {
-  const numbers = program.command("numbers").description("list | available | import | buy | drop the numbers the org answers at").addHelpText("after", NUMBERS);
+  const numbers = program.command("numbers").description("list | available | import | buy | address | drop the numbers the org answers at").addHelpText("after", NUMBERS);
   numbers
     .command("list", { isDefault: true })
     .description("every number of this env, and the agent each reaches")
@@ -173,6 +178,17 @@ export function register(program: Command, ctx: Context): void {
     .action(async (flags) => {
       const input = service.BuyNumberInput.parse({ country: flags.country, agent: flags.agent, areaCode: flags.area, channel: flags.channel, dryRun: flags.dryRun === true });
       ctx.io.result(await service.buyNumber(ctx, input), render.bought);
+    });
+  numbers
+    .command("address")
+    .description("an address of the deployment's own domain for an agent: <word>.<org>@<domain>, its mailbox made and routed")
+    .argument("<word>", "lowercase letters, digits and dashes: avisos")
+    .requiredOption("--agent <slug>")
+    .option("--app <name>", "its emails go to this app's flows as mail.received, and open no conversation")
+    .option("--label <name>", "the name a contact reads beside the address")
+    .action(async (word, flags) => {
+      const input = service.AddressInput.parse({ local: word, agent: flags.agent, app: flags.app, label: flags.label });
+      ctx.io.result(await service.giveAddress(ctx, input), render.imported);
     });
   numbers
     .command("drop")
