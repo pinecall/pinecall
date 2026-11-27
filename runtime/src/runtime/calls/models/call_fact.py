@@ -35,6 +35,7 @@ class CallFact(Model):
             "contact",
             "persona",
             "spoken",
+            "in_room",
             "ended_at",
             "end_reason",
             "outcome",
@@ -81,7 +82,12 @@ class CallFact(Model):
     contact: Mapped[str | None] = mapped_column(Text)
     # Folded from `call.started`, and kept by a simulation placed before its call starts: both write it.
     persona: Mapped[str | None] = mapped_column(Text)
+    # Somebody talked on it: a phone call, or a web visit whose caller joined to talk (a chat's caller joins
+    # on a `chat` seat, with no microphone, and is a written conversation even in a room).
     spoken: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # It lives in a room (a phone call, a web visit's, by voice or written): what the reaper asks a quiet
+    # call to be before it ends it as a room's, where a written one is taken up again after a restart.
+    in_room: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     ended_at: Mapped[float | None] = mapped_column(Float)
     end_reason: Mapped[str | None] = mapped_column(Text)
     outcome: Mapped[str | None] = mapped_column(Text)

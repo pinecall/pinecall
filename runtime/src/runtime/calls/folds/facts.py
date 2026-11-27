@@ -21,7 +21,7 @@ from runtime.wire.events import (
 )
 from runtime.wire.metrics import ModelUsage
 from runtime.wire.parts import PLATFORM, Cost
-from runtime.wire.room import RoomOpened
+from runtime.wire.room import CHAT, SCOPE_ATTRIBUTE, ParticipantJoined, RoomOpened
 from runtime.wire.scores import CallScore
 from runtime.wire.state import State
 
@@ -44,7 +44,8 @@ A_PERSON_TOOK_PART = frozenset(
     }
 )
 
-# A web call is spoken only once a room opens.
+# A phone call is spoken and in a room from its start; a web visit is in a room once one opens, and spoken
+# once its caller joins it to talk: a chat's caller joins on a `chat` seat (wire/room.py).
 SPOKEN_CHANNEL = "phone"
 
 # What a list shows of a call, read off its state: the fields of a CallRow the log decides. Written
@@ -103,6 +104,7 @@ FOLDED_TYPES = (
             CallSummary,
             CallScore,
             RoomOpened,
+            ParticipantJoined,
             UserTurnEnded,
             AgentTurnEnded,
         )
@@ -130,6 +132,7 @@ class CallFacts:
     contact: str | None = None
     persona: str | None = None
     spoken: bool = False
+    in_room: bool = False
     ended_at: float | None = None
     end_reason: str | None = None
     outcome: str | None = None
@@ -205,7 +208,9 @@ def fold(facts: CallFacts, entry: Entry) -> CallFacts:
         case CallScore() as score:
             return _fold_score(facts, score)
         case RoomOpened():
-            return replace(facts, spoken=True)
+            return replace(facts, in_room=True)
+        case ParticipantJoined() as joined if joined.kind == "caller":
+            return replace(facts, spoken=facts.spoken or joined.attributes.get(SCOPE_ATTRIBUTE) != CHAT)
         case UserTurnEnded() | AgentTurnEnded() as turn:
             return _fold_turn(facts, entry, turn)
         case _ if entry.type in A_PERSON_TOOK_PART:
@@ -238,6 +243,7 @@ def _fold_line(facts: CallFacts, line: CallRinging | CallDialing | CallStarted) 
         contact=(caller.id if caller is not None and caller.id else None) or far_end,
         persona=persona or facts.persona,
         spoken=facts.spoken or line.channel == SPOKEN_CHANNEL,
+        in_room=facts.in_room or line.channel == SPOKEN_CHANNEL,
     )
 
 

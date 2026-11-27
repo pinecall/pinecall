@@ -1,6 +1,10 @@
 # Changelog
 
 ## Unreleased
+- **A website's chat is written, even in a room.** A row's `spoken` (and the list's `medium` filter, and the inbox's pills)
+  meant a room opened; every web visit opens one, so a chat read as a web call. `spoken` is now a phone call or a web visit
+  whose caller joined to talk, and `call_facts.in_room` keeps what it meant, for the reaper. Migration 000039 folds both
+  again from the log.
 - **The widget greets once.** An agent's greeting with a word in **bold** was not recognised against the page's plain
   `greeting`, so each call that opened on a conversation already on screen drew it again. And a conversation kept
   before its greeting reached the page (the browser joined the room after the agent said it) opened empty on every

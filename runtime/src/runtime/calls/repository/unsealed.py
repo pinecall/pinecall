@@ -40,7 +40,7 @@ left join call_facts f on f.call = head.log
 left join call_openings opening on opening.call = head.log
 left join call_log entry on entry.log = head.log
 where head.call is not null and not head.sealed
-  and (coalesce(f.spoken, false)
+  and (coalesce(f.in_room, false)
        or not exists (select 1 from call_log began
                        where began.log = head.log and began.type = 'call.started'))
 group by head.log, head.agent, head.started_at, head.env, opening.opened_at, f.persona
@@ -57,7 +57,7 @@ select head.log as call, head.agent,
 from call_log_head head
 join call_facts f on f.call = head.log
 left join call_log entry on entry.log = head.log
-where head.call is not null and not head.sealed and not coalesce(f.spoken, false)
+where head.call is not null and not head.sealed and not coalesce(f.in_room, false)
   and exists (select 1 from call_log began
                where began.log = head.log and began.type = 'call.started')
 group by head.log, head.agent, head.started_at, head.env, f.channel, f.persona

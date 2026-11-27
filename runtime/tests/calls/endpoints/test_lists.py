@@ -118,20 +118,31 @@ async def test_a_list_asked_with_spoken_says_which_calls_are_had_by_voice(
         "caller": CALLER,
         "started_at": 1_790_000_000.0,
     }
-    written, by_voice, by_phone = new_call_id(), new_call_id(), await a_call_on(store, tenant, agent, tenant.member)
-    for call in (written, by_voice):
+    written, chatted, by_voice = new_call_id(), new_call_id(), new_call_id()
+    by_phone = await a_call_on(store, tenant, agent, tenant.member)
+    for call in (written, chatted, by_voice):
         await claim_call(store, call, agent, Claim(Scope(tenant.org, Env.sandbox, tenant.member), Versions(settings=1)))
         await logs_on(store).logs.writing(call, agent).append("call.started", began)
-    await logs_on(store).logs.writing(by_voice, agent).append("room.opened", {**ROOM, "channel": "web"})
+    # A website's chat opens a room too, and its caller joins on a chat seat: it is written all the same.
+    for call, scope in ((chatted, "chat"), (by_voice, "talk")):
+        writing = logs_on(store).logs.writing(call, agent)
+        await writing.append("room.opened", {**ROOM, "channel": "web"})
+        joined = {"identity": "web_1", "kind": "caller", "attributes": {"pinecall.scope": scope}}
+        await writing.append("participant.joined", joined)
     every = await listed(gateway, tenant.person, spoken="true")
-    assert {row["call"]: row["spoken"] for row in every} == {written: False, by_voice: True, by_phone: True}
+    assert {row["call"]: row["spoken"] for row in every} == {
+        written: False,
+        chatted: False,
+        by_voice: True,
+        by_phone: True,
+    }
     assert all("spoken" not in row for row in await listed(gateway, tenant.person))
     # A kind is asked of the gateway, whatever its age: a list of the newest calls filtered after is a window.
     by_medium = {
         medium: {row["call"] for row in await listed(gateway, tenant.person, medium=medium)}
         for medium in ("voice", "text")
     }
-    assert by_medium == {"voice": {by_voice, by_phone}, "text": {written}}
+    assert by_medium == {"voice": {by_voice, by_phone}, "text": {written, chatted}}
     web_calls = await listed(gateway, tenant.person, channel="web", medium="voice")
     assert [row["call"] for row in web_calls] == [by_voice]
 

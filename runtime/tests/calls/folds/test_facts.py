@@ -117,7 +117,7 @@ def test_a_verdict_nobody_settled_is_no_score() -> None:
     )
 
 
-def test_a_web_call_is_spoken_once_a_room_opens_and_a_phone_call_always() -> None:
+def test_a_web_visit_is_in_a_room_once_one_opens_spoken_once_its_caller_joins_to_talk_and_a_phone_call_always() -> None:
     web = fold(
         CallFacts(call="CA_x"),
         logged(
@@ -132,8 +132,20 @@ def test_a_web_call_is_spoken_once_a_room_opens_and_a_phone_call_always() -> Non
             },
         ),
     )
-    assert not web.spoken
-    assert fold(web, logged("room.opened", {"name": "r", "sid": "s", "channel": "web"})).spoken
+    assert not (web.spoken or web.in_room)
+    roomed = fold(web, logged("room.opened", {"name": "r", "sid": "s", "channel": "web"}))
+    assert (roomed.in_room, roomed.spoken) == (True, False)
+
+    def joined(scope: str) -> dict[str, object]:
+        return {"identity": "web_1", "kind": "caller", "attributes": {"pinecall.scope": scope}}
+
+    # A website's chat opens a room too: its caller joins on a chat seat, with no microphone, and it stays written.
+    chatting = fold(roomed, logged("participant.joined", joined("chat")))
+    assert (chatting.in_room, chatting.spoken) == (True, False)
+    talking = fold(roomed, logged("participant.joined", joined("talk")))
+    assert (talking.in_room, talking.spoken) == (True, True)
+    agent: dict[str, object] = {"identity": "agent-1", "kind": "agent", "attributes": {}}
+    assert not fold(roomed, logged("participant.joined", agent)).spoken
     phone = fold(
         CallFacts(call="CA_x"),
         logged(
@@ -147,6 +159,7 @@ def test_a_web_call_is_spoken_once_a_room_opens_and_a_phone_call_always() -> Non
             },
         ),
     )
+    assert phone.in_room
     assert (phone.spoken, phone.contact, phone.name, phone.direction) == (
         True,
         "ct_9",
