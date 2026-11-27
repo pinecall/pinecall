@@ -1,6 +1,13 @@
-"""What a feed says of a change no log holds: a run, a release, a worker, a tool, a judge; by id."""
+"""What a feed says of a change no log holds, by id, and what an agent's log spent besides calls."""
 
+from typing import Literal
+
+from pydantic import Field
+
+from pinecall.wire._names import Env
 from pinecall.wire.frames import WireModel
+from pinecall.wire.metrics import LLMModelUsage
+from pinecall.wire.parts import Cost
 
 
 class AppFailed(WireModel):
@@ -70,3 +77,32 @@ class JudgeBroke(WireModel):
     call: str
     agent: str
     judge: str
+
+
+class EvalsSpent(WireModel):
+    """The harness asked a model outside a call's score: a judge tried, personas, a diagnosis."""
+
+    kind: Literal["try", "generate", "propose"]
+    name: str
+    # The agent's log is both worlds': the try is counted in the one it was asked in.
+    env: Env
+    calls: list[str]
+    evals: int
+    judge_calls: int
+    judge_cost_usd: float | None = None
+    own_key: bool = False
+
+
+class ModelSpent(WireModel):
+    """A flow asked a model outside a call: one extraction, metered as one written turn."""
+
+    kind: Literal["extract"] = "extract"
+    app: str
+    flow: str
+    run: str
+    # The agent's log is both worlds': the request is counted in the one it was asked in.
+    env: Env
+    turns: int
+    usage: list[LLMModelUsage] = Field(default_factory=list[LLMModelUsage])
+    cost: Cost
+    own_key: bool = False

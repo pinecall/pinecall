@@ -30,7 +30,9 @@ from pinecall.wire.events_call import (
 )
 from pinecall.wire.events_feed import (
     AppFailed,
+    EvalsSpent,
     JudgeBroke,
+    ModelSpent,
     OrgQuiet,
     ReleaseChanged,
     RunChanged,
@@ -67,13 +69,12 @@ from pinecall.wire.metrics import (
     EOUMetrics,
     InterruptionMetrics,
     LLMMetrics,
-    LLMModelUsage,
     RealtimeModelMetrics,
     STTMetrics,
     TTSMetrics,
     VADMetrics,
 )
-from pinecall.wire.parts import Contact, Cost, DevVerb, Projection, Route, ToolResult
+from pinecall.wire.parts import Contact, DevVerb, Projection, Route, ToolResult
 from pinecall.wire.room import (
     ParticipantJoined,
     ParticipantLeft,
@@ -201,35 +202,6 @@ class CreditsExhausted(WireModel):
     limit: int
     # The calls open when `concurrent_calls` refused, holding the seats; empty for any other quota.
     calls: list[str]
-
-
-class EvalsSpent(WireModel):
-    """The harness asked a model outside a call's score: a judge tried, personas, a diagnosis."""
-
-    kind: Literal["try", "generate", "propose"]
-    name: str
-    # The agent's log is both worlds': the try is counted in the one it was asked in.
-    env: Env
-    calls: list[str]
-    evals: int
-    judge_calls: int
-    judge_cost_usd: float | None = None
-    own_key: bool = False
-
-
-class ModelSpent(WireModel):
-    """A flow asked a model outside a call: one extraction, metered as one written turn."""
-
-    kind: Literal["extract"] = "extract"
-    app: str
-    flow: str
-    run: str
-    # The agent's log is both worlds': the request is counted in the one it was asked in.
-    env: Env
-    turns: int
-    usage: list[LLMModelUsage] = Field(default_factory=list[LLMModelUsage])
-    cost: Cost
-    own_key: bool = False
 
 
 class SpendUnusual(WireModel):
